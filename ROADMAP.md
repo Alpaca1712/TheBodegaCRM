@@ -27,7 +27,7 @@
 
 - [x] Create `src/app/(auth)/login/page.tsx` — login page with email/password form using react-hook-form + zod validation. Clean, modern UI with Tailwind. Include "Sign up" link.
 - [x] Create `src/app/(auth)/signup/page.tsx` — signup page with email/password/name. Validate with zod. On success, show "check your email" message.
-- [ ] Create `src/app/(auth)/callback/route.ts` — Supabase auth callback route handler (exchanges code for session)
+- [x] Create `src/app/(auth)/callback/route.ts` — Supabase auth callback route handler (exchanges code for session)
 - [x] Create `src/components/auth/auth-form.tsx` — shared form component used by both login and signup
 - [ ] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
 - [ ] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
