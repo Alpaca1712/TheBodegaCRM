@@ -4,19 +4,29 @@ import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
   Mail, Phone, Building, Briefcase, Tag, Calendar, Edit, Trash2, 
-  ArrowLeft, PhoneCall, MessageSquare, CheckCircle, XCircle 
+  ArrowLeft, PhoneCall, MessageSquare, CheckCircle, XCircle, Plus 
 } from 'lucide-react';
 import Link from 'next/link';
 import { getContactById, deleteContact } from '@/lib/api/contacts';
+import { getActivitiesByContact } from '@/lib/api/activities';
+import ActivityTimeline from '@/components/activities/activity-timeline';
+import ActivityForm from '@/components/activities/activity-form';
+import { useCreateActivity } from '@/hooks/use-activities';
 import type { Contact } from '@/lib/api/contacts';
+import type { Activity } from '@/lib/api/activities';
 
 export default function ContactDetailPage() {
   const params = useParams();
   const router = useRouter();
   const [contact, setContact] = useState<Contact | null>(null);
+  const [activities, setActivities] = useState<Activity[]>([]);
+  const [activitiesLoading, setActivitiesLoading] = useState(false);
+  const [showActivityForm, setShowActivityForm] = useState(false);
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  
+  const createActivityMutation = useCreateActivity();
 
   const contactId = params.id as string;
 
@@ -31,7 +41,16 @@ export default function ContactDetailPage() {
       }
       setLoading(false);
     }
+    async function fetchActivities() {
+      setActivitiesLoading(true);
+      const result = await getActivitiesByContact(contactId);
+      if (!result.error) {
+        setActivities(result.data || []);
+      }
+      setActivitiesLoading(false);
+    }
     fetchContact();
+    fetchActivities();
   }, [contactId]);
 
   const handleDelete = async () => {
@@ -264,14 +283,57 @@ export default function ContactDetailPage() {
             )}
           </div>
 
-          {/* Activity Timeline Placeholder */}
+          {/* Activity Timeline */}
           <div className="bg-white rounded-lg border border-slate-200 p-6 mt-6">
-            <h2 className="text-lg font-semibold text-slate-900 mb-4">Activity Timeline</h2>
-            <div className="text-center py-8 text-slate-400">
-              <MessageSquare size={32} className="mx-auto mb-2 opacity-50" />
-              <p>No activities recorded yet</p>
-              <p className="text-sm mt-1">Activities will appear here when logged</p>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-semibold text-slate-900">Activity Timeline</h2>
+              <button
+                onClick={() => setShowActivityForm(!showActivityForm)}
+                className="flex items-center gap-2 px-3 py-2 text-sm font-medium text-indigo-700 bg-indigo-50 rounded-lg hover:bg-indigo-100 transition-colors"
+              >
+                <Plus size={16} />
+                {showActivityForm ? 'Cancel' : 'Add Activity'}
+              </button>
             </div>
+            
+            {showActivityForm && (
+              <div className="mb-6">
+                <ActivityForm
+                  contactId={contactId}
+                  onSubmit={async (data) => {
+                    try {
+                      const result = await createActivityMutation.mutateAsync(data);
+                      if (!result.error) {
+                        setShowActivityForm(false);
+                        // Refresh activities
+                        const activitiesResult = await getActivitiesByContact(contactId);
+                        if (!activitiesResult.error) {
+                          setActivities(activitiesResult.data || []);
+                        }
+                      }
+                      return result;
+                    } catch (_err) {
+                      return { error: 'Failed to create activity' };
+                    }
+                  }}
+                  onCancel={() => setShowActivityForm(false)}
+                  isLoading={createActivityMutation.isPending}
+                />
+              </div>
+            )}
+            
+            <ActivityTimeline
+              activities={activities}
+              isLoading={activitiesLoading}
+              onRefresh={async () => {
+                setActivitiesLoading(true);
+                const result = await getActivitiesByContact(contactId);
+                if (!result.error) {
+                  setActivities(result.data || []);
+                }
+                setActivitiesLoading(false);
+              }}
+            />
           </div>
         </div>
 

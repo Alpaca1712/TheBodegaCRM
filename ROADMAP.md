@@ -86,13 +86,13 @@
 ## Phase 5: Activities & Timeline
 > Track interactions — calls, emails, meetings, tasks.
 
-- [x] Create SQL migration `supabase/migrations/004_activities.sql` — create `activities` table: id (uuid pk), user_id (uuid), type (text not null, check in ('call','email','meeting','task','note')), title (text not null), description (text), contact_id (uuid references contacts), company_id (uuid references companies), deal_id (uuid references deals), due_date (timestamptz), completed (boolean default false), completed_at (timestamptz), created_at, updated_at. RLS policies. Indexes on user_id, contact_id, type.
+- [x] Create SQL migration `supabase/migrations/004_activities.sql` — create `activities` table: id (uuid pk), user_id (uuid), type (text not null, check in ('call','email','meeting','task','note')), title (text not long, description (text), contact_id (uuid references contacts), company_id (uuid references companies), deal_id (uuid references deals), due_date (timestamptz), completed (boolean default false), completed_at (timestamptz), created_at, updated_at. RLS policies. Indexes on user_id, contact_id, type.
 - [x] Create `src/lib/api/activities.ts` — CRUD + getActivitiesByContact(contactId), getUpcomingActivities(), getOverdueActivities()
 - [x] Create `src/app/(dashboard)/activities/page.tsx` — activities list with type filter tabs, date range filter, overdue highlight
-- [ ] Create `src/components/activities/activity-timeline.tsx` — vertical timeline component showing activities chronologically. Used on contact/company/deal detail pages.
-- [ ] Create `src/components/activities/activity-form.tsx` — quick-add activity form (can be used inline or as modal)
-- [ ] Update contact detail page to show real activity timeline
-- [ ] Update deal detail page to show related activities
+- [x] Create `src/components/activities/activity-timeline.tsx` — vertical timeline component showing activities chronologically. Used on contact/company/deal detail pages.
+- [x] Create `src/components/activities/activity-form.tsx` — quick-add activity form (can be used inline or as modal)
+- [x] Update contact detail page to show real activity timeline
+- [x] Update deal detail page to show related activities
 - [x] Create `src/hooks/use-activities.ts` — React Query hooks for activities
 - [x] Verify `npm run build` passes
 
