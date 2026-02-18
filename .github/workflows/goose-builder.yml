@@ -41,6 +41,9 @@ env:
   # ── Deployment (Goose can view the live site to verify changes) ──
   CRM_DEPLOYMENT_URL: https://the-bodega-crm.vercel.app
 
+  # ── Goose run limit — 60 min so job has time for build/lint/commit (job timeout 90 min) ──
+  GOOSE_TIMEOUT_MINUTES: 60
+
   # ── Supabase (Goose reads these to wire up the backend) ──
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
   NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
