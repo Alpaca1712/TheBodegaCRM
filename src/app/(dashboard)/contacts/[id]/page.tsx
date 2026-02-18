@@ -219,7 +219,12 @@ export default function ContactDetailPage() {
                     Company
                   </div>
                   {contact.company_id ? (
-                    <span className="text-slate-900">Company Name (TODO)</span>
+                    <Link 
+                      href={`/companies/${contact.company_id}`}
+                      className="text-indigo-600 hover:text-indigo-800 hover:underline"
+                    >
+                      View Company
+                    </Link>
                   ) : (
                     <span className="text-slate-400">No company assigned</span>
                   )}

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { Contact } from './contacts'
 
 export interface Company {
   id: string
@@ -177,4 +178,26 @@ export async function deleteCompany(id: string) {
   }
   
   return { error: null }
+}
+
+export async function getContactsByCompanyId(companyId: string) {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { data: [], error: 'Not authenticated' }
+  }
+  
+  const { data, error } = await supabase
+    .from('contacts')
+    .select('*')
+    .eq('user_id', session.user.id)
+    .eq('company_id', companyId)
+    .order('first_name')
+  
+  if (error) {
+    return { data: [], error: error.message }
+  }
+  
+  return { data: data as Contact[], error: null }
 }

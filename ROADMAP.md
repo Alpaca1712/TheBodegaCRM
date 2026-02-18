@@ -62,7 +62,7 @@
 - [x] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
 - [x] Create `src/components/companies/company-card.tsx` — card component for grid view
 - [x] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
-- [ ] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
+- [x] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
 - [ ] Create `src/hooks/use-companies.ts` — React Query hooks for companies
 - [ ] Verify `npm run build` passes
 
