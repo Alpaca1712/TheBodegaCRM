@@ -55,7 +55,7 @@ env:
 jobs:
   build-crm:
     runs-on: ubuntu-latest
-    timeout-minutes: 45 # safety net so it doesn't run forever
+    timeout-minutes: 90 # give Goose enough time for complex tasks (deal pipeline, etc.)
 
     steps:
       # ────────────────────────────
