@@ -29,7 +29,7 @@
 - [x] Create `src/app/(auth)/signup/page.tsx` — signup page with email/password/name. Validate with zod. On success, show "check your email" message.
 - [x] Create `src/app/(auth)/callback/route.ts` — Supabase auth callback route handler (exchanges code for session)
 - [x] Create `src/components/auth/auth-form.tsx` — shared form component used by both login and signup
-- [ ] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
+- [~] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
 - [ ] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
 - [ ] Create `src/components/layout/sidebar.tsx` — navigation sidebar with links: Dashboard, Contacts, Companies, Deals, Activities. Use lucide-react icons.
 - [ ] Create `src/components/layout/header.tsx` — top header bar with user avatar/email dropdown and sign-out button
