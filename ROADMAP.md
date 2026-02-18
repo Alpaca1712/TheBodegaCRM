@@ -62,39 +62,39 @@
 - [x] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
 - [x] Create `src/components/companies/company-card.tsx` — card component for grid view
 - [x] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
-- [ ] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
-- [ ] Create `src/hooks/use-companies.ts` — React Query hooks for companies
-- [ ] Verify `npm run build` passes
+- [x] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
+- [x] Create `src/hooks/use-companies.ts` — React Query hooks for companies
+- [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 4: Deals / Pipeline
 > Sales pipeline — the money feature.
 
-- [ ] Create SQL migration `supabase/migrations/003_deals.sql` — create `deals` table: id (uuid pk), user_id (uuid), title (text not null), value (numeric(12,2)), currency (text default 'USD'), stage (text not null, check in ('lead','qualified','proposal','negotiation','closed_won','closed_lost')), contact_id (uuid references contacts), company_id (uuid references companies), expected_close_date (date), probability (integer, 0-100), notes (text), created_at, updated_at. RLS policies. Indexes on user_id, stage, contact_id, company_id.
-- [ ] Create `src/lib/api/deals.ts` — CRUD + getDealsByStage() for pipeline view, getDealStats() for totals/averages
-- [ ] Create `src/app/(dashboard)/deals/page.tsx` — Kanban board view of deals organized by stage. Columns: Lead → Qualified → Proposal → Negotiation → Closed Won / Closed Lost. Show deal cards with title, value, company, expected close date.
-- [ ] Create `src/components/deals/pipeline-board.tsx` — the kanban board component. Drag-and-drop between columns to change stage (use HTML drag/drop API, no extra deps). Each column shows sum of deal values.
-- [ ] Create `src/components/deals/deal-card.tsx` — individual deal card in the pipeline
-- [ ] Create `src/app/(dashboard)/deals/new/page.tsx` — new deal form with contact/company dropdowns
-- [ ] Create `src/app/(dashboard)/deals/[id]/page.tsx` — deal detail page with all info + related contact/company links
-- [ ] Create `src/hooks/use-deals.ts` — React Query hooks for deals
-- [ ] Verify `npm run build` passes
+- [x] Create SQL migration `supabase/migrations/003_deals.sql` — create `deals` table: id (uuid pk), user_id (uuid), title (text not null), value (numeric(12,2)), currency (text default 'USD'), stage (text not null, check in ('lead','qualified','proposal','negotiation','closed_won','closed_lost')), contact_id (uuid references contacts), company_id (uuid references companies), expected_close_date (date), probability (integer, 0-100), notes (text), created_at, updated_at. RLS policies. Indexes on user_id, stage, contact_id, company_id.
+- [x] Create `src/lib/api/deals.ts` — CRUD + getDealsByStage() for pipeline view, getDealStats() for totals/averages
+- [x] Create `src/app/(dashboard)/deals/page.tsx` — Kanban board view of deals organized by stage. Columns: Lead → Qualified → Proposal → Negotiation → Closed Won / Closed Lost. Show deal cards with title, value, company, expected close date.
+- [x] Create `src/components/deals/pipeline-board.tsx` — the kanban board component. Drag-and-drop between columns to change stage (use HTML drag/drop API, no extra deps). Each column shows sum of deal values.
+- [x] Create `src/components/deals/deal-card.tsx` — individual deal card in the pipeline
+- [x] Create `src/app/(dashboard)/deals/new/page.tsx` — new deal form with contact/company dropdowns
+- [x] Create `src/app/(dashboard)/deals/[id]/page.tsx` — deal detail page with all info + related contact/company links
+- [x] Create `src/hooks/use-deals.ts` — React Query hooks for deals
+- [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 5: Activities & Timeline
 > Track interactions — calls, emails, meetings, tasks.
 
-- [ ] Create SQL migration `supabase/migrations/004_activities.sql` — create `activities` table: id (uuid pk), user_id (uuid), type (text not null, check in ('call','email','meeting','task','note')), title (text not null), description (text), contact_id (uuid references contacts), company_id (uuid references companies), deal_id (uuid references deals), due_date (timestamptz), completed (boolean default false), completed_at (timestamptz), created_at, updated_at. RLS policies. Indexes on user_id, contact_id, type.
-- [ ] Create `src/lib/api/activities.ts` — CRUD + getActivitiesByContact(contactId), getUpcomingActivities(), getOverdueActivities()
-- [ ] Create `src/app/(dashboard)/activities/page.tsx` — activities list with type filter tabs, date range filter, overdue highlight
+- [x] Create SQL migration `supabase/migrations/004_activities.sql` — create `activities` table: id (uuid pk), user_id (uuid), type (text not null, check in ('call','email','meeting','task','note')), title (text not null), description (text), contact_id (uuid references contacts), company_id (uuid references companies), deal_id (uuid references deals), due_date (timestamptz), completed (boolean default false), completed_at (timestamptz), created_at, updated_at. RLS policies. Indexes on user_id, contact_id, type.
+- [x] Create `src/lib/api/activities.ts` — CRUD + getActivitiesByContact(contactId), getUpcomingActivities(), getOverdueActivities()
+- [x] Create `src/app/(dashboard)/activities/page.tsx` — activities list with type filter tabs, date range filter, overdue highlight
 - [ ] Create `src/components/activities/activity-timeline.tsx` — vertical timeline component showing activities chronologically. Used on contact/company/deal detail pages.
 - [ ] Create `src/components/activities/activity-form.tsx` — quick-add activity form (can be used inline or as modal)
 - [ ] Update contact detail page to show real activity timeline
 - [ ] Update deal detail page to show related activities
-- [ ] Create `src/hooks/use-activities.ts` — React Query hooks for activities
-- [ ] Verify `npm run build` passes
+- [x] Create `src/hooks/use-activities.ts` — React Query hooks for activities
+- [x] Verify `npm run build` passes
 
 ---
 

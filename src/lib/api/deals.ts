@@ -1,28 +1,26 @@
 import { createClient } from '@/lib/supabase/client'
-import { Contact } from './contacts'
 
-export interface Company {
+export interface Deal {
   id: string
   user_id: string
-  name: string
-  domain?: string
-  industry?: string
-  size?: '1-10' | '11-50' | '51-200' | '201-500' | '500+'
-  website?: string
-  phone?: string
-  address_line1?: string
-  address_city?: string
-  address_state?: string
-  address_country?: string
-  logo_url?: string
+  title: string
+  value: number | null
+  currency: string
+  stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
+  contact_id: string | null
+  company_id: string | null
+  expected_close_date: string | null
+  probability: number | null
+  notes: string | null
   created_at: string
   updated_at: string
 }
 
-export interface CompanyFilters {
-  industry?: string
+export interface DealFilters {
+  stage?: string
   search?: string
-  size?: '1-10' | '11-50' | '51-200' | '201-500' | '500+'
+  contact_id?: string
+  company_id?: string
 }
 
 export interface PaginationOptions {
@@ -31,18 +29,18 @@ export interface PaginationOptions {
 }
 
 export interface SortOptions {
-  field?: 'name' | 'industry' | 'created_at'
+  field?: 'title' | 'value' | 'expected_close_date' | 'created_at' | 'stage'
   direction?: 'asc' | 'desc'
 }
 
-export interface CompaniesResponse {
-  data: Company[]
+export interface DealsResponse {
+  data: Deal[]
   count: number
   error?: string
 }
 
-export async function getCompanies(
-  filters: CompanyFilters = {},
+export async function getDeals(
+  filters: DealFilters = {},
   pagination: PaginationOptions = {},
   sort: SortOptions = {}
 ) {
@@ -59,22 +57,26 @@ export async function getCompanies(
   const end = start + limit - 1
   
   let query = supabase
-    .from('companies')
+    .from('deals')
     .select('*', { count: 'exact' })
     .eq('user_id', session.user.id)
     .range(start, end)
     .order(field, { ascending: direction === 'asc' })
   
-  if (filters.industry) {
-    query = query.eq('industry', filters.industry)
+  if (filters.stage) {
+    query = query.eq('stage', filters.stage)
   }
   
-  if (filters.size) {
-    query = query.eq('size', filters.size)
+  if (filters.contact_id) {
+    query = query.eq('contact_id', filters.contact_id)
+  }
+  
+  if (filters.company_id) {
+    query = query.eq('company_id', filters.company_id)
   }
   
   if (filters.search) {
-    query = query.or(`name.ilike.%${filters.search}%,domain.ilike.%${filters.search}%,industry.ilike.%${filters.search}%`)
+    query = query.or(`title.ilike.%${filters.search}%,notes.ilike.%${filters.search}%`)
   }
   
   const { data, error, count } = await query
@@ -83,10 +85,10 @@ export async function getCompanies(
     return { data: [], count: 0, error: error.message }
   }
   
-  return { data: data as Company[], count: count || 0, error: null }
+  return { data: data as Deal[], count: count || 0, error: null }
 }
 
-export async function getCompanyById(id: string) {
+export async function getDealById(id: string) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -95,7 +97,7 @@ export async function getCompanyById(id: string) {
   }
   
   const { data, error } = await supabase
-    .from('companies')
+    .from('deals')
     .select('*')
     .eq('id', id)
     .eq('user_id', session.user.id)
@@ -105,10 +107,10 @@ export async function getCompanyById(id: string) {
     return { data: null, error: error.message }
   }
   
-  return { data: data as Company, error: null }
+  return { data: data as Deal, error: null }
 }
 
-export async function createCompany(companyData: Omit<Company, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createDeal(dealData: Omit<Deal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -117,9 +119,9 @@ export async function createCompany(companyData: Omit<Company, 'id' | 'user_id' 
   }
   
   const { data, error } = await supabase
-    .from('companies')
+    .from('deals')
     .insert([{
-      ...companyData,
+      ...dealData,
       user_id: session.user.id,
     }])
     .select()
@@ -129,10 +131,10 @@ export async function createCompany(companyData: Omit<Company, 'id' | 'user_id' 
     return { data: null, error: error.message }
   }
   
-  return { data: data as Company, error: null }
+  return { data: data as Deal, error: null }
 }
 
-export async function updateCompany(id: string, updates: Partial<Company>) {
+export async function updateDeal(id: string, updates: Partial<Deal>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -145,7 +147,7 @@ export async function updateCompany(id: string, updates: Partial<Company>) {
   const { user_id, ...safeUpdates } = updates
   
   const { data, error } = await supabase
-    .from('companies')
+    .from('deals')
     .update(safeUpdates)
     .eq('id', id)
     .eq('user_id', session.user.id)
@@ -156,10 +158,10 @@ export async function updateCompany(id: string, updates: Partial<Company>) {
     return { data: null, error: error.message }
   }
   
-  return { data: data as Company, error: null }
+  return { data: data as Deal, error: null }
 }
 
-export async function deleteCompany(id: string) {
+export async function deleteDeal(id: string) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -168,7 +170,7 @@ export async function deleteCompany(id: string) {
   }
   
   const { error } = await supabase
-    .from('companies')
+    .from('deals')
     .delete()
     .eq('id', id)
     .eq('user_id', session.user.id)
@@ -180,7 +182,7 @@ export async function deleteCompany(id: string) {
   return { error: null }
 }
 
-export async function getContactsByCompanyId(companyId: string) {
+export async function getDealsByStage() {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -189,15 +191,66 @@ export async function getContactsByCompanyId(companyId: string) {
   }
   
   const { data, error } = await supabase
-    .from('contacts')
+    .from('deals')
     .select('*')
     .eq('user_id', session.user.id)
-    .eq('company_id', companyId)
-    .order('first_name')
+    .order('expected_close_date', { ascending: true, nullsFirst: false })
   
   if (error) {
     return { data: [], error: error.message }
   }
   
-  return { data: data as Contact[], error: null }
+  return { data: data as Deal[], error: null }
+}
+
+export async function getDealStats() {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { data: null, error: 'Not authenticated' }
+  }
+  
+  // Get total deal value by stage
+  const { data: stageData, error: stageError } = await supabase
+    .from('deals')
+    .select('stage, value')
+    .eq('user_id', session.user.id)
+  
+  if (stageError) {
+    return { data: null, error: stageError.message }
+  }
+  
+  // Get total and average values
+  const { data: statsData, error: statsError } = await supabase
+    .from('deals')
+    .select('value')
+    .eq('user_id', session.user.id)
+  
+  if (statsError) {
+    return { data: null, error: statsError.message }
+  }
+  
+  const totalValue = statsData.reduce((sum, deal) => sum + (deal.value || 0), 0)
+  const avgValue = statsData.length > 0 ? totalValue / statsData.length : 0
+  
+  const dealsByStage = stageData.reduce((acc, deal) => {
+    const stage = deal.stage
+    if (!acc[stage]) {
+      acc[stage] = { count: 0, totalValue: 0 }
+    }
+    acc[stage].count += 1
+    acc[stage].totalValue += deal.value || 0
+    return acc
+  }, {} as Record<string, { count: number; totalValue: number }>)
+  
+  return {
+    data: {
+      totalDeals: statsData.length,
+      totalValue,
+      averageValue: avgValue,
+      dealsByStage,
+    },
+    error: null
+  }
 }
