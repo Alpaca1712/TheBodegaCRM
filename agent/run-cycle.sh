@@ -20,7 +20,7 @@ LOG_FILE="/tmp/goose-output.log"
 rm -f "$SUMMARY_FILE" "$MILESTONE_FLAG" "$LOG_FILE"
 
 echo "╔══════════════════════════════════════════╗"
-echo "║  🦆 Goose CRM Builder — Cycle Start      ║"
+echo "║  🪿 Goose CRM Builder — Cycle Start      ║"
 echo "║  Model: deepseek/deepseek-v3.2           ║"
 echo "║  Provider: Novita AI                      ║"
 echo "╚══════════════════════════════════════════╝"
@@ -34,15 +34,19 @@ if [ "$TASK_INPUT" = "auto" ]; then
   TASK_PROMPT="
 You are an autonomous software engineer building a world-class CRM application.
 
-READ the file ROADMAP.md in the repo root. It contains the project roadmap with phases
-and tasks. Each task has a status: [ ] = not started, [~] = in progress, [x] = done.
+READ these files for context:
+- ROADMAP.md — task list and phases. Pick the next [ ] or [~] task.
+- .goosehints — architecture, conventions, tech stack, and quality rules. Follow them strictly.
+
+LIVE SITE: https://the-bodega-crm.vercel.app — If you have browser/fetch access, view the deployed app to verify UI changes or debug issues when relevant.
 
 YOUR JOB THIS CYCLE:
 1. Read ROADMAP.md and find the FIRST task that is [ ] (not started) or [~] (in progress).
 2. Work on that ONE task. Implement it fully.
-3. When you finish the task, update ROADMAP.md — change its status to [x].
-4. If the task is too large for one cycle, do as much as you can and mark it [~].
-5. Run 'npm run build' to verify nothing is broken. Fix any errors.
+3. Follow existing patterns — look at how similar features were built (e.g. contacts module for companies, contacts for deals) and replicate that structure.
+4. When you finish the task, update ROADMAP.md — change its status to [x].
+5. If the task is too large for one cycle, do as much as you can and mark it [~].
+6. Run 'npm run build' and 'npm run lint'. If either fails: read the errors, fix them, run again. Do NOT finish until both pass. Fix any pre-existing lint errors in files you touch.
 
 MILESTONE RULES — write the word MILESTONE to a file at /tmp/goose-milestone.flag if:
 - You just completed an entire PHASE (all tasks in a phase are [x])
@@ -54,20 +58,23 @@ SUMMARY — Always write a 1-2 line summary of what you did to /tmp/goose-summar
 IMPORTANT RULES:
 - Do NOT skip ahead in the roadmap. Do tasks IN ORDER.
 - Do NOT rewrite things that already work unless they are broken.
-- Always run 'npm run build' before finishing. Fix any build errors.
+- Always run 'npm run build' and 'npm run lint' before finishing. Fix ALL errors in files you modify.
 - Use the Supabase credentials from environment variables.
 - Write clean, typed TypeScript. No 'any' types.
-- Every new feature needs at minimum one test file.
+- Add tests for new features once Phase 8 (testing) is complete; until then, focus on implementation.
 "
 else
   TASK_PROMPT="
 You are an autonomous software engineer building a world-class CRM application.
 
+READ .goosehints for architecture, conventions, and quality rules. Follow them strictly.
+LIVE SITE: https://the-bodega-crm.vercel.app — View to verify UI when relevant.
+
 YOUR SPECIFIC TASK THIS CYCLE:
 ${TASK_INPUT}
 
-After completing the task:
-- Run 'npm run build' to verify nothing is broken.
+Follow existing patterns (e.g. how contacts/companies were built). After completing:
+- Run 'npm run build' and 'npm run lint'. Fix any errors before finishing.
 - Write a 1-2 line summary to /tmp/goose-summary.txt
 - If this is a major milestone, write MILESTONE to /tmp/goose-milestone.flag
 - Update ROADMAP.md if any tasks were completed.
@@ -78,7 +85,7 @@ fi
 # Run Goose
 # ──────────────────────────────────────────
 
-echo "🦆 Running Goose..."
+echo "🪿 Running Goose..."
 echo ""
 
 goose run \

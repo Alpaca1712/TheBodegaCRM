@@ -1,4 +1,4 @@
-# 🦆 CRM Roadmap — Autonomous Build Plan
+# 🪿 CRM Roadmap — Autonomous Build Plan
 
 > This file is read by the Goose agent every cycle. It picks the next `[ ]` task and works on it.
 > When a task is done, the agent marks it `[x]`. In-progress tasks are `[~]`.

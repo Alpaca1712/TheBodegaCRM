@@ -1,10 +1,15 @@
-name: "🦆 Goose CRM Builder"
+name: "🪿 Goose CRM Builder"
 
 # ──────────────────────────────────────────────
 # Runs every 30 minutes by default.
 # Change the cron or CYCLE_INTERVAL to adjust.
 # Can also be triggered manually from GitHub UI.
+# Concurrency: only one run at a time to avoid conflicts.
 # ──────────────────────────────────────────────
+
+concurrency:
+  group: goose-crm-${{ github.repository }}
+  cancel-in-progress: false
 
 on:
   schedule:
@@ -32,6 +37,9 @@ env:
   OPENAI_API_KEY: ${{ secrets.NOVITA_API_KEY }}
   OPENAI_HOST: https://api.novita.ai
   OPENAI_BASE_PATH: openai/v1/chat/completions
+
+  # ── Deployment (Goose can view the live site to verify changes) ──
+  CRM_DEPLOYMENT_URL: https://the-bodega-crm.vercel.app
 
   # ── Supabase (Goose reads these to wire up the backend) ──
   NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
@@ -66,9 +74,16 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: "npm"
 
       # ────────────────────────────
-      # 3. Install Goose CLI
+      # 3. Install project dependencies (required for build verification)
+      # ────────────────────────────
+      - name: Install dependencies
+        run: npm ci
+
+      # ────────────────────────────
+      # 4. Install Goose CLI
       # ────────────────────────────
       - name: Install Goose
         run: |
@@ -76,7 +91,7 @@ jobs:
           echo "$HOME/.local/bin" >> $GITHUB_PATH
 
       # ────────────────────────────
-      # 4. Install GitHub CLI (for PRs)
+      # 5. Install GitHub CLI (for PRs)
       # ────────────────────────────
       - name: Verify gh CLI
         run: gh --version
@@ -84,7 +99,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ────────────────────────────
-      # 5. Setup git + branches
+      # 5. Setup git and branches
       # ────────────────────────────
       - name: Setup branches
         run: |
@@ -106,11 +121,11 @@ jobs:
       - name: Determine task
         id: task
         run: |
-          if [ -n "${{ github.event.inputs.task_override }}" ]; then
-            echo "task=${{ github.event.inputs.task_override }}" >> $GITHUB_OUTPUT
+          OVERRIDE="${{ github.event.inputs.task_override || '' }}"
+          if [ -n "$OVERRIDE" ]; then
+            echo "task=$OVERRIDE" >> $GITHUB_OUTPUT
             echo "Using manual override task."
           else
-            # Read the roadmap and figure out the next task
             echo "task=auto" >> $GITHUB_OUTPUT
             echo "Agent will auto-select from ROADMAP.md"
           fi
@@ -126,7 +141,18 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ────────────────────────────
-      # 8. Commit changes to dev
+      # 8. Verify build and lint (quality gate — fail before committing)
+      # ────────────────────────────
+      - name: Verify build
+        id: verify-build
+        run: npm run build
+
+      - name: Verify lint
+        id: verify-lint
+        run: npm run lint
+
+      # ────────────────────────────
+      # 9. Commit changes to dev
       # ────────────────────────────
       - name: Commit to dev
         id: commit
@@ -137,7 +163,7 @@ jobs:
             echo "No changes to commit."
           else
             SUMMARY=$(cat /tmp/goose-summary.txt 2>/dev/null || echo "Automated CRM improvement")
-            git commit -m "🦆 goose: ${SUMMARY}" \
+            git commit -m "🪿 goose: ${SUMMARY}" \
               -m "Model: deepseek/deepseek-v3.2 via Novita AI" \
               -m "Automated build cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
             git push origin dev
@@ -145,7 +171,7 @@ jobs:
           fi
 
       # ────────────────────────────
-      # 9. Check if milestone reached → merge to main
+      # 10. Check if milestone reached → merge to main
       # ────────────────────────────
       - name: Evaluate merge to main
         if: steps.commit.outputs.changes == 'true'
@@ -177,15 +203,28 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ────────────────────────────
-      # 10. Post run summary
+      # 11. Upload Goose log (for debugging failed runs)
+      # ────────────────────────────
+      - name: Upload Goose log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: goose-output-${{ github.run_id }}
+          path: /tmp/goose-output.log
+          retention-days: 7
+          if-no-files-found: ignore
+
+      # ────────────────────────────
+      # 12. Post run summary
       # ────────────────────────────
       - name: Post summary
         if: always()
         run: |
-          echo "## 🦆 Goose Build Cycle Summary" >> $GITHUB_STEP_SUMMARY
+          echo "## 🪿 Goose Build Cycle Summary" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Model:** deepseek/deepseek-v3.2 via Novita AI" >> $GITHUB_STEP_SUMMARY
           echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Live site:** [the-bodega-crm.vercel.app](https://the-bodega-crm.vercel.app)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
           if [ -f /tmp/goose-summary.txt ]; then
             echo "### What was done:" >> $GITHUB_STEP_SUMMARY
