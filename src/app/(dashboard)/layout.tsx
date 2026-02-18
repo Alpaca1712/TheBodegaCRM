@@ -1,3 +1,4 @@
+import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 
@@ -25,34 +26,34 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         <nav className="mt-6 px-4">
           <ul className="space-y-2">
             <li>
-              <a href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>🏠</span>
                 <span>Dashboard</span>
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="/contacts" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/contacts" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>👤</span>
                 <span>Contacts</span>
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="/companies" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/companies" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>🏢</span>
                 <span>Companies</span>
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="/deals" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/deals" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>💰</span>
                 <span>Deals</span>
-              </a>
+              </Link>
             </li>
             <li>
-              <a href="/activities" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/activities" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>📅</span>
                 <span>Activities</span>
-              </a>
+              </Link>
             </li>
           </ul>
         </nav>

@@ -54,7 +54,7 @@ export default function EditContactPage() {
       } else {
         router.push(`/contacts/${contactId}`);
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);

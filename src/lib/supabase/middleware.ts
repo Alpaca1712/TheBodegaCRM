@@ -4,7 +4,7 @@ import type { CookieOptions } from '@supabase/ssr'
 
 export const createMiddlewareClient = (request: NextRequest) => {
   // Create an unmodified response
-  let response = NextResponse.next({
+  const response = NextResponse.next({
     request: {
       headers: request.headers,
     },

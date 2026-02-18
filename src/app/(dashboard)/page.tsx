@@ -4,7 +4,7 @@ export default function DashboardPage() {
       <h1 className="text-3xl font-bold text-slate-900 mb-6">Welcome to TheBodegaCRM</h1>
       <div className="bg-white rounded-xl shadow p-8 max-w-2xl">
         <p className="text-slate-600 mb-4">
-          This is your dashboard. Once the CRM modules are built, you'll see:
+          This is your dashboard. Once the CRM modules are built, you&apos;ll see:
         </p>
         <ul className="list-disc list-inside text-slate-600 space-y-2">
           <li>Key performance indicators (KPIs)</li>

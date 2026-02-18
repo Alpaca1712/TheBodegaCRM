@@ -66,7 +66,7 @@ export function useDeleteContact() {
 
   return useMutation({
     mutationFn: deleteContact,
-    onSuccess: (result, id) => {
+    onSuccess: (result) => {
       if (!result.error) {
         queryClient.invalidateQueries({ queryKey: ['contacts'] });
         router.push('/contacts');

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import { 
-  User, Mail, Phone, Building, Briefcase, Tag, Calendar, Edit, Trash2, 
+  Mail, Phone, Building, Briefcase, Tag, Calendar, Edit, Trash2, 
   ArrowLeft, PhoneCall, MessageSquare, CheckCircle, XCircle 
 } from 'lucide-react';
 import Link from 'next/link';

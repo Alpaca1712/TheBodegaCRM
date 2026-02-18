@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
-import { Search, UserPlus, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { useState, useEffect, useCallback } from 'react';
+import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { getContacts, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
+import { getContacts, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
 import ContactsTable from '@/components/contacts/contacts-table';
 
 const statusOptions = [
@@ -22,19 +21,20 @@ const sortOptions = [
   { value: 'status', label: 'Status' },
 ];
 
+type ContactSortField = 'first_name' | 'last_name' | 'email' | 'status' | 'created_at';
+
 export default function ContactsPage() {
-  const router = useRouter();
-  const [contacts, setContacts] = useState<any[]>([]);
+  const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<string>('all');
-  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortField, setSortField] = useState<ContactSortField>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const limit = 20;
 
-  const fetchContacts = async () => {
+  const fetchContacts = useCallback(async () => {
     setLoading(true);
     const filters: ContactFilters = {};
     if (statusFilter !== 'all') {
@@ -45,7 +45,7 @@ export default function ContactsPage() {
     }
 
     const sort: SortOptions = {
-      field: sortField as any,
+      field: sortField,
       direction: sortDirection,
     };
 
@@ -57,11 +57,12 @@ export default function ContactsPage() {
       setTotalCount(result.count);
     }
     setLoading(false);
-  };
+  }, [statusFilter, sortField, sortDirection, page, searchTerm]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch pattern
     fetchContacts();
-  }, [statusFilter, sortField, sortDirection, page, searchTerm]);
+  }, [fetchContacts]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -69,7 +70,7 @@ export default function ContactsPage() {
     fetchContacts();
   };
 
-  const handleSort = (field: string) => {
+  const handleSort = (field: ContactSortField) => {
     if (field === sortField) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -130,7 +131,7 @@ export default function ContactsPage() {
               value={`${sortField}_${sortDirection}`}
               onChange={(e) => {
                 const [field, dir] = e.target.value.split('_');
-                setSortField(field);
+                setSortField(field as ContactSortField);
                 setSortDirection(dir as 'asc' | 'desc');
               }}
             >
