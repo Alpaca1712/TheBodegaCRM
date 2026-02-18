@@ -18,17 +18,17 @@
 - [x] Create `src/middleware.ts` — Next.js middleware that refreshes auth session on every request
 - [x] Create `.env.local.example` with all required env var names (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
 - [x] Create `src/types/database.ts` — TypeScript types for all Supabase tables (define types for: profiles, contacts, companies, deals, activities, notes, tags, contact_tags)
-- [ ] Verify `npm run build` passes with zero errors
+- [x] Verify `npm run build` passes with zero errors
 
 ---
 
 ## Phase 1: Auth System
 > Users must be able to sign up, log in, and have protected routes.
 
-- [ ] Create `src/app/(auth)/login/page.tsx` — login page with email/password form using react-hook-form + zod validation. Clean, modern UI with Tailwind. Include "Sign up" link.
-- [ ] Create `src/app/(auth)/signup/page.tsx` — signup page with email/password/name. Validate with zod. On success, show "check your email" message.
+- [x] Create `src/app/(auth)/login/page.tsx` — login page with email/password form using react-hook-form + zod validation. Clean, modern UI with Tailwind. Include "Sign up" link.
+- [x] Create `src/app/(auth)/signup/page.tsx` — signup page with email/password/name. Validate with zod. On success, show "check your email" message.
 - [ ] Create `src/app/(auth)/callback/route.ts` — Supabase auth callback route handler (exchanges code for session)
-- [ ] Create `src/components/auth/auth-form.tsx` — shared form component used by both login and signup
+- [x] Create `src/components/auth/auth-form.tsx` — shared form component used by both login and signup
 - [ ] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
 - [ ] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
 - [ ] Create `src/components/layout/sidebar.tsx` — navigation sidebar with links: Dashboard, Contacts, Companies, Deals, Activities. Use lucide-react icons.
