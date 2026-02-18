@@ -32,7 +32,7 @@
 - [x] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
 - [x] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
 - [x] Create `src/components/layout/sidebar.tsx` — navigation sidebar with links: Dashboard, Contacts, Companies, Deals, Activities. Use lucide-react icons.
-- [ ] Create `src/components/layout/header.tsx` — top header bar with user avatar/email dropdown and sign-out button
+- [x] Create `src/components/layout/header.tsx` — top header bar with user avatar/email dropdown and sign-out button
 - [x] Create `src/lib/auth/actions.ts` — server actions for signIn, signUp, signOut using Supabase
 - [x] Verify `npm run build` passes. Test that auth flow compiles correctly.
 
@@ -59,9 +59,9 @@
 
 - [x] Create SQL migration `supabase/migrations/002_companies.sql` — create `companies` table: id (uuid pk), user_id (uuid, references auth.users), name (text not null), domain (text), industry (text), size (text, check in ('1-10','11-50','51-200','201-500','500+')), website (text), phone (text), address_line1 (text), address_city (text), address_state (text), address_country (text), logo_url (text), created_at, updated_at. RLS policies for user isolation. Index on user_id and name.
 - [x] Create `src/lib/api/companies.ts` — CRUD functions similar to contacts. getCompanies should support search + industry filter.
-- [ ] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
-- [ ] Create `src/components/companies/company-card.tsx` — card component for grid view
-- [ ] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
+- [x] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
+- [x] Create `src/components/companies/company-card.tsx` — card component for grid view
+- [x] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
 - [ ] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
 - [ ] Create `src/hooks/use-companies.ts` — React Query hooks for companies
 - [ ] Verify `npm run build` passes
