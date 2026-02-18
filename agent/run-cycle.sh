@@ -6,15 +6,19 @@ set -euo pipefail
 #
 # This script:
 # 1. Reads the ROADMAP.md to find the next task
-# 2. Runs Goose with a detailed prompt
+# 2. Runs Goose with a detailed prompt (max 60 min)
 # 3. Validates the output (lint/build check)
 # 4. Writes summary + milestone flag for the workflow
+#
+# Goose is limited to 60 min so it stops before job timeout, commits, and the next
+# scheduled run continues. Prevents endless work until job timeout.
 # ──────────────────────────────────────────────────────────
 
 TASK_INPUT="${1:-auto}"
 SUMMARY_FILE="/tmp/goose-summary.txt"
 MILESTONE_FLAG="/tmp/goose-milestone.flag"
 LOG_FILE="/tmp/goose-output.log"
+GOOSE_TIMEOUT_MINUTES="${GOOSE_TIMEOUT_MINUTES:-60}"
 
 # Clean up from any previous run
 rm -f "$SUMMARY_FILE" "$MILESTONE_FLAG" "$LOG_FILE"
@@ -42,11 +46,11 @@ LIVE SITE: https://the-bodega-crm.vercel.app — If you have browser/fetch acces
 
 YOUR JOB THIS CYCLE:
 1. Read ROADMAP.md and find the FIRST task that is [ ] (not started) or [~] (in progress).
-2. Work on that ONE task. Implement it fully.
+2. Work on tasks in order. You may complete multiple tasks if time allows — chain through the roadmap.
 3. Follow existing patterns — look at how similar features were built (e.g. contacts module for companies, contacts for deals) and replicate that structure.
-4. When you finish the task, update ROADMAP.md — change its status to [x].
-5. If the task is too large for one cycle, do as much as you can and mark it [~].
-6. Run 'npm run build' and 'npm run lint'. If either fails: read the errors, fix them, run again. Do NOT finish until both pass. Fix any pre-existing lint errors in files you touch.
+4. When you finish each task, update ROADMAP.md — change its status to [x]. If a task is too large, do as much as you can and mark it [~].
+5. Run 'npm run build' and 'npm run lint' before finishing. If either fails: read the errors, fix them, run again. Fix any pre-existing lint errors in files you touch.
+6. TIME BUDGET: You have ~60 min max. Stop before the limit so your work gets committed. Write a summary of what you did to /tmp/goose-summary.txt before time runs out.
 
 MILESTONE RULES — write the word MILESTONE to a file at /tmp/goose-milestone.flag if:
 - You just completed an entire PHASE (all tasks in a phase are [x])
@@ -85,14 +89,26 @@ fi
 # Run Goose
 # ──────────────────────────────────────────
 
-echo "🪿 Running Goose..."
+echo "🪿 Running Goose (max ${GOOSE_TIMEOUT_MINUTES} min)..."
 echo ""
 
-goose run \
+set +e
+timeout ${GOOSE_TIMEOUT_MINUTES}m goose run \
   --no-session \
   --with-builtin developer \
   -t "$TASK_PROMPT" \
-  2>&1 | tee "$LOG_FILE" || true
+  2>&1 | tee "$LOG_FILE"
+GOOSE_EXIT=${PIPESTATUS[0]}
+set -e
+
+# timeout exits 124 when timed out — that's OK, we commit what we have
+if [ "${GOOSE_EXIT}" = "124" ]; then
+  echo ""
+  echo "⏱️  Time limit reached. Work will be committed. Next run continues."
+  if [ ! -f "$SUMMARY_FILE" ]; then
+    echo "Partial progress (time limit reached)" > "$SUMMARY_FILE"
+  fi
+fi
 
 # ──────────────────────────────────────────
 # Fallback summary if Goose didn't write one
