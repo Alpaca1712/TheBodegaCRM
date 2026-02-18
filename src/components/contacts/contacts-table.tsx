@@ -2,11 +2,35 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { User, Mail, Phone, Building, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
+import { Mail, Phone, Building, Calendar, ChevronUp, ChevronDown } from 'lucide-react';
 import type { Contact } from '@/lib/api/contacts';
 
 type SortField = 'first_name' | 'last_name' | 'email' | 'status' | 'created_at';
 type SortDirection = 'asc' | 'desc';
+
+interface SortableHeaderProps {
+  field: SortField;
+  sortField: SortField;
+  sortDirection: SortDirection;
+  onSort: (field: SortField) => void;
+  children: React.ReactNode;
+}
+
+function SortableHeader({ field, sortField, sortDirection, onSort, children }: SortableHeaderProps) {
+  return (
+    <th 
+      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-50"
+      onClick={() => onSort(field)}
+    >
+      <div className="flex items-center gap-1">
+        {children}
+        {sortField === field && (
+          sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
+        )}
+      </div>
+    </th>
+  );
+}
 
 interface ContactsTableProps {
   contacts: Contact[];
@@ -50,20 +74,6 @@ export default function ContactsTable({ contacts, onSort }: ContactsTableProps) 
     });
   };
 
-  const SortableHeader = ({ field, children }: { field: SortField; children: React.ReactNode }) => (
-    <th 
-      className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider cursor-pointer hover:bg-slate-50"
-      onClick={() => handleSort(field)}
-    >
-      <div className="flex items-center gap-1">
-        {children}
-        {sortField === field && (
-          sortDirection === 'asc' ? <ChevronUp size={14} /> : <ChevronDown size={14} />
-        )}
-      </div>
-    </th>
-  );
-
   return (
     <div className="overflow-x-auto">
       <table className="min-w-full divide-y divide-slate-200">
@@ -72,15 +82,15 @@ export default function ContactsTable({ contacts, onSort }: ContactsTableProps) 
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
               Contact
             </th>
-            <SortableHeader field="email">Email</SortableHeader>
+            <SortableHeader field="email" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Email</SortableHeader>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
               Phone
             </th>
             <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
               Company
             </th>
-            <SortableHeader field="status">Status</SortableHeader>
-            <SortableHeader field="created_at">Created</SortableHeader>
+            <SortableHeader field="status" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Status</SortableHeader>
+            <SortableHeader field="created_at" sortField={sortField} sortDirection={sortDirection} onSort={handleSort}>Created</SortableHeader>
           </tr>
         </thead>
         <tbody className="bg-white divide-y divide-slate-200">
@@ -94,8 +104,9 @@ export default function ContactsTable({ contacts, onSort }: ContactsTableProps) 
                 <div className="flex items-center">
                   <div className="flex-shrink-0 h-10 w-10">
                     {contact.avatar_url ? (
+                      // eslint-disable-next-line @next/next/no-img-element -- dynamic user-uploaded URL
                       <img 
-                        className="h-10 w-10 rounded-full" 
+                        className="h-10 w-10 rounded-full object-cover" 
                         src={contact.avatar_url} 
                         alt={`${contact.first_name} ${contact.last_name}`} 
                       />

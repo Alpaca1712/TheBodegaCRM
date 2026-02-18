@@ -1,10 +1,9 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useState, useEffect, useCallback } from 'react';
 import { Search, Building2, Plus, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import Link from 'next/link';
-import { getCompanies, type CompanyFilters, type SortOptions } from '@/lib/api/companies';
+import { getCompanies, type Company, type CompanyFilters, type SortOptions } from '@/lib/api/companies';
 import CompanyCard from '@/components/companies/company-card';
 
 export const industryOptions = [
@@ -34,20 +33,21 @@ const sortOptions = [
   { value: 'industry', label: 'Industry' },
 ];
 
+type CompanySortField = 'name' | 'industry' | 'created_at';
+
 export default function CompaniesPage() {
-  const router = useRouter();
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const [industryFilter, setIndustryFilter] = useState<string>('');
   const [sizeFilter, setSizeFilter] = useState<string>('');
-  const [sortField, setSortField] = useState<string>('created_at');
+  const [sortField, setSortField] = useState<CompanySortField>('created_at');
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
   const limit = 20;
 
-  const fetchCompanies = async () => {
+  const fetchCompanies = useCallback(async () => {
     setLoading(true);
     const filters: CompanyFilters = {};
     
@@ -64,7 +64,7 @@ export default function CompaniesPage() {
     }
 
     const sort: SortOptions = {
-      field: sortField as any,
+      field: sortField,
       direction: sortDirection,
     };
 
@@ -80,11 +80,12 @@ export default function CompaniesPage() {
     }
     
     setLoading(false);
-  };
+  }, [searchTerm, industryFilter, sizeFilter, sortField, sortDirection, page]);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch pattern
     fetchCompanies();
-  }, [searchTerm, industryFilter, sizeFilter, sortField, sortDirection, page]);
+  }, [fetchCompanies]);
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -92,7 +93,7 @@ export default function CompaniesPage() {
     fetchCompanies();
   };
 
-  const handleSortChange = (field: string) => {
+  const handleSortChange = (field: CompanySortField) => {
     if (sortField === field) {
       setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
     } else {
@@ -210,7 +211,7 @@ export default function CompaniesPage() {
               {sortOptions.map((option) => (
                 <button
                   key={option.value}
-                  onClick={() => handleSortChange(option.value)}
+                  onClick={() => handleSortChange(option.value as CompanySortField)}
                   className={`px-3 py-1 text-sm rounded-md transition-colors ${
                     sortField === option.value
                       ? 'bg-indigo-100 text-indigo-700'

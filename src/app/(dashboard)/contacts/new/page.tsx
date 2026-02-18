@@ -35,7 +35,7 @@ export default function NewContactPage() {
       } else {
         router.push('/contacts');
       }
-    } catch (err) {
+    } catch {
       setError('An unexpected error occurred');
     } finally {
       setIsSubmitting(false);

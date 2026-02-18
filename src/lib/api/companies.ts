@@ -140,6 +140,7 @@ export async function updateCompany(id: string, updates: Partial<Company>) {
   }
   
   // Don't allow updating user_id
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
   const { user_id, ...safeUpdates } = updates
   
   const { data, error } = await supabase

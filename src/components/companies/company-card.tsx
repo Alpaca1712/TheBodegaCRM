@@ -43,6 +43,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
         <div className="flex items-start justify-between mb-4">
           <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${getColorFromName(company.name)}`}>
             {company.logo_url ? (
+              // eslint-disable-next-line @next/next/no-img-element -- dynamic user-uploaded URL
               <img 
                 src={company.logo_url} 
                 alt={company.name} 

@@ -6,7 +6,9 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import * as z from 'zod';
 import { User, Mail, Phone, Building, Briefcase, Tag, FileText, Save, X } from 'lucide-react';
+import { getCompanies } from '@/lib/api/companies';
 import type { Contact } from '@/lib/api/contacts';
+import type { Company } from '@/lib/api/companies';
 
 const contactSchema = z.object({
   first_name: z.string().min(1, 'First name is required').max(100),
@@ -30,7 +32,7 @@ interface ContactFormProps {
 
 export default function ContactForm({ initialData, onSubmit, isSubmitting }: ContactFormProps) {
   const router = useRouter();
-  const [companies, setCompanies] = useState<any[]>([]);
+  const [companies, setCompanies] = useState<Company[]>([]);
 
   const {
     register,
@@ -51,6 +53,14 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
       notes: '',
     },
   });
+
+  useEffect(() => {
+    async function loadCompanies() {
+      const { data } = await getCompanies({}, { limit: 100 });
+      setCompanies(data);
+    }
+    loadCompanies();
+  }, []);
 
   useEffect(() => {
     if (initialData) {
