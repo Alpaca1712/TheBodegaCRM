@@ -1,0 +1,197 @@
+name: "🦆 Goose CRM Builder"
+
+# ──────────────────────────────────────────────
+# Runs every 30 minutes by default.
+# Change the cron or CYCLE_INTERVAL to adjust.
+# Can also be triggered manually from GitHub UI.
+# ──────────────────────────────────────────────
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes
+  workflow_dispatch:
+    inputs:
+      task_override:
+        description: "Optional: override the agent task (leave blank for auto)"
+        required: false
+        default: ""
+      force_merge:
+        description: "Force merge dev → main after this run"
+        required: false
+        default: "false"
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  # ── Novita / Goose ──
+  GOOSE_PROVIDER: openai
+  GOOSE_MODEL: deepseek/deepseek-v3.2
+  GOOSE_MODE: auto
+  OPENAI_API_KEY: ${{ secrets.NOVITA_API_KEY }}
+  OPENAI_HOST: https://api.novita.ai
+  OPENAI_BASE_PATH: openai/v1/chat/completions
+
+  # ── Supabase (Goose reads these to wire up the backend) ──
+  NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+  NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+  SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+
+  # ── Git identity ──
+  GIT_AUTHOR_NAME: "Goose Agent"
+  GIT_AUTHOR_EMAIL: "goose@automated.dev"
+  GIT_COMMITTER_NAME: "Goose Agent"
+  GIT_COMMITTER_EMAIL: "goose@automated.dev"
+
+jobs:
+  build-crm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 45 # safety net so it doesn't run forever
+
+    steps:
+      # ────────────────────────────
+      # 1. Checkout the repo
+      # ────────────────────────────
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0 # full history so we can branch/merge
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # ────────────────────────────
+      # 2. Setup Node (needed for Goose + the CRM project)
+      # ────────────────────────────
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      # ────────────────────────────
+      # 3. Install Goose CLI
+      # ────────────────────────────
+      - name: Install Goose
+        run: |
+          curl -fsSL https://github.com/block/goose/releases/download/stable/download_cli.sh | CONFIGURE=false bash
+          echo "$HOME/.local/bin" >> $GITHUB_PATH
+
+      # ────────────────────────────
+      # 4. Install GitHub CLI (for PRs)
+      # ────────────────────────────
+      - name: Verify gh CLI
+        run: gh --version
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ────────────────────────────
+      # 5. Setup git + branches
+      # ────────────────────────────
+      - name: Setup branches
+        run: |
+          git config user.name "Goose Agent"
+          git config user.email "goose@automated.dev"
+
+          # Ensure dev branch exists
+          if git ls-remote --heads origin dev | grep -q dev; then
+            git checkout dev
+            git pull origin dev
+          else
+            git checkout -b dev
+            git push -u origin dev
+          fi
+
+      # ────────────────────────────
+      # 6. Determine next task
+      # ────────────────────────────
+      - name: Determine task
+        id: task
+        run: |
+          if [ -n "${{ github.event.inputs.task_override }}" ]; then
+            echo "task=${{ github.event.inputs.task_override }}" >> $GITHUB_OUTPUT
+            echo "Using manual override task."
+          else
+            # Read the roadmap and figure out the next task
+            echo "task=auto" >> $GITHUB_OUTPUT
+            echo "Agent will auto-select from ROADMAP.md"
+          fi
+
+      # ────────────────────────────
+      # 7. Run Goose agent
+      # ────────────────────────────
+      - name: Run Goose builder agent
+        run: |
+          chmod +x agent/run-cycle.sh
+          bash agent/run-cycle.sh "${{ steps.task.outputs.task }}"
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ────────────────────────────
+      # 8. Commit changes to dev
+      # ────────────────────────────
+      - name: Commit to dev
+        id: commit
+        run: |
+          git add -A
+          if git diff --cached --quiet; then
+            echo "changes=false" >> $GITHUB_OUTPUT
+            echo "No changes to commit."
+          else
+            SUMMARY=$(cat /tmp/goose-summary.txt 2>/dev/null || echo "Automated CRM improvement")
+            git commit -m "🦆 goose: ${SUMMARY}" \
+              -m "Model: deepseek/deepseek-v3.2 via Novita AI" \
+              -m "Automated build cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            git push origin dev
+            echo "changes=true" >> $GITHUB_OUTPUT
+          fi
+
+      # ────────────────────────────
+      # 9. Check if milestone reached → merge to main
+      # ────────────────────────────
+      - name: Evaluate merge to main
+        if: steps.commit.outputs.changes == 'true'
+        run: |
+          SHOULD_MERGE="false"
+
+          # Force merge if manually requested
+          if [ "${{ github.event.inputs.force_merge }}" = "true" ]; then
+            SHOULD_MERGE="true"
+            echo "Force merge requested."
+          fi
+
+          # Check if Goose flagged this as a milestone
+          if [ -f /tmp/goose-milestone.flag ]; then
+            SHOULD_MERGE="true"
+            echo "Milestone reached — merging to main."
+          fi
+
+          if [ "$SHOULD_MERGE" = "true" ]; then
+            git checkout main
+            git pull origin main
+            git merge dev --no-ff -m "🚀 Merge milestone from dev — $(cat /tmp/goose-summary.txt 2>/dev/null || echo 'CRM update')"
+            git push origin main
+            echo "✅ Merged dev → main. Vercel will auto-deploy."
+          else
+            echo "No milestone yet. Changes stay on dev."
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      # ────────────────────────────
+      # 10. Post run summary
+      # ────────────────────────────
+      - name: Post summary
+        if: always()
+        run: |
+          echo "## 🦆 Goose Build Cycle Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Model:** deepseek/deepseek-v3.2 via Novita AI" >> $GITHUB_STEP_SUMMARY
+          echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ -f /tmp/goose-summary.txt ]; then
+            echo "### What was done:" >> $GITHUB_STEP_SUMMARY
+            cat /tmp/goose-summary.txt >> $GITHUB_STEP_SUMMARY
+          fi
+          if [ -f /tmp/goose-milestone.flag ]; then
+            echo "" >> $GITHUB_STEP_SUMMARY
+            echo "### 🚀 MILESTONE — Merged to main, Vercel deploying" >> $GITHUB_STEP_SUMMARY
+          fi

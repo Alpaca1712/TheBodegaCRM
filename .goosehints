@@ -1,0 +1,92 @@
+# TheBodegaCRM — Goose Project Hints
+
+## Project Overview
+You are building TheBodegaCRM — a modern, full-featured CRM application.
+
+## Tech Stack
+- **Framework:** Next.js 14 (App Router, Server Components)
+- **Language:** TypeScript (strict mode)
+- **Styling:** Tailwind CSS (utility classes only, no custom CSS files)
+- **Backend:** Supabase (Postgres database, Auth, Row Level Security)
+- **State Management:** Zustand (client state), React Query / TanStack Query (server state)
+- **Forms:** react-hook-form + zod validation
+- **Icons:** lucide-react
+- **Date handling:** date-fns
+
+## Architecture Rules
+
+### File Structure
+```
+src/
+  app/                    # Next.js App Router pages
+    (auth)/               # Auth routes (login, signup) — no layout protection
+    (dashboard)/          # Protected routes — layout checks auth
+  components/             # Reusable UI components
+    ui/                   # Base UI components (button, input, card, modal, etc.)
+    layout/               # Sidebar, header, etc.
+    contacts/             # Contact-specific components
+    companies/            # Company-specific components
+    deals/                # Deal-specific components
+    activities/           # Activity-specific components
+    dashboard/            # Dashboard widgets
+    search/               # Global search
+  lib/
+    supabase/             # Supabase client setup (client.ts, server.ts, middleware.ts)
+    api/                  # Data fetching/mutation functions (contacts.ts, companies.ts, etc.)
+    auth/                 # Auth server actions
+    utils.ts              # Shared utility functions
+  hooks/                  # Custom React hooks (use-contacts.ts, use-companies.ts, etc.)
+  types/                  # TypeScript type definitions
+    database.ts           # Supabase table types
+supabase/
+  migrations/             # SQL migration files (001_contacts.sql, etc.)
+```
+
+### Coding Conventions
+- Use `"use client"` directive ONLY when the component needs interactivity (state, effects, event handlers)
+- Default to Server Components when possible
+- Never use `any` type — always define proper types
+- Use named exports for components, default exports only for pages
+- All API functions should be in `src/lib/api/` and accept typed parameters
+- All forms use react-hook-form with zod schemas
+- React Query hooks go in `src/hooks/` and handle cache invalidation
+- Error handling: wrap Supabase calls in try/catch, return `{ data, error }` pattern
+
+### Supabase
+- Client-side: use the client from `src/lib/supabase/client.ts`
+- Server-side: use the client from `src/lib/supabase/server.ts`
+- ALWAYS use Row Level Security (RLS) — filter by user_id
+- Environment variables are set:
+  - `NEXT_PUBLIC_SUPABASE_URL`
+  - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
+  - `SUPABASE_SERVICE_ROLE_KEY`
+
+### UI / Design
+- Clean, modern, professional look
+- Color scheme: slate grays + indigo-600 as primary accent
+- Sidebar: dark (slate-900), fixed left, 260px wide
+- Content area: light (slate-50 background)
+- Cards: white background, subtle shadow, rounded-lg
+- Tables: clean with hover states on rows
+- Forms: clear labels, validation error messages in red-500 below fields
+- Buttons: primary (indigo-600), secondary (slate border), danger (red-600)
+- All pages must be responsive (mobile-friendly)
+
+### Build Verification
+- ALWAYS run `npm run build` after making changes
+- Fix ALL TypeScript errors before finishing
+- Fix ALL ESLint warnings before finishing
+- If build fails, read the error, fix it, and rebuild
+
+### Git Behavior
+- You are working on the `dev` branch
+- The workflow handles committing and pushing — just make your code changes
+- Do NOT run git commands yourself
+
+### Milestone Rules
+Write "MILESTONE" to `/tmp/goose-milestone.flag` when:
+- An entire Phase in ROADMAP.md is completed
+- The app first compiles and builds successfully
+- A major user-facing feature is fully working (auth, contacts CRUD, deals pipeline)
+
+Always write a 1-2 line summary to `/tmp/goose-summary.txt`.
