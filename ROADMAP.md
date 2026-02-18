@@ -29,36 +29,36 @@
 - [x] Create `src/app/(auth)/signup/page.tsx` — signup page with email/password/name. Validate with zod. On success, show "check your email" message.
 - [x] Create `src/app/(auth)/callback/route.ts` — Supabase auth callback route handler (exchanges code for session)
 - [x] Create `src/components/auth/auth-form.tsx` — shared form component used by both login and signup
-- [~] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
-- [ ] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
-- [ ] Create `src/components/layout/sidebar.tsx` — navigation sidebar with links: Dashboard, Contacts, Companies, Deals, Activities. Use lucide-react icons.
+- [x] Create protected route group `src/app/(dashboard)/layout.tsx` — checks for auth session, redirects to /login if not authenticated. Include basic sidebar shell.
+- [x] Create `src/app/(dashboard)/page.tsx` — placeholder dashboard home (just says "Welcome to TheBodegaCRM" for now)
+- [x] Create `src/components/layout/sidebar.tsx` — navigation sidebar with links: Dashboard, Contacts, Companies, Deals, Activities. Use lucide-react icons.
 - [ ] Create `src/components/layout/header.tsx` — top header bar with user avatar/email dropdown and sign-out button
-- [ ] Create `src/lib/auth/actions.ts` — server actions for signIn, signUp, signOut using Supabase
-- [ ] Verify `npm run build` passes. Test that auth flow compiles correctly.
+- [x] Create `src/lib/auth/actions.ts` — server actions for signIn, signUp, signOut using Supabase
+- [x] Verify `npm run build` passes. Test that auth flow compiles correctly.
 
 ---
 
 ## Phase 2: Contacts Module
 > Core CRM feature — managing contacts.
 
-- [ ] Create SQL migration file `supabase/migrations/001_contacts.sql` — create `contacts` table: id (uuid, pk, default gen_random_uuid()), user_id (uuid, references auth.users), first_name (text, not null), last_name (text, not null), email (text), phone (text), company_id (uuid, nullable), title (text), status (text, default 'active', check in ('active','inactive','lead')), source (text), notes (text), avatar_url (text), created_at (timestamptz, default now()), updated_at (timestamptz, default now()). Add RLS policies: users can only CRUD their own contacts. Create index on user_id.
-- [ ] Create `src/lib/api/contacts.ts` — CRUD functions: getContacts(filters, pagination, sort), getContactById(id), createContact(data), updateContact(id, data), deleteContact(id). All using typed Supabase client. Include search by name/email.
-- [ ] Create `src/app/(dashboard)/contacts/page.tsx` — contacts list page with: search bar, status filter tabs (All/Active/Inactive/Lead), sortable table (name, email, company, status, created), pagination (20 per page), "Add Contact" button
-- [ ] Create `src/components/contacts/contacts-table.tsx` — the table component. Clickable rows navigate to contact detail. Show avatar circle with initials if no image.
-- [ ] Create `src/components/contacts/contact-form.tsx` — form for create/edit contact. Fields: first name, last name, email, phone, title, company (dropdown), status (select), source, notes. Use react-hook-form + zod.
-- [ ] Create `src/app/(dashboard)/contacts/new/page.tsx` — new contact page using the form component
-- [ ] Create `src/app/(dashboard)/contacts/[id]/page.tsx` — contact detail page showing all info, with edit button, delete button (with confirmation), and activity timeline placeholder
-- [ ] Create `src/app/(dashboard)/contacts/[id]/edit/page.tsx` — edit contact page pre-filled with existing data
-- [ ] Create `src/hooks/use-contacts.ts` — React Query hooks: useContacts(filters), useContact(id), useCreateContact(), useUpdateContact(), useDeleteContact() with proper cache invalidation
-- [ ] Verify `npm run build` passes
+- [x] Create SQL migration file `supabase/migrations/001_contacts.sql` — create `contacts` table: id (uuid, pk, default gen_random_uuid()), user_id (uuid, references auth.users), first_name (text, not null), last_name (text, not null), email (text), phone (text), company_id (uuid, nullable), title (text), status (text, default 'active', check in ('active','inactive','lead')), source (text), notes (text), avatar_url (text), created_at (timestamptz, default now()), updated_at (timestamptz, default now()). Add RLS policies: users can only CRUD their own contacts. Create index on user_id.
+- [x] Create `src/lib/api/contacts.ts` — CRUD functions: getContacts(filters, pagination, sort), getContactById(id), createContact(data), updateContact(id, data), deleteContact(id). All using typed Supabase client. Include search by name/email.
+- [x] Create `src/app/(dashboard)/contacts/page.tsx` — contacts list page with: search bar, status filter tabs (All/Active/Inactive/Lead), sortable table (name, email, company, status, created), pagination (20 per page), "Add Contact" button
+- [x] Create `src/components/contacts/contacts-table.tsx` — the table component. Clickable rows navigate to contact detail. Show avatar circle with initials if no image.
+- [x] Create `src/components/contacts/contact-form.tsx` — form for create/edit contact. Fields: first name, last name, email, phone, title, company (dropdown), status (select), source, notes. Use react-hook-form + zod.
+- [x] Create `src/app/(dashboard)/contacts/new/page.tsx` — new contact page using the form component
+- [x] Create `src/app/(dashboard)/contacts/[id]/page.tsx` — contact detail page showing all info, with edit button, delete button (with confirmation), and activity timeline placeholder
+- [x] Create `src/app/(dashboard)/contacts/[id]/edit/page.tsx` — edit contact page pre-filled with existing data
+- [x] Create `src/hooks/use-contacts.ts` — React Query hooks: useContacts(filters), useContact(id), useCreateContact(), useUpdateContact(), useDeleteContact() with proper cache invalidation
+- [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 3: Companies Module
 > Contacts belong to companies. Companies have their own views.
 
-- [ ] Create SQL migration `supabase/migrations/002_companies.sql` — create `companies` table: id (uuid pk), user_id (uuid, references auth.users), name (text not null), domain (text), industry (text), size (text, check in ('1-10','11-50','51-200','201-500','500+')), website (text), phone (text), address_line1 (text), address_city (text), address_state (text), address_country (text), logo_url (text), created_at, updated_at. RLS policies for user isolation. Index on user_id and name.
-- [ ] Create `src/lib/api/companies.ts` — CRUD functions similar to contacts. getCompanies should support search + industry filter.
+- [x] Create SQL migration `supabase/migrations/002_companies.sql` — create `companies` table: id (uuid pk), user_id (uuid, references auth.users), name (text not null), domain (text), industry (text), size (text, check in ('1-10','11-50','51-200','201-500','500+')), website (text), phone (text), address_line1 (text), address_city (text), address_state (text), address_country (text), logo_url (text), created_at, updated_at. RLS policies for user isolation. Index on user_id and name.
+- [x] Create `src/lib/api/companies.ts` — CRUD functions similar to contacts. getCompanies should support search + industry filter.
 - [ ] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
 - [ ] Create `src/components/companies/company-card.tsx` — card component for grid view
 - [ ] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
