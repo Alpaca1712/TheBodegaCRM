@@ -1,90 +1,36 @@
-# 🦆 TheBodegaCRM — AI-Built CRM
+This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
-> This CRM is being built autonomously by a Goose AI agent running on GitHub Actions, powered by DeepSeek V3.2 via Novita AI. Every 30 minutes, the agent picks the next task from the roadmap and builds it.
+## Getting Started
 
-## How It Works
+First, run the development server:
 
-```
-GitHub Actions (cron every 30 min)
-        │
-        ▼
-   Goose CLI Agent
-   (DeepSeek V3.2 via Novita AI)
-        │
-        ▼
-   Reads ROADMAP.md → picks next task
-        │
-        ▼
-   Writes code on `dev` branch
-        │
-        ▼
-   Milestone reached? ──yes──▶ Merge to `main` ──▶ Vercel auto-deploys
-        │
-        no
-        │
-        ▼
-   Wait 30 min, repeat
+```bash
+npm run dev
+# or
+yarn dev
+# or
+pnpm dev
+# or
+bun dev
 ```
 
-## Setup Instructions
+Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### 1. Create the GitHub repo
+You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
 
-Push this entire folder to an empty GitHub repo.
+This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
-### 2. Create a Supabase project
+## Learn More
 
-1. Go to [supabase.com](https://supabase.com) and create a new project
-2. Copy your project URL, anon key, and service role key
+To learn more about Next.js, take a look at the following resources:
 
-### 3. Get a Novita AI API key
+- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
+- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
 
-1. Go to [novita.ai](https://novita.ai) and create an account
-2. Navigate to Settings → API Keys
-3. Create a new API key
+You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
 
-### 4. Set GitHub Secrets
+## Deploy on Vercel
 
-Go to your repo → Settings → Secrets and variables → Actions → New repository secret:
+The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
 
-| Secret Name | Value |
-|---|---|
-| `NOVITA_API_KEY` | Your Novita AI API key |
-| `SUPABASE_URL` | Your Supabase project URL (e.g. `https://abc123.supabase.co`) |
-| `SUPABASE_ANON_KEY` | Your Supabase anon/public key |
-| `SUPABASE_SERVICE_ROLE_KEY` | Your Supabase service role key |
-
-> `GITHUB_TOKEN` is automatically provided by GitHub Actions — you don't need to set it.
-
-### 5. Connect Vercel
-
-1. Import the repo in [vercel.com](https://vercel.com)
-2. Set the production branch to `main`
-3. Add the same Supabase env vars in Vercel's project settings:
-   - `NEXT_PUBLIC_SUPABASE_URL`
-   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
-   - `SUPABASE_SERVICE_ROLE_KEY`
-
-### 6. Enable the workflow
-
-The GitHub Action runs automatically every 30 minutes. You can also trigger it manually:
-- Go to Actions → "🦆 Goose CRM Builder" → "Run workflow"
-- Optionally provide a custom task or force a merge to main
-
-### 7. Watch it build
-
-- Check the Actions tab to see each cycle's progress
-- Check the `dev` branch to see code being written
-- When milestones are reached, `main` gets updated and Vercel deploys
-
-## Tech Stack
-
-- **Frontend:** Next.js 14, TypeScript, Tailwind CSS
-- **Backend:** Supabase (Postgres, Auth, RLS)
-- **State:** Zustand + TanStack React Query
-- **AI Agent:** Goose CLI + DeepSeek V3.2 via Novita AI
-- **Deployment:** Vercel (auto-deploy on main)
-
-## Project Status
-
-See [ROADMAP.md](./ROADMAP.md) for current progress.
+Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.

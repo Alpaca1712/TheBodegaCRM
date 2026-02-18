@@ -9,15 +9,15 @@
 ## Phase 0: Project Scaffold
 > Foundation — nothing works until this is done.
 
-- [ ] Initialize Next.js 14 app with TypeScript, Tailwind CSS, and App Router (`npx create-next-app@latest . --typescript --tailwind --app --eslint --src-dir --import-alias "@/*" --use-npm`). Make sure the project is in the REPO ROOT, not a subfolder. If package.json already exists at root, skip this step.
-- [ ] Install core dependencies: `@supabase/supabase-js @supabase/ssr zustand @tanstack/react-query lucide-react date-fns zod react-hook-form @hookform/resolvers`
-- [ ] Install dev dependencies: `@types/node prettier`
-- [ ] Create `src/lib/supabase/client.ts` — browser Supabase client using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` env vars
-- [ ] Create `src/lib/supabase/server.ts` — server-side Supabase client for Server Components and Route Handlers using `@supabase/ssr`
-- [ ] Create `src/lib/supabase/middleware.ts` — Supabase auth middleware helper
-- [ ] Create `src/middleware.ts` — Next.js middleware that refreshes auth session on every request
-- [ ] Create `.env.local.example` with all required env var names (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
-- [ ] Create `src/types/database.ts` — TypeScript types for all Supabase tables (define types for: profiles, contacts, companies, deals, activities, notes, tags, contact_tags)
+- [x] Initialize Next.js 14 app with TypeScript, Tailwind CSS, and App Router (`npx create-next-app@latest . --typescript --tailwind --app --eslint --src-dir --import-alias "@/*" --use-npm`). Make sure the project is in the REPO ROOT, not a subfolder. If package.json already exists at root, skip this step.
+- [x] Install core dependencies: `@supabase/supabase-js @supabase/ssr zustand @tanstack/react-query lucide-react date-fns zod react-hook-form @hookform/resolvers`
+- [x] Install dev dependencies: `@types/node prettier`
+- [x] Create `src/lib/supabase/client.ts` — browser Supabase client using `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` env vars
+- [x] Create `src/lib/supabase/server.ts` — server-side Supabase client for Server Components and Route Handlers using `@supabase/ssr`
+- [x] Create `src/lib/supabase/middleware.ts` — Supabase auth middleware helper
+- [x] Create `src/middleware.ts` — Next.js middleware that refreshes auth session on every request
+- [x] Create `.env.local.example` with all required env var names (NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY)
+- [x] Create `src/types/database.ts` — TypeScript types for all Supabase tables (define types for: profiles, contacts, companies, deals, activities, notes, tags, contact_tags)
 - [ ] Verify `npm run build` passes with zero errors
 
 ---
