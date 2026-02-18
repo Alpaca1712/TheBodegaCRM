@@ -1,6 +1,7 @@
 import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
+import Header from '@/components/layout/header'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -15,6 +16,11 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     redirect('/login')
   }
   
+  // Get user details from session
+  const user = session.user
+  const userEmail = user.email || undefined
+  const userName = user.user_metadata?.name || undefined
+  
   return (
     <div className="flex min-h-screen bg-slate-50">
       {/* Sidebar */}
@@ -26,7 +32,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
         <nav className="mt-6 px-4">
           <ul className="space-y-2">
             <li>
-              <Link href="/" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+              <Link href="/dashboard" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>🏠</span>
                 <span>Dashboard</span>
               </Link>
@@ -57,22 +63,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
             </li>
           </ul>
         </nav>
-        <div className="absolute bottom-0 w-full p-4 border-t border-slate-800">
-          <div className="flex items-center gap-3">
-            <div className="w-8 h-8 rounded-full bg-slate-700 flex items-center justify-center">
-              <span className="text-sm">{session.user.email?.[0]?.toUpperCase() || 'U'}</span>
-            </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium truncate">{session.user.email}</p>
-              <p className="text-xs text-slate-400">Signed in</p>
-            </div>
-          </div>
-        </div>
       </div>
       
-      {/* Main content */}
-      <div className="flex-1 ml-64">
-        <main className="p-6">
+      {/* Main content with header */}
+      <div className="flex-1 ml-64 flex flex-col">
+        <Header userEmail={userEmail} userName={userName} />
+        <main className="flex-1 p-6">
           {children}
         </main>
       </div>
