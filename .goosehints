@@ -3,6 +3,8 @@
 ## Project Overview
 You are building TheBodegaCRM — a modern, full-featured CRM application.
 
+**Live deployment:** https://the-bodega-crm.vercel.app — You can view the deployed site to verify changes, check UI/UX, or debug issues.
+
 ## Tech Stack
 - **Framework:** Next.js 14 (App Router, Server Components)
 - **Language:** TypeScript (strict mode)
@@ -73,10 +75,12 @@ supabase/
 - All pages must be responsive (mobile-friendly)
 
 ### Build Verification
-- ALWAYS run `npm run build` after making changes
-- Fix ALL TypeScript errors before finishing
-- Fix ALL ESLint warnings before finishing
-- If build fails, read the error, fix it, and rebuild
+- ALWAYS run `npm run build` and `npm run lint` after making changes
+- Fix ALL TypeScript and ESLint errors in files you touch (including pre-existing lint errors)
+- If build or lint fails, read the errors, fix them, and run again — do not finish until both pass
+
+### Code Patterns
+- Follow existing patterns: look at how similar features were built (e.g. contacts module) and replicate that structure for companies, deals, activities
 
 ### Git Behavior
 - You are working on the `dev` branch
