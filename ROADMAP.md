@@ -101,12 +101,12 @@
 ## Phase 6: Dashboard & Analytics
 > The home page — make it useful.
 
-- [ ] Create `src/lib/api/dashboard.ts` — aggregate queries: total contacts, total deal value, deals by stage count, conversion rate, recent activities, upcoming tasks, new contacts this month, revenue won this month
-- [ ] Update `src/app/(dashboard)/page.tsx` — real dashboard with: KPI cards row (contacts, deal value, conversion rate, tasks due), deals pipeline mini-chart (horizontal bar by stage), recent activity feed (last 10), upcoming tasks list, new contacts this week
-- [ ] Create `src/components/dashboard/kpi-card.tsx` — stat card with icon, label, value, and trend indicator
-- [ ] Create `src/components/dashboard/pipeline-chart.tsx` — horizontal bar chart showing deal values per stage (built with plain divs + Tailwind, no chart library needed)
-- [ ] Create `src/components/dashboard/recent-activity.tsx` — compact activity feed component
-- [ ] Verify `npm run build` passes
+- [x] Create `src/lib/api/dashboard.ts` — aggregate queries: total contacts, total deal value, deals by stage count, conversion rate, recent activities, upcoming tasks, new contacts this month, revenue won this month
+- [x] Update `src/app/(dashboard)/page.tsx` — real dashboard with: KPI cards row (contacts, deal value, conversion rate, tasks due), deals pipeline mini-chart (horizontal bar by stage), recent activity feed (last 10), upcoming tasks list, new contacts this week
+- [x] Create `src/components/dashboard/kpi-card.tsx` — stat card with icon, label, value, and trend indicator
+- [x] Create `src/components/dashboard/pipeline-chart.tsx` — horizontal bar chart showing deal values per stage (built with plain divs + Tailwind, no chart library needed)
+- [x] Create `src/components/dashboard/recent-activity.tsx` — compact activity feed component
+- [x] Verify `npm run build` passes
 
 ---
 
