@@ -78,7 +78,8 @@ export default function ActivityForm({
     },
   });
 
-  const selectedType = watch('type');
+  // eslint-disable-next-line react-hooks/incompatible-library
+  const selectedType = watch('type'); // react-hook-form watch function
   const selectedTypeInfo = activityTypes.find(t => t.value === selectedType);
 
   const handleFormSubmit = async (data: ActivityFormData) => {
