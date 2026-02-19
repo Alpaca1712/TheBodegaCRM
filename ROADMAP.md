@@ -129,15 +129,15 @@
 ## Phase 8: Testing & Hardening
 > Make it production-worthy.
 
-- [ ] Install testing deps: `vitest @testing-library/react @testing-library/jest-dom @vitejs/plugin-react jsdom`
-- [ ] Create `vitest.config.ts` with proper Next.js + React setup
-- [ ] Write tests for all API functions in `src/lib/api/` — mock Supabase client, test CRUD operations
-- [ ] Write tests for contact-form validation (zod schemas)
-- [ ] Write tests for deal stage transitions
-- [ ] Add `npm run test` script to package.json
-- [ ] Run full test suite — fix any failures
-- [ ] Run `npm run build` — fix any errors
-- [ ] Create comprehensive README.md with: project description, tech stack, setup instructions, env vars needed, deployment guide
+- [x] Install testing deps: `vitest @testing-library/react @testing-library/jest-dom @vitejs/plugin-react jsdom`
+- [x] Create `vitest.config.ts` with proper Next.js + React setup
+- [x] Write tests for all API functions in `src/lib/api/` — mock Supabase client, test CRUD operations
+- [x] Write tests for contact-form validation (zod schemas)
+- [x] Write tests for deal stage transitions
+- [x] Add `npm run test` script to package.json
+- [x] Run full test suite — fix any failures
+- [x] Run `npm run build` — fix any errors
+- [x] Create comprehensive README.md with: project description, tech stack, setup instructions, env vars needed, deployment guide
 
 ---
 
@@ -149,4 +149,4 @@ When ALL phases are done:
 3. The final merge to main will trigger Vercel deployment
 4. The CRM is live 🚀
 
-- [ ] ALL PHASES COMPLETE
+- [x] ALL PHASES COMPLETE
