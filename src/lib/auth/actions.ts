@@ -31,7 +31,7 @@ export async function signUp(formData: FormData) {
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
   
-  const { error } = await supabase.auth.signUp({
+  const { data, error } = await supabase.auth.signUp({
     email,
     password,
     options: {
@@ -45,6 +45,31 @@ export async function signUp(formData: FormData) {
   if (error) {
     console.error('Sign up error:', error);
     return { error: error.message };
+  }
+  
+  // Create profile entry for the new user
+  if (data.user && !data.user.identities?.length) {
+    // User already exists
+    console.log('User already exists');
+  } else if (data.user) {
+    // New user - create profile
+    try {
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert([
+          {
+            user_id: data.user.id,
+            full_name: name,
+          },
+        ]);
+      
+      if (profileError) {
+        console.error('Error creating profile:', profileError);
+        // Don't return error - user is created, profile can be created later
+      }
+    } catch (err) {
+      console.error('Error creating profile:', err);
+    }
   }
   
   revalidatePath('/', 'layout');
