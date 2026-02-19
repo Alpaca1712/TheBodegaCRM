@@ -148,7 +148,38 @@ export default function ContactsPage() {
       {/* Table */}
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {loading ? (
-          <div className="p-8 text-center text-slate-500">Loading contacts...</div>
+          <div className="p-6">
+            <div className="animate-pulse">
+              {/* Table header skeleton */}
+              <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200">
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+              </div>
+              {/* Table rows skeleton */}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-6 py-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="h-10 w-10 bg-slate-300 rounded-full mr-4"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                        <div className="h-3 w-24 bg-slate-300 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="h-4 w-48 bg-slate-300 rounded"></div>
+                    <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                    <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                    <div className="h-6 w-16 bg-slate-300 rounded-full"></div>
+                    <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
         ) : contacts.length === 0 ? (
           <div className="p-8 text-center">
             <div className="text-slate-400 mb-2">No contacts found</div>

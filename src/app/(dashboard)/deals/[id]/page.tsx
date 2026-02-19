@@ -100,7 +100,7 @@ export default function DealDetailPage() {
         setActivities(result.data || []);
       }
       return { error: undefined };
-    } catch (_err) {
+    } catch {
       return { error: 'Failed to create activity' };
     }
   };

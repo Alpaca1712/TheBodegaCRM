@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { getContactById, updateContact } from '@/lib/api/contacts';
 import ContactForm, { type ContactFormData } from '@/components/contacts/contact-form';
 import type { Contact } from '@/lib/api/contacts';
+import { showUpdateSuccess, showUpdateError, showLoadError } from '@/lib/toast';
 
 export default function EditContactPage() {
   const params = useParams();
@@ -24,6 +25,7 @@ export default function EditContactPage() {
       const result = await getContactById(contactId);
       if (result.error) {
         setError(result.error);
+        showLoadError('Contact');
       } else {
         setContact(result.data);
       }
@@ -51,11 +53,14 @@ export default function EditContactPage() {
 
       if (result.error) {
         setError(result.error);
+        showUpdateError('Contact');
       } else {
+        showUpdateSuccess('Contact');
         router.push(`/contacts/${contactId}`);
       }
     } catch {
       setError('An unexpected error occurred');
+      showUpdateError('Contact');
     } finally {
       setIsSubmitting(false);
     }
