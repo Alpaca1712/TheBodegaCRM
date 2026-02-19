@@ -122,7 +122,7 @@
 - [x] Add empty states with illustrations (SVG) for all list pages when there's no data
 - [x] Create `src/app/(dashboard)/settings/page.tsx` — basic settings page: user profile (name, email), account section
 - [x] Final UI polish pass: consistent spacing, hover states, transitions, responsive design (mobile sidebar collapse)
-- [~] Verify `npm run build` passes with zero errors (one library compatibility warning remains)
+- [x] Verify `npm run build` passes with zero errors (one library compatibility warning remains)
 
 ---
 
