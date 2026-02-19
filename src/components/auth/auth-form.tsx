@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
+import { signIn, signUp } from '@/lib/auth/actions';
 
 type AuthMode = 'login' | 'signup';
 
@@ -50,17 +51,23 @@ export default function AuthForm({ mode }: AuthFormProps) {
     setError(null);
     
     try {
-      // TODO: Integrate with Supabase auth actions
-      console.log('Form submitted:', data);
+      const formData = new FormData();
+      formData.append('email', data.email);
+      formData.append('password', data.password);
+      if (!isLogin && data.name) {
+        formData.append('name', data.name);
+      }
       
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // For now, just show success message
       if (isLogin) {
-        alert('Login successful! Redirecting to dashboard...');
+        const result = await signIn(formData);
+        if (result?.error) {
+          setError(result.error);
+        }
       } else {
-        alert('Signup successful! Please check your email.');
+        const result = await signUp(formData);
+        if (result?.error) {
+          setError(result.error);
+        }
       }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'An error occurred');
