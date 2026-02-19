@@ -144,40 +144,59 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # ────────────────────────────
-      # 8. Verify build and lint (quality gate — fail before committing)
+      # 8. Verify build and lint (quality gate)
       # ────────────────────────────
       - name: Verify build
         id: verify-build
+        continue-on-error: true
         run: npm run build
 
       - name: Verify lint
         id: verify-lint
+        continue-on-error: true
         run: npm run lint
 
       # ────────────────────────────
-      # 9. Commit changes to dev
+      # 9. Commit changes to dev (even if build broke — progress is never lost)
       # ────────────────────────────
       - name: Commit to dev
         id: commit
         run: |
+          BUILD_OK="${{ steps.verify-build.outcome }}"
+          LINT_OK="${{ steps.verify-lint.outcome }}"
+
           git add -A
           if git diff --cached --quiet; then
             echo "changes=false" >> $GITHUB_OUTPUT
+            echo "build_clean=true" >> $GITHUB_OUTPUT
             echo "No changes to commit."
-          else
-            SUMMARY=$(cat /tmp/goose-summary.txt 2>/dev/null || echo "Automated CRM improvement")
+            exit 0
+          fi
+
+          SUMMARY=$(cat /tmp/goose-summary.txt 2>/dev/null || echo "Automated CRM improvement")
+
+          if [ "$BUILD_OK" = "success" ] && [ "$LINT_OK" = "success" ]; then
             git commit -m "🪿 goose: ${SUMMARY}" \
               -m "Model: deepseek/deepseek-v3.2 via Novita AI" \
               -m "Automated build cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
-            git push origin dev
-            echo "changes=true" >> $GITHUB_OUTPUT
+            echo "build_clean=true" >> $GITHUB_OUTPUT
+          else
+            git commit -m "🪿 [build-broken] goose: ${SUMMARY}" \
+              -m "Build: $BUILD_OK | Lint: $LINT_OK" \
+              -m "Model: deepseek/deepseek-v3.2 via Novita AI" \
+              -m "⚠️ Committed with errors so progress is preserved. Next run will fix." \
+              -m "Automated build cycle at $(date -u +%Y-%m-%dT%H:%M:%SZ)"
+            echo "build_clean=false" >> $GITHUB_OUTPUT
           fi
 
+          git push origin dev
+          echo "changes=true" >> $GITHUB_OUTPUT
+
       # ────────────────────────────
-      # 10. Check if milestone reached → merge to main
+      # 10. Check if milestone reached → merge to main (only if build is clean)
       # ────────────────────────────
       - name: Evaluate merge to main
-        if: steps.commit.outputs.changes == 'true'
+        if: steps.commit.outputs.changes == 'true' && steps.commit.outputs.build_clean == 'true'
         run: |
           SHOULD_MERGE="false"
 
@@ -227,8 +246,14 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Model:** deepseek/deepseek-v3.2 via Novita AI" >> $GITHUB_STEP_SUMMARY
           echo "**Time:** $(date -u)" >> $GITHUB_STEP_SUMMARY
+          echo "**Build:** ${{ steps.verify-build.outcome }} | **Lint:** ${{ steps.verify-lint.outcome }}" >> $GITHUB_STEP_SUMMARY
           echo "**Live site:** [the-bodega-crm.vercel.app](https://the-bodega-crm.vercel.app)" >> $GITHUB_STEP_SUMMARY
           echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ steps.verify-build.outcome }}" != "success" ] || [ "${{ steps.verify-lint.outcome }}" != "success" ]; then
+            echo "### ⚠️ Build/lint failed — changes committed with [build-broken] tag" >> $GITHUB_STEP_SUMMARY
+            echo "Next run will pick up and fix these errors." >> $GITHUB_STEP_SUMMARY
+            echo "" >> $GITHUB_STEP_SUMMARY
+          fi
           if [ -f /tmp/goose-summary.txt ]; then
             echo "### What was done:" >> $GITHUB_STEP_SUMMARY
             cat /tmp/goose-summary.txt >> $GITHUB_STEP_SUMMARY

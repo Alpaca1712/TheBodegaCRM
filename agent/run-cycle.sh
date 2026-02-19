@@ -45,12 +45,14 @@ READ these files for context:
 LIVE SITE: https://the-bodega-crm.vercel.app — If you have browser/fetch access, view the deployed app to verify UI changes or debug issues when relevant.
 
 YOUR JOB THIS CYCLE:
+0. FIRST: Run 'git log -1 --oneline'. If the last commit contains '[build-broken]', run 'npm run build' and fix ALL errors before doing anything else.
 1. Read ROADMAP.md and find the FIRST task that is [ ] (not started) or [~] (in progress).
 2. Work on tasks in order. You may complete multiple tasks if time allows — chain through the roadmap.
 3. Follow existing patterns — look at how similar features were built (e.g. contacts module for companies, contacts for deals) and replicate that structure.
-4. When you finish each task, update ROADMAP.md — change its status to [x]. If a task is too large, do as much as you can and mark it [~].
-5. Run 'npm run build' and 'npm run lint' before finishing. If either fails: read the errors, fix them, run again. Fix any pre-existing lint errors in files you touch.
-6. TIME BUDGET: You have ~60 min max. Stop before the limit so your work gets committed. Write a summary of what you did to /tmp/goose-summary.txt before time runs out.
+4. **AFTER EACH TASK**: Run 'npm run build' and 'npm run lint'. If either fails, fix ALL errors before moving on. This is critical — do NOT move to the next task until the current one builds cleanly. Never import a module you haven't created yet.
+5. When you finish each task, update ROADMAP.md — change its status to [x]. If a task is too large, do as much as you can and mark it [~].
+6. Run 'npm run build' and 'npm run lint' one final time before finishing. Fix any pre-existing lint errors in files you touch.
+7. TIME BUDGET: You have ~60 min max. Stop before the limit so your work gets committed. Write a summary of what you did to /tmp/goose-summary.txt before time runs out.
 
 MILESTONE RULES — write the word MILESTONE to a file at /tmp/goose-milestone.flag if:
 - You just completed an entire PHASE (all tasks in a phase are [x])
@@ -62,7 +64,9 @@ SUMMARY — Always write a 1-2 line summary of what you did to /tmp/goose-summar
 IMPORTANT RULES:
 - Do NOT skip ahead in the roadmap. Do tasks IN ORDER.
 - Do NOT rewrite things that already work unless they are broken.
-- Always run 'npm run build' and 'npm run lint' before finishing. Fix ALL errors in files you modify.
+- ALWAYS run 'npm run build' and 'npm run lint' AFTER EACH TASK. This is the #1 rule. If you complete 3 tasks without building, one broken import loses all your work.
+- Never import or reference a file/module you haven't created yet. Create the file first, then import it.
+- Fix ALL errors in files you modify, including pre-existing lint errors.
 - Use the Supabase credentials from environment variables.
 - Write clean, typed TypeScript. No 'any' types.
 - Add tests for new features once Phase 8 (testing) is complete; until then, focus on implementation.
@@ -77,8 +81,10 @@ LIVE SITE: https://the-bodega-crm.vercel.app — View to verify UI when relevant
 YOUR SPECIFIC TASK THIS CYCLE:
 ${TASK_INPUT}
 
-Follow existing patterns (e.g. how contacts/companies were built). After completing:
-- Run 'npm run build' and 'npm run lint'. Fix any errors before finishing.
+Follow existing patterns (e.g. how contacts/companies were built). Rules:
+- Run 'npm run build' and 'npm run lint' AFTER EACH sub-task or significant change. Do NOT batch all changes and build only at the end.
+- Never import or reference a file/module you haven't created yet. Create files first, then import them.
+- Fix ALL errors before moving on to the next piece of work.
 - Write a 1-2 line summary to /tmp/goose-summary.txt
 - If this is a major milestone, write MILESTONE to /tmp/goose-milestone.flag
 - Update ROADMAP.md if any tasks were completed.
