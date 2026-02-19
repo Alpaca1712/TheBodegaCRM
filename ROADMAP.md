@@ -113,9 +113,9 @@
 ## Phase 7: Search, Tags & Polish
 > Quality of life features that make it feel complete.
 
-- [ ] Create `src/components/search/global-search.tsx` — command palette (Cmd+K) that searches across contacts, companies, and deals. Overlay modal with keyboard navigation.
-- [ ] Add global search trigger to the header component
-- [ ] Create SQL migration `supabase/migrations/005_tags.sql` — create `tags` table (id, user_id, name, color) and `contact_tags` junction table (contact_id, tag_id). RLS policies.
+- [x] Create `src/components/search/global-search.tsx` — command palette (Cmd+K) that searches across contacts, companies, and deals. Overlay modal with keyboard navigation.
+- [x] Add global search trigger to the header component
+- [x] Create SQL migration `supabase/migrations/005_tags.sql` — create `tags` table (id, user_id, name, color) and `contact_tags` junction table (contact_id, tag_id). RLS policies.
 - [ ] Create `src/components/contacts/tag-badge.tsx` and tag management on contact detail pages
 - [ ] Add loading skeletons to all list pages (contacts, companies, deals, activities)
 - [ ] Add toast notification system for success/error feedback on all CRUD operations

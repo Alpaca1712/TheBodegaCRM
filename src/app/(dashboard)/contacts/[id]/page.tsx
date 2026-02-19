@@ -11,7 +11,9 @@ import { getContactById, deleteContact } from '@/lib/api/contacts';
 import { getActivitiesByContact } from '@/lib/api/activities';
 import ActivityTimeline from '@/components/activities/activity-timeline';
 import ActivityForm from '@/components/activities/activity-form';
+import TagManager from '@/components/contacts/tag-manager';
 import { useCreateActivity } from '@/hooks/use-activities';
+import { useTagsByContactId, useAvailableTagsForContact, useAddTagToContact, useRemoveTagFromContact } from '@/hooks/use-tags';
 import type { Contact } from '@/lib/api/contacts';
 import type { Activity } from '@/lib/api/activities';
 
@@ -29,6 +31,28 @@ export default function ContactDetailPage() {
   const createActivityMutation = useCreateActivity();
 
   const contactId = params.id as string;
+  
+  // Tag hooks
+  const { 
+    data: tags = [], 
+    isLoading: tagsLoading 
+  } = useTagsByContactId(contactId);
+  
+  const { 
+    data: availableTags = [], 
+    isLoading: availableTagsLoading 
+  } = useAvailableTagsForContact(contactId);
+  
+  const addTagMutation = useAddTagToContact();
+  const removeTagMutation = useRemoveTagFromContact();
+  
+  const handleAddTag = (tagId: string) => {
+    addTagMutation.mutate({ contactId, tagId });
+  };
+  
+  const handleRemoveTag = (tagId: string) => {
+    removeTagMutation.mutate({ contactId, tagId });
+  };
 
   useEffect(() => {
     async function fetchContact() {
@@ -273,6 +297,14 @@ export default function ContactDetailPage() {
               </div>
             )}
             
+            <TagManager
+              tags={tags}
+              availableTags={availableTags}
+              onAddTag={handleAddTag}
+              onRemoveTag={handleRemoveTag}
+              isLoading={tagsLoading || availableTagsLoading || addTagMutation.isPending || removeTagMutation.isPending}
+            />
+            
             {contact.notes && (
               <div className="mt-6">
                 <div className="text-sm font-medium text-slate-700 mb-2">Notes</div>
@@ -312,7 +344,8 @@ export default function ContactDetailPage() {
                         }
                       }
                       return result;
-                    } catch (_err) {
+                    } catch (error) {
+                      console.error('Failed to create activity:', error);
                       return { error: 'Failed to create activity' };
                     }
                   }}
