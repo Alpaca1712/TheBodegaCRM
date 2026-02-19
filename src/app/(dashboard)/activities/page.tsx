@@ -265,9 +265,37 @@ export default function ActivitiesPage() {
       {/* Activities Table */}
       <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
         {loading ? (
-          <div className="p-12 text-center">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600 mx-auto"></div>
-            <p className="mt-2 text-slate-600">Loading activities...</p>
+          <div className="p-6">
+            <div className="animate-pulse">
+              {/* Table header skeleton */}
+              <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200">
+                <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+              </div>
+              {/* Table rows skeleton */}
+              {Array.from({ length: 5 }).map((_, i) => (
+                <div key={i} className="px-6 py-4 border-b border-slate-200">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center">
+                      <div className="h-8 w-8 bg-slate-300 rounded-full mr-4"></div>
+                      <div className="space-y-2">
+                        <div className="h-4 w-48 bg-slate-300 rounded"></div>
+                        <div className="h-3 w-64 bg-slate-300 rounded"></div>
+                      </div>
+                    </div>
+                    <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                    <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                    <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                    <div className="h-6 w-20 bg-slate-300 rounded-full"></div>
+                    <div className="h-8 w-24 bg-slate-300 rounded"></div>
+                  </div>
+                </div>
+              ))}
+            </div>
           </div>
         ) : activities.length === 0 ? (
           <div className="p-12 text-center">

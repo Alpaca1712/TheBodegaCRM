@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { createContact } from '@/lib/api/contacts';
 import ContactForm from '@/components/contacts/contact-form';
 import type { ContactFormData } from '@/components/contacts/contact-form';
+import { showCreateSuccess, showCreateError } from '@/lib/toast';
 
 export default function NewContactPage() {
   const router = useRouter();
@@ -32,11 +33,14 @@ export default function NewContactPage() {
 
       if (result.error) {
         setError(result.error);
+        showCreateError('Contact');
       } else {
+        showCreateSuccess('Contact');
         router.push('/contacts');
       }
     } catch {
       setError('An unexpected error occurred');
+      showCreateError('Contact');
     } finally {
       setIsSubmitting(false);
     }
