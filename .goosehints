@@ -74,10 +74,16 @@ supabase/
 - Buttons: primary (indigo-600), secondary (slate border), danger (red-600)
 - All pages must be responsive (mobile-friendly)
 
-### Build Verification
-- ALWAYS run `npm run build` and `npm run lint` after making changes
+### Build Verification — THE #1 RULE
+- Run `npm run build` and `npm run lint` **AFTER EACH TASK** — not just at the end of the cycle
+- If you complete 3 tasks and only build at the end, one broken import can lose all your work
+- Never import or reference a module/file you haven't created yet — create it first, then import
 - Fix ALL TypeScript and ESLint errors in files you touch (including pre-existing lint errors)
-- If build or lint fails, read the errors, fix them, and run again — do not finish until both pass
+- If build or lint fails, read the errors, fix them, and run again — do not move on until both pass
+
+### Recovery from [build-broken] Commits
+- If the last commit message contains `[build-broken]`, your FIRST priority is to run `npm run build`, read the errors, and fix them before doing any new work
+- Check `git log -1 --oneline` at the start — if you see `[build-broken]`, fix the build first
 
 ### Code Patterns
 - Follow existing patterns: look at how similar features were built (e.g. contacts module) and replicate that structure for companies, deals, activities
