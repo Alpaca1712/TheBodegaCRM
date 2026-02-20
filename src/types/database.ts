@@ -135,13 +135,13 @@ export type Database = {
           id: string
           user_id: string
           title: string
-          value: number
+          value: number | null
           currency: string
           stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
           contact_id: string | null
           company_id: string | null
           expected_close_date: string | null
-          probability: number
+          probability: number | null
           notes: string | null
           created_at: string
           updated_at: string
@@ -150,13 +150,13 @@ export type Database = {
           id?: string
           user_id: string
           title: string
-          value: number
+          value?: number | null
           currency?: string
           stage: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
           contact_id?: string | null
           company_id?: string | null
           expected_close_date?: string | null
-          probability?: number
+          probability?: number | null
           notes?: string | null
           created_at?: string
           updated_at?: string
@@ -165,13 +165,13 @@ export type Database = {
           id?: string
           user_id?: string
           title?: string
-          value?: number
+          value?: number | null
           currency?: string
           stage?: 'lead' | 'qualified' | 'proposal' | 'negotiation' | 'closed_won' | 'closed_lost'
           contact_id?: string | null
           company_id?: string | null
           expected_close_date?: string | null
-          probability?: number
+          probability?: number | null
           notes?: string | null
           created_at?: string
           updated_at?: string
