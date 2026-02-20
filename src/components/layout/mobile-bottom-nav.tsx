@@ -14,6 +14,7 @@ import {
   X,
   Menu,
 } from 'lucide-react';
+import { useNotificationBadges } from '@/hooks/use-notification-badges';
 
 interface MobileBottomNavProps {
   isSidebarOpen: boolean;
@@ -25,6 +26,7 @@ export default function MobileBottomNav({
   onToggleSidebar 
 }: MobileBottomNavProps) {
   const pathname = usePathname();
+  const { badges, loading } = useNotificationBadges();
   
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
@@ -75,29 +77,43 @@ export default function MobileBottomNav({
             <span className="text-xs mt-1">Contacts</span>
           </Link>
           
-          <Link 
-            href="/deals" 
-            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-              isActive('/deals') 
-                ? 'text-indigo-600 bg-indigo-50' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
-            }`}
-          >
-            <DollarSign className="h-5 w-5" />
-            <span className="text-xs mt-1">Deals</span>
-          </Link>
+          <div className="relative flex flex-col items-center justify-center">
+            <Link 
+              href="/deals" 
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+                isActive('/deals') 
+                  ? 'text-indigo-600 bg-indigo-50' 
+                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+              }`}
+            >
+              <DollarSign className="h-5 w-5" />
+              <span className="text-xs mt-1">Deals</span>
+            </Link>
+            {!loading && badges && badges.staleDeals > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {badges.staleDeals}
+              </span>
+            )}
+          </div>
           
-          <Link 
-            href="/activities" 
-            className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
-              isActive('/activities') 
-                ? 'text-indigo-600 bg-indigo-50' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
-            }`}
-          >
-            <Calendar className="h-5 w-5" />
-            <span className="text-xs mt-1">Tasks</span>
-          </Link>
+          <div className="relative flex flex-col items-center justify-center">
+            <Link 
+              href="/activities" 
+              className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
+                isActive('/activities') 
+                  ? 'text-indigo-600 bg-indigo-50' 
+                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+              }`}
+            >
+              <Calendar className="h-5 w-5" />
+              <span className="text-xs mt-1">Tasks</span>
+            </Link>
+            {!loading && badges && badges.overdueTasks > 0 && (
+              <span className="absolute -top-1 -right-1 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                {badges.overdueTasks}
+              </span>
+            )}
+          </div>
           
           {/* More menu toggle */}
           <button

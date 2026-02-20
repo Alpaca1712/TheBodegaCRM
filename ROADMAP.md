@@ -203,7 +203,7 @@
 - [x] Add data export (CSV) for contacts, companies, deals
 - [x] Create onboarding flow for new users — guided setup wizard
 - [x] Add dark mode support
-- [ ] Mobile-responsive improvements — bottom nav on mobile, swipe actions on lists
+- [x] Mobile-responsive improvements — bottom nav on mobile, swipe actions on lists
 - [ ] Add notification badges to sidebar (overdue tasks, stale deals)
 - [ ] Performance optimization — implement virtual scrolling for large lists
 - [x] Verify `npm run build` passes

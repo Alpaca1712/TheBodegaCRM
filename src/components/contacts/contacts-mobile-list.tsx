@@ -1,14 +1,14 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { 
   Mail, 
   Phone, 
   Calendar, 
   Trash2, 
   Archive, 
-  Star, 
   ChevronRight,
   Tag,
   Building
@@ -22,7 +22,6 @@ interface ContactsMobileListProps {
   contacts: Contact[];
   onDelete?: (contactId: string) => Promise<void>;
   onArchive?: (contactId: string) => Promise<void>;
-  onFavorite?: (contactId: string) => Promise<void>;
   onTag?: (contactId: string) => Promise<void>;
 }
 
@@ -30,14 +29,12 @@ export default function ContactsMobileList({
   contacts, 
   onDelete, 
   onArchive, 
-  onFavorite, 
   onTag 
 }: ContactsMobileListProps) {
   const router = useRouter();
   const [swipedItemId, setSwipedItemId] = useState<string | null>(null);
   const [swipeOffset, setSwipeOffset] = useState(0);
   const [touchStartX, setTouchStartX] = useState(0);
-  const [touchEndX, setTouchEndX] = useState(0);
   const [activeSwipe, setActiveSwipe] = useState<SwipeDirection>(null);
   const touchThreshold = 50;
   
@@ -86,7 +83,6 @@ export default function ContactsMobileList({
   const handleTouchEnd = (e: React.TouchEvent, contactId: string) => {
     const currentX = e.changedTouches[0].clientX;
     const diff = touchStartX - currentX;
-    setTouchEndX(currentX);
     
     if (Math.abs(diff) > touchThreshold) {
       if (diff > 0) {
@@ -224,11 +220,15 @@ export default function ContactsMobileList({
                   {/* Avatar */}
                   <div className="flex-shrink-0">
                     {contact.avatar_url ? (
-                      <img 
-                        className="h-12 w-12 rounded-full object-cover" 
-                        src={contact.avatar_url} 
-                        alt={`${contact.first_name} ${contact.last_name}`} 
-                      />
+                      <div className="h-12 w-12 rounded-full overflow-hidden relative">
+                        <Image 
+                          className="object-cover" 
+                          src={contact.avatar_url} 
+                          alt={`${contact.first_name} ${contact.last_name}`}
+                          fill
+                          sizes="48px"
+                        />
+                      </div>
                     ) : (
                       <div className="h-12 w-12 rounded-full bg-indigo-100 flex items-center justify-center">
                         <span className="text-indigo-800 font-medium">

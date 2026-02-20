@@ -5,6 +5,7 @@ import Link from 'next/link';
 import Header from '@/components/layout/header';
 import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
+import { useNotificationBadges } from '@/hooks/use-notification-badges';
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode;
@@ -18,6 +19,7 @@ export default function DashboardLayoutClient({
   userName 
 }: DashboardLayoutClientProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const { badges, loading } = useNotificationBadges();
   
   const toggleMobileSidebar = () => {
     setIsMobileSidebarOpen(!isMobileSidebarOpen);
@@ -56,12 +58,22 @@ export default function DashboardLayoutClient({
                 <Link href="/deals" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                   <span>💰</span>
                   <span>Deals</span>
+                  {!loading && badges && badges.staleDeals > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {badges.staleDeals}
+                    </span>
+                  )}
                 </Link>
               </li>
               <li>
                 <Link href="/activities" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                   <span>📅</span>
                   <span>Activities</span>
+                  {!loading && badges && badges.overdueTasks > 0 && (
+                    <span className="ml-auto bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center">
+                      {badges.overdueTasks}
+                    </span>
+                  )}
                 </Link>
               </li>
               <li>
