@@ -5,6 +5,7 @@ import { LogOut, ChevronDown, Search } from 'lucide-react';
 import { signOut } from '@/lib/auth/actions';
 import { GlobalSearch } from '@/components/search/global-search';
 import { RemindersPanel } from '@/components/notifications/reminders-panel';
+import { ThemeToggle } from '@/components/theme/theme-toggle';
 
 interface HeaderProps {
   userEmail?: string;
@@ -87,6 +88,9 @@ export default function Header({ userEmail, userName }: HeaderProps) {
           >
             <Search className="h-5 w-5 text-slate-600" />
           </button>
+          
+          {/* Theme toggle */}
+          <ThemeToggle />
           
           {/* User dropdown */}
           <div className="relative" ref={dropdownRef}>

@@ -3,11 +3,12 @@
 import { useEffect, useState } from 'react'
 import { Card, CardContent } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus } from 'lucide-react'
+import { Plus, Download } from 'lucide-react'
 import Link from 'next/link'
 import PipelineBoard from '@/components/deals/pipeline-board'
 import { getDealsByStage } from '@/lib/api/deals'
 import type { Deal } from '@/lib/api/deals'
+import { exportDealsToCSV } from '@/lib/utils/csv-export'
 
 const STAGES = [
   { key: 'lead', label: 'Lead', color: 'bg-blue-100 text-blue-800' },
@@ -78,6 +79,18 @@ export default function DealsPage() {
         <p className="text-slate-600">Track your sales deals through each stage of the pipeline</p>
         <div className="mt-4 flex justify-between items-center">
           <div className="flex space-x-2">
+            <Button 
+              onClick={() => {
+                // Flatten all deals from all stages
+                const allDeals = Object.values(dealsByStage).flat();
+                exportDealsToCSV(allDeals);
+              }}
+              disabled={isLoading || Object.values(dealsByStage).flat().length === 0}
+              variant="outline"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              Export CSV
+            </Button>
             <Link href="/deals/new">
               <Button>
                 <Plus className="mr-2 h-4 w-4" />
