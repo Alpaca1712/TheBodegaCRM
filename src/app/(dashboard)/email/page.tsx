@@ -11,17 +11,7 @@ interface EmailAccount {
   last_synced_at: string | null
 }
 
-interface EmailSummary {
-  id: string
-  subject: string | null
-  from_address: string
-  date: string
-  snippet: string | null
-  ai_summary: string | null
-  ai_sentiment: string | null
-  ai_action_items: string[] | null
-  ai_follow_up_draft: string | null
-}
+import type { EmailSummary } from '@/types/database'
 
 const SENTIMENT_STYLES: Record<string, string> = {
   positive: 'bg-green-100 text-green-700',
@@ -63,7 +53,7 @@ export default function EmailPage() {
       if (accts && accts.length > 0) {
         const { data: summaries } = await supabase
           .from('email_summaries')
-          .select('id, subject, from_address, date, snippet, ai_summary, ai_sentiment, ai_action_items, ai_follow_up_draft')
+          .select('*')
           .eq('user_id', session.user.id)
           .order('date', { ascending: false })
           .limit(30)

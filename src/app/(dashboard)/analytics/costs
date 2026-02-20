@@ -1,0 +1,127 @@
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+
+export default function CostsPage() {
+  // Mock data for demonstration
+  const costs = [
+    { id: 1, date: '2025-02-01', channel: 'Google Ads', amount: 1250, notes: 'Q1 campaign' },
+    { id: 2, date: '2025-02-05', channel: 'LinkedIn', amount: 800, notes: 'Sponsored content' },
+    { id: 3, date: '2025-02-10', channel: 'Content Marketing', amount: 500, notes: 'Blog production' },
+    { id: 4, date: '2025-02-15', channel: 'Events', amount: 2000, notes: 'Industry conference' },
+  ];
+
+  const totalCac = costs.reduce((sum, cost) => sum + cost.amount, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">Acquisition Costs</h1>
+          <p className="text-slate-600 mt-1">Track marketing and sales expenses to calculate CAC</p>
+        </div>
+        <Button>Add Cost</Button>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <Card>
+          <CardHeader>
+            <CardTitle>Total CAC</CardTitle>
+            <CardDescription>Customer Acquisition Cost this month</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">${totalCac.toLocaleString()}</div>
+            <p className="text-slate-600 text-sm mt-2">Sum of all marketing/sales expenses</p>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Avg Cost per Channel</CardTitle>
+            <CardDescription>Breakdown by marketing channel</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              {Array.from(new Set(costs.map(c => c.channel))).map(channel => {
+                const channelCosts = costs.filter(c => c.channel === channel);
+                const total = channelCosts.reduce((sum, c) => sum + c.amount, 0);
+                return (
+                  <div key={channel} className="flex justify-between">
+                    <span>{channel}</span>
+                    <span className="font-medium">${total.toLocaleString()}</span>
+                  </div>
+                );
+              })}
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Add New Cost</CardTitle>
+            <CardDescription>Record a marketing or sales expense</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div>
+                <Label htmlFor="date">Date</Label>
+                <Input id="date" type="date" defaultValue="2025-02-20" />
+              </div>
+              <div>
+                <Label htmlFor="channel">Channel</Label>
+                <Input id="channel" placeholder="Google Ads, LinkedIn, etc." />
+              </div>
+              <div>
+                <Label htmlFor="amount">Amount ($)</Label>
+                <Input id="amount" type="number" placeholder="500" />
+              </div>
+              <Button className="w-full">Save Expense</Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Recent Acquisition Costs</CardTitle>
+          <CardDescription>Detailed view of all recorded expenses</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Date</TableHead>
+                <TableHead>Channel</TableHead>
+                <TableHead>Amount</TableHead>
+                <TableHead>Notes</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {costs.map((cost) => (
+                <TableRow key={cost.id}>
+                  <TableCell>{cost.date}</TableCell>
+                  <TableCell>{cost.channel}</TableCell>
+                  <TableCell className="font-medium">${cost.amount.toLocaleString()}</TableCell>
+                  <TableCell className="text-slate-600">{cost.notes}</TableCell>
+                  <TableCell>
+                    <Button variant="ghost" size="sm">Edit</Button>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
