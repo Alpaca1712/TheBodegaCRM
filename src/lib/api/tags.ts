@@ -1,4 +1,5 @@
 import { supabase } from '@/lib/supabase/client';
+import { getActiveOrgId } from '@/lib/api/organizations';
 import { Database } from '@/types/database';
 
 export type Tag = Database['public']['Tables']['tags']['Row'];
@@ -10,9 +11,18 @@ interface GetTagsFilters {
 }
 
 export async function getTags(filters: GetTagsFilters = {}) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return [];
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) return [];
+
   let query = supabase
     .from('tags')
     .select('*')
+    .eq('org_id', orgId)
     .order('created_at', { ascending: false });
   
   if (filters.search) {
@@ -30,6 +40,14 @@ export async function getTags(filters: GetTagsFilters = {}) {
 }
 
 export async function getTagsByContactId(contactId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return [];
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) return [];
+
   const { data, error } = await supabase
     .from('contact_tags')
     .select('tag_id')
@@ -47,7 +65,8 @@ export async function getTagsByContactId(contactId: string) {
   const { data: tags, error: tagsError } = await supabase
     .from('tags')
     .select('*')
-    .in('id', tagIds);
+    .in('id', tagIds)
+    .eq('org_id', orgId);
   
   if (tagsError) {
     console.error('Error fetching tag details:', tagsError);
@@ -58,9 +77,21 @@ export async function getTagsByContactId(contactId: string) {
 }
 
 export async function createTag(tagData: TagInsert) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('No organization found');
+
   const { data, error } = await supabase
     .from('tags')
-    .insert(tagData)
+    .insert({
+      ...tagData,
+      user_id: session.user.id,
+      org_id: orgId,
+    })
     .select()
     .single();
   
@@ -73,10 +104,19 @@ export async function createTag(tagData: TagInsert) {
 }
 
 export async function updateTag(tagId: string, tagData: TagUpdate) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('No organization found');
+
   const { data, error } = await supabase
     .from('tags')
     .update(tagData)
     .eq('id', tagId)
+    .eq('org_id', orgId)
     .select()
     .single();
   
@@ -89,10 +129,19 @@ export async function updateTag(tagId: string, tagData: TagUpdate) {
 }
 
 export async function deleteTag(tagId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('No organization found');
+
   const { error } = await supabase
     .from('tags')
     .delete()
-    .eq('id', tagId);
+    .eq('id', tagId)
+    .eq('org_id', orgId);
   
   if (error) {
     console.error('Error deleting tag:', error);
@@ -103,6 +152,14 @@ export async function deleteTag(tagId: string) {
 }
 
 export async function addTagToContact(contactId: string, tagId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('No organization found');
+
   const { error } = await supabase
     .from('contact_tags')
     .insert({ contact_id: contactId, tag_id: tagId });
@@ -116,6 +173,14 @@ export async function addTagToContact(contactId: string, tagId: string) {
 }
 
 export async function removeTagFromContact(contactId: string, tagId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    throw new Error('Not authenticated');
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) throw new Error('No organization found');
+
   const { error } = await supabase
     .from('contact_tags')
     .delete()
@@ -131,10 +196,19 @@ export async function removeTagFromContact(contactId: string, tagId: string) {
 }
 
 export async function getAvailableTagsForContact(contactId: string) {
+  const { data: { session } } = await supabase.auth.getSession();
+  if (!session) {
+    return [];
+  }
+
+  const orgId = await getActiveOrgId();
+  if (!orgId) return [];
+
   // Get all tags
   const { data: allTags, error: tagsError } = await supabase
     .from('tags')
     .select('*')
+    .eq('org_id', orgId)
     .order('name');
   
   if (tagsError) {

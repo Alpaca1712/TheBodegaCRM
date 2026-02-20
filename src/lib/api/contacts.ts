@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 
 export interface Contact {
   id: string
   user_id: string
+  org_id: string | null
   first_name: string
   last_name: string
   email?: string
@@ -49,6 +51,9 @@ export async function getContacts(
   if (!session) {
     return { data: [], count: 0, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: [], count: 0, error: 'No organization found' }
   
   const { page = 1, limit = 20 } = pagination
   const { field = 'created_at', direction = 'desc' } = sort
@@ -58,7 +63,7 @@ export async function getContacts(
   let query = supabase
     .from('contacts')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId)
     .range(start, end)
     .order(field, { ascending: direction === 'asc' })
   
@@ -87,11 +92,12 @@ export async function getContactById(id: string) {
     return { data: null, error: 'Not authenticated' }
   }
   
+  const orgId = await getActiveOrgId()
   const { data, error } = await supabase
     .from('contacts')
     .select('*')
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .single()
   
   if (error) {
@@ -101,7 +107,7 @@ export async function getContactById(id: string) {
   return { data: data as Contact, error: null }
 }
 
-export async function createContact(contactData: Omit<Contact, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createContact(contactData: Omit<Contact, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -109,11 +115,13 @@ export async function createContact(contactData: Omit<Contact, 'id' | 'user_id' 
     return { data: null, error: 'Not authenticated' }
   }
   
+  const orgId = await getActiveOrgId()
   const { data, error } = await supabase
     .from('contacts')
     .insert([{
       ...contactData,
       user_id: session.user.id,
+      org_id: orgId,
     }])
     .select()
     .single()
@@ -133,15 +141,15 @@ export async function updateContact(id: string, updates: Partial<Contact>) {
     return { data: null, error: 'Not authenticated' }
   }
   
-  // Don't allow updating user_id
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
-  const { user_id, ...safeUpdates } = updates
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id and org_id
+  const { user_id, org_id, ...safeUpdates } = updates
+  const orgId = await getActiveOrgId()
   
   const { data, error } = await supabase
     .from('contacts')
     .update(safeUpdates)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
   
@@ -160,11 +168,12 @@ export async function deleteContact(id: string) {
     return { error: 'Not authenticated' }
   }
   
+  const orgId = await getActiveOrgId()
   const { error } = await supabase
     .from('contacts')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
   
   if (error) {
     return { error: error.message }

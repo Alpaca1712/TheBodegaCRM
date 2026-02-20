@@ -152,6 +152,47 @@ export default function DashboardPage() {
         />
       </div>
 
+      {/* LTV/CAC Metrics */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-8">
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-slate-500">Customer LTV</h3>
+            <DollarSign className="h-4 w-4 text-green-500" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ${stats && stats.totalContacts > 0
+              ? Math.round(stats.totalDealValue / Math.max(stats.totalContacts, 1)).toLocaleString()
+              : '0'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Revenue per contact (deals pipeline)</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-slate-500">Win Rate (CAC proxy)</h3>
+            <Target className="h-4 w-4 text-indigo-500" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            {stats ? stats.conversionRate.toFixed(1) : '0'}%
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Higher win rate = lower effective CAC</p>
+        </div>
+        <div className="bg-white rounded-xl shadow p-6">
+          <div className="flex items-center justify-between mb-2">
+            <h3 className="text-sm font-medium text-slate-500">Avg Deal Size</h3>
+            <TrendingUp className="h-4 w-4 text-orange-500" />
+          </div>
+          <p className="text-2xl font-bold text-slate-900">
+            ${stats
+              ? (() => {
+                  const totalDeals = Object.values(stats.dealsByStage).reduce((s, c) => s + c, 0)
+                  return totalDeals > 0 ? Math.round(stats.totalDealValue / totalDeals).toLocaleString() : '0'
+                })()
+              : '0'}
+          </p>
+          <p className="text-xs text-slate-500 mt-1">Average value per deal in pipeline</p>
+        </div>
+      </div>
+
       {/* Upcoming Tasks & New Contacts */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
         {/* Upcoming Tasks */}
