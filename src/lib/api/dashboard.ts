@@ -2,6 +2,11 @@ import { createClient } from '@/lib/supabase/client'
 import { getActiveOrgId } from '@/lib/api/organizations'
 import { getInvestorStats } from './investors'
 
+export interface NotificationBadges {
+  overdueTasks: number
+  staleDeals: number
+}
+
 export interface DashboardStats {
   totalContacts: number
   totalDealValue: number
@@ -258,6 +263,61 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     return { data: dashboardStats, error: null }
   } catch (error) {
     console.error('Unexpected error in getDashboardStats:', error)
+    return { data: null, error: error instanceof Error ? error.message : 'Unknown error' }
+  }
+}
+
+export async function getNotificationBadges(): Promise<{ data: NotificationBadges | null; error: string | null }> {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { data: null, error: 'Not authenticated' }
+  }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: null, error: 'No organization found' }
+
+  const now = new Date()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1).toISOString()
+  const sevenDaysAgo = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 7).toISOString()
+
+  try {
+    // Get overdue tasks (incomplete tasks with due_date < today)
+    const { count: overdueTasksCount, error: overdueTasksError } = await supabase
+      .from('activities')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId!)
+      .eq('type', 'task')
+      .eq('completed', false)
+      .lt('due_date', now.toISOString())
+
+    if (overdueTasksError) {
+      console.error('Error fetching overdue tasks:', overdueTasksError)
+      return { data: null, error: `Overdue tasks error: ${overdueTasksError.message}` }
+    }
+
+    // Get stale deals (not updated in last 7 days AND not closed)
+    const { count: staleDealsCount, error: staleDealsError } = await supabase
+      .from('deals')
+      .select('*', { count: 'exact', head: true })
+      .eq('org_id', orgId!)
+      .not('stage', 'in', '("closed_won","closed_lost")')
+      .lt('updated_at', sevenDaysAgo)
+
+    if (staleDealsError) {
+      console.error('Error fetching stale deals:', staleDealsError)
+      return { data: null, error: `Stale deals error: ${staleDealsError.message}` }
+    }
+
+    const badges: NotificationBadges = {
+      overdueTasks: overdueTasksCount || 0,
+      staleDeals: staleDealsCount || 0
+    }
+
+    return { data: badges, error: null }
+  } catch (error) {
+    console.error('Unexpected error in getNotificationBadges:', error)
     return { data: null, error: error instanceof Error ? error.message : 'Unknown error' }
   }
 }

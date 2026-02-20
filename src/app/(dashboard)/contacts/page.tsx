@@ -5,6 +5,7 @@ import { Search, UserPlus, ChevronLeft, ChevronRight, Download } from 'lucide-re
 import Link from 'next/link';
 import { getContacts, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
 import ContactsTable from '@/components/contacts/contacts-table';
+import ContactsMobileList from '@/components/contacts/contacts-mobile-list';
 import { exportContactsToCSV } from '@/lib/utils/csv-export';
 
 const statusOptions = [
@@ -161,34 +162,54 @@ export default function ContactsPage() {
         {loading ? (
           <div className="p-6">
             <div className="animate-pulse">
-              {/* Table header skeleton */}
-              <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200">
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                <div className="h-4 w-24 bg-slate-300 rounded"></div>
+              {/* Desktop table skeleton */}
+              <div className="hidden md:block">
+                <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200">
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                </div>
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="px-6 py-4 border-b border-slate-200">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center">
+                        <div className="h-10 w-10 bg-slate-300 rounded-full mr-4"></div>
+                        <div className="space-y-2">
+                          <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                          <div className="h-3 w-24 bg-slate-300 rounded"></div>
+                        </div>
+                      </div>
+                      <div className="h-4 w-48 bg-slate-300 rounded"></div>
+                      <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                      <div className="h-4 w-32 bg-slate-300 rounded"></div>
+                      <div className="h-6 w-16 bg-slate-300 rounded-full"></div>
+                      <div className="h-4 w-24 bg-slate-300 rounded"></div>
+                    </div>
+                  </div>
+                ))}
               </div>
-              {/* Table rows skeleton */}
-              {Array.from({ length: 5 }).map((_, i) => (
-                <div key={i} className="px-6 py-4 border-b border-slate-200">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center">
-                      <div className="h-10 w-10 bg-slate-300 rounded-full mr-4"></div>
-                      <div className="space-y-2">
-                        <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                        <div className="h-3 w-24 bg-slate-300 rounded"></div>
+              
+              {/* Mobile list skeleton */}
+              <div className="md:hidden space-y-2 p-2">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="bg-white rounded-lg border border-slate-200 p-4">
+                    <div className="flex items-center gap-3">
+                      <div className="h-12 w-12 bg-slate-300 rounded-full"></div>
+                      <div className="flex-1">
+                        <div className="h-4 w-32 bg-slate-300 rounded mb-2"></div>
+                        <div className="space-y-1">
+                          <div className="h-3 w-24 bg-slate-300 rounded"></div>
+                          <div className="h-3 w-20 bg-slate-300 rounded"></div>
+                          <div className="h-3 w-16 bg-slate-300 rounded"></div>
+                        </div>
                       </div>
                     </div>
-                    <div className="h-4 w-48 bg-slate-300 rounded"></div>
-                    <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                    <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                    <div className="h-6 w-16 bg-slate-300 rounded-full"></div>
-                    <div className="h-4 w-24 bg-slate-300 rounded"></div>
                   </div>
-                </div>
-              ))}
+                ))}
+              </div>
             </div>
           </div>
         ) : contacts.length === 0 ? (
@@ -203,7 +224,29 @@ export default function ContactsPage() {
           </div>
         ) : (
           <>
-            <ContactsTable contacts={contacts} onSort={handleSort} />
+            {/* Desktop table */}
+            <div className="hidden md:block">
+              <ContactsTable contacts={contacts} onSort={handleSort} />
+            </div>
+            
+            {/* Mobile list with swipe actions */}
+            <div className="md:hidden">
+              <ContactsMobileList 
+                contacts={contacts}
+                onDelete={async (contactId) => {
+                  // Add delete logic here
+                  console.log('Delete contact:', contactId);
+                }}
+                onArchive={async (contactId) => {
+                  // Add archive logic here
+                  console.log('Archive contact:', contactId);
+                }}
+                onTag={async (contactId) => {
+                  // Add tag logic here
+                  console.log('Tag contact:', contactId);
+                }}
+              />
+            </div>
             
             {/* Pagination */}
             <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
