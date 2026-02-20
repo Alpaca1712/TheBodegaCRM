@@ -15,6 +15,7 @@ export interface Contact {
   source?: string
   notes?: string
   avatar_url?: string
+  tags?: string[]
   created_at: string
   updated_at: string
 }
@@ -174,6 +175,112 @@ export async function deleteContact(id: string) {
     .delete()
     .eq('id', id)
     .eq('org_id', orgId!)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  return { error: null }
+}
+
+export async function bulkDeleteContacts(contactIds: string[]) {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+  
+  if (contactIds.length === 0) {
+    return { error: 'No contacts selected' }
+  }
+  
+  const orgId = await getActiveOrgId()
+  const { error } = await supabase
+    .from('contacts')
+    .delete()
+    .in('id', contactIds)
+    .eq('org_id', orgId!)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  return { error: null }
+}
+
+export async function bulkUpdateContacts(contactIds: string[], updates: { status?: 'active' | 'inactive' | 'lead'; tags?: string[] }) {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+  
+  if (contactIds.length === 0) {
+    return { error: 'No contacts selected' }
+  }
+  
+  const orgId = await getActiveOrgId()
+  const { error } = await supabase
+    .from('contacts')
+    .update({
+      status: updates.status,
+      updated_at: new Date().toISOString(),
+    })
+    .in('id', contactIds)
+    .eq('org_id', orgId!)
+  
+  if (error) {
+    return { error: error.message }
+  }
+  
+  return { error: null }
+}
+
+export async function bulkTagContacts(contactIds: string[], tags: string[]) {
+  const supabase = createClient()
+  const { data: { session } } = await supabase.auth.getSession()
+  
+  if (!session) {
+    return { error: 'Not authenticated' }
+  }
+  
+  if (contactIds.length === 0) {
+    return { error: 'No contacts selected' }
+  }
+  
+  const orgId = await getActiveOrgId()
+  // Note: This assumes a contact_tags table exists
+  // For now, we'll store tags as JSON array in contacts table
+  // First get current tags
+  const { data: contacts, error: fetchError } = await supabase
+    .from('contacts')
+    .select('id, tags')
+    .in('id', contactIds)
+    .eq('org_id', orgId!)
+  
+  if (fetchError) {
+    return { error: fetchError.message }
+  }
+  
+  // Update each contact with merged tags
+  const updates = contacts.map(contact => {
+    const currentTags = contact.tags || []
+    const newTags = Array.from(new Set([...currentTags, ...tags]))
+    
+    return supabase
+      .from('contacts')
+      .update({ 
+        tags: newTags,
+        updated_at: new Date().toISOString() 
+      })
+      .eq('id', contact.id)
+      .eq('org_id', orgId!)
+  })
+  
+  const results = await Promise.all(updates)
+  const error = results.find(result => result.error)?.error
   
   if (error) {
     return { error: error.message }

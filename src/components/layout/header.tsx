@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from 'react';
 import { LogOut, ChevronDown, Search } from 'lucide-react';
 import { signOut } from '@/lib/auth/actions';
 import { GlobalSearch } from '@/components/search/global-search';
+import { RemindersPanel } from '@/components/notifications/reminders-panel';
 
 interface HeaderProps {
   userEmail?: string;
@@ -64,6 +65,9 @@ export default function Header({ userEmail, userName }: HeaderProps) {
         </div>
         
         <div className="flex items-center space-x-4">
+          {/* Reminders panel */}
+          <RemindersPanel />
+          
           {/* Search button */}
           <button
             onClick={() => setIsSearchOpen(true)}
