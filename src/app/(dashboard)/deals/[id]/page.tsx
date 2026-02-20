@@ -11,6 +11,7 @@ import { getDealById, deleteDeal, type Deal } from '@/lib/api/deals';
 import { getActivities, type Activity } from '@/lib/api/activities';
 import ActivityTimeline from '@/components/activities/activity-timeline';
 import ActivityForm from '@/components/activities/activity-form';
+import DealSuggestionBanner from '@/components/ai/deal-suggestion-banner';
 import { useCreateActivity } from '@/hooks/use-activities';
 
 const stageLabels: Record<Deal['stage'], string> = {
@@ -188,6 +189,27 @@ export default function DealDetailPage() {
             </button>
           </div>
         </div>
+      </div>
+
+      {/* AI Deal Suggestion Banner */}
+      <div className="mb-6">
+        <DealSuggestionBanner
+          currentStage={deal.stage}
+          suggestedStage={deal.stage === 'negotiation' ? 'closed_won' : 'negotiation'}
+          reasoning="Based on recent activity and positive signals from the prospect, this deal appears ready to advance in the pipeline."
+          suggestedAt={new Date().toISOString()}
+          onAccept={(suggestedStage) => {
+            console.log('Accepted AI suggestion to change stage to:', suggestedStage)
+            // TODO: Implement actual stage change
+            alert(`Would update deal stage to ${suggestedStage}`)
+          }}
+          onDismiss={() => {
+            console.log('Dismissed AI suggestion')
+            alert('Suggestion dismissed')
+          }}
+          stageLabels={stageLabels}
+          stageColors={stageColors}
+        />
       </div>
 
       {/* Main content */}
