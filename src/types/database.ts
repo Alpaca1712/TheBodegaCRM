@@ -302,6 +302,274 @@ export type Database = {
           created_at?: string
         }
       }
+      investors: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          firm: string | null
+          email: string | null
+          phone: string | null
+          website: string | null
+          linkedin_url: string | null
+          type: 'vc' | 'angel' | 'family_office' | 'corporate' | 'accelerator' | 'other'
+          check_size_min: number | null
+          check_size_max: number | null
+          stage_preference: string[] | null
+          thesis: string | null
+          notes: string | null
+          relationship_status: 'cold' | 'warm' | 'hot' | 'portfolio' | 'passed'
+          last_contacted_at: string | null
+          contact_id: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          firm?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
+          linkedin_url?: string | null
+          type?: 'vc' | 'angel' | 'family_office' | 'corporate' | 'accelerator' | 'other'
+          check_size_min?: number | null
+          check_size_max?: number | null
+          stage_preference?: string[] | null
+          thesis?: string | null
+          notes?: string | null
+          relationship_status?: 'cold' | 'warm' | 'hot' | 'portfolio' | 'passed'
+          last_contacted_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          firm?: string | null
+          email?: string | null
+          phone?: string | null
+          website?: string | null
+          linkedin_url?: string | null
+          type?: 'vc' | 'angel' | 'family_office' | 'corporate' | 'accelerator' | 'other'
+          check_size_min?: number | null
+          check_size_max?: number | null
+          stage_preference?: string[] | null
+          thesis?: string | null
+          notes?: string | null
+          relationship_status?: 'cold' | 'warm' | 'hot' | 'portfolio' | 'passed'
+          last_contacted_at?: string | null
+          contact_id?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      investments: {
+        Row: {
+          id: string
+          user_id: string
+          investor_id: string
+          round_name: string
+          amount: number | null
+          valuation_pre: number | null
+          valuation_post: number | null
+          equity_percentage: number | null
+          instrument: 'equity' | 'safe' | 'convertible_note' | 'other'
+          stage: 'intro' | 'pitch' | 'due_diligence' | 'term_sheet' | 'negotiation' | 'closed' | 'passed'
+          pitch_date: string | null
+          close_date: string | null
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          investor_id: string
+          round_name: string
+          amount?: number | null
+          valuation_pre?: number | null
+          valuation_post?: number | null
+          equity_percentage?: number | null
+          instrument?: 'equity' | 'safe' | 'convertible_note' | 'other'
+          stage?: 'intro' | 'pitch' | 'due_diligence' | 'term_sheet' | 'negotiation' | 'closed' | 'passed'
+          pitch_date?: string | null
+          close_date?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          investor_id?: string
+          round_name?: string
+          amount?: number | null
+          valuation_pre?: number | null
+          valuation_post?: number | null
+          equity_percentage?: number | null
+          instrument?: 'equity' | 'safe' | 'convertible_note' | 'other'
+          stage?: 'intro' | 'pitch' | 'due_diligence' | 'term_sheet' | 'negotiation' | 'closed' | 'passed'
+          pitch_date?: string | null
+          close_date?: string | null
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      email_accounts: {
+        Row: {
+          id: string
+          user_id: string
+          provider: 'gmail'
+          email_address: string
+          access_token: string
+          refresh_token: string
+          token_expires_at: string
+          sync_enabled: boolean
+          last_synced_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          provider?: 'gmail'
+          email_address: string
+          access_token: string
+          refresh_token: string
+          token_expires_at: string
+          sync_enabled?: boolean
+          last_synced_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          provider?: 'gmail'
+          email_address?: string
+          access_token?: string
+          refresh_token?: string
+          token_expires_at?: string
+          sync_enabled?: boolean
+          last_synced_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      email_summaries: {
+        Row: {
+          id: string
+          user_id: string
+          email_account_id: string
+          gmail_message_id: string
+          thread_id: string | null
+          subject: string | null
+          from_address: string
+          to_addresses: string[] | null
+          date: string
+          snippet: string | null
+          ai_summary: string | null
+          ai_sentiment: 'positive' | 'neutral' | 'negative' | 'urgent' | null
+          ai_action_items: string[] | null
+          ai_suggested_stage: string | null
+          ai_follow_up_draft: string | null
+          contact_id: string | null
+          deal_id: string | null
+          investor_id: string | null
+          is_read: boolean
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          email_account_id: string
+          gmail_message_id: string
+          thread_id?: string | null
+          subject?: string | null
+          from_address: string
+          to_addresses?: string[] | null
+          date: string
+          snippet?: string | null
+          ai_summary?: string | null
+          ai_sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent' | null
+          ai_action_items?: string[] | null
+          ai_suggested_stage?: string | null
+          ai_follow_up_draft?: string | null
+          contact_id?: string | null
+          deal_id?: string | null
+          investor_id?: string | null
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          email_account_id?: string
+          gmail_message_id?: string
+          thread_id?: string | null
+          subject?: string | null
+          from_address?: string
+          to_addresses?: string[] | null
+          date?: string
+          snippet?: string | null
+          ai_summary?: string | null
+          ai_sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent' | null
+          ai_action_items?: string[] | null
+          ai_suggested_stage?: string | null
+          ai_follow_up_draft?: string | null
+          contact_id?: string | null
+          deal_id?: string | null
+          investor_id?: string | null
+          is_read?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      acquisition_costs: {
+        Row: {
+          id: string
+          user_id: string
+          source: string
+          period_start: string
+          period_end: string
+          spend: number
+          leads_generated: number
+          notes: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          source: string
+          period_start: string
+          period_end: string
+          spend?: number
+          leads_generated?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          source?: string
+          period_start?: string
+          period_end?: string
+          spend?: number
+          leads_generated?: number
+          notes?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

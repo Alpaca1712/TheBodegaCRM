@@ -41,103 +41,172 @@
 ## Phase 2: Contacts Module
 > Core CRM feature — managing contacts.
 
-- [x] Create SQL migration file `supabase/migrations/001_contacts.sql` — create `contacts` table: id (uuid, pk, default gen_random_uuid()), user_id (uuid, references auth.users), first_name (text, not null), last_name (text, not null), email (text), phone (text), company_id (uuid, nullable), title (text), status (text, default 'active', check in ('active','inactive','lead')), source (text), notes (text), avatar_url (text), created_at (timestamptz, default now()), updated_at (timestamptz, default now()). Add RLS policies: users can only CRUD their own contacts. Create index on user_id.
-- [x] Create `src/lib/api/contacts.ts` — CRUD functions: getContacts(filters, pagination, sort), getContactById(id), createContact(data), updateContact(id, data), deleteContact(id). All using typed Supabase client. Include search by name/email.
-- [x] Create `src/app/(dashboard)/contacts/page.tsx` — contacts list page with: search bar, status filter tabs (All/Active/Inactive/Lead), sortable table (name, email, company, status, created), pagination (20 per page), "Add Contact" button
-- [x] Create `src/components/contacts/contacts-table.tsx` — the table component. Clickable rows navigate to contact detail. Show avatar circle with initials if no image.
-- [x] Create `src/components/contacts/contact-form.tsx` — form for create/edit contact. Fields: first name, last name, email, phone, title, company (dropdown), status (select), source, notes. Use react-hook-form + zod.
-- [x] Create `src/app/(dashboard)/contacts/new/page.tsx` — new contact page using the form component
-- [x] Create `src/app/(dashboard)/contacts/[id]/page.tsx` — contact detail page showing all info, with edit button, delete button (with confirmation), and activity timeline placeholder
-- [x] Create `src/app/(dashboard)/contacts/[id]/edit/page.tsx` — edit contact page pre-filled with existing data
-- [x] Create `src/hooks/use-contacts.ts` — React Query hooks: useContacts(filters), useContact(id), useCreateContact(), useUpdateContact(), useDeleteContact() with proper cache invalidation
+- [x] Create SQL migration file `supabase/migrations/001_contacts.sql`
+- [x] Create `src/lib/api/contacts.ts` — CRUD functions
+- [x] Create `src/app/(dashboard)/contacts/page.tsx` — contacts list page
+- [x] Create `src/components/contacts/contacts-table.tsx`
+- [x] Create `src/components/contacts/contact-form.tsx`
+- [x] Create `src/app/(dashboard)/contacts/new/page.tsx`
+- [x] Create `src/app/(dashboard)/contacts/[id]/page.tsx`
+- [x] Create `src/app/(dashboard)/contacts/[id]/edit/page.tsx`
+- [x] Create `src/hooks/use-contacts.ts`
 - [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 3: Companies Module
-> Contacts belong to companies. Companies have their own views.
 
-- [x] Create SQL migration `supabase/migrations/002_companies.sql` — create `companies` table: id (uuid pk), user_id (uuid, references auth.users), name (text not null), domain (text), industry (text), size (text, check in ('1-10','11-50','51-200','201-500','500+')), website (text), phone (text), address_line1 (text), address_city (text), address_state (text), address_country (text), logo_url (text), created_at, updated_at. RLS policies for user isolation. Index on user_id and name.
-- [x] Create `src/lib/api/companies.ts` — CRUD functions similar to contacts. getCompanies should support search + industry filter.
-- [x] Create `src/app/(dashboard)/companies/page.tsx` — companies list with card/grid view showing logo, name, industry, contact count, deal value
-- [x] Create `src/components/companies/company-card.tsx` — card component for grid view
-- [x] Create `src/app/(dashboard)/companies/new/page.tsx` — new company form
-- [x] Create `src/app/(dashboard)/companies/[id]/page.tsx` — company detail: info, associated contacts list, associated deals list
-- [x] Create `src/hooks/use-companies.ts` — React Query hooks for companies
+- [x] Create SQL migration `supabase/migrations/002_companies.sql`
+- [x] Create `src/lib/api/companies.ts`
+- [x] Create `src/app/(dashboard)/companies/page.tsx`
+- [x] Create `src/components/companies/company-card.tsx`
+- [x] Create `src/app/(dashboard)/companies/new/page.tsx`
+- [x] Create `src/app/(dashboard)/companies/[id]/page.tsx`
+- [x] Create `src/hooks/use-companies.ts`
 - [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 4: Deals / Pipeline
-> Sales pipeline — the money feature.
 
-- [x] Create SQL migration `supabase/migrations/003_deals.sql` — create `deals` table: id (uuid pk), user_id (uuid), title (text not null), value (numeric(12,2)), currency (text default 'USD'), stage (text not null, check in ('lead','qualified','proposal','negotiation','closed_won','closed_lost')), contact_id (uuid references contacts), company_id (uuid references companies), expected_close_date (date), probability (integer, 0-100), notes (text), created_at, updated_at. RLS policies. Indexes on user_id, stage, contact_id, company_id.
-- [x] Create `src/lib/api/deals.ts` — CRUD + getDealsByStage() for pipeline view, getDealStats() for totals/averages
-- [x] Create `src/app/(dashboard)/deals/page.tsx` — Kanban board view of deals organized by stage. Columns: Lead → Qualified → Proposal → Negotiation → Closed Won / Closed Lost. Show deal cards with title, value, company, expected close date.
-- [x] Create `src/components/deals/pipeline-board.tsx` — the kanban board component. Drag-and-drop between columns to change stage (use HTML drag/drop API, no extra deps). Each column shows sum of deal values.
-- [x] Create `src/components/deals/deal-card.tsx` — individual deal card in the pipeline
-- [x] Create `src/app/(dashboard)/deals/new/page.tsx` — new deal form with contact/company dropdowns
-- [x] Create `src/app/(dashboard)/deals/[id]/page.tsx` — deal detail page with all info + related contact/company links
-- [x] Create `src/hooks/use-deals.ts` — React Query hooks for deals
+- [x] Create SQL migration `supabase/migrations/003_deals.sql`
+- [x] Create `src/lib/api/deals.ts`
+- [x] Create `src/app/(dashboard)/deals/page.tsx` — Kanban board
+- [x] Create `src/components/deals/pipeline-board.tsx`
+- [x] Create `src/components/deals/deal-card.tsx`
+- [x] Create `src/app/(dashboard)/deals/new/page.tsx`
+- [x] Create `src/app/(dashboard)/deals/[id]/page.tsx`
+- [x] Create `src/hooks/use-deals.ts`
 - [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 5: Activities & Timeline
-> Track interactions — calls, emails, meetings, tasks.
 
-- [x] Create SQL migration `supabase/migrations/004_activities.sql` — create `activities` table: id (uuid pk), user_id (uuid), type (text not null, check in ('call','email','meeting','task','note')), title (text not long, description (text), contact_id (uuid references contacts), company_id (uuid references companies), deal_id (uuid references deals), due_date (timestamptz), completed (boolean default false), completed_at (timestamptz), created_at, updated_at. RLS policies. Indexes on user_id, contact_id, type.
-- [x] Create `src/lib/api/activities.ts` — CRUD + getActivitiesByContact(contactId), getUpcomingActivities(), getOverdueActivities()
-- [x] Create `src/app/(dashboard)/activities/page.tsx` — activities list with type filter tabs, date range filter, overdue highlight
-- [x] Create `src/components/activities/activity-timeline.tsx` — vertical timeline component showing activities chronologically. Used on contact/company/deal detail pages.
-- [x] Create `src/components/activities/activity-form.tsx` — quick-add activity form (can be used inline or as modal)
+- [x] Create SQL migration `supabase/migrations/004_activities.sql`
+- [x] Create `src/lib/api/activities.ts`
+- [x] Create `src/app/(dashboard)/activities/page.tsx`
+- [x] Create `src/components/activities/activity-timeline.tsx`
+- [x] Create `src/components/activities/activity-form.tsx`
 - [x] Update contact detail page to show real activity timeline
 - [x] Update deal detail page to show related activities
-- [x] Create `src/hooks/use-activities.ts` — React Query hooks for activities
+- [x] Create `src/hooks/use-activities.ts`
 - [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 6: Dashboard & Analytics
-> The home page — make it useful.
 
-- [x] Create `src/lib/api/dashboard.ts` — aggregate queries: total contacts, total deal value, deals by stage count, conversion rate, recent activities, upcoming tasks, new contacts this month, revenue won this month
-- [x] Update `src/app/(dashboard)/page.tsx` — real dashboard with: KPI cards row (contacts, deal value, conversion rate, tasks due), deals pipeline mini-chart (horizontal bar by stage), recent activity feed (last 10), upcoming tasks list, new contacts this week
-- [x] Create `src/components/dashboard/kpi-card.tsx` — stat card with icon, label, value, and trend indicator
-- [x] Create `src/components/dashboard/pipeline-chart.tsx` — horizontal bar chart showing deal values per stage (built with plain divs + Tailwind, no chart library needed)
-- [x] Create `src/components/dashboard/recent-activity.tsx` — compact activity feed component
+- [x] Create `src/lib/api/dashboard.ts`
+- [x] Update dashboard with KPI cards, pipeline chart, recent activity, upcoming tasks
+- [x] Create dashboard components (kpi-card, pipeline-chart, recent-activity)
 - [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 7: Search, Tags & Polish
-> Quality of life features that make it feel complete.
 
-- [x] Create `src/components/search/global-search.tsx` — command palette (Cmd+K) that searches across contacts, companies, and deals. Overlay modal with keyboard navigation.
-- [x] Add global search trigger to the header component
-- [x] Create SQL migration `supabase/migrations/005_tags.sql` — create `tags` table (id, user_id, name, color) and `contact_tags` junction table (contact_id, tag_id). RLS policies.
-- [x] Create `src/components/contacts/tag-badge.tsx` and tag management on contact detail pages
-- [x] Add loading skeletons to all list pages (contacts, companies, deals, activities)
-- [x] Add toast notification system for success/error feedback on all CRUD operations
-- [x] Add empty states with illustrations (SVG) for all list pages when there's no data
-- [x] Create `src/app/(dashboard)/settings/page.tsx` — basic settings page: user profile (name, email), account section
-- [x] Final UI polish pass: consistent spacing, hover states, transitions, responsive design (mobile sidebar collapse)
-- [x] Verify `npm run build` passes with zero errors (one library compatibility warning remains)
+- [x] Create global search (Cmd+K command palette)
+- [x] Create tags system with SQL migration
+- [x] Add loading skeletons, toasts, empty states
+- [x] Create settings page
+- [x] Final UI polish
+- [x] Verify `npm run build` passes
 
 ---
 
 ## Phase 8: Testing & Hardening
-> Make it production-worthy.
 
-- [x] Install testing deps: `vitest @testing-library/react @testing-library/jest-dom @vitejs/plugin-react jsdom`
-- [x] Create `vitest.config.ts` with proper Next.js + React setup
-- [x] Write tests for all API functions in `src/lib/api/` — mock Supabase client, test CRUD operations
-- [x] Write tests for contact-form validation (zod schemas)
-- [x] Write tests for deal stage transitions
-- [x] Add `npm run test` script to package.json
-- [x] Run full test suite — fix any failures
-- [x] Run `npm run build` — fix any errors
-- [x] Create comprehensive README.md with: project description, tech stack, setup instructions, env vars needed, deployment guide
+- [x] Install testing deps, create vitest config
+- [x] Write tests for API, forms, and deal stage transitions
+- [x] Run full test suite and build
+- [x] Create comprehensive README.md
+
+---
+
+## Phase 9: Investors & Fundraising Pipeline
+> Track investor relationships, investment rounds, and fundraising metrics.
+
+- [x] Create SQL migration `supabase/migrations/006_investors.sql` — investors + investments tables with RLS
+- [x] Create `src/types/database.ts` updates — add investors, investments types
+- [x] Create `src/lib/api/investors.ts` — CRUD for investors + investments + stats
+- [x] Create `src/app/(dashboard)/investors/page.tsx` — investors list with filters + stats cards
+- [x] Create `src/app/(dashboard)/investors/new/page.tsx` — new investor form
+- [x] Create `src/app/(dashboard)/investors/[id]/page.tsx` — investor detail with investments
+- [ ] Create `src/app/(dashboard)/investors/[id]/edit/page.tsx` — edit investor form
+- [ ] Create `src/components/investors/investment-form.tsx` — form to add investment rounds to an investor
+- [ ] Create `src/components/investors/investor-pipeline.tsx` — Kanban-style board for investment stages (intro → pitch → due diligence → term sheet → negotiation → closed/passed)
+- [ ] Create `src/hooks/use-investors.ts` — React Query hooks for investors + investments
+- [ ] Add investor stats to dashboard (total raised, pipeline, active conversations)
+- [ ] Verify `npm run build` passes
+
+---
+
+## Phase 10: AI Engine (Novita API)
+> AI-powered deal intelligence, email summarization, and follow-up generation.
+
+- [x] Create `src/lib/api/ai.ts` — Novita API wrapper with functions: summarizeEmail, generateFollowUp, suggestDealStage, analyzeLtvCac
+- [ ] Create `src/app/api/ai/summarize/route.ts` — API route for email summarization (POST)
+- [ ] Create `src/app/api/ai/follow-up/route.ts` — API route for follow-up generation (POST)
+- [ ] Create `src/app/api/ai/deal-stage/route.ts` — API route for deal stage suggestions (POST)
+- [ ] Create `src/components/ai/ai-summary-card.tsx` — display AI summary with sentiment badge + action items
+- [ ] Create `src/components/ai/follow-up-draft.tsx` — display + edit AI-generated follow-up email
+- [ ] Create `src/components/ai/deal-suggestion-banner.tsx` — banner on deal detail showing AI stage suggestion
+- [ ] Add AI insights panel to contact detail page — show recent email summaries + suggested follow-ups
+- [ ] Add AI insights panel to deal detail page — show stage suggestion + reasoning
+- [ ] Verify `npm run build` passes
+
+---
+
+## Phase 11: Gmail Integration (OAuth + Metadata Sync)
+> Connect Gmail to automatically sync email metadata and power AI features.
+
+- [x] Create `src/lib/api/gmail.ts` — OAuth flow + metadata fetching (getGoogleAuthUrl, exchangeCodeForTokens, refreshAccessToken, fetchRecentMessages)
+- [x] Create SQL migration `supabase/migrations/007_email_and_ai.sql` — email_accounts + email_summaries + acquisition_costs tables
+- [x] Create `src/app/api/gmail/connect/route.ts` — redirect to Google OAuth
+- [x] Create `src/app/api/gmail/callback/route.ts` — handle OAuth callback, store tokens
+- [x] Create `src/app/(dashboard)/email/page.tsx` — email hub showing connected accounts + AI summaries
+- [ ] Create `src/app/api/gmail/sync/route.ts` — API route that fetches new messages, matches to contacts/deals, runs AI summarization via Novita
+- [ ] Create `src/components/email/email-summary-list.tsx` — list of email summaries with sentiment + action items
+- [ ] Add email thread view on contact detail page — show email history with that contact
+- [ ] Add email thread view on deal detail page — show emails related to that deal
+- [ ] Add email thread view on investor detail page — show emails related to that investor
+- [ ] Create background sync mechanism (cron or on-demand) for periodic email fetching
+- [ ] Verify `npm run build` passes
+
+---
+
+## Phase 12: LTV/CAC & Revenue Analytics
+> Unit economics dashboard with acquisition cost tracking.
+
+- [x] Add LTV/CAC metrics cards to dashboard (Customer LTV, Win Rate/CAC proxy, Avg Deal Size)
+- [x] Create `acquisition_costs` table in migration 007
+- [x] Create `analyzeLtvCac` function in `src/lib/api/ai.ts`
+- [ ] Create `src/app/(dashboard)/analytics/page.tsx` — dedicated analytics page with: LTV trend, CAC by source, LTV:CAC ratio chart, revenue by month, deal conversion funnel
+- [ ] Create `src/components/analytics/ltv-cac-chart.tsx` — visual LTV vs CAC comparison
+- [ ] Create `src/components/analytics/revenue-chart.tsx` — monthly revenue bar chart (closed_won deals)
+- [ ] Create `src/components/analytics/conversion-funnel.tsx` — deal stage funnel visualization
+- [ ] Create `src/app/(dashboard)/analytics/costs/page.tsx` — acquisition cost tracking form + history
+- [ ] Add AI analysis to analytics page — call analyzeLtvCac and show insights
+- [ ] Add "Analytics" link to sidebar navigation
+- [ ] Verify `npm run build` passes
+
+---
+
+## Phase 13: UI/UX Enhancements
+> Polish and features that make it feel like a real product.
+
+- [ ] Create smart reminder system — flag stale deals (no activity in 7+ days), stale contacts (no contact in 30+ days)
+- [ ] Add bulk actions to contacts list (bulk tag, bulk delete, bulk status change)
+- [ ] Create email templates system — save + reuse follow-up templates
+- [ ] Add keyboard shortcuts throughout (Cmd+N for new, Cmd+K for search, etc.)
+- [ ] Add data export (CSV) for contacts, companies, deals
+- [ ] Create onboarding flow for new users — guided setup wizard
+- [ ] Add dark mode support
+- [ ] Mobile-responsive improvements — bottom nav on mobile, swipe actions on lists
+- [ ] Add notification badges to sidebar (overdue tasks, stale deals)
+- [ ] Performance optimization — implement virtual scrolling for large lists
+- [ ] Verify `npm run build` passes
 
 ---
 
@@ -149,4 +218,4 @@ When ALL phases are done:
 3. The final merge to main will trigger Vercel deployment
 4. The CRM is live 🚀
 
-- [x] ALL PHASES COMPLETE
+- [ ] ALL PHASES COMPLETE

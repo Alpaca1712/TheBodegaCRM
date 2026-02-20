@@ -87,6 +87,26 @@ supabase/
 
 ### Code Patterns
 - Follow existing patterns: look at how similar features were built (e.g. contacts module) and replicate that structure for companies, deals, activities
+- **Investors module** follows the same pattern as contacts/companies: list page → new page → detail page → edit page, with `src/lib/api/investors.ts` for data and `src/hooks/use-investors.ts` for React Query hooks
+- **AI features** use the Novita API via `src/lib/api/ai.ts` — always parse JSON responses with fallback handling
+- **Gmail integration** uses OAuth tokens stored in `email_accounts` table — always refresh tokens before API calls using `refreshAccessToken()`
+- **LTV/CAC** metrics are computed from deals (closed_won = revenue) and `acquisition_costs` table
+
+### New Modules Added (Phase 9-13)
+- `src/lib/api/investors.ts` — investor + investment CRUD and stats
+- `src/lib/api/ai.ts` — Novita AI wrapper (summarizeEmail, generateFollowUp, suggestDealStage, analyzeLtvCac)
+- `src/lib/api/gmail.ts` — Gmail OAuth + metadata fetching
+- `src/app/(dashboard)/investors/` — investor management pages
+- `src/app/(dashboard)/email/` — email AI hub
+- `src/app/api/gmail/` — Gmail OAuth routes (connect + callback)
+- `supabase/migrations/006_investors.sql` — investors + investments tables
+- `supabase/migrations/007_email_and_ai.sql` — email_accounts + email_summaries + acquisition_costs tables
+
+### Environment Variables (new)
+- `NOVITA_API_KEY` — API key for Novita AI (used for email summarization, follow-up generation, deal suggestions)
+- `GOOGLE_CLIENT_ID` — Google OAuth client ID for Gmail
+- `GOOGLE_CLIENT_SECRET` — Google OAuth client secret
+- `GOOGLE_REDIRECT_URI` — OAuth redirect (e.g. https://the-bodega-crm.vercel.app/api/gmail/callback)
 
 ### Git Behavior
 - You are working on the `dev` branch
