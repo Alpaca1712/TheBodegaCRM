@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Users, DollarSign, Target, Calendar, TrendingUp, Clock } from 'lucide-react'
+import { Users, DollarSign, Target, Calendar, TrendingUp, Clock, MessageSquare } from 'lucide-react'
 import { getDashboardStats } from '@/lib/api/dashboard'
 import KpiCard from '@/components/dashboard/kpi-card'
 import PipelineChart from '@/components/dashboard/pipeline-chart'
@@ -40,7 +40,7 @@ export default function DashboardPage() {
       <div>
         <h1 className="text-3xl font-bold text-slate-900 mb-6">Dashboard</h1>
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-6">
-          {[...Array(4)].map((_, i) => (
+          {[...Array(8)].map((_, i) => (
             <div key={i} className="bg-white rounded-xl shadow p-6 animate-pulse">
               <div className="flex items-start justify-between mb-4">
                 <div className="p-2 bg-slate-200 rounded-lg h-10 w-10"></div>
@@ -138,6 +138,38 @@ export default function DashboardPage() {
           icon={Calendar}
           trend={stats && stats.upcomingTasks.length > 5 ? 'up' : 'neutral'}
           description="Upcoming tasks"
+        />
+      </div>
+
+      {/* Investor Stats KPI Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+        <KpiCard
+          title="Total Raised"
+          value={`$${stats?.totalRaised.toLocaleString() || '0'}`}
+          icon={DollarSign}
+          trend="up"
+          description="From all investors"
+        />
+        <KpiCard
+          title="Investment Pipeline"
+          value={`$${stats?.totalPipeline.toLocaleString() || '0'}`}
+          icon={TrendingUp}
+          trend="neutral"
+          description="Potential investments"
+        />
+        <KpiCard
+          title="Active Conversations"
+          value={stats?.activeConversations.toLocaleString() || '0'}
+          icon={MessageSquare}
+          trend="neutral"
+          description="With investors"
+        />
+        <KpiCard
+          title="Total Investments"
+          value={stats?.totalInvestments.toLocaleString() || '0'}
+          icon={Target}
+          trend="up"
+          description="Investment rounds"
         />
       </div>
 

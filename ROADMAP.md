@@ -133,12 +133,12 @@
 - [x] Create `src/app/(dashboard)/investors/page.tsx` — investors list with filters + stats cards
 - [x] Create `src/app/(dashboard)/investors/new/page.tsx` — new investor form
 - [x] Create `src/app/(dashboard)/investors/[id]/page.tsx` — investor detail with investments
-- [ ] Create `src/app/(dashboard)/investors/[id]/edit/page.tsx` — edit investor form
-- [ ] Create `src/components/investors/investment-form.tsx` — form to add investment rounds to an investor
-- [ ] Create `src/components/investors/investor-pipeline.tsx` — Kanban-style board for investment stages (intro → pitch → due diligence → term sheet → negotiation → closed/passed)
-- [ ] Create `src/hooks/use-investors.ts` — React Query hooks for investors + investments
-- [ ] Add investor stats to dashboard (total raised, pipeline, active conversations)
-- [ ] Verify `npm run build` passes
+- [x] Create `src/app/(dashboard)/investors/[id]/edit/page.tsx` — edit investor form
+- [x] Create `src/components/investors/investment-form.tsx` — form to add investment rounds to an investor
+- [x] Create `src/components/investors/investor-pipeline.tsx` — Kanban-style board for investment stages (intro → pitch → due diligence → term sheet → negotiation → closed/passed)
+- [x] Create `src/hooks/use-investors.ts` — React Query hooks for investors + investments
+- [x] Add investor stats to dashboard (total raised, pipeline, active conversations)
+- [x] Verify `npm run build` passes
 
 ---
 
