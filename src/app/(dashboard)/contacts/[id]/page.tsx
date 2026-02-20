@@ -12,6 +12,7 @@ import { getActivitiesByContact } from '@/lib/api/activities';
 import ActivityTimeline from '@/components/activities/activity-timeline';
 import ActivityForm from '@/components/activities/activity-form';
 import TagManager from '@/components/contacts/tag-manager';
+import ContactAiInsights from '@/components/ai/contact-ai-insights';
 import { useCreateActivity } from '@/hooks/use-activities';
 import { useTagsByContactId, useAvailableTagsForContact, useAddTagToContact, useRemoveTagFromContact } from '@/hooks/use-tags';
 import type { Contact } from '@/lib/api/contacts';
@@ -391,6 +392,12 @@ export default function ContactDetailPage() {
               </div>
             </div>
           </div>
+
+          {/* AI Insights Panel */}
+          <ContactAiInsights
+            contactId={contactId}
+            contactEmail={contact.email}
+          />
 
           <div className="bg-white rounded-lg border border-slate-200 p-6">
             <h2 className="text-lg font-semibold text-slate-900 mb-4">Quick Actions</h2>

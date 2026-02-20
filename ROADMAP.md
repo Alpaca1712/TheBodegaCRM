@@ -146,14 +146,14 @@
 > AI-powered deal intelligence, email summarization, and follow-up generation.
 
 - [x] Create `src/lib/api/ai.ts` — Novita API wrapper with functions: summarizeEmail, generateFollowUp, suggestDealStage, analyzeLtvCac
-- [ ] Create `src/app/api/ai/summarize/route.ts` — API route for email summarization (POST)
-- [ ] Create `src/app/api/ai/follow-up/route.ts` — API route for follow-up generation (POST)
-- [ ] Create `src/app/api/ai/deal-stage/route.ts` — API route for deal stage suggestions (POST)
-- [ ] Create `src/components/ai/ai-summary-card.tsx` — display AI summary with sentiment badge + action items
-- [ ] Create `src/components/ai/follow-up-draft.tsx` — display + edit AI-generated follow-up email
-- [ ] Create `src/components/ai/deal-suggestion-banner.tsx` — banner on deal detail showing AI stage suggestion
-- [ ] Add AI insights panel to contact detail page — show recent email summaries + suggested follow-ups
-- [ ] Add AI insights panel to deal detail page — show stage suggestion + reasoning
+- [x] Create `src/app/api/ai/summarize/route.ts` — API route for email summarization (POST)
+- [x] Create `src/app/api/ai/follow-up/route.ts` — API route for follow-up generation (POST)
+- [x] Create `src/app/api/ai/deal-stage/route.ts` — API route for deal stage suggestions (POST)
+- [x] Create `src/components/ai/ai-summary-card.tsx` — display AI summary with sentiment badge + action items
+- [x] Create `src/components/ai/follow-up-draft.tsx` — display + edit AI-generated follow-up email
+- [x] Create `src/components/ai/deal-suggestion-banner.tsx` — banner on deal detail showing AI stage suggestion
+- [x] Add AI insights panel to contact detail page — show recent email summaries + suggested follow-ups
+- [x] Add AI insights panel to deal detail page — show stage suggestion + reasoning
 - [ ] Verify `npm run build` passes
 
 ---
