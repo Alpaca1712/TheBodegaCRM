@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { createClient } from '@/lib/supabase/client'
+import { signOut } from '@/lib/auth/actions'
 
 type UserProfile = {
   id: string
@@ -30,32 +32,38 @@ export default function SettingsPage() {
   })
   const [loading, setLoading] = useState(true)
   const [editing, setEditing] = useState(false)
+  const [isSigningOut, setIsSigningOut] = useState(false)
   
-  // Mock user data for now - in a real app, this would come from auth context or API
   useEffect(() => {
-    // Simulate loading user data
-    setTimeout(() => {
-      setUser({
-        id: 'user-123',
-        name: 'John Doe',
-        email: 'john@example.com',
-        avatar_url: null
-      })
+    async function loadUser() {
+      const supabase = createClient()
+      const { data: { session } } = await supabase.auth.getSession()
+      if (session?.user) {
+        setUser({
+          id: session.user.id,
+          name: session.user.user_metadata?.name || null,
+          email: session.user.email || '',
+          avatar_url: session.user.user_metadata?.avatar_url || null,
+        })
+      }
       setLoading(false)
-    }, 500)
+    }
+    loadUser()
   }, [])
   
   const handleSaveProfile = () => {
-    // In a real app, this would call an API to update the user profile
     console.log('Saving profile:', user)
     setEditing(false)
-    // Show toast notification
   }
   
-  const handleSignOut = () => {
-    // In a real app, this would handle sign out
-    console.log('Signing out')
-    // Redirect to login page
+  const handleSignOut = async () => {
+    try {
+      setIsSigningOut(true)
+      await signOut()
+    } catch (error) {
+      console.error('Failed to sign out:', error)
+      setIsSigningOut(false)
+    }
   }
   
   if (loading) {
@@ -248,9 +256,10 @@ export default function SettingsPage() {
                   variant="destructive" 
                   className="w-full flex items-center justify-center gap-2"
                   onClick={handleSignOut}
+                  disabled={isSigningOut}
                 >
                   <LogOut className="h-4 w-4" />
-                  Sign Out
+                  {isSigningOut ? 'Signing out...' : 'Sign Out'}
                 </Button>
               </div>
             </CardContent>

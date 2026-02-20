@@ -7,7 +7,15 @@ export const metadata: Metadata = {
   description: 'Sign in to your CRM account',
 };
 
-export default function LoginPage() {
+interface LoginPageProps {
+  searchParams: Promise<{ error?: string; message?: string }>;
+}
+
+export default async function LoginPage({ searchParams }: LoginPageProps) {
+  const params = await searchParams;
+  const errorMessage = params.error;
+  const infoMessage = params.message;
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
@@ -28,12 +36,17 @@ export default function LoginPage() {
             </Link>
           </p>
         </div>
+        {errorMessage && (
+          <div className="rounded-md bg-red-50 p-4">
+            <p className="text-sm text-red-800">{errorMessage}</p>
+          </div>
+        )}
+        {infoMessage && (
+          <div className="rounded-md bg-blue-50 p-4">
+            <p className="text-sm text-blue-800">{infoMessage}</p>
+          </div>
+        )}
         <AuthForm mode="login" />
-        <div className="text-center text-sm text-slate-500">
-          <p>
-            Demo credentials: admin@example.com / password
-          </p>
-        </div>
       </div>
     </div>
   );
