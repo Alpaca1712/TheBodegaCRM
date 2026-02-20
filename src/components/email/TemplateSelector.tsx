@@ -2,20 +2,10 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Sparkles, Copy, Check, Star } from 'lucide-react'
+import { Search, Copy, Check, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
-// Dialog components are not available, using custom modal implementation
 import { Badge } from '@/components/ui/badge'
-// Separator component is not available, using custom divider
 import { useEmailTemplates, usePopularTemplates } from '@/hooks/use-email-templates'
 type EmailTemplate = {
   id: string
@@ -32,7 +22,6 @@ type EmailTemplate = {
   created_at: string
   updated_at: string
 }
-import { cn } from '@/lib/utils'
 
 type TemplateSelectorProps = {
   onSelectTemplate: (template: EmailTemplate) => void
@@ -41,6 +30,15 @@ type TemplateSelectorProps = {
   buttonVariant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'destructive'
   buttonSize?: 'default' | 'sm' | 'lg'
 }
+
+// Dialog component not available, using custom modal implementation
+const ModalWrapper = ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) => (
+  <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+    <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden">
+      {children}
+    </div>
+  </div>
+);
 
 export function TemplateSelector({
   onSelectTemplate,
@@ -99,15 +97,6 @@ export function TemplateSelector({
     return colors[category] || 'outline'
   }
 
-  // Dialog component not available, using custom modal implementation
-  const ModalWrapper = ({ children }: { children: React.ReactNode }) => (
-    <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-      <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden">
-        {children}
-      </div>
-    </div>
-  )
-
   return (
     <>
       <Button 
@@ -120,7 +109,7 @@ export function TemplateSelector({
       </Button>
       
       {isOpen && (
-        <ModalWrapper>
+        <ModalWrapper isOpen={isOpen}>
           <div className="p-6 overflow-y-auto max-h-[80vh]">
             <div className="flex justify-between items-center mb-4">
               <div>

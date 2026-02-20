@@ -5,9 +5,9 @@
 /**
  * Convert array of objects to CSV string
  */
-export function objectsToCSV<T extends Record<string, string | number | boolean | Date | null | undefined | string[]>>(
-  data: T[], 
-  columns: { key: keyof T; label: string }[]
+export function objectsToCSV(
+  data: Record<string, unknown>[], 
+  columns: { key: string; label: string }[]
 ): string {
   if (!data.length) return '';
   
@@ -83,7 +83,7 @@ export function generateFilename(baseName: string, extension = 'csv'): string {
 /**
  * Export contacts to CSV
  */
-export async function exportContactsToCSV(contacts: Record<string, any>[]): Promise<void> {
+export async function exportContactsToCSV(contacts: unknown[]): Promise<void> {
   const columns = [
     { key: 'first_name', label: 'First Name' },
     { key: 'last_name', label: 'Last Name' },
@@ -97,7 +97,7 @@ export async function exportContactsToCSV(contacts: Record<string, any>[]): Prom
     { key: 'updated_at', label: 'Updated At' },
   ];
   
-  const csvContent = objectsToCSV(contacts, columns);
+  const csvContent = objectsToCSV(contacts as Record<string, unknown>[], columns);
   const filename = generateFilename('contacts');
   downloadCSV(csvContent, filename);
 }
@@ -105,7 +105,7 @@ export async function exportContactsToCSV(contacts: Record<string, any>[]): Prom
 /**
  * Export companies to CSV
  */
-export async function exportCompaniesToCSV(companies: any[]): Promise<void> {
+export async function exportCompaniesToCSV(companies: unknown[]): Promise<void> {
   const columns = [
     { key: 'name', label: 'Company Name' },
     { key: 'industry', label: 'Industry' },
@@ -123,7 +123,7 @@ export async function exportCompaniesToCSV(companies: any[]): Promise<void> {
     { key: 'updated_at', label: 'Updated At' },
   ];
   
-  const csvContent = objectsToCSV(companies, columns);
+  const csvContent = objectsToCSV(companies as Record<string, unknown>[], columns);
   const filename = generateFilename('companies');
   downloadCSV(csvContent, filename);
 }
@@ -131,7 +131,7 @@ export async function exportCompaniesToCSV(companies: any[]): Promise<void> {
 /**
  * Export deals to CSV
  */
-export async function exportDealsToCSV(deals: Record<string, any>[]): Promise<void> {
+export async function exportDealsToCSV(deals: unknown[]): Promise<void> {
   const columns = [
     { key: 'title', label: 'Deal Title' },
     { key: 'description', label: 'Description' },
@@ -148,7 +148,8 @@ export async function exportDealsToCSV(deals: Record<string, any>[]): Promise<vo
     { key: 'updated_at', label: 'Updated At' },
   ];
   
-  const csvContent = objectsToCSV(deals, columns);
+  const csvContent = objectsToCSV(deals as Record<string, unknown>[], columns);
   const filename = generateFilename('deals');
   downloadCSV(csvContent, filename);
 }
+

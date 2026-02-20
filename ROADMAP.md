@@ -201,12 +201,12 @@
 - [x] Create email templates system — save + reuse follow-up templates
 - [x] Add keyboard shortcuts throughout (Cmd+N for new, Cmd+K for search, etc.)
 - [x] Add data export (CSV) for contacts, companies, deals
-- [ ] Create onboarding flow for new users — guided setup wizard
-- [ ] Add dark mode support
+- [x] Create onboarding flow for new users — guided setup wizard
+- [x] Add dark mode support
 - [ ] Mobile-responsive improvements — bottom nav on mobile, swipe actions on lists
 - [ ] Add notification badges to sidebar (overdue tasks, stale deals)
 - [ ] Performance optimization — implement virtual scrolling for large lists
-- [ ] Verify `npm run build` passes
+- [x] Verify `npm run build` passes
 
 ---
 

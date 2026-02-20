@@ -5,7 +5,7 @@ import { useState, useEffect } from 'react'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { Save, Copy, Mail, Eye, EyeOff, Sparkles } from 'lucide-react'
+import { Save, Copy, Eye, EyeOff, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
@@ -21,8 +21,6 @@ import {
   useIncrementTemplateUsage,
 } from '@/hooks/use-email-templates'
 // EmailTemplate type from database
-import { cn } from '@/lib/utils'
-
 const templateSchema = z.object({
   name: z.string().min(1, 'Name is required'),
   subject: z.string().min(1, 'Subject is required'),

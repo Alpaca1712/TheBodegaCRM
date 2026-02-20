@@ -2,7 +2,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Plus, Search, Filter, Copy, Trash2, Edit, Star, Download } from 'lucide-react'
+import { Plus, Search, Filter, Copy, Trash2, Edit, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import {
@@ -52,7 +52,11 @@ export function TemplateManager({
 }: TemplateManagerProps) {
   const [search, setSearch] = useState('')
   const [categoryFilter, setCategoryFilter] = useState<'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter' | undefined>()
+  // selectedTemplate and isEditorOpen are handled by parent component when onSelectTemplate is provided
+  // They remain as internal state for compatibility when onSelectTemplate is not provided
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [selectedTemplate, setSelectedTemplate] = useState<EmailTemplate | null>(null)
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isEditorOpen, setIsEditorOpen] = useState(showEditor)
 
   const { data, isLoading } = useEmailTemplates({ category: categoryFilter })

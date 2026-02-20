@@ -15,7 +15,10 @@ interface ShortcutConfig {
 }
 
 export function useKeyboardShortcuts(shortcuts: ShortcutConfig[]) {
+  // Note: router and pathname are currently unused but may be needed for future enhancements
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const router = useRouter();
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const pathname = usePathname();
 
   const handleKeyDown = useCallback((event: KeyboardEvent) => {
