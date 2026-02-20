@@ -690,6 +690,56 @@ export type Database = {
           updated_at?: string
         }
       }
+      reminders: {
+        Row: {
+          id: string
+          user_id: string
+          org_id: string | null
+          type: 'stale_deal' | 'stale_contact' | 'overdue_activity' | 'upcoming_followup'
+          title: string
+          description: string | null
+          entity_type: 'contact' | 'company' | 'deal' | 'activity' | 'investor'
+          entity_id: string
+          due_date: string | null
+          is_read: boolean
+          is_resolved: boolean
+          resolved_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          org_id?: string | null
+          type: 'stale_deal' | 'stale_contact' | 'overdue_activity' | 'upcoming_followup'
+          title: string
+          description?: string | null
+          entity_type: 'contact' | 'company' | 'deal' | 'activity' | 'investor'
+          entity_id: string
+          due_date?: string | null
+          is_read?: boolean
+          is_resolved?: boolean
+          resolved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          org_id?: string | null
+          type?: 'stale_deal' | 'stale_contact' | 'overdue_activity' | 'upcoming_followup'
+          title?: string
+          description?: string | null
+          entity_type?: 'contact' | 'company' | 'deal' | 'activity' | 'investor'
+          entity_id?: string
+          due_date?: string | null
+          is_read?: boolean
+          is_resolved?: boolean
+          resolved_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never
@@ -704,3 +754,9 @@ export type Database = {
 }
 
 export type EmailSummary = Database['public']['Tables']['email_summaries']['Row']
+
+export type Reminder = Database['public']['Tables']['reminders']['Row']
+
+export type ReminderInsert = Database['public']['Tables']['reminders']['Insert']
+
+export type ReminderUpdate = Database['public']['Tables']['reminders']['Update']

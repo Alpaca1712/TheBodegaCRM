@@ -44,13 +44,13 @@ export async function getAnalyticsData(): Promise<AnalyticsData> {
   const revenue30d = recentDeals?.reduce((sum, deal) => sum + (deal.amount || 0), 0) || 0;
 
   // 5. LTV/CAC trend over last 6 months
-  const ltvCacTrend = await getLtvCacTrend(userId);
+  const ltvCacTrend = await getLtvCacTrend();
 
   // 6. Revenue by month
-  const revenueByMonth = await getRevenueByMonth(userId);
+  const revenueByMonth = await getRevenueByMonth();
 
   // 7. Deal conversion funnel
-  const funnelData = await getFunnelData(userId);
+  const funnelData = await getFunnelData();
 
   return {
     avgLtv,
@@ -63,7 +63,7 @@ export async function getAnalyticsData(): Promise<AnalyticsData> {
   };
 }
 
-async function getLtvCacTrend(userId: string) {
+async function getLtvCacTrend() {
   const sixMonthsAgo = new Date();
   sixMonthsAgo.setMonth(sixMonthsAgo.getMonth() - 6);
 
@@ -78,7 +78,7 @@ async function getLtvCacTrend(userId: string) {
   ];
 }
 
-async function getRevenueByMonth(userId: string) {
+async function getRevenueByMonth() {
   return [
     { month: 'Jan', revenue: 12000 },
     { month: 'Feb', revenue: 15000 },
@@ -89,8 +89,13 @@ async function getRevenueByMonth(userId: string) {
   ];
 }
 
-async function getFunnelData(userId: string) {
+async function getFunnelData() {
   // Count deals by stage
+  // Get user ID from session
+  const { data: { session } } = await supabase.auth.getSession();
+  const userId = session?.user?.id;
+  if (!userId) return [];
+
   const { data } = await supabase
     .from('deals')
     .select('stage')

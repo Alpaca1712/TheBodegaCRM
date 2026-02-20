@@ -196,8 +196,8 @@
 ## Phase 13: UI/UX Enhancements
 > Polish and features that make it feel like a real product.
 
-- [ ] Create smart reminder system — flag stale deals (no activity in 7+ days), stale contacts (no contact in 30+ days)
-- [ ] Add bulk actions to contacts list (bulk tag, bulk delete, bulk status change)
+- [x] Create smart reminder system — flag stale deals (no activity in 7+ days), stale contacts (no activity in 30+ days), overdue activities, upcoming follow-ups
+- [x] Add bulk actions to contacts list (bulk tag, bulk delete, bulk status change)
 - [ ] Create email templates system — save + reuse follow-up templates
 - [ ] Add keyboard shortcuts throughout (Cmd+N for new, Cmd+K for search, etc.)
 - [ ] Add data export (CSV) for contacts, companies, deals
