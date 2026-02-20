@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, Building2, Plus, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, Building2, Plus, Filter, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Link from 'next/link';
 import { getCompanies, type Company, type CompanyFilters, type SortOptions } from '@/lib/api/companies';
 import CompanyCard from '@/components/companies/company-card';
+import { exportCompaniesToCSV } from '@/lib/utils/csv-export';
 
 export const industryOptions = [
   { value: '', label: 'All Industries' },
@@ -115,7 +116,15 @@ export default function CompaniesPage() {
               Manage your company relationships
             </p>
           </div>
-          <div className="mt-4 md:mt-0">
+          <div className="mt-4 md:mt-0 flex gap-3">
+            <button
+              onClick={() => exportCompaniesToCSV(companies)}
+              disabled={loading || companies.length === 0}
+              className="inline-flex items-center gap-2 bg-slate-100 text-slate-700 px-4 py-2 rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download className="h-4 w-4" />
+              Export CSV
+            </button>
             <Link
               href="/companies/new"
               className="inline-flex items-center gap-2 bg-indigo-600 text-white px-4 py-2 rounded-lg hover:bg-indigo-700 transition-colors"

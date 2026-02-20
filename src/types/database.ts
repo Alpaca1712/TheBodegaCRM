@@ -690,6 +690,53 @@ export type Database = {
           updated_at?: string
         }
       }
+      email_templates: {
+        Row: {
+          id: string
+          user_id: string
+          org_id: string | null
+          name: string
+          subject: string
+          body: string
+          category: 'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter'
+          is_shared: boolean
+          tags: string[] | null
+          usage_count: number
+          last_used_at: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          org_id?: string | null
+          name: string
+          subject: string
+          body: string
+          category?: 'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter'
+          is_shared?: boolean
+          tags?: string[] | null
+          usage_count?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          org_id?: string | null
+          name?: string
+          subject?: string
+          body?: string
+          category?: 'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter'
+          is_shared?: boolean
+          tags?: string[] | null
+          usage_count?: number
+          last_used_at?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+      }
       reminders: {
         Row: {
           id: string

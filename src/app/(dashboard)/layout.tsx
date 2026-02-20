@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { redirect } from 'next/navigation'
 import { createClient } from '@/lib/supabase/server'
 import Header from '@/components/layout/header'
+import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper'
 
 interface DashboardLayoutProps {
   children: React.ReactNode
@@ -23,6 +24,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
   
   return (
     <div className="flex min-h-screen bg-slate-50">
+      <DashboardClientWrapper>
       {/* Sidebar */}
       <div className="fixed inset-y-0 left-0 w-64 bg-slate-900 text-white">
         <div className="p-6">
@@ -96,6 +98,7 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
           {children}
         </main>
       </div>
+      </DashboardClientWrapper>
     </div>
   )
 }

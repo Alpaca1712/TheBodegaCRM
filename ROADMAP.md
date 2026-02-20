@@ -198,9 +198,9 @@
 
 - [x] Create smart reminder system — flag stale deals (no activity in 7+ days), stale contacts (no activity in 30+ days), overdue activities, upcoming follow-ups
 - [x] Add bulk actions to contacts list (bulk tag, bulk delete, bulk status change)
-- [ ] Create email templates system — save + reuse follow-up templates
-- [ ] Add keyboard shortcuts throughout (Cmd+N for new, Cmd+K for search, etc.)
-- [ ] Add data export (CSV) for contacts, companies, deals
+- [x] Create email templates system — save + reuse follow-up templates
+- [x] Add keyboard shortcuts throughout (Cmd+N for new, Cmd+K for search, etc.)
+- [x] Add data export (CSV) for contacts, companies, deals
 - [ ] Create onboarding flow for new users — guided setup wizard
 - [ ] Add dark mode support
 - [ ] Mobile-responsive improvements — bottom nav on mobile, swipe actions on lists

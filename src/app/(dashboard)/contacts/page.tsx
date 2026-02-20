@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Search, UserPlus, ChevronLeft, ChevronRight, Download } from 'lucide-react';
 import Link from 'next/link';
 import { getContacts, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
 import ContactsTable from '@/components/contacts/contacts-table';
+import { exportContactsToCSV } from '@/lib/utils/csv-export';
 
 const statusOptions = [
   { value: 'all', label: 'All' },
@@ -90,13 +91,23 @@ export default function ContactsPage() {
             Manage your contacts, leads, and customers
           </p>
         </div>
-        <Link
-          href="/contacts/new"
-          className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-        >
-          <UserPlus size={18} />
-          Add Contact
-        </Link>
+        <div className="flex gap-3">
+          <button
+            onClick={() => exportContactsToCSV(contacts)}
+            disabled={loading || contacts.length === 0}
+            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            <Download size={18} />
+            Export CSV
+          </button>
+          <Link
+            href="/contacts/new"
+            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
+          >
+            <UserPlus size={18} />
+            Add Contact
+          </Link>
+        </div>
       </div>
 
       {/* Filters and Search */}
