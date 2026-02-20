@@ -1,5 +1,6 @@
 import { createClient } from '@/lib/supabase/client'
 import { getActiveOrgId } from '@/lib/api/organizations'
+import { getInvestorStats } from './investors'
 
 export interface DashboardStats {
   totalContacts: number
@@ -25,6 +26,11 @@ export interface DashboardStats {
   }>
   newContactsThisMonth: number
   revenueWonThisMonth: number
+  // Investor stats
+  totalRaised: number
+  totalPipeline: number
+  activeConversations: number
+  totalInvestments: number
 }
 
 export async function getDashboardStats(): Promise<{ data: DashboardStats | null; error: string | null }> {
@@ -151,6 +157,13 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
 
     const revenueWonThisMonth = revenueWonData?.reduce((sum, deal) => sum + (deal.value || 0), 0) || 0
 
+    // Get investor stats
+    const { data: investorStats, error: investorStatsError } = await getInvestorStats()
+    if (investorStatsError) {
+      console.error('Error fetching investor stats:', investorStatsError)
+      // Continue with default values
+    }
+
     // Enhance activities and tasks with contact/company names
     const enhancedActivities = await Promise.all(
       (recentActivities || []).map(async (activity) => {
@@ -234,7 +247,12 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
       recentActivities: enhancedActivities,
       upcomingTasks: enhancedTasks,
       newContactsThisMonth: newContactsThisMonth || 0,
-      revenueWonThisMonth
+      revenueWonThisMonth,
+      // Investor stats with fallback defaults
+      totalRaised: investorStats?.totalRaised || 0,
+      totalPipeline: investorStats?.totalPipeline || 0,
+      activeConversations: 0, // TODO: Calculate active conversations from recent investor activities
+      totalInvestments: investorStats?.totalInvestments || 0
     }
 
     return { data: dashboardStats, error: null }
