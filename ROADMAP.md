@@ -158,7 +158,7 @@
 
 ---
 
-## Phase 11: Gmail Integration (OAuth + Metadata Sync)
+## Phase 11: Gmail Integration (OAuth + Metadata Sync) ✅
 > Connect Gmail to automatically sync email metadata and power AI features.
 
 - [x] Create `src/lib/api/gmail.ts` — OAuth flow + metadata fetching (getGoogleAuthUrl, exchangeCodeForTokens, refreshAccessToken, fetchRecentMessages)
@@ -167,12 +167,12 @@
 - [x] Create `src/app/api/gmail/callback/route.ts` — handle OAuth callback, store tokens
 - [x] Create `src/app/(dashboard)/email/page.tsx` — email hub showing connected accounts + AI summaries
 - [x] Create `src/app/api/gmail/sync/route.ts` — API route that fetches new messages, matches to contacts/deals, runs AI summarization via Novita
-- [ ] Create `src/components/email/email-summary-list.tsx` — list of email summaries with sentiment + action items
-- [ ] Add email thread view on contact detail page — show email history with that contact
-- [ ] Add email thread view on deal detail page — show emails related to that deal
-- [ ] Add email thread view on investor detail page — show emails related to that investor
-- [ ] Create background sync mechanism (cron or on-demand) for periodic email fetching
-- [ ] Verify `npm run build` passes
+- [x] Create `src/components/email/email-summary-list.tsx` — list of email summaries with sentiment + action items
+- [x] Add email thread view on contact detail page — show email history with that contact
+- [x] Add email thread view on deal detail page — show emails related to that deal
+- [x] Add email thread view on investor detail page — show emails related to that investor
+- [x] Create background sync mechanism (cron or on-demand) for periodic email fetching
+- [x] Verify `npm run build` passes
 
 ---
 
@@ -182,14 +182,14 @@
 - [x] Add LTV/CAC metrics cards to dashboard (Customer LTV, Win Rate/CAC proxy, Avg Deal Size)
 - [x] Create `acquisition_costs` table in migration 007
 - [x] Create `analyzeLtvCac` function in `src/lib/api/ai.ts`
-- [ ] Create `src/app/(dashboard)/analytics/page.tsx` — dedicated analytics page with: LTV trend, CAC by source, LTV:CAC ratio chart, revenue by month, deal conversion funnel
-- [ ] Create `src/components/analytics/ltv-cac-chart.tsx` — visual LTV vs CAC comparison
-- [ ] Create `src/components/analytics/revenue-chart.tsx` — monthly revenue bar chart (closed_won deals)
-- [ ] Create `src/components/analytics/conversion-funnel.tsx` — deal stage funnel visualization
-- [ ] Create `src/app/(dashboard)/analytics/costs/page.tsx` — acquisition cost tracking form + history
-- [ ] Add AI analysis to analytics page — call analyzeLtvCac and show insights
-- [ ] Add "Analytics" link to sidebar navigation
-- [ ] Verify `npm run build` passes
+- [x] Create `src/app/(dashboard)/analytics/page.tsx` — dedicated analytics page with: LTV trend, CAC by source, LTV:CAC ratio chart, revenue by month, deal conversion funnel
+- [x] Create `src/components/analytics/ltv-cac-chart.tsx` — visual LTV vs CAC comparison
+- [x] Create `src/components/analytics/revenue-chart.tsx` — monthly revenue bar chart (closed_won deals)
+- [x] Create `src/components/analytics/conversion-funnel.tsx` — deal stage funnel visualization
+- [x] Create `src/app/(dashboard)/analytics/costs/page.tsx` — acquisition cost tracking form + history
+- [x] Add AI analysis to analytics page — call analyzeLtvCac and show insights
+- [x] Add "Analytics" link to sidebar navigation
+- [x] Verify `npm run build` passes
 
 ---
 

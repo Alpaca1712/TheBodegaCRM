@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { refreshAccessToken, fetchRecentMessages } from '@/lib/api/gmail'
 import { summarizeEmail } from '@/lib/api/ai'
 
-export async function POST(_request: NextRequest) {
+export async function POST() {
   try {
     const supabase = createClient()
     const { data: { session } } = await supabase.auth.getSession()

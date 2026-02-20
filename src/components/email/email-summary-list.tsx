@@ -1,281 +1,122 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
-import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import {
-  Mail,
-  Clock,
-  User,
-  Briefcase,
-  TrendingUp,
-  TrendingDown,
-  RefreshCw,
-  ChevronDown,
-  ChevronRight,
-} from 'lucide-react'
+import { Sparkles, ExternalLink, Mail } from 'lucide-react'
+import { EmailSummary } from '@/types/database'
 
-interface EmailSummary {
-  id: string
-  subject: string
-  from_address: string
-  date: string
-  ai_summary: string
-  ai_sentiment: 'positive' | 'neutral' | 'negative'
-  ai_action_items: string[]
-  ai_suggested_stage: string | null
-  contact?: {
-    id: string
-    first_name: string
-    last_name: string
-  } | null
-  deal?: {
-    id: string
-    title: string
-    stage: string
-  } | null
-  investor?: {
-    id: string
-    name: string
-  } | null
-  is_read: boolean
-}
-
-interface EmailSummaryListProps {
-  summaries: EmailSummary[]
+export interface EmailSummaryListProps {
+  emails: EmailSummary[]
   isLoading?: boolean
-  onRefresh?: () => void
-  onSelect?: (summary: EmailSummary) => void
+  onViewFollowUp?: (emailId: string, draft: string) => void
 }
 
-const sentimentColors: Record<string, string> = {
-  positive: 'bg-green-100 text-green-800 border-green-200',
-  neutral: 'bg-blue-100 text-blue-800 border-blue-200',
-  negative: 'bg-red-100 text-red-800 border-red-200',
+const SENTIMENT_STYLES: Record<string, string> = {
+  positive: 'bg-green-100 text-green-700 border-green-200',
+  neutral: 'bg-slate-100 text-slate-600 border-slate-200',
+  negative: 'bg-red-100 text-red-700 border-red-200',
+  urgent: 'bg-orange-100 text-orange-700 border-orange-200',
 }
 
-const sentimentIcons: Record<string, React.ReactNode> = {
-  positive: <TrendingUp className="w-4 h-4" />,
-  neutral: <Clock className="w-4 h-4" />,
-  negative: <TrendingDown className="w-4 h-4" />,
+const SENTIMENT_LABELS: Record<string, string> = {
+  positive: 'Positive',
+  neutral: 'Neutral',
+  negative: 'Negative',
+  urgent: 'Urgent',
 }
 
-export function EmailSummaryList({
-  summaries,
-  isLoading = false,
-  onRefresh,
-  onSelect,
-}: EmailSummaryListProps) {
-  const [expandedSummaryId, setExpandedSummaryId] = useState<string | null>(null)
-
-  const formatDate = (dateString: string) => {
-    const date = new Date(dateString)
-    const now = new Date()
-    const diffMs = now.getTime() - date.getTime()
-    const diffHours = Math.floor(diffMs / (1000 * 60 * 60))
-    
-    if (diffHours < 1) {
-      return 'Just now'
-    } else if (diffHours < 24) {
-      return `${diffHours}h ago`
-    } else {
-      return date.toLocaleDateString()
-    }
-  }
-
-  const toggleExpand = (id: string) => {
-    setExpandedSummaryId(expandedSummaryId === id ? null : id)
-    if (onSelect && expandedSummaryId !== id) {
-      const summary = summaries.find(s => s.id === id)
-      if (summary) onSelect(summary)
-    }
-  }
-
+export default function EmailSummaryList({ emails, isLoading = false, onViewFollowUp }: EmailSummaryListProps) {
   if (isLoading) {
     return (
-      <Card className="w-full">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="w-5 h-5" />
-            Email Summaries
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            {[1, 2, 3].map((i) => (
-              <div key={i} className="animate-pulse flex space-x-4">
-                <div className="rounded-full bg-slate-200 h-12 w-12"></div>
-                <div className="flex-1 space-y-2">
-                  <div className="h-4 bg-slate-200 rounded w-3/4"></div>
-                  <div className="h-3 bg-slate-200 rounded w-1/2"></div>
-                </div>
-              </div>
-            ))}
+      <div className="space-y-3 animate-pulse">
+        {Array.from({ length: 3 }).map((_, i) => (
+          <div key={i} className="bg-white rounded-xl shadow p-4">
+            <div className="h-4 bg-slate-200 rounded w-3/4 mb-2" />
+            <div className="h-3 bg-slate-200 rounded w-1/2 mb-3" />
+            <div className="h-3 bg-slate-200 rounded w-full mb-1" />
+            <div className="h-3 bg-slate-200 rounded w-5/6" />
           </div>
-        </CardContent>
-      </Card>
+        ))}
+      </div>
     )
   }
 
-  if (summaries.length === 0) {
+  if (emails.length === 0) {
     return (
-      <Card className="w-full">
-        <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle className="flex items-center gap-2">
-            <Mail className="w-5 h-5" />
-            Email Summaries
-          </CardTitle>
-          {onRefresh && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={onRefresh}
-              className="gap-2"
-            >
-              <RefreshCw className="w-4 h-4" />
-              Sync Emails
-            </Button>
-          )}
-        </CardHeader>
-        <CardContent>
-          <div className="text-center py-12 text-slate-500">
-            <Mail className="w-12 h-12 mx-auto mb-4 text-slate-300" />
-            <p className="text-lg font-medium mb-2">No email summaries yet</p>
-            <p className="text-sm mb-6">Connect your email account to start syncing and summarizing emails</p>
-            {onRefresh && (
-              <Button onClick={onRefresh}>
-                <RefreshCw className="w-4 h-4 mr-2" />
-                Sync Now
-              </Button>
-            )}
-          </div>
-        </CardContent>
-      </Card>
+      <div className="bg-white rounded-xl shadow p-8 text-center">
+        <Mail className="mx-auto h-12 w-12 text-slate-300" />
+        <h3 className="mt-4 text-lg font-medium text-slate-900">No emails found</h3>
+        <p className="mt-2 text-sm text-slate-500">Try syncing your email accounts or adjusting your filters.</p>
+      </div>
     )
   }
 
   return (
-    <Card className="w-full">
-      <CardHeader className="flex flex-row items-center justify-between">
-        <CardTitle className="flex items-center gap-2">
-          <Mail className="w-5 h-5" />
-          Email Summaries
-          <Badge variant="outline" className="ml-2">
-            {summaries.length}
-          </Badge>
-        </CardTitle>
-        {onRefresh && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={onRefresh}
-            className="gap-2"
-          >
-            <RefreshCw className="w-4 h-4" />
-            Sync Emails
-          </Button>
-        )}
-      </CardHeader>
-      <CardContent>
-        <div className="space-y-4">
-          {summaries.map((summary) => (
-            <div
-              key={summary.id}
-              className={`border rounded-lg p-4 cursor-pointer transition-all hover:border-slate-300 ${
-                expandedSummaryId === summary.id ? 'border-indigo-300 bg-indigo-50' : ''
-              } ${!summary.is_read ? 'border-l-4 border-l-indigo-500' : ''}`}
-              onClick={() => toggleExpand(summary.id)}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-start gap-3">
-                  <div className={`p-2 rounded-full ${sentimentColors[summary.ai_sentiment]}`}>
-                    {sentimentIcons[summary.ai_sentiment]}
-                  </div>
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-1">
-                      <h3 className="font-medium text-slate-900">
-                        {summary.subject || '(No subject)'}
-                      </h3>
-                      <Badge className={sentimentColors[summary.ai_sentiment]}>
-                        {summary.ai_sentiment}
-                      </Badge>
-                    </div>
-                    <p className="text-sm text-slate-600 mb-2">
-                      From: {summary.from_address}
-                    </p>
-                    <div className="flex items-center gap-4 text-xs text-slate-500">
-                      <span className="flex items-center gap-1">
-                        <Clock className="w-3 h-3" />
-                        {formatDate(summary.date)}
-                      </span>
-                      {summary.contact && (
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {summary.contact.first_name} {summary.contact.last_name}
-                        </span>
-                      )}
-                      {summary.deal && (
-                        <span className="flex items-center gap-1">
-                          <Briefcase className="w-3 h-3" />
-                          {summary.deal.title} ({summary.deal.stage})
-                        </span>
-                      )}
-                      {summary.investor && (
-                        <span className="flex items-center gap-1">
-                          <TrendingUp className="w-3 h-3" />
-                          {summary.investor.name}
-                        </span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-                <div className="text-slate-400">
-                  {expandedSummaryId === summary.id ? (
-                    <ChevronDown className="w-5 h-5" />
-                  ) : (
-                    <ChevronRight className="w-5 h-5" />
-                  )}
-                </div>
+    <div className="space-y-3">
+      {emails.map((email) => (
+        <div key={email.id} className="bg-white rounded-xl shadow p-4 hover:shadow-md transition-shadow border border-slate-100">
+          <div className="flex items-start justify-between gap-4">
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-2">
+                <p className="font-medium text-slate-900 truncate">{email.subject || '(no subject)'}</p>
+                {email.ai_sentiment && (
+                  <span 
+                    className={`inline-flex items-center rounded-full px-2 py-0.5 text-xs font-medium border ${SENTIMENT_STYLES[email.ai_sentiment] || SENTIMENT_STYLES.neutral}`}
+                  >
+                    {SENTIMENT_LABELS[email.ai_sentiment] || email.ai_sentiment}
+                  </span>
+                )}
               </div>
-              
-              {expandedSummaryId === summary.id && (
-                <div className="mt-4 pl-11 space-y-4">
-                  <div>
-                    <h4 className="text-sm font-medium text-slate-700 mb-2">AI Summary</h4>
-                    <p className="text-sm text-slate-600 bg-slate-50 p-3 rounded">
-                      {summary.ai_summary}
-                    </p>
+              <p className="text-sm text-slate-500 mt-0.5 truncate">{email.from_address}</p>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {new Date(email.date).toLocaleDateString('en-US', { 
+                  month: 'short', 
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+
+              {email.ai_summary && (
+                <div className="mt-3 p-3 bg-indigo-50 rounded-lg border border-indigo-100">
+                  <div className="flex items-center gap-1 mb-1">
+                    <Sparkles className="h-3 w-3 text-indigo-500" />
+                    <span className="text-xs font-medium text-indigo-600">AI Summary</span>
                   </div>
-                  
-                  {summary.ai_action_items && summary.ai_action_items.length > 0 && (
-                    <div>
-                      <h4 className="text-sm font-medium text-slate-700 mb-2">Action Items</h4>
-                      <ul className="space-y-1">
-                        {summary.ai_action_items.map((item, index) => (
-                          <li key={index} className="text-sm text-slate-600 flex items-start gap-2">
-                            <span className="text-indigo-500 mt-1">•</span>
-                            <span>{item}</span>
-                          </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
-                  
-                  {summary.ai_suggested_stage && (
-                    <div>
-                      <h4 className="text-sm font-medium text-slate-700 mb-2">Suggested Deal Stage</h4>
-                      <Badge variant="outline" className="text-slate-700">
-                        {summary.ai_suggested_stage}
-                      </Badge>
-                    </div>
-                  )}
+                  <p className="text-sm text-slate-700">{email.ai_summary}</p>
                 </div>
               )}
+
+              {email.snippet && !email.ai_summary && (
+                <p className="text-sm text-slate-600 mt-2 line-clamp-2">{email.snippet}</p>
+              )}
+
+              {email.ai_action_items && email.ai_action_items.length > 0 && (
+                <div className="mt-3">
+                  <p className="text-xs font-medium text-slate-500 mb-1">Action items:</p>
+                  <ul className="space-y-1">
+                    {email.ai_action_items.map((item, i) => (
+                      <li key={i} className="text-xs text-slate-600 flex items-start gap-1">
+                        <span className="text-indigo-500 mt-0.5">•</span>
+                        {item}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {email.ai_follow_up_draft && onViewFollowUp && (
+                <button 
+                  onClick={() => onViewFollowUp(email.id, email.ai_follow_up_draft!)}
+                  className="mt-3 inline-flex items-center gap-1 text-xs font-medium text-indigo-600 hover:text-indigo-700 hover:underline"
+                >
+                  <ExternalLink className="h-3 w-3" />
+                  View suggested follow-up
+                </button>
+              )}
             </div>
-          ))}
+          </div>
         </div>
-      </CardContent>
-    </Card>
+      ))}
+    </div>
   )
 }

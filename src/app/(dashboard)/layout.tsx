@@ -74,6 +74,12 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
               </Link>
             </li>
             <li>
+              <Link href="/analytics" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
+                <span>📊</span>
+                <span>Analytics</span>
+              </Link>
+            </li>
+            <li>
               <Link href="/settings" className="flex items-center gap-3 px-4 py-3 rounded-lg hover:bg-slate-800 transition-colors">
                 <span>⚙️</span>
                 <span>Settings</span>

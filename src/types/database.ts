@@ -702,3 +702,5 @@ export type Database = {
     }
   }
 }
+
+export type EmailSummary = Database['public']['Tables']['email_summaries']['Row']
