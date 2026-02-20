@@ -20,24 +20,29 @@ CREATE TABLE IF NOT EXISTS email_templates (
 -- Add RLS policies
 ALTER TABLE email_templates ENABLE ROW LEVEL SECURITY;
 
--- Policy: users can see their own templates or shared templates in their org
-CREATE POLICY "Users can view own templates" ON email_templates
+-- Org-based RLS policies (multi-tenancy)
+-- Users can see their own templates + shared templates within their org
+CREATE POLICY "Org members can view templates" ON email_templates
   FOR SELECT USING (
-    user_id = auth.uid() OR 
-    (org_id IN (SELECT org_id FROM org_members WHERE user_id = auth.uid()) AND is_shared = true)
+    org_id IN (SELECT public.get_user_org_ids())
+    AND (user_id = auth.uid() OR is_shared = true)
   );
 
--- Policy: users can insert their own templates
-CREATE POLICY "Users can insert own templates" ON email_templates
-  FOR INSERT WITH CHECK (user_id = auth.uid());
+CREATE POLICY "Org members can insert templates" ON email_templates
+  FOR INSERT WITH CHECK (
+    org_id IN (SELECT public.get_user_org_ids())
+  );
 
--- Policy: users can update their own templates
-CREATE POLICY "Users can update own templates" ON email_templates
-  FOR UPDATE USING (user_id = auth.uid());
+-- Only the template owner can update/delete
+CREATE POLICY "Owner can update templates" ON email_templates
+  FOR UPDATE USING (
+    org_id IN (SELECT public.get_user_org_ids()) AND user_id = auth.uid()
+  );
 
--- Policy: users can delete their own templates
-CREATE POLICY "Users can delete own templates" ON email_templates
-  FOR DELETE USING (user_id = auth.uid());
+CREATE POLICY "Owner can delete templates" ON email_templates
+  FOR DELETE USING (
+    org_id IN (SELECT public.get_user_org_ids()) AND user_id = auth.uid()
+  );
 
 -- Create index for faster queries
 CREATE INDEX idx_email_templates_user_id ON email_templates(user_id);
@@ -59,53 +64,5 @@ CREATE TRIGGER update_email_templates_updated_at
   FOR EACH ROW
   EXECUTE FUNCTION update_updated_at_column();
 
--- Insert some default templates
-INSERT INTO email_templates (user_id, name, subject, body, category, tags) VALUES
-  (
-    '00000000-0000-0000-0000-000000000000', -- placeholder user_id
-    'Follow-up after meeting',
-    'Following up on our meeting',
-    'Hi {{contact_name}},
-
-It was great meeting with you today. As discussed, here are the next steps:
-
-1. {{action_item_1}}
-2. {{action_item_2}}
-
-Looking forward to your feedback!
-
-Best,
-{{your_name}}',
-    'meeting_followup',
-    ARRAY['follow-up', 'meeting']
-  ),
-  (
-    '00000000-0000-0000-0000-000000000000',
-    'Deal follow-up',
-    'Following up on our conversation',
-    'Hi {{contact_name}},
-
-Just wanted to follow up on our recent conversation about {{deal_title}}. Do you have any questions or thoughts?
-
-Looking forward to hearing from you.
-
-Best,
-{{your_name}}',
-    'follow_up',
-    ARRAY['deal', 'follow-up']
-  ),
-  (
-    '00000000-0000-0000-0000-000000000000',
-    'Investor intro',
-    'Introduction from {{your_company}}',
-    'Hi {{investor_name}},
-
-I''m {{your_name}} from {{your_company}}. We''re building {{company_description}} and I wanted to connect as we''re in the process of raising our {{round_name}} round.
-
-Would you be open to a brief intro call next week?
-
-Best,
-{{your_name}}',
-    'intro',
-    ARRAY['investor', 'intro']
-  );
+-- Default templates are created per-user via the application layer,
+-- not as seed data, since user_id requires a valid auth.users reference.

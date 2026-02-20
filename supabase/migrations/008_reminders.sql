@@ -34,26 +34,22 @@ create index reminders_created_at_idx on public.reminders(created_at);
 -- Enable Row Level Security (RLS)
 alter table public.reminders enable row level security;
 
--- Create RLS policies
--- Users can view their own reminders
-create policy "Users can view own reminders"
+-- Org-based RLS policies (multi-tenancy)
+create policy "Org members can view reminders"
     on public.reminders for select
-    using (auth.uid() = user_id);
+    using (org_id in (select public.get_user_org_ids()));
 
--- Users can insert their own reminders
-create policy "Users can insert own reminders"
+create policy "Org members can insert reminders"
     on public.reminders for insert
-    with check (auth.uid() = user_id);
+    with check (org_id in (select public.get_user_org_ids()));
 
--- Users can update their own reminders
-create policy "Users can update own reminders"
+create policy "Org members can update reminders"
     on public.reminders for update
-    using (auth.uid() = user_id);
+    using (org_id in (select public.get_user_org_ids()));
 
--- Users can delete their own reminders
-create policy "Users can delete own reminders"
+create policy "Org members can delete reminders"
     on public.reminders for delete
-    using (auth.uid() = user_id);
+    using (org_id in (select public.get_user_org_ids()));
 
 -- Create updated_at trigger
 create or replace function public.handle_updated_at()

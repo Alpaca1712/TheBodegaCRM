@@ -70,6 +70,22 @@ IMPORTANT RULES:
 - Use the Supabase credentials from environment variables.
 - Write clean, typed TypeScript. No 'any' types.
 - Add tests for new features once Phase 8 (testing) is complete; until then, focus on implementation.
+
+DEPENDENCY SAFETY (causes build failures if ignored):
+- NEVER import a package that isn't already in package.json. Run 'npm install <package>' BEFORE creating files that use it.
+- After adding a new third-party import, verify: grep '<package>' package.json. If missing, install it.
+- Example: before creating a dropdown-menu.tsx that uses @radix-ui/react-dropdown-menu, first run 'npm install @radix-ui/react-dropdown-menu'.
+
+PROVIDER SAFETY (causes runtime crashes if ignored):
+- React Query hooks (useQuery, useMutation) require QueryClientProvider. It already exists in src/components/providers.tsx. Do NOT create a duplicate.
+- If you add a new context/provider, add it to src/components/providers.tsx — that is the single source of truth for app-level providers.
+- NEVER add hooks that depend on a provider without verifying the provider is in the component tree.
+
+SQL MIGRATION SAFETY (causes deployment failures if ignored):
+- NEVER insert seed/sample data with hardcoded UUIDs in migrations. UUIDs like '00000000-...' don't exist in auth.users and WILL violate FK constraints. Create seed data through the app, not in SQL files.
+- All new tables MUST have 'org_id UUID REFERENCES organizations(id)' — this is a multi-tenant app. Data is scoped by org, not by user.
+- All RLS policies MUST use: org_id IN (SELECT public.get_user_org_ids()) — NEVER use 'user_id = auth.uid()' alone. That breaks multi-tenancy.
+- Check 'ls supabase/migrations/' before creating a new migration to avoid duplicate numbers.
 "
 else
   TASK_PROMPT="
@@ -88,6 +104,12 @@ Follow existing patterns (e.g. how contacts/companies were built). Rules:
 - Write a 1-2 line summary to /tmp/goose-summary.txt
 - If this is a major milestone, write MILESTONE to /tmp/goose-milestone.flag
 - Update ROADMAP.md if any tasks were completed.
+
+SAFETY CHECKS — read .goosehints thoroughly, especially these sections:
+- 'Dependency Safety': install npm packages BEFORE importing them.
+- 'Provider / Context Safety': verify providers exist before adding hooks that need them.
+- 'SQL Migrations': NEVER insert seed data with fake UUIDs. All tables need org_id + org-based RLS.
+- 'Multi-Tenancy': use org_id in ALL queries and RLS policies, not user_id alone.
 "
 fi
 

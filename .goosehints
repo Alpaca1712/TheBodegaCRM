@@ -57,11 +57,30 @@ supabase/
 ### Supabase
 - Client-side: use the client from `src/lib/supabase/client.ts`
 - Server-side: use the client from `src/lib/supabase/server.ts`
-- ALWAYS use Row Level Security (RLS) — filter by user_id
 - Environment variables are set:
   - `NEXT_PUBLIC_SUPABASE_URL`
   - `NEXT_PUBLIC_SUPABASE_ANON_KEY`
   - `SUPABASE_SERVICE_ROLE_KEY`
+
+### Multi-Tenancy — ALL DATA IS ORG-SCOPED
+- The app uses **organization-based multi-tenancy** (see `008_organizations.sql`).
+- Every data table has an `org_id` column. Data is shared between org members, NOT isolated per user.
+- **RLS policies MUST use org-based access**, not `user_id = auth.uid()`. Use this pattern:
+  ```sql
+  CREATE POLICY "Org members can view" ON my_table
+    FOR SELECT USING (org_id IN (SELECT public.get_user_org_ids()));
+  ```
+- **NEVER write RLS policies that only check `user_id = auth.uid()`.** That breaks multi-tenancy — other org members won't see shared data.
+- The helper function `public.get_user_org_ids()` returns all org IDs the current user belongs to. Use it in all RLS policies.
+- All API files (`src/lib/api/*.ts`) use `getActiveOrgId()` from `src/lib/api/organizations.ts` and filter by `.eq('org_id', orgId!)`.
+- When creating new API files, follow the pattern in `src/lib/api/contacts.ts` — fetch `orgId`, early return if missing, filter all queries by `org_id`.
+
+### SQL Migrations — CRITICAL RULES
+- **NEVER insert seed/sample data with hardcoded UUIDs.** Foreign keys reference `auth.users`, and fake UUIDs like `'00000000-0000-0000-0000-000000000000'` will violate FK constraints. Seed data should be created through the application layer, not in migrations.
+- Migrations should ONLY contain: CREATE TABLE, ALTER TABLE, CREATE INDEX, CREATE POLICY, CREATE FUNCTION, CREATE TRIGGER statements.
+- If you need default/template data, create an API endpoint or app-level seeder function — not SQL INSERT statements in migrations.
+- **Check existing migration numbers** before creating a new one. Run `ls supabase/migrations/` and use the next available number. Do NOT reuse or duplicate a number.
+- All new tables MUST include `org_id UUID REFERENCES organizations(id) ON DELETE CASCADE` and org-based RLS policies.
 
 ### UI / Design
 - Clean, modern, professional look
@@ -80,6 +99,18 @@ supabase/
 - Never import or reference a module/file you haven't created yet — create it first, then import
 - Fix ALL TypeScript and ESLint errors in files you touch (including pre-existing lint errors)
 - If build or lint fails, read the errors, fix them, and run again — do not move on until both pass
+
+### Dependency Safety — CRITICAL
+- **NEVER import a package that isn't in `package.json`.** Before using any new npm package, run `npm install <package>` first.
+- Before adding a new shadcn/radix component, check if the underlying `@radix-ui/*` package is already installed. If not, install it.
+- After adding any new import from a third-party package, immediately verify it exists: `grep <package-name> package.json`. If it's missing, install it.
+- Common mistake to avoid: adding a UI component file (e.g. `dropdown-menu.tsx`) that imports `@radix-ui/react-dropdown-menu` without running `npm install @radix-ui/react-dropdown-menu`.
+
+### Provider / Context Safety — CRITICAL
+- If you add hooks that require a React context provider (e.g. `useQuery` requires `QueryClientProvider`, `useTheme` requires `ThemeProvider`), you MUST verify the provider exists in the component tree.
+- The app's provider stack lives in `src/components/providers.tsx` and is used in `src/app/layout.tsx`. If you need a new provider, add it there — do NOT assume it exists.
+- **React Query**: All `useQuery` / `useMutation` hooks require `QueryClientProvider`. It's already set up in `src/components/providers.tsx`. Do NOT create a second one.
+- If you create a new context, add its provider to `src/components/providers.tsx`.
 
 ### Recovery from [build-broken] Commits
 - If the last commit message contains `[build-broken]`, your FIRST priority is to run `npm run build`, read the errors, and fix them before doing any new work
