@@ -19,6 +19,29 @@ export async function signIn(formData: FormData) {
     console.error('Sign in error:', error);
     return { error: error.message };
   }
+
+  // Check for pending org invites matching this email
+  const { data: { session } } = await supabase.auth.getSession();
+  if (session) {
+    const { data: pendingInvites } = await supabase
+      .from('org_invites')
+      .select('id, org_id, role, expires_at')
+      .eq('email', email)
+      .is('accepted_at', null);
+
+    if (pendingInvites && pendingInvites.length > 0) {
+      for (const invite of pendingInvites) {
+        if (new Date(invite.expires_at ?? '2099-01-01') > new Date()) {
+          await supabase.from('org_members').upsert({
+            org_id: invite.org_id,
+            user_id: session.user.id,
+            role: invite.role,
+          }, { onConflict: 'org_id,user_id' });
+          await supabase.from('org_invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id);
+        }
+      }
+    }
+  }
   
   revalidatePath('/', 'layout');
   redirect('/dashboard');

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 
 export interface Activity {
   id: string
@@ -54,13 +55,16 @@ export async function getActivities(
     return { data: [], count: 0, error: 'Not authenticated' }
   }
 
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: [], count: 0, error: 'No organization found' }
+
   const { page = 1, limit = 50 } = pagination
   const { field = 'due_date', direction = 'asc' } = sort
 
   let query = supabase
     .from('activities')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId)
 
   if (filters.type) {
     query = query.eq('type', filters.type)
@@ -135,11 +139,12 @@ export async function getActivityById(id: string): Promise<{ data: Activity | nu
     return { data: null, error: 'Not authenticated' }
   }
 
+  const orgId = await getActiveOrgId()
   const { data, error } = await supabase
     .from('activities')
     .select('*')
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .single()
 
   if (error) {
@@ -149,7 +154,7 @@ export async function getActivityById(id: string): Promise<{ data: Activity | nu
   return { data }
 }
 
-export async function createActivity(activity: Omit<Activity, 'id' | 'user_id' | 'created_at' | 'updated_at'>): Promise<{ data: Activity | null; error?: string }> {
+export async function createActivity(activity: Omit<Activity, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>): Promise<{ data: Activity | null; error?: string }> {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
@@ -157,11 +162,14 @@ export async function createActivity(activity: Omit<Activity, 'id' | 'user_id' |
     return { data: null, error: 'Not authenticated' }
   }
 
+  const orgId = await getActiveOrgId()
+
   const { data, error } = await supabase
     .from('activities')
     .insert({
       ...activity,
-      user_id: session.user.id
+      user_id: session.user.id,
+      org_id: orgId,
     })
     .select()
     .single()
@@ -181,11 +189,13 @@ export async function updateActivity(id: string, activity: Partial<Activity>): P
     return { data: null, error: 'Not authenticated' }
   }
 
+  const orgId = await getActiveOrgId()
+
   const { data, error } = await supabase
     .from('activities')
     .update(activity)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
 
@@ -204,11 +214,13 @@ export async function deleteActivity(id: string): Promise<{ error?: string }> {
     return { error: 'Not authenticated' }
   }
 
+  const orgId = await getActiveOrgId()
+
   const { error } = await supabase
     .from('activities')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
 
   if (error) {
     return { error: error.message }

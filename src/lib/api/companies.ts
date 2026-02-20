@@ -1,9 +1,11 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 import { Contact } from './contacts'
 
 export interface Company {
   id: string
   user_id: string
+  org_id: string | null
   name: string
   domain?: string
   industry?: string
@@ -52,6 +54,9 @@ export async function getCompanies(
   if (!session) {
     return { data: [], count: 0, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: [], count: 0, error: 'No organization found' }
   
   const { page = 1, limit = 20 } = pagination
   const { field = 'created_at', direction = 'desc' } = sort
@@ -61,7 +66,7 @@ export async function getCompanies(
   let query = supabase
     .from('companies')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .range(start, end)
     .order(field, { ascending: direction === 'asc' })
   
@@ -93,12 +98,15 @@ export async function getCompanyById(id: string) {
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: null, error: 'No organization found' }
   
   const { data, error } = await supabase
     .from('companies')
     .select('*')
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .single()
   
   if (error) {
@@ -108,19 +116,23 @@ export async function getCompanyById(id: string) {
   return { data: data as Company, error: null }
 }
 
-export async function createCompany(companyData: Omit<Company, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createCompany(companyData: Omit<Company, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: null, error: 'No organization found' }
   
   const { data, error } = await supabase
     .from('companies')
     .insert([{
       ...companyData,
       user_id: session.user.id,
+      org_id: orgId,
     }])
     .select()
     .single()
@@ -139,16 +151,19 @@ export async function updateCompany(id: string, updates: Partial<Company>) {
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: null, error: 'No organization found' }
   
-  // Don't allow updating user_id
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
-  const { user_id, ...safeUpdates } = updates
+  // Don't allow updating user_id or org_id
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id and org_id
+  const { user_id, org_id, ...safeUpdates } = updates
   
   const { data, error } = await supabase
     .from('companies')
     .update(safeUpdates)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
   
@@ -166,12 +181,15 @@ export async function deleteCompany(id: string) {
   if (!session) {
     return { error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { error: 'No organization found' }
   
   const { error } = await supabase
     .from('companies')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
   
   if (error) {
     return { error: error.message }
@@ -187,11 +205,14 @@ export async function getContactsByCompanyId(companyId: string) {
   if (!session) {
     return { data: [], error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: [], error: 'No organization found' }
   
   const { data, error } = await supabase
     .from('contacts')
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .eq('company_id', companyId)
     .order('first_name')
   

@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 
 export type InvestorType = 'vc' | 'angel' | 'family_office' | 'corporate' | 'accelerator' | 'other'
 export type RelationshipStatus = 'cold' | 'warm' | 'hot' | 'portfolio' | 'passed'
@@ -8,6 +9,7 @@ export type InvestmentInstrument = 'equity' | 'safe' | 'convertible_note' | 'oth
 export interface Investor {
   id: string
   user_id: string
+  org_id: string | null
   name: string
   firm: string | null
   email: string | null
@@ -30,6 +32,7 @@ export interface Investor {
 export interface Investment {
   id: string
   user_id: string
+  org_id: string | null
   investor_id: string
   round_name: string
   amount: number | null
@@ -71,6 +74,7 @@ export async function getInvestors(
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: [], count: 0, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { page = 1, limit = 20 } = pagination
   const start = (page - 1) * limit
@@ -79,7 +83,7 @@ export async function getInvestors(
   let query = supabase
     .from('investors')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .range(start, end)
     .order('created_at', { ascending: false })
 
@@ -98,26 +102,28 @@ export async function getInvestorById(id: string) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { data, error } = await supabase
     .from('investors')
     .select('*')
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .single()
 
   if (error) return { data: null, error: error.message }
   return { data: data as Investor, error: null }
 }
 
-export async function createInvestor(investor: Omit<Investor, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createInvestor(investor: Omit<Investor, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { data, error } = await supabase
     .from('investors')
-    .insert([{ ...investor, user_id: session.user.id }])
+    .insert([{ ...investor, user_id: session.user.id, org_id: orgId }])
     .select()
     .single()
 
@@ -129,15 +135,16 @@ export async function updateInvestor(id: string, updates: Partial<Investor>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
-  const { user_id, ...safeUpdates } = updates
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id, org_id
+  const { user_id, org_id, ...safeUpdates } = updates
 
   const { data, error } = await supabase
     .from('investors')
     .update(safeUpdates)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
 
@@ -149,12 +156,13 @@ export async function deleteInvestor(id: string) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { error } = await supabase
     .from('investors')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
 
   if (error) return { error: error.message }
   return { error: null }
@@ -169,6 +177,7 @@ export async function getInvestments(
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: [], count: 0, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { page = 1, limit = 20 } = pagination
   const start = (page - 1) * limit
@@ -177,7 +186,7 @@ export async function getInvestments(
   let query = supabase
     .from('investments')
     .select('*, investors(name, firm)', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .range(start, end)
     .order('created_at', { ascending: false })
 
@@ -196,25 +205,27 @@ export async function getInvestmentsByStage() {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: [], error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { data, error } = await supabase
     .from('investments')
     .select('*, investors(name, firm)')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .order('created_at', { ascending: true })
 
   if (error) return { data: [], error: error.message }
   return { data: data as (Investment & { investors: { name: string; firm: string | null } })[], error: null }
 }
 
-export async function createInvestment(investment: Omit<Investment, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createInvestment(investment: Omit<Investment, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { data, error } = await supabase
     .from('investments')
-    .insert([{ ...investment, user_id: session.user.id }])
+    .insert([{ ...investment, user_id: session.user.id, org_id: orgId }])
     .select()
     .single()
 
@@ -226,15 +237,16 @@ export async function updateInvestment(id: string, updates: Partial<Investment>)
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
-  const { user_id, ...safeUpdates } = updates
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id, org_id
+  const { user_id, org_id, ...safeUpdates } = updates
 
   const { data, error } = await supabase
     .from('investments')
     .update(safeUpdates)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
 
@@ -246,12 +258,13 @@ export async function deleteInvestment(id: string) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { error } = await supabase
     .from('investments')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
 
   if (error) return { error: error.message }
   return { error: null }
@@ -263,11 +276,12 @@ export async function getInvestorStats() {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   if (!session) return { data: null, error: 'Not authenticated' }
+  const orgId = await getActiveOrgId()
 
   const { data: investments, error } = await supabase
     .from('investments')
     .select('amount, stage')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
 
   if (error) return { data: null, error: error.message }
 

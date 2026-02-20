@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 
 export interface DashboardStats {
   totalContacts: number
@@ -34,7 +35,9 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     return { data: null, error: 'Not authenticated' }
   }
 
-  const userId = session.user.id
+  const orgId = await getActiveOrgId()
+  if (!orgId) return { data: null, error: 'No organization found' }
+
   const now = new Date()
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString()
   const startOfDay = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString()
@@ -44,7 +47,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     const { count: totalContacts, error: contactsError } = await supabase
       .from('contacts')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
 
     if (contactsError) {
       console.error('Error fetching total contacts:', contactsError)
@@ -55,7 +58,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     const { data: dealsData, error: dealsError } = await supabase
       .from('deals')
       .select('value, stage')
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
 
     if (dealsError) {
       console.error('Error fetching deals:', dealsError)
@@ -89,7 +92,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
         company_id,
         created_at
       `)
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
       .order('created_at', { ascending: false })
       .limit(10)
 
@@ -109,7 +112,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
         company_id,
         completed
       `)
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
       .eq('type', 'task')
       .eq('completed', false)
       .gte('due_date', startOfDay)
@@ -125,7 +128,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     const { count: newContactsThisMonth, error: newContactsError } = await supabase
       .from('contacts')
       .select('*', { count: 'exact', head: true })
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
       .gte('created_at', startOfMonth)
 
     if (newContactsError) {
@@ -137,7 +140,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
     const { data: revenueWonData, error: revenueError } = await supabase
       .from('deals')
       .select('value')
-      .eq('user_id', userId)
+      .eq('org_id', orgId!)
       .eq('stage', 'closed_won')
       .gte('created_at', startOfMonth)
 

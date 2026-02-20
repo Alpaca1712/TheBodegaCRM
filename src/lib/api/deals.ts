@@ -1,8 +1,10 @@
 import { createClient } from '@/lib/supabase/client'
+import { getActiveOrgId } from '@/lib/api/organizations'
 
 export interface Deal {
   id: string
   user_id: string
+  org_id: string | null
   title: string
   value: number | null
   currency: string
@@ -50,6 +52,8 @@ export async function getDeals(
   if (!session) {
     return { data: [], count: 0, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   const { page = 1, limit = 20 } = pagination
   const { field = 'created_at', direction = 'desc' } = sort
@@ -59,7 +63,7 @@ export async function getDeals(
   let query = supabase
     .from('deals')
     .select('*', { count: 'exact' })
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .range(start, end)
     .order(field, { ascending: direction === 'asc' })
   
@@ -95,12 +99,14 @@ export async function getDealById(id: string) {
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   const { data, error } = await supabase
     .from('deals')
     .select('*')
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .single()
   
   if (error) {
@@ -110,19 +116,22 @@ export async function getDealById(id: string) {
   return { data: data as Deal, error: null }
 }
 
-export async function createDeal(dealData: Omit<Deal, 'id' | 'user_id' | 'created_at' | 'updated_at'>) {
+export async function createDeal(dealData: Omit<Deal, 'id' | 'user_id' | 'org_id' | 'created_at' | 'updated_at'>) {
   const supabase = createClient()
   const { data: { session } } = await supabase.auth.getSession()
   
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   const { data, error } = await supabase
     .from('deals')
     .insert([{
       ...dealData,
       user_id: session.user.id,
+      org_id: orgId,
     }])
     .select()
     .single()
@@ -141,16 +150,18 @@ export async function updateDeal(id: string, updates: Partial<Deal>) {
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
-  // Don't allow updating user_id
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id
-  const { user_id, ...safeUpdates } = updates
+  // Don't allow updating user_id or org_id
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars -- intentionally excluding user_id, org_id
+  const { user_id, org_id, ...safeUpdates } = updates
   
   const { data, error } = await supabase
     .from('deals')
     .update(safeUpdates)
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .select()
     .single()
   
@@ -168,12 +179,14 @@ export async function deleteDeal(id: string) {
   if (!session) {
     return { error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   const { error } = await supabase
     .from('deals')
     .delete()
     .eq('id', id)
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
   
   if (error) {
     return { error: error.message }
@@ -189,11 +202,13 @@ export async function getDealsByStage() {
   if (!session) {
     return { data: [], error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   const { data, error } = await supabase
     .from('deals')
     .select('*')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
     .order('expected_close_date', { ascending: true, nullsFirst: false })
   
   if (error) {
@@ -210,12 +225,14 @@ export async function getDealStats() {
   if (!session) {
     return { data: null, error: 'Not authenticated' }
   }
+
+  const orgId = await getActiveOrgId()
   
   // Get total deal value by stage
   const { data: stageData, error: stageError } = await supabase
     .from('deals')
     .select('stage, value')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
   
   if (stageError) {
     return { data: null, error: stageError.message }
@@ -225,7 +242,7 @@ export async function getDealStats() {
   const { data: statsData, error: statsError } = await supabase
     .from('deals')
     .select('value')
-    .eq('user_id', session.user.id)
+    .eq('org_id', orgId!)
   
   if (statsError) {
     return { data: null, error: statsError.message }

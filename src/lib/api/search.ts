@@ -1,3 +1,4 @@
+import { getActiveOrgId } from '@/lib/api/organizations'
 import { getContacts } from './contacts';
 import { getCompanies } from './companies';
 import { getDeals } from './deals';
@@ -23,6 +24,9 @@ export async function searchAll(query: string): Promise<SearchCategory[]> {
   if (!query.trim()) {
     return [];
   }
+
+  const orgId = await getActiveOrgId()
+  if (!orgId) return []
 
   try {
     // Search in parallel

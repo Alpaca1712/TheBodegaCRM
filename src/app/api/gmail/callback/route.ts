@@ -19,8 +19,15 @@ export async function GET(request: NextRequest) {
 
     const expiresAt = new Date(Date.now() + tokens.expires_in * 1000).toISOString()
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_org_id')
+      .eq('user_id', session.user.id)
+      .single()
+
     await supabase.from('email_accounts').upsert({
       user_id: session.user.id,
+      org_id: profile?.active_org_id || null,
       provider: 'gmail',
       email_address: tokens.email,
       access_token: tokens.access_token,

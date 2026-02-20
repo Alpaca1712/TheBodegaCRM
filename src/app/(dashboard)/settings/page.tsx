@@ -1,7 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { User, Mail, Key, Bell, Shield, LogOut } from 'lucide-react'
+import { User, Mail, Key, Bell, Shield, LogOut, Users } from 'lucide-react'
+import Link from 'next/link'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -222,6 +223,26 @@ export default function SettingsPage() {
         
         {/* Sidebar - Account Actions */}
         <div className="space-y-6">
+          {/* Team Card */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="h-5 w-5" />
+                Team
+              </CardTitle>
+              <CardDescription>
+                Manage your organization and team members
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Link href="/settings/team">
+                <Button variant="outline" className="w-full">
+                  Manage Team
+                </Button>
+              </Link>
+            </CardContent>
+          </Card>
+
           {/* Account Card */}
           <Card>
             <CardHeader>
