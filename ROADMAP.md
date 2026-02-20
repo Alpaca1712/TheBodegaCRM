@@ -154,7 +154,7 @@
 - [x] Create `src/components/ai/deal-suggestion-banner.tsx` — banner on deal detail showing AI stage suggestion
 - [x] Add AI insights panel to contact detail page — show recent email summaries + suggested follow-ups
 - [x] Add AI insights panel to deal detail page — show stage suggestion + reasoning
-- [ ] Verify `npm run build` passes
+- [x] Verify `npm run build` passes
 
 ---
 
@@ -166,7 +166,7 @@
 - [x] Create `src/app/api/gmail/connect/route.ts` — redirect to Google OAuth
 - [x] Create `src/app/api/gmail/callback/route.ts` — handle OAuth callback, store tokens
 - [x] Create `src/app/(dashboard)/email/page.tsx` — email hub showing connected accounts + AI summaries
-- [ ] Create `src/app/api/gmail/sync/route.ts` — API route that fetches new messages, matches to contacts/deals, runs AI summarization via Novita
+- [x] Create `src/app/api/gmail/sync/route.ts` — API route that fetches new messages, matches to contacts/deals, runs AI summarization via Novita
 - [ ] Create `src/components/email/email-summary-list.tsx` — list of email summaries with sentiment + action items
 - [ ] Add email thread view on contact detail page — show email history with that contact
 - [ ] Add email thread view on deal detail page — show emails related to that deal
