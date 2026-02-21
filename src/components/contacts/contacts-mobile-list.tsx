@@ -200,7 +200,7 @@ export default function ContactsMobileList({
             
             {/* Contact card */}
             <div 
-              className={`bg-white rounded-lg border border-zinc-200 p-4 transition-transform duration-200 ${
+              className={`bg-white dark:bg-zinc-900 rounded-lg border border-zinc-200 dark:border-zinc-800 p-4 transition-transform duration-200 ${
                 isSwiped ? 'shadow-lg' : ''
               }`}
               style={{
@@ -241,7 +241,7 @@ export default function ContactsMobileList({
                   {/* Contact info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-zinc-900 truncate">
+                      <h3 className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">
                         {contact.first_name} {contact.last_name}
                       </h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(contact.status)}`}>
@@ -251,27 +251,27 @@ export default function ContactsMobileList({
                     
                     <div className="space-y-1">
                       {contact.email && (
-                        <div className="flex items-center gap-1 text-xs text-zinc-600">
+                        <div className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                           <Mail size={12} />
                           <span className="truncate">{contact.email}</span>
                         </div>
                       )}
                       
                       {contact.phone && (
-                        <div className="flex items-center gap-1 text-xs text-zinc-600">
+                        <div className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                           <Phone size={12} />
                           <span>{contact.phone}</span>
                         </div>
                       )}
                       
-                      {contact.company_id && (
-                        <div className="flex items-center gap-1 text-xs text-zinc-600">
+                      {contact.company_name && (
+                        <div className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-400">
                           <Building size={12} />
-                          <span>Company</span>
+                          <span>{contact.company_name}</span>
                         </div>
                       )}
                       
-                      <div className="flex items-center gap-1 text-xs text-zinc-500">
+                      <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-500">
                         <Calendar size={12} />
                         <span>Added {formatDate(contact.created_at)}</span>
                       </div>

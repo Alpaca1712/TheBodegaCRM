@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { refreshAccessToken, fetchRecentMessages } from '@/lib/api/gmail'
-import { summarizeEmail } from '@/lib/api/ai'
+import { summarizeEmail, generateFollowUp } from '@/lib/api/ai'
 
 export async function POST() {
   try {
@@ -128,13 +128,40 @@ export async function POST() {
               message.snippet
             )
 
+            // Look up contact name for AI context
+            let contactName: string | undefined
+            if (contactId) {
+              const { data: contactData } = await supabase
+                .from('contacts')
+                .select('first_name, last_name')
+                .eq('id', contactId)
+                .maybeSingle()
+              if (contactData) contactName = `${contactData.first_name} ${contactData.last_name}`
+            }
+
             // Get AI summary
             const aiSummary = await summarizeEmail({
               subject: message.subject || '',
               snippet: message.snippet,
               fromAddress: fromEmail,
-              // contactName and dealTitle will be filled if we implement contact/deal lookup
+              contactName,
             })
+
+            // Generate follow-up draft
+            let followUpDraft: string | null = null
+            try {
+              const followUp = await generateFollowUp({
+                contactName: contactName || fromEmail,
+                contactEmail: fromEmail,
+                lastEmailSubject: message.subject || undefined,
+                lastEmailSnippet: message.snippet,
+                daysSinceLastContact: 0,
+                userName: session.user.email?.split('@')[0] || 'Me',
+              })
+              followUpDraft = `Subject: ${followUp.subject}\n\n${followUp.body}`
+            } catch (followUpError) {
+              console.error('Failed to generate follow-up draft:', followUpError)
+            }
 
             // Store email summary
             const { error: insertError } = await supabase
@@ -148,12 +175,13 @@ export async function POST() {
                 subject: message.subject,
                 from_address: fromEmail,
                 to_addresses: message.to,
-                date: message.date,
+                date: new Date(message.date).toISOString(),
                 snippet: message.snippet,
                 ai_summary: aiSummary.summary,
                 ai_sentiment: aiSummary.sentiment,
                 ai_action_items: aiSummary.actionItems,
                 ai_suggested_stage: aiSummary.suggestedStage,
+                ai_follow_up_draft: followUpDraft,
                 contact_id: contactId,
                 deal_id: dealId,
                 investor_id: investorId,

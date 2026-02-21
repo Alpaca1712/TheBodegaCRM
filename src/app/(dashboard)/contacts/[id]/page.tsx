@@ -15,6 +15,7 @@ import ActivityTimeline from '@/components/activities/activity-timeline';
 import ActivityForm from '@/components/activities/activity-form';
 import TagManager from '@/components/contacts/tag-manager';
 import AiInsightsPanel, { AiEmailDraftButton } from '@/components/ai/ai-insights-panel';
+import EnrichPanel from '@/components/contacts/enrich-panel';
 import { Sheet, SheetHeader, SheetBody, SheetFooter } from '@/components/ui/sheet';
 import ContactForm, { type ContactFormData } from '@/components/contacts/contact-form';
 import { updateContact } from '@/lib/api/contacts';
@@ -501,6 +502,22 @@ export default function ContactDetailPage() {
                 last_activity_date: activities[0]?.created_at,
                 deals_count: contactDeals.length,
                 deals_value: contactDeals.reduce((sum, d) => sum + (d.value || 0), 0),
+              }}
+            />
+
+            {/* Enrichment */}
+            <EnrichPanel
+              contactId={contactId}
+              firstName={contact.first_name}
+              lastName={contact.last_name}
+              email={contact.email}
+              companyName={contact.company_name}
+              onApply={async (updates) => {
+                const result = await updateContact(contactId, updates as Partial<Contact>);
+                if (!result.error && result.data) {
+                  setContact(result.data);
+                  toast.success('Contact updated with enriched data');
+                }
               }}
             />
 

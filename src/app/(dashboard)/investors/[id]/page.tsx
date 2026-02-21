@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { ArrowLeft, Mail, Phone, Globe, Linkedin, Building, Trash2, DollarSign } from 'lucide-react'
+import { ArrowLeft, Mail, Phone, Globe, Linkedin, Building, Trash2, DollarSign, Edit } from 'lucide-react'
 import { getInvestorById, deleteInvestor, type Investor } from '@/lib/api/investors'
 import { getInvestments, type Investment } from '@/lib/api/investors'
 
@@ -88,9 +88,18 @@ export default function InvestorDetailPage() {
           <h1 className="text-3xl font-bold text-zinc-900">{investor.name}</h1>
           {investor.firm && <p className="text-lg text-zinc-500 mt-1">{investor.firm}</p>}
         </div>
-        <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-50 rounded-lg transition-colors">
-          <Trash2 className="h-5 w-5" />
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href={`/investors/${investor.id}/edit`}
+            className="flex items-center gap-1.5 px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 text-zinc-700 dark:text-zinc-300 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+          >
+            <Edit className="h-4 w-4" />
+            Edit
+          </Link>
+          <button onClick={handleDelete} className="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-950 rounded-lg transition-colors">
+            <Trash2 className="h-5 w-5" />
+          </button>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">

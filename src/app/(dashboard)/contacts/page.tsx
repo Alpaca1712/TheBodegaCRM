@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import { Search, UserPlus, ChevronLeft, ChevronRight, Download, Upload, Mail, Phone, Building, ExternalLink, Users } from 'lucide-react';
+import { Search, UserPlus, ChevronLeft, ChevronRight, Download, Upload, Mail, Phone, Building, ExternalLink, Users, Tag, CalendarDays, X } from 'lucide-react';
 import Link from 'next/link';
 import { getContacts, createContact, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
 import ContactsTable from '@/components/contacts/contacts-table';
@@ -10,6 +10,7 @@ import ContactsMobileList from '@/components/contacts/contacts-mobile-list';
 import { exportContactsToCSV } from '@/lib/utils/csv-export';
 import { Sheet, SheetHeader, SheetBody, SheetFooter } from '@/components/ui/sheet';
 import ContactForm, { type ContactFormData } from '@/components/contacts/contact-form';
+import { useTags } from '@/hooks/use-tags';
 import { toast } from 'sonner';
 
 const statusOptions = [
@@ -39,7 +40,13 @@ export default function ContactsPage() {
   const [sortDirection, setSortDirection] = useState<'asc' | 'desc'>('desc');
   const [page, setPage] = useState(1);
   const [totalCount, setTotalCount] = useState(0);
+  const [tagFilter, setTagFilter] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [showFilters, setShowFilters] = useState(false);
   const limit = 20;
+
+  const { data: allTags = [] } = useTags();
 
   // Sheet states
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -65,6 +72,15 @@ export default function ContactsPage() {
     if (debouncedSearch) {
       filters.search = debouncedSearch;
     }
+    if (tagFilter) {
+      filters.tag_id = tagFilter;
+    }
+    if (dateFrom) {
+      filters.date_from = dateFrom;
+    }
+    if (dateTo) {
+      filters.date_to = dateTo;
+    }
 
     const sort: SortOptions = {
       field: sortField,
@@ -79,7 +95,7 @@ export default function ContactsPage() {
       setTotalCount(result.count);
     }
     setLoading(false);
-  }, [statusFilter, sortField, sortDirection, page, debouncedSearch]);
+  }, [statusFilter, sortField, sortDirection, page, debouncedSearch, tagFilter, dateFrom, dateTo]);
 
   useEffect(() => {
     fetchContacts();
@@ -224,7 +240,67 @@ export default function ContactsPage() {
               ))}
             </select>
           </div>
+          <button
+            onClick={() => setShowFilters(!showFilters)}
+            className={`flex items-center gap-1.5 px-3 py-2 text-sm border rounded-lg transition-colors ${
+              showFilters || tagFilter || dateFrom || dateTo
+                ? 'border-indigo-300 dark:border-indigo-700 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                : 'border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <Tag size={14} />
+            Filters
+            {(tagFilter || dateFrom || dateTo) && (
+              <span className="h-4 w-4 rounded-full bg-indigo-600 text-white text-[10px] flex items-center justify-center font-bold">
+                {[tagFilter, dateFrom, dateTo].filter(Boolean).length}
+              </span>
+            )}
+          </button>
         </div>
+
+        {showFilters && (
+          <div className="flex flex-wrap items-center gap-2 mb-4 p-3 bg-zinc-50 dark:bg-zinc-800/50 rounded-xl border border-zinc-200 dark:border-zinc-700">
+            <div className="flex items-center gap-1.5">
+              <Tag size={12} className="text-zinc-400" />
+              <select
+                value={tagFilter}
+                onChange={(e) => { setTagFilter(e.target.value); setPage(1); }}
+                className="px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md dark:text-zinc-300 focus:ring-2 focus:ring-indigo-500/20"
+              >
+                <option value="">All Tags</option>
+                {allTags.map((t: { id: string; name: string }) => (
+                  <option key={t.id} value={t.id}>{t.name}</option>
+                ))}
+              </select>
+            </div>
+            <div className="flex items-center gap-1.5">
+              <CalendarDays size={12} className="text-zinc-400" />
+              <input
+                type="date"
+                value={dateFrom}
+                onChange={(e) => { setDateFrom(e.target.value); setPage(1); }}
+                className="px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md dark:text-zinc-300 focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="From"
+              />
+              <span className="text-xs text-zinc-400">to</span>
+              <input
+                type="date"
+                value={dateTo}
+                onChange={(e) => { setDateTo(e.target.value); setPage(1); }}
+                className="px-2 py-1.5 text-xs border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-md dark:text-zinc-300 focus:ring-2 focus:ring-indigo-500/20"
+                placeholder="To"
+              />
+            </div>
+            {(tagFilter || dateFrom || dateTo) && (
+              <button
+                onClick={() => { setTagFilter(''); setDateFrom(''); setDateTo(''); setPage(1); }}
+                className="flex items-center gap-1 px-2 py-1.5 text-xs text-zinc-500 hover:text-zinc-700 dark:text-zinc-400 dark:hover:text-zinc-200"
+              >
+                <X size={12} /> Clear
+              </button>
+            )}
+          </div>
+        )}
 
         {/* Table */}
         <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">

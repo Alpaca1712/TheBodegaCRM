@@ -17,6 +17,15 @@ export interface Contact {
   notes?: string
   avatar_url?: string
   tags?: string[]
+  linkedin_url?: string
+  twitter_url?: string
+  city?: string
+  state?: string
+  country?: string
+  headline?: string
+  seniority?: string
+  enriched_at?: string
+  enrichment_data?: Record<string, unknown>
   created_at: string
   updated_at: string
 }
@@ -24,6 +33,9 @@ export interface Contact {
 export interface ContactFilters {
   status?: 'active' | 'inactive' | 'lead'
   search?: string
+  tag_id?: string
+  date_from?: string
+  date_to?: string
 }
 
 export interface PaginationOptions {
@@ -76,7 +88,27 @@ export async function getContacts(
   if (filters.search) {
     query = query.or(`first_name.ilike.%${filters.search}%,last_name.ilike.%${filters.search}%,email.ilike.%${filters.search}%`)
   }
-  
+
+  if (filters.date_from) {
+    query = query.gte('created_at', filters.date_from)
+  }
+  if (filters.date_to) {
+    query = query.lte('created_at', `${filters.date_to}T23:59:59`)
+  }
+
+  if (filters.tag_id) {
+    const supabaseForTags = createClient()
+    const { data: taggedContactIds } = await supabaseForTags
+      .from('contact_tags')
+      .select('contact_id')
+      .eq('tag_id', filters.tag_id)
+    if (taggedContactIds && taggedContactIds.length > 0) {
+      query = query.in('id', taggedContactIds.map(r => r.contact_id))
+    } else {
+      return { data: [], count: 0, error: null }
+    }
+  }
+
   const { data, error, count } = await query
   
   if (error) {
