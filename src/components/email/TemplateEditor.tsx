@@ -292,8 +292,8 @@ export function TemplateEditor({
               </div>
             </div>
             {previewMode ? (
-              <div className="rounded-md border bg-slate-50 p-4 min-h-[200px]">
-                <div className="font-semibold text-slate-900 mb-2">
+              <div className="rounded-md border bg-zinc-50 p-4 min-h-[200px]">
+                <div className="font-semibold text-zinc-900 mb-2">
                   Subject: {previewSubject}
                 </div>
                 <div className="prose prose-sm max-w-none">
@@ -348,7 +348,7 @@ export function TemplateEditor({
                 <Badge
                   key={variable.value}
                   variant="outline"
-                  className="cursor-pointer hover:bg-slate-100"
+                  className="cursor-pointer hover:bg-zinc-100"
                   onClick={() => handleInsertVariable(variable.value)}
                 >
                   {variable.label}
@@ -388,20 +388,20 @@ export function TemplateEditor({
             </p>
           </div>
 
-          <div className="h-px w-full bg-slate-200 my-4" />
+          <div className="h-px w-full bg-zinc-200 my-4" />
 
           <div className="space-y-4">
             <h4 className="font-medium">Template Stats</h4>
             {template?.id && existingTemplate?.data && (
               <div className="space-y-2">
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Usage Count</span>
+                  <span className="text-zinc-500">Usage Count</span>
                   <span className="font-medium">
                     {existingTemplate.data.usage_count}
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Last Used</span>
+                  <span className="text-zinc-500">Last Used</span>
                   <span className="font-medium">
                     {existingTemplate.data.last_used_at
                       ? new Date(existingTemplate.data.last_used_at).toLocaleDateString()
@@ -409,7 +409,7 @@ export function TemplateEditor({
                   </span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-slate-500">Created</span>
+                  <span className="text-zinc-500">Created</span>
                   <span className="font-medium">
                     {new Date(existingTemplate.data.created_at).toLocaleDateString()}
                   </span>

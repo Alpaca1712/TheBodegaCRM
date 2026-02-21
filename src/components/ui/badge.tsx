@@ -14,8 +14,8 @@ export function Badge({
 }: BadgeProps) {
   const variantStyles = {
     default: 'bg-indigo-100 text-indigo-800',
-    secondary: 'bg-slate-100 text-slate-800',
-    outline: 'border border-slate-300',
+    secondary: 'bg-zinc-100 text-zinc-800',
+    outline: 'border border-zinc-300',
     destructive: 'bg-red-100 text-red-800',
   }
   

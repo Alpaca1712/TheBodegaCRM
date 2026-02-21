@@ -17,9 +17,9 @@ const getTypeIcon = (type: Activity['type']) => {
     case 'task':
       return <CheckCircle className="w-4 h-4 text-orange-600" />;
     case 'note':
-      return <FileText className="w-4 h-4 text-slate-600" />;
+      return <FileText className="w-4 h-4 text-zinc-600" />;
     default:
-      return <Circle className="w-4 h-4 text-slate-400" />;
+      return <Circle className="w-4 h-4 text-zinc-400" />;
   }
 };
 
@@ -106,7 +106,7 @@ export default function ActivitiesTable({ activities }: ActivitiesTableProps) {
     }
 
     return (
-      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-slate-100 text-slate-800">
+      <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-zinc-100 text-zinc-800">
         No date
       </span>
     );
@@ -114,41 +114,41 @@ export default function ActivitiesTable({ activities }: ActivitiesTableProps) {
 
   return (
     <div className="overflow-x-auto">
-      <table className="min-w-full divide-y divide-slate-200">
-        <thead className="bg-slate-50">
+      <table className="min-w-full divide-y divide-zinc-200">
+        <thead className="bg-zinc-50">
           <tr>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Title & Description
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Type
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Related To
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Due Date
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Status
             </th>
-            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+            <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
               Actions
             </th>
           </tr>
         </thead>
-        <tbody className="bg-white divide-y divide-slate-200">
+        <tbody className="bg-white divide-y divide-zinc-200">
           {activities.map((activity) => (
-            <tr key={activity.id} className="hover:bg-slate-50 transition-colors">
+            <tr key={activity.id} className="hover:bg-zinc-50 transition-colors">
               <td className="px-6 py-4 whitespace-nowrap">
                 <div className="flex items-start">
                   <div className="mt-1 mr-3">
                     {getTypeIcon(activity.type)}
                   </div>
                   <div>
-                    <div className="text-sm font-medium text-slate-900">{activity.title}</div>
+                    <div className="text-sm font-medium text-zinc-900">{activity.title}</div>
                     {activity.description && (
-                      <div className="text-sm text-slate-600 mt-1 line-clamp-2">
+                      <div className="text-sm text-zinc-600 mt-1 line-clamp-2">
                         {activity.description}
                       </div>
                     )}
@@ -156,10 +156,10 @@ export default function ActivitiesTable({ activities }: ActivitiesTableProps) {
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-slate-900">{getTypeLabel(activity.type)}</div>
+                <div className="text-sm text-zinc-900">{getTypeLabel(activity.type)}</div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-slate-900 space-y-1">
+                <div className="text-sm text-zinc-900 space-y-1">
                   {activity.contact_id && (
                     <Link 
                       href={`/contacts/${activity.contact_id}`}
@@ -189,16 +189,16 @@ export default function ActivitiesTable({ activities }: ActivitiesTableProps) {
                     </div>
                   )}
                   {!activity.contact_id && !activity.company_id && !activity.deal_id && (
-                    <span className="text-slate-400 italic">—</span>
+                    <span className="text-zinc-400 italic">—</span>
                   )}
                 </div>
               </td>
               <td className="px-6 py-4 whitespace-nowrap">
-                <div className="text-sm text-slate-900">
+                <div className="text-sm text-zinc-900">
                   {activity.due_date ? formatDateTime(activity.due_date) : 'No due date'}
                 </div>
                 {activity.completed_at && (
-                  <div className="text-xs text-slate-500">
+                  <div className="text-xs text-zinc-500">
                     Completed: {formatDate(activity.completed_at)}
                   </div>
                 )}

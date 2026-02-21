@@ -89,7 +89,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
               type="text"
               autoComplete="name"
               placeholder="Full name"
-              className="relative block w-full rounded-md border-0 py-3 px-4 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+              className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               {...register('name')}
               disabled={isLoading}
             />
@@ -108,7 +108,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             type="email"
             autoComplete="email"
             placeholder="Email address"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('email')}
             disabled={isLoading}
           />
@@ -126,7 +126,7 @@ export default function AuthForm({ mode }: AuthFormProps) {
             type="password"
             autoComplete={isLogin ? 'current-password' : 'new-password'}
             placeholder="Password"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-slate-900 ring-1 ring-inset ring-slate-300 placeholder:text-slate-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('password')}
             disabled={isLoading}
           />

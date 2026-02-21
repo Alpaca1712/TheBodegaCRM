@@ -49,8 +49,8 @@ export default function LtvCacChart({ data }: LtvCacChartProps) {
             </table>
           </div>
         ) : (
-          <div className="h-[300px] flex items-center justify-center border border-dashed border-slate-300 rounded-lg">
-            <div className="text-center text-slate-500">
+          <div className="h-[300px] flex items-center justify-center border border-dashed border-zinc-300 rounded-lg">
+            <div className="text-center text-zinc-500">
               <p className="font-medium mb-2">No data available</p>
               <p className="text-sm">LTV/CAC data will appear here</p>
             </div>

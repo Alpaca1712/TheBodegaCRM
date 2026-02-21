@@ -55,7 +55,7 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">Add Investment Round</h3>
+      <h3 className="text-lg font-semibold text-zinc-900 mb-4">Add Investment Round</h3>
       
       <form onSubmit={handleSubmit} className="space-y-4">
         {error && (
@@ -65,34 +65,34 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
         )}
 
         <div>
-          <label htmlFor="round_name" className="block text-sm font-medium text-slate-700 mb-1">Round Name *</label>
+          <label htmlFor="round_name" className="block text-sm font-medium text-zinc-700 mb-1">Round Name *</label>
           <input 
             id="round_name" 
             name="round_name" 
             required 
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
             placeholder="e.g., Seed, Series A, Pre-seed" 
           />
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="amount" className="block text-sm font-medium text-slate-700 mb-1">Amount ($)</label>
+            <label htmlFor="amount" className="block text-sm font-medium text-zinc-700 mb-1">Amount ($)</label>
             <input 
               id="amount" 
               name="amount" 
               type="number" 
               step="1000" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               placeholder="0.00" 
             />
           </div>
           <div>
-            <label htmlFor="stage" className="block text-sm font-medium text-slate-700 mb-1">Stage</label>
+            <label htmlFor="stage" className="block text-sm font-medium text-zinc-700 mb-1">Stage</label>
             <select 
               id="stage" 
               name="stage" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="intro">Intro</option>
               <option value="pitch">Pitch</option>
@@ -107,11 +107,11 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="instrument" className="block text-sm font-medium text-slate-700 mb-1">Instrument</label>
+            <label htmlFor="instrument" className="block text-sm font-medium text-zinc-700 mb-1">Instrument</label>
             <select 
               id="instrument" 
               name="instrument" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
             >
               <option value="equity">Equity</option>
               <option value="safe">SAFE</option>
@@ -120,7 +120,7 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
             </select>
           </div>
           <div>
-            <label htmlFor="equity_percentage" className="block text-sm font-medium text-slate-700 mb-1">Equity %</label>
+            <label htmlFor="equity_percentage" className="block text-sm font-medium text-zinc-700 mb-1">Equity %</label>
             <input 
               id="equity_percentage" 
               name="equity_percentage" 
@@ -128,7 +128,7 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
               step="0.01" 
               min="0" 
               max="100" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               placeholder="0.00" 
             />
           </div>
@@ -136,24 +136,24 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="valuation_pre" className="block text-sm font-medium text-slate-700 mb-1">Pre-money Valuation ($)</label>
+            <label htmlFor="valuation_pre" className="block text-sm font-medium text-zinc-700 mb-1">Pre-money Valuation ($)</label>
             <input 
               id="valuation_pre" 
               name="valuation_pre" 
               type="number" 
               step="1000" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               placeholder="0.00" 
             />
           </div>
           <div>
-            <label htmlFor="valuation_post" className="block text-sm font-medium text-slate-700 mb-1">Post-money Valuation ($)</label>
+            <label htmlFor="valuation_post" className="block text-sm font-medium text-zinc-700 mb-1">Post-money Valuation ($)</label>
             <input 
               id="valuation_post" 
               name="valuation_post" 
               type="number" 
               step="1000" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               placeholder="0.00" 
             />
           </div>
@@ -161,42 +161,42 @@ export default function InvestmentForm({ investorId, onSuccess, onCancel }: Inve
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="pitch_date" className="block text-sm font-medium text-slate-700 mb-1">Pitch Date</label>
+            <label htmlFor="pitch_date" className="block text-sm font-medium text-zinc-700 mb-1">Pitch Date</label>
             <input 
               id="pitch_date" 
               name="pitch_date" 
               type="date" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
             />
           </div>
           <div>
-            <label htmlFor="close_date" className="block text-sm font-medium text-slate-700 mb-1">Close Date</label>
+            <label htmlFor="close_date" className="block text-sm font-medium text-zinc-700 mb-1">Close Date</label>
             <input 
               id="close_date" 
               name="close_date" 
               type="date" 
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
             />
           </div>
         </div>
 
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+          <label htmlFor="notes" className="block text-sm font-medium text-zinc-700 mb-1">Notes</label>
           <textarea 
             id="notes" 
             name="notes" 
             rows={2} 
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
             placeholder="Additional details about this investment..." 
           />
         </div>
 
-        <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
+        <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200">
           {onCancel && (
             <button 
               type="button" 
               onClick={onCancel}
-              className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50"
+              className="px-4 py-2 border border-zinc-300 rounded-lg text-zinc-700 hover:bg-zinc-50"
             >
               Cancel
             </button>

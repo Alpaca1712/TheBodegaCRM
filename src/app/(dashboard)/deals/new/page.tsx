@@ -51,13 +51,13 @@ export default function NewDealPage() {
       <div className="mb-6">
         <Link
           href="/deals"
-          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900 mb-4"
         >
           <ArrowLeft size={16} className="mr-2" />
           Back to Deals Pipeline
         </Link>
-        <h1 className="text-2xl font-semibold text-slate-900">Create New Deal</h1>
-        <p className="text-slate-600 mt-1">
+        <h1 className="text-2xl font-semibold text-zinc-900">Create New Deal</h1>
+        <p className="text-zinc-600 mt-1">
           Add a new sales deal to your pipeline
         </p>
       </div>

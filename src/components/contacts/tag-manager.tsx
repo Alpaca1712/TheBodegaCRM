@@ -38,10 +38,10 @@ export default function TagManager({
   return (
     <div className="mt-6">
       <div className="flex items-center justify-between mb-3">
-        <div className="flex items-center gap-2 text-sm font-medium text-slate-700">
+        <div className="flex items-center gap-2 text-sm font-medium text-zinc-700">
           <span>Tags</span>
           {isLoading && (
-            <span className="text-xs text-slate-400 font-normal">(loading...)</span>
+            <span className="text-xs text-zinc-400 font-normal">(loading...)</span>
           )}
         </div>
         {availableTags.length > 0 && (
@@ -64,19 +64,19 @@ export default function TagManager({
           className="mb-3"
         />
       ) : (
-        <p className="text-slate-400 text-sm mb-3">No tags added yet</p>
+        <p className="text-zinc-400 text-sm mb-3">No tags added yet</p>
       )}
       
       {isAddingTag && availableTags.length > 0 && (
         <div className="relative">
-          <div className="absolute z-10 mt-1 w-full max-w-xs bg-white rounded-lg border border-slate-200 shadow-lg overflow-hidden">
-            <div className="p-2 border-b border-slate-100">
+          <div className="absolute z-10 mt-1 w-full max-w-xs bg-white rounded-lg border border-zinc-200 shadow-lg overflow-hidden">
+            <div className="p-2 border-b border-zinc-100">
               <div className="flex items-center justify-between">
-                <span className="text-xs font-medium text-slate-700">Select a tag</span>
+                <span className="text-xs font-medium text-zinc-700">Select a tag</span>
                 <button
                   type="button"
                   onClick={() => setIsAddingTag(false)}
-                  className="text-slate-400 hover:text-slate-600"
+                  className="text-zinc-400 hover:text-zinc-600"
                 >
                   <X size={14} />
                 </button>
@@ -88,7 +88,7 @@ export default function TagManager({
                   key={tag.id}
                   type="button"
                   onClick={() => handleAddTag(tag.id)}
-                  className="w-full text-left px-3 py-2 hover:bg-slate-50 transition-colors border-b border-slate-100 last:border-b-0"
+                  className="w-full text-left px-3 py-2 hover:bg-zinc-50 transition-colors border-b border-zinc-100 last:border-b-0"
                 >
                   <div className="flex items-center justify-between">
                     <span 
@@ -117,7 +117,7 @@ export default function TagManager({
       )}
       
       {availableTags.length === 0 && !isAddingTag && (
-        <p className="text-xs text-slate-400 mt-1">No more tags available to add</p>
+        <p className="text-xs text-zinc-400 mt-1">No more tags available to add</p>
       )}
     </div>
   );

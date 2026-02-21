@@ -24,7 +24,7 @@ const sentimentConfig = {
     label: 'Neutral',
     icon: Clock,
     variant: 'secondary' as const,
-    color: 'bg-slate-100 text-slate-800 border-slate-200',
+    color: 'bg-zinc-100 text-zinc-800 border-zinc-200',
   },
   negative: {
     label: 'Negative',
@@ -67,17 +67,17 @@ export default function AiSummaryCard({
       
       <CardContent className="space-y-4">
         <div>
-          <p className="text-slate-700 text-sm leading-relaxed">{summary}</p>
+          <p className="text-zinc-700 text-sm leading-relaxed">{summary}</p>
         </div>
         
         {actionItems.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-slate-800 mb-2">Action Items</h4>
+            <h4 className="text-sm font-medium text-zinc-800 mb-2">Action Items</h4>
             <ul className="space-y-2">
               {actionItems.map((item, index) => (
                 <li key={index} className="flex items-start gap-2">
                   <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                  <span className="text-slate-600 text-sm">{item}</span>
+                  <span className="text-zinc-600 text-sm">{item}</span>
                 </li>
               ))}
             </ul>
@@ -86,7 +86,7 @@ export default function AiSummaryCard({
         
         {suggestedStage && (
           <div>
-            <h4 className="text-sm font-medium text-slate-800 mb-1">Suggested Deal Stage</h4>
+            <h4 className="text-sm font-medium text-zinc-800 mb-1">Suggested Deal Stage</h4>
             <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 border-indigo-200">
               {suggestedStage}
             </Badge>

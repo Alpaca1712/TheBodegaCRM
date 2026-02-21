@@ -7,12 +7,15 @@ import {
   ArrowLeft, TrendingUp, Plus
 } from 'lucide-react';
 import Link from 'next/link';
-import { getDealById, deleteDeal, type Deal } from '@/lib/api/deals';
+import { getDealById, updateDeal, deleteDeal, type Deal } from '@/lib/api/deals';
 import { getActivities, type Activity } from '@/lib/api/activities';
 import ActivityTimeline from '@/components/activities/activity-timeline';
 import ActivityForm from '@/components/activities/activity-form';
-import DealSuggestionBanner from '@/components/ai/deal-suggestion-banner';
+import AiInsightsPanel from '@/components/ai/ai-insights-panel';
+import { Sheet, SheetHeader, SheetBody } from '@/components/ui/sheet';
+import DealForm, { type DealFormData } from '@/components/deals/deal-form';
 import { useCreateActivity } from '@/hooks/use-activities';
+import { toast } from 'sonner';
 
 const stageLabels: Record<Deal['stage'], string> = {
   lead: 'Lead',
@@ -24,12 +27,12 @@ const stageLabels: Record<Deal['stage'], string> = {
 };
 
 const stageColors: Record<Deal['stage'], string> = {
-  lead: 'bg-blue-100 text-blue-800',
-  qualified: 'bg-indigo-100 text-indigo-800',
-  proposal: 'bg-purple-100 text-purple-800',
-  negotiation: 'bg-amber-100 text-amber-800',
-  closed_won: 'bg-green-100 text-green-800',
-  closed_lost: 'bg-red-100 text-red-800'
+  lead: 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300',
+  qualified: 'bg-indigo-100 text-indigo-800 dark:bg-indigo-900 dark:text-indigo-300',
+  proposal: 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-300',
+  negotiation: 'bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-300',
+  closed_won: 'bg-emerald-100 text-emerald-800 dark:bg-emerald-900 dark:text-emerald-300',
+  closed_lost: 'bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300'
 };
 
 export default function DealDetailPage() {
@@ -42,29 +45,25 @@ export default function DealDetailPage() {
   const [loading, setLoading] = useState(true);
   const [deleting, setDeleting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  
-  const createActivityMutation = useCreateActivity();
+  const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
+  const createActivityMutation = useCreateActivity();
   const dealId = params.id as string;
 
   useEffect(() => {
     async function fetchDeal() {
       setLoading(true);
       const result = await getDealById(dealId);
-      if (result.error) {
-        setError(result.error);
-      } else {
-        setDeal(result.data);
-      }
+      if (result.error) setError(result.error);
+      else setDeal(result.data);
       setLoading(false);
     }
 
     async function fetchActivities() {
       setActivitiesLoading(true);
       const result = await getActivities({ deal_id: dealId });
-      if (!result.error) {
-        setActivities(result.data || []);
-      }
+      if (!result.error) setActivities(result.data || []);
       setActivitiesLoading(false);
     }
 
@@ -76,42 +75,64 @@ export default function DealDetailPage() {
 
   const handleDelete = async () => {
     if (!deal || !window.confirm('Are you sure you want to delete this deal?')) return;
-    
     setDeleting(true);
     const result = await deleteDeal(deal.id);
-    if (result.error) {
-      setError(result.error);
-    } else {
-      router.push('/deals');
-    }
+    if (result.error) setError(result.error);
+    else router.push('/deals');
     setDeleting(false);
+  };
+
+  const handleEditSubmit = async (data: DealFormData) => {
+    setIsSubmitting(true);
+    try {
+      const result = await updateDeal(dealId, {
+        title: data.title,
+        value: data.value ? parseFloat(data.value) : null,
+        currency: data.currency,
+        stage: data.stage,
+        contact_id: data.contact_id || null,
+        company_id: data.company_id || null,
+        expected_close_date: data.expected_close_date || null,
+        probability: data.probability ? parseInt(data.probability) : null,
+        notes: data.notes || null,
+      });
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        setDeal(result.data);
+        setIsEditOpen(false);
+        toast.success('Deal updated');
+      }
+    } catch {
+      toast.error('Failed to update deal');
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleCreateActivity = async (activityData: Omit<Activity, 'id' | 'user_id' | 'created_at' | 'updated_at'>) => {
     try {
-      await createActivityMutation.mutateAsync({
-        ...activityData,
-        deal_id: dealId,
-      });
+      await createActivityMutation.mutateAsync({ ...activityData, deal_id: dealId });
       setShowActivityForm(false);
-      
-      // Refresh activities
       const result = await getActivities({ deal_id: dealId });
-      if (!result.error) {
-        setActivities(result.data || []);
-      }
+      if (!result.error) setActivities(result.data || []);
       return { error: undefined };
     } catch {
       return { error: 'Failed to create activity' };
     }
   };
 
+  const daysInStage = deal ? Math.floor((Date.now() - new Date(deal.updated_at).getTime()) / (1000 * 60 * 60 * 24)) : 0;
+
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading deal details...</p>
+      <div className="max-w-5xl mx-auto animate-pulse">
+        <div className="h-5 w-24 bg-zinc-200 rounded mb-4" />
+        <div className="h-7 w-48 bg-zinc-200 rounded mb-2" />
+        <div className="h-4 w-64 bg-zinc-100 rounded mb-6" />
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <div className="lg:col-span-2 h-80 bg-zinc-100 rounded-xl" />
+          <div className="h-80 bg-zinc-100 rounded-xl" />
         </div>
       </div>
     );
@@ -119,13 +140,12 @@ export default function DealDetailPage() {
 
   if (error || !deal) {
     return (
-      <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-        <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
+      <div className="max-w-5xl mx-auto">
+        <div className="bg-red-50 dark:bg-red-950 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 px-4 py-3 rounded-lg">
           <p className="font-medium">Error loading deal</p>
           <p className="text-sm mt-1">{error || 'Deal not found'}</p>
-          <Link href="/deals" className="inline-flex items-center mt-3 text-sm font-medium text-red-700 hover:text-red-800">
-            <ArrowLeft className="w-4 h-4 mr-2" />
-            Back to deals
+          <Link href="/deals" className="inline-flex items-center mt-3 text-sm font-medium hover:underline">
+            <ArrowLeft className="w-4 h-4 mr-1" /> Back to deals
           </Link>
         </div>
       </div>
@@ -133,150 +153,68 @@ export default function DealDetailPage() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-      {/* Header */}
-      <div className="mb-6">
-        <Link href="/deals" className="inline-flex items-center text-sm font-medium text-slate-600 hover:text-slate-900 mb-4">
-          <ArrowLeft className="w-4 h-4 mr-2" />
-          Back to deals
+    <>
+      <div className="max-w-5xl mx-auto">
+        {/* Breadcrumb */}
+        <Link href="/deals" className="inline-flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 mb-4">
+          <ArrowLeft size={14} /> Deals
         </Link>
-        <div className="flex justify-between items-start">
+
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6">
           <div>
-            <h1 className="text-2xl font-bold text-slate-900">{deal.title}</h1>
-            <div className="mt-2 flex flex-wrap items-center gap-3">
-              <span className={`inline-flex items-center px-3 py-1 rounded-full text-sm font-medium ${stageColors[deal.stage]}`}>
-                <Tag className="w-3 h-3 mr-1" />
+            <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">{deal.title}</h1>
+            <div className="mt-2 flex flex-wrap items-center gap-2">
+              <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium ${stageColors[deal.stage]}`}>
                 {stageLabels[deal.stage]}
               </span>
-              {deal.value && (
-                <span className="inline-flex items-center text-slate-700 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
-                  <DollarSign className="w-3 h-3 mr-1" />
-                  {new Intl.NumberFormat('en-US', {
-                    style: 'currency',
-                    currency: deal.currency || 'USD',
-                  }).format(deal.value)}
+              {deal.value != null && (
+                <span className="text-sm font-semibold text-zinc-700 dark:text-zinc-300">
+                  ${deal.value.toLocaleString()}
+                </span>
+              )}
+              {deal.probability != null && (
+                <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                  {deal.probability}% probability
                 </span>
               )}
               {deal.expected_close_date && (
-                <span className="inline-flex items-center text-slate-700 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
-                  <Calendar className="w-3 h-3 mr-1" />
+                <span className="text-xs text-zinc-500 dark:text-zinc-400 flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
                   {new Date(deal.expected_close_date).toLocaleDateString()}
                 </span>
               )}
-              {deal.probability !== null && (
-                <span className="inline-flex items-center text-slate-700 bg-slate-100 px-3 py-1 rounded-full text-sm font-medium">
-                  <TrendingUp className="w-3 h-3 mr-1" />
-                  {deal.probability}%
-                </span>
-              )}
             </div>
           </div>
-          <div className="flex space-x-3">
-            <Link
-              href={`/deals/${deal.id}/edit`}
-              className="inline-flex items-center px-4 py-2 border border-slate-300 rounded-lg text-sm font-medium text-slate-700 bg-white hover:bg-slate-50"
+          <div className="flex gap-2">
+            <button
+              onClick={() => setShowActivityForm(!showActivityForm)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
             >
-              <Edit className="w-4 h-4 mr-2" />
-              Edit
-            </Link>
+              <Plus size={14} /> Log Activity
+            </button>
+            <button
+              onClick={() => setIsEditOpen(true)}
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
+            >
+              <Edit size={14} /> Edit
+            </button>
             <button
               onClick={handleDelete}
               disabled={deleting}
-              className="inline-flex items-center px-4 py-2 border border-transparent rounded-lg text-sm font-medium text-white bg-red-600 hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 disabled:opacity-50 transition-colors"
             >
-              <Trash2 className="w-4 h-4 mr-2" />
-              {deleting ? 'Deleting...' : 'Delete'}
+              <Trash2 size={14} /> {deleting ? 'Deleting...' : 'Delete'}
             </button>
           </div>
         </div>
-      </div>
 
-      {/* AI Deal Suggestion Banner */}
-      <div className="mb-6">
-        <DealSuggestionBanner
-          currentStage={deal.stage}
-          suggestedStage={deal.stage === 'negotiation' ? 'closed_won' : 'negotiation'}
-          reasoning="Based on recent activity and positive signals from the prospect, this deal appears ready to advance in the pipeline."
-          suggestedAt={new Date().toISOString()}
-          onAccept={(suggestedStage) => {
-            console.log('Accepted AI suggestion to change stage to:', suggestedStage)
-            // TODO: Implement actual stage change
-            alert(`Would update deal stage to ${suggestedStage}`)
-          }}
-          onDismiss={() => {
-            console.log('Dismissed AI suggestion')
-            alert('Suggestion dismissed')
-          }}
-          stageLabels={stageLabels}
-          stageColors={stageColors}
-        />
-      </div>
-
-      {/* Main content */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Left column - Deal details */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Notes */}
-          {deal.notes && (
-            <div className="bg-white rounded-lg shadow p-6">
-              <h2 className="text-lg font-medium text-slate-900 mb-4 flex items-center">
-                <FileText className="w-5 h-5 mr-2" />
-                Notes
-              </h2>
-              <div className="prose prose-slate max-w-none">
-                <p className="text-slate-600 whitespace-pre-wrap">{deal.notes}</p>
-              </div>
-            </div>
-          )}
-
-          {/* Related entities */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-medium text-slate-900 mb-4">Related</h2>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {deal.contact_id && (
-                <Link
-                  href={`/contacts/${deal.contact_id}`}
-                  className="flex items-center p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  <User className="w-5 h-5 text-slate-500 mr-3" />
-                  <div>
-                    <p className="font-medium text-slate-900">Contact</p>
-                    <p className="text-sm text-slate-500">View associated contact</p>
-                  </div>
-                </Link>
-              )}
-              {deal.company_id && (
-                <Link
-                  href={`/companies/${deal.company_id}`}
-                  className="flex items-center p-3 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
-                >
-                  <Building className="w-5 h-5 text-slate-500 mr-3" />
-                  <div>
-                    <p className="font-medium text-slate-900">Company</p>
-                    <p className="text-sm text-slate-500">View associated company</p>
-                  </div>
-                </Link>
-              )}
-            </div>
-          </div>
-        </div>
-
-        {/* Right column - Activity timeline */}
-        <div className="space-y-6">
-          <div className="bg-white rounded-lg shadow p-6">
-            <div className="flex justify-between items-center mb-6">
-              <h2 className="text-lg font-medium text-slate-900">Activity Timeline</h2>
-              <button
-                onClick={() => setShowActivityForm(!showActivityForm)}
-                className="inline-flex items-center px-3 py-2 border border-transparent text-sm font-medium rounded-lg text-white bg-indigo-600 hover:bg-indigo-700"
-              >
-                <Plus className="w-4 h-4 mr-2" />
-                Add Activity
-              </button>
-            </div>
-
+        {/* Content */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Main: Activity Timeline */}
+          <div className="lg:col-span-2 space-y-4">
             {showActivityForm && (
-              <div className="mb-6">
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
                 <ActivityForm
                   dealId={dealId}
                   onSubmit={handleCreateActivity}
@@ -286,55 +224,141 @@ export default function DealDetailPage() {
               </div>
             )}
 
-            {activitiesLoading ? (
-              <div className="flex justify-center py-8">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+            {/* Notes */}
+            {deal.notes && (
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white flex items-center gap-2 mb-3">
+                  <FileText className="h-4 w-4" /> Notes
+                </h2>
+                <p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">{deal.notes}</p>
               </div>
-            ) : activities.length === 0 ? (
-              <div className="text-center py-8">
-                <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 mb-4">
-                  <Calendar className="h-6 w-6 text-slate-400" />
-                </div>
-                <h3 className="text-sm font-medium text-slate-900 mb-2">No activities yet</h3>
-                <p className="text-sm text-slate-500 max-w-xs mx-auto">Add an activity to track calls, meetings, or tasks related to this deal.</p>
-              </div>
-            ) : (
-              <ActivityTimeline activities={activities} />
             )}
+
+            {/* Activity Timeline */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5">
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-4">Activity</h2>
+              {activitiesLoading ? (
+                <div className="flex justify-center py-8">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-indigo-600"></div>
+                </div>
+              ) : activities.length === 0 ? (
+                <div className="text-center py-8">
+                  <Calendar className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-2" />
+                  <p className="text-sm text-zinc-500 dark:text-zinc-400">No activities yet</p>
+                  <button
+                    onClick={() => setShowActivityForm(true)}
+                    className="mt-2 text-sm text-indigo-600 dark:text-indigo-400 hover:underline"
+                  >
+                    Log your first activity
+                  </button>
+                </div>
+              ) : (
+                <ActivityTimeline activities={activities} />
+              )}
+            </div>
           </div>
 
-          {/* Deal info */}
-          <div className="bg-white rounded-lg shadow p-6">
-            <h2 className="text-lg font-medium text-slate-900 mb-4">Deal Information</h2>
-            <dl className="space-y-4">
-              <div>
-                <dt className="text-sm font-medium text-slate-500">Created</dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {new Date(deal.created_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </dd>
+          {/* Sidebar */}
+          <div className="space-y-4">
+            {/* Deal Properties */}
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800">
+              <div className="px-5 py-3 border-b border-zinc-100 dark:border-zinc-800">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white">Details</h2>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-slate-500">Last Updated</dt>
-                <dd className="mt-1 text-sm text-slate-900">
-                  {new Date(deal.updated_at).toLocaleDateString('en-US', {
-                    year: 'numeric',
-                    month: 'long',
-                    day: 'numeric',
-                  })}
-                </dd>
+              <div className="px-5 py-4 space-y-3">
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Stage</span>
+                  <span className={`px-2 py-0.5 rounded-full text-xs font-medium ${stageColors[deal.stage]}`}>
+                    {stageLabels[deal.stage]}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Value</span>
+                  <span className="text-zinc-900 dark:text-white font-medium">
+                    {deal.value ? `$${deal.value.toLocaleString()}` : '--'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Probability</span>
+                  <span className="text-zinc-900 dark:text-white font-medium">
+                    {deal.probability != null ? `${deal.probability}%` : '--'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Close Date</span>
+                  <span className="text-zinc-900 dark:text-white">
+                    {deal.expected_close_date ? new Date(deal.expected_close_date).toLocaleDateString() : '--'}
+                  </span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Days in Stage</span>
+                  <span className="text-zinc-900 dark:text-white">{daysInStage}d</span>
+                </div>
+                <div className="flex justify-between items-center text-sm">
+                  <span className="text-zinc-500 dark:text-zinc-400">Created</span>
+                  <span className="text-zinc-900 dark:text-white">{new Date(deal.created_at).toLocaleDateString()}</span>
+                </div>
               </div>
-              <div>
-                <dt className="text-sm font-medium text-slate-500">Deal ID</dt>
-                <dd className="mt-1 text-sm text-slate-900 font-mono">{deal.id}</dd>
+            </div>
+
+            {/* Related */}
+            {(deal.contact_id || deal.company_id) && (
+              <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-5 space-y-2">
+                <h2 className="text-sm font-semibold text-zinc-900 dark:text-white mb-3">Related</h2>
+                {deal.contact_id && (
+                  <Link
+                    href={`/contacts/${deal.contact_id}`}
+                    className="flex items-center gap-2 p-2.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <User className="h-4 w-4 text-zinc-400" />
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">Contact</span>
+                  </Link>
+                )}
+                {deal.company_id && (
+                  <Link
+                    href={`/companies/${deal.company_id}`}
+                    className="flex items-center gap-2 p-2.5 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                  >
+                    <Building className="h-4 w-4 text-zinc-400" />
+                    <span className="text-sm text-zinc-700 dark:text-zinc-300">Company</span>
+                  </Link>
+                )}
               </div>
-            </dl>
+            )}
+
+            {/* AI Insights */}
+            <AiInsightsPanel
+              type="deal"
+              data={{
+                title: deal.title,
+                value: deal.value,
+                stage: deal.stage,
+                probability: deal.probability,
+                expected_close_date: deal.expected_close_date,
+                notes: deal.notes,
+                days_in_stage: daysInStage,
+                activities_count: activities.length,
+                last_activity_date: activities[0]?.created_at,
+              }}
+            />
           </div>
         </div>
       </div>
-    </div>
+
+      {/* Edit Sheet */}
+      <Sheet open={isEditOpen} onOpenChange={setIsEditOpen}>
+        <SheetHeader onClose={() => setIsEditOpen(false)}>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">Edit Deal</h2>
+        </SheetHeader>
+        <SheetBody>
+          <DealForm
+            initialData={deal}
+            onSubmit={handleEditSubmit}
+            isSubmitting={isSubmitting}
+            onCancel={() => setIsEditOpen(false)}
+          />
+        </SheetBody>
+      </Sheet>
+    </>
   );
 }

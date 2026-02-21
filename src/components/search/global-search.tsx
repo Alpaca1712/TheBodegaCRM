@@ -1,19 +1,39 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
-import { Search, X, User, Building, TrendingUp, ChevronRight, Users, Briefcase, DollarSign } from 'lucide-react';
+import {
+  Search,
+  X,
+  User,
+  Building,
+  TrendingUp,
+  ChevronRight,
+  Users,
+  Briefcase,
+  DollarSign,
+  UserPlus,
+  Building2,
+  Handshake,
+  CalendarPlus,
+  Landmark,
+  BarChart3,
+  Settings,
+  Mail,
+  Zap,
+  Workflow,
+  Upload,
+} from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { searchAll } from '@/lib/api/search';
 
-// Helper function to get icon for category type
 const getIconForType = (type: 'contact' | 'company' | 'deal') => {
   switch (type) {
     case 'contact':
-      return <Users className="h-4 w-4 text-slate-600" />;
+      return <Users className="h-4 w-4 text-zinc-500" />;
     case 'company':
-      return <Briefcase className="h-4 w-4 text-slate-600" />;
+      return <Briefcase className="h-4 w-4 text-zinc-500" />;
     case 'deal':
-      return <DollarSign className="h-4 w-4 text-slate-600" />;
+      return <DollarSign className="h-4 w-4 text-zinc-500" />;
   }
 };
 
@@ -34,20 +54,38 @@ type SearchCategory = {
   results: SearchResult[];
 };
 
-// Simple debounce hook
+type QuickAction = {
+  id: string;
+  label: string;
+  description: string;
+  icon: React.ComponentType<{ className?: string }>;
+  route: string;
+  group: 'create' | 'navigate';
+};
+
+const quickActions: QuickAction[] = [
+  { id: 'new-contact', label: 'New Contact', description: 'Add a new contact', icon: UserPlus, route: '/contacts/new', group: 'create' },
+  { id: 'new-company', label: 'New Company', description: 'Add a new company', icon: Building2, route: '/companies/new', group: 'create' },
+  { id: 'new-deal', label: 'New Deal', description: 'Create a deal', icon: Handshake, route: '/deals/new', group: 'create' },
+  { id: 'new-investor', label: 'New Investor', description: 'Track an investor', icon: Landmark, route: '/investors/new', group: 'create' },
+  { id: 'new-activity', label: 'Log Activity', description: 'Log a call, meeting, or task', icon: CalendarPlus, route: '/activities', group: 'create' },
+  { id: 'nav-contacts', label: 'Contacts', description: 'View all contacts', icon: Users, route: '/contacts', group: 'navigate' },
+  { id: 'nav-companies', label: 'Companies', description: 'View all companies', icon: Building2, route: '/companies', group: 'navigate' },
+  { id: 'nav-deals', label: 'Deals', description: 'View pipeline', icon: Handshake, route: '/deals', group: 'navigate' },
+  { id: 'nav-analytics', label: 'Analytics', description: 'View reports', icon: BarChart3, route: '/analytics', group: 'navigate' },
+  { id: 'nav-email', label: 'Email AI', description: 'Email intelligence', icon: Mail, route: '/email', group: 'navigate' },
+  { id: 'nav-sequences', label: 'Sequences', description: 'Sales engagement', icon: Zap, route: '/sequences', group: 'navigate' },
+  { id: 'nav-automations', label: 'Automations', description: 'Workflow rules', icon: Workflow, route: '/automations', group: 'navigate' },
+  { id: 'nav-settings', label: 'Settings', description: 'Account settings', icon: Settings, route: '/settings', group: 'navigate' },
+  { id: 'import-contacts', label: 'Import Contacts', description: 'Upload CSV', icon: Upload, route: '/contacts/import', group: 'create' },
+];
+
 function useDebounce<T>(value: T, delay: number): T {
   const [debouncedValue, setDebouncedValue] = useState(value);
-
   useEffect(() => {
-    const timer = setTimeout(() => {
-      setDebouncedValue(value);
-    }, delay);
-
-    return () => {
-      clearTimeout(timer);
-    };
+    const timer = setTimeout(() => setDebouncedValue(value), delay);
+    return () => clearTimeout(timer);
   }, [value, delay]);
-
   return debouncedValue;
 }
 
@@ -59,24 +97,32 @@ interface GlobalSearchProps {
 export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = externalIsOpen ?? internalIsOpen;
-  
+
   const setIsOpen = useCallback((open: boolean) => {
-    if (onClose && !open) {
-      onClose();
-    }
-    if (externalIsOpen === undefined) {
-      setInternalIsOpen(open);
-    }
+    if (onClose && !open) onClose();
+    if (externalIsOpen === undefined) setInternalIsOpen(open);
   }, [onClose, externalIsOpen]);
+
   const [query, setQuery] = useState('');
   const [results, setResults] = useState<SearchCategory[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedIndex, setSelectedIndex] = useState(0);
   const router = useRouter();
-  
+
   const debouncedQuery = useDebounce(query, 300);
-  
-  // Keyboard shortcut: Cmd+K or Ctrl+K
+
+  // Filter quick actions based on query
+  const filteredActions = query.trim()
+    ? quickActions.filter(
+        (a) =>
+          a.label.toLowerCase().includes(query.toLowerCase()) ||
+          a.description.toLowerCase().includes(query.toLowerCase())
+      )
+    : quickActions;
+
+  const createActions = filteredActions.filter((a) => a.group === 'create');
+  const navActions = filteredActions.filter((a) => a.group === 'navigate');
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
@@ -87,19 +133,16 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
         setIsOpen(false);
       }
     };
-    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setIsOpen]);
-  
-  // Search when query changes
+
   useEffect(() => {
     const performSearch = async () => {
       if (!debouncedQuery.trim()) {
         setResults([]);
         return;
       }
-      
       setIsLoading(true);
       try {
         const searchResults = await searchAll(debouncedQuery);
@@ -112,194 +155,249 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
         setIsLoading(false);
       }
     };
-    
     performSearch();
   }, [debouncedQuery]);
-  
-  // Calculate total number of results for keyboard navigation
-  const totalResults = results.reduce((sum, category) => sum + category.results.length, 0);
-  
-  const handleResultSelect = useCallback(() => {
-    if (totalResults === 0) return;
-    
-    // Find the selected result
-    let currentIndex = 0;
-    for (const category of results) {
-      for (const result of category.results) {
-        if (currentIndex === selectedIndex) {
-          router.push(result.route);
-          setIsOpen(false);
-          setQuery('');
-          return;
-        }
-        currentIndex++;
-      }
+
+  // Build a flat list of all selectable items for keyboard navigation
+  const allItems: { type: 'result' | 'action'; route: string }[] = [];
+  results.forEach((category) => {
+    category.results.forEach((result) => {
+      allItems.push({ type: 'result', route: result.route });
+    });
+  });
+  if (!query.trim()) {
+    filteredActions.forEach((action) => {
+      allItems.push({ type: 'action', route: action.route });
+    });
+  } else {
+    filteredActions.forEach((action) => {
+      allItems.push({ type: 'action', route: action.route });
+    });
+  }
+
+  const totalItems = allItems.length;
+
+  const handleSelect = useCallback(() => {
+    if (totalItems === 0) return;
+    const item = allItems[selectedIndex];
+    if (item) {
+      router.push(item.route);
+      setIsOpen(false);
+      setQuery('');
     }
-  }, [results, selectedIndex, totalResults, router, setIsOpen]);
-  
-  // Handle keyboard navigation
+  }, [allItems, selectedIndex, totalItems, router, setIsOpen]);
+
   useEffect(() => {
-    if (!isOpen || totalResults === 0) return;
-    
+    if (!isOpen || totalItems === 0) return;
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === 'ArrowDown') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev + 1) % totalResults);
+        setSelectedIndex((prev) => (prev + 1) % totalItems);
       } else if (e.key === 'ArrowUp') {
         e.preventDefault();
-        setSelectedIndex((prev) => (prev - 1 + totalResults) % totalResults);
+        setSelectedIndex((prev) => (prev - 1 + totalItems) % totalItems);
       } else if (e.key === 'Enter') {
         e.preventDefault();
-        handleResultSelect();
+        handleSelect();
       }
     };
-    
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, totalResults, handleResultSelect]);
-  
+  }, [isOpen, totalItems, handleSelect]);
+
   const handleClose = () => {
     setIsOpen(false);
     setQuery('');
     setResults([]);
   };
-  
+
   if (!isOpen) return null;
-  
+
+  let globalIndex = -1;
+
   return (
     <div className="fixed inset-0 z-50 overflow-hidden">
-      {/* Backdrop */}
-      <div 
-        className="absolute inset-0 bg-black/50 backdrop-blur-sm" 
+      <div
+        className="absolute inset-0 bg-black/50 backdrop-blur-[2px] animate-fade-in"
         onClick={handleClose}
       />
-      
-      {/* Modal */}
-      <div className="flex min-h-full items-center justify-center p-4">
-        <div 
-          className="relative w-full max-w-2xl transform overflow-hidden rounded-xl bg-white shadow-2xl transition-all"
+
+      <div className="flex min-h-full items-start justify-center p-4 pt-[15vh]">
+        <div
+          className="relative w-full max-w-xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 shadow-2xl animate-scale-in border border-zinc-200 dark:border-zinc-700"
           onClick={(e) => e.stopPropagation()}
         >
           {/* Search input */}
-          <div className="flex items-center border-b border-slate-200 px-4 py-3">
-            <Search className="h-5 w-5 text-slate-400" />
+          <div className="flex items-center border-b border-zinc-200 dark:border-zinc-700 px-4 py-3">
+            <Search className="h-5 w-5 text-zinc-400" />
             <input
               type="text"
               value={query}
-              onChange={(e) => setQuery(e.target.value)}
-              placeholder="Search contacts, companies, deals..."
-              className="ml-3 flex-1 border-0 bg-transparent py-2 text-slate-900 placeholder-slate-500 focus:outline-none focus:ring-0"
+              onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
+              placeholder="Search or type a command..."
+              className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
-            <button
-              onClick={handleClose}
-              className="ml-2 rounded-md p-1 hover:bg-slate-100"
-            >
-              <X className="h-5 w-5 text-slate-400" />
+            <button onClick={handleClose} className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+              <X className="h-4 w-4 text-zinc-400" />
             </button>
           </div>
-          
+
           {/* Results */}
-          <div className="max-h-[60vh] overflow-y-auto p-2">
-            {isLoading ? (
-              <div className="flex items-center justify-center py-8">
-                <div className="h-8 w-8 animate-spin rounded-full border-2 border-slate-200 border-t-indigo-600"></div>
-                <span className="ml-3 text-sm text-slate-500">Searching...</span>
+          <div className="max-h-[50vh] overflow-y-auto">
+            {isLoading && (
+              <div className="flex items-center justify-center py-6">
+                <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-indigo-600" />
+                <span className="ml-3 text-sm text-zinc-500">Searching...</span>
               </div>
-            ) : query.trim() && results.length === 0 ? (
+            )}
+
+            {!isLoading && query.trim() && results.length === 0 && filteredActions.length === 0 && (
               <div className="py-8 text-center">
-                <Search className="mx-auto h-12 w-12 text-slate-300" />
-                <p className="mt-2 text-sm text-slate-500">No results found for &quot;{query}&quot;</p>
+                <Search className="mx-auto h-8 w-8 text-zinc-300 dark:text-zinc-600" />
+                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">No results for &quot;{query}&quot;</p>
               </div>
-            ) : (
-              <div>
-                {results.map((category, categoryIndex) => (
-                  <div key={category.type} className="mb-4">
-                    <div className="mb-2 flex items-center px-2">
-                      <div className="flex h-6 w-6 items-center justify-center rounded-md bg-slate-100">
-                        {getIconForType(category.type)}
+            )}
+
+            {/* Search results */}
+            {results.map((category) => (
+              <div key={category.type}>
+                <div className="px-4 pt-3 pb-1">
+                  <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                    {category.title}
+                  </span>
+                </div>
+                {category.results.map((result) => {
+                  globalIndex++;
+                  const idx = globalIndex;
+                  const isSelected = idx === selectedIndex;
+                  return (
+                    <button
+                      key={`${result.type}-${result.id}`}
+                      onClick={() => { router.push(result.route); handleClose(); }}
+                      onMouseEnter={() => setSelectedIndex(idx)}
+                      className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                        isSelected ? 'bg-indigo-50 dark:bg-indigo-950' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                      }`}
+                    >
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                        {result.type === 'contact' && <User className="h-4 w-4 text-zinc-500" />}
+                        {result.type === 'company' && <Building className="h-4 w-4 text-zinc-500" />}
+                        {result.type === 'deal' && <TrendingUp className="h-4 w-4 text-zinc-500" />}
                       </div>
-                      <span className="ml-2 text-sm font-medium text-slate-700">
-                        {category.title} ({category.results.length})
+                      <div className="flex-1 min-w-0">
+                        <span className="text-sm font-medium text-zinc-900 dark:text-white">{result.title}</span>
+                        {result.subtitle && (
+                          <span className="block text-xs text-zinc-500 dark:text-zinc-400 truncate">{result.subtitle}</span>
+                        )}
+                      </div>
+                      {result.type === 'deal' && result.value && (
+                        <span className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
+                          ${result.value.toLocaleString()}
+                        </span>
+                      )}
+                      <ChevronRight className="h-4 w-4 text-zinc-300 dark:text-zinc-600" />
+                    </button>
+                  );
+                })}
+              </div>
+            ))}
+
+            {/* Quick Actions - shown when no query or as filtered actions */}
+            {!isLoading && (
+              <>
+                {createActions.length > 0 && (
+                  <div>
+                    <div className="px-4 pt-3 pb-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                        {query.trim() ? 'Actions' : 'Quick Actions'}
                       </span>
                     </div>
-                    
-                    <div className="space-y-1">
-                      {category.results.map((result, resultIndex) => {
-                        // Calculate global index for this result
-                        let globalIndex = 0;
-                        for (let i = 0; i < categoryIndex; i++) {
-                          globalIndex += results[i].results.length;
-                        }
-                        globalIndex += resultIndex;
-                        
-                        const isSelected = globalIndex === selectedIndex;
-                        
-                        return (
-                          <button
-                            key={`${result.type}-${result.id}`}
-                            onClick={() => {
-                              router.push(result.route);
-                              handleClose();
-                            }}
-                            className={`flex w-full items-center rounded-lg p-3 text-left transition-colors ${
-                              isSelected ? 'bg-indigo-50' : 'hover:bg-slate-50'
-                            }`}
-                          >
-                            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-100">
-                              {result.type === 'contact' && <User className="h-5 w-5 text-slate-600" />}
-                              {result.type === 'company' && <Building className="h-5 w-5 text-slate-600" />}
-                              {result.type === 'deal' && <TrendingUp className="h-5 w-5 text-slate-600" />}
-                            </div>
-                            
-                            <div className="ml-3 flex-1">
-                              <div className="flex items-center">
-                                <span className="font-medium text-slate-900">{result.title}</span>
-                                {result.type === 'deal' && result.value && (
-                                  <span className="ml-2 rounded-full bg-green-100 px-2 py-0.5 text-xs font-medium text-green-800">
-                                    ${result.value.toLocaleString()}
-                                  </span>
-                                )}
-                              </div>
-                              {result.subtitle && (
-                                <p className="text-sm text-slate-500">{result.subtitle}</p>
-                              )}
-                            </div>
-                            
-                            <ChevronRight className="h-5 w-5 text-slate-400" />
-                          </button>
-                        );
-                      })}
-                    </div>
+                    {createActions.map((action) => {
+                      globalIndex++;
+                      const idx = globalIndex;
+                      const isSelected = idx === selectedIndex;
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => { router.push(action.route); handleClose(); }}
+                          onMouseEnter={() => setSelectedIndex(idx)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                            isSelected ? 'bg-indigo-50 dark:bg-indigo-950' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                          }`}
+                        >
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-950">
+                            <Icon className="h-4 w-4 text-indigo-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-zinc-900 dark:text-white">{action.label}</span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{action.description}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
-                ))}
-              </div>
-            )}
-            
-            {/* Footer */}
-            {results.length > 0 && (
-              <div className="mt-4 border-t border-slate-200 px-4 py-3">
-                <div className="flex items-center justify-between text-xs text-slate-500">
-                  <div className="flex items-center space-x-4">
-                    <div className="flex items-center">
-                      <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">↑↓</kbd>
-                      <span className="ml-1.5">Navigate</span>
-                    </div>
-                    <div className="flex items-center">
-                      <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">Enter</kbd>
-                      <span className="ml-1.5">Select</span>
-                    </div>
-                    <div className="flex items-center">
-                      <kbd className="rounded bg-slate-100 px-1.5 py-0.5 font-mono text-xs">Esc</kbd>
-                      <span className="ml-1.5">Close</span>
-                    </div>
-                  </div>
+                )}
+
+                {navActions.length > 0 && !query.trim() && (
                   <div>
-                    {totalResults} result{totalResults !== 1 ? 's' : ''}
+                    <div className="px-4 pt-3 pb-1">
+                      <span className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">
+                        Go to
+                      </span>
+                    </div>
+                    {navActions.map((action) => {
+                      globalIndex++;
+                      const idx = globalIndex;
+                      const isSelected = idx === selectedIndex;
+                      const Icon = action.icon;
+                      return (
+                        <button
+                          key={action.id}
+                          onClick={() => { router.push(action.route); handleClose(); }}
+                          onMouseEnter={() => setSelectedIndex(idx)}
+                          className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+                            isSelected ? 'bg-indigo-50 dark:bg-indigo-950' : 'hover:bg-zinc-50 dark:hover:bg-zinc-800'
+                          }`}
+                        >
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
+                            <Icon className="h-4 w-4 text-zinc-500" />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <span className="text-sm font-medium text-zinc-900 dark:text-white">{action.label}</span>
+                            <span className="block text-xs text-zinc-500 dark:text-zinc-400">{action.description}</span>
+                          </div>
+                        </button>
+                      );
+                    })}
                   </div>
+                )}
+              </>
+            )}
+
+            {/* Bottom padding */}
+            <div className="h-2" />
+          </div>
+
+          {/* Footer */}
+          <div className="border-t border-zinc-200 dark:border-zinc-700 px-4 py-2.5">
+            <div className="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1">
+                  <kbd className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 font-mono">↑↓</kbd>
+                  <span>navigate</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 font-mono">↵</kbd>
+                  <span>select</span>
+                </div>
+                <div className="flex items-center gap-1">
+                  <kbd className="rounded bg-zinc-100 dark:bg-zinc-800 px-1.5 py-0.5 font-mono">esc</kbd>
+                  <span>close</span>
                 </div>
               </div>
-            )}
+            </div>
           </div>
         </div>
       </div>

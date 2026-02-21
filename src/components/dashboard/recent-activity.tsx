@@ -28,7 +28,7 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
     email: 'text-purple-600 bg-purple-50',
     meeting: 'text-amber-600 bg-amber-50',
     task: 'text-green-600 bg-green-50',
-    note: 'text-slate-600 bg-slate-50'
+    note: 'text-zinc-600 bg-zinc-50'
   }
 
   const formatTime = (dateString: string) => {
@@ -51,8 +51,8 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
   if (!activities.length) {
     return (
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Recent Activity</h3>
-        <div className="text-center py-8 text-slate-500">
+        <h3 className="text-lg font-semibold text-zinc-900 mb-4">Recent Activity</h3>
+        <div className="text-center py-8 text-zinc-500">
           No recent activity
         </div>
       </div>
@@ -62,35 +62,35 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
   return (
     <div className="bg-white rounded-xl shadow p-6">
       <div className="flex items-center justify-between mb-4">
-        <h3 className="text-lg font-semibold text-slate-900">Recent Activity</h3>
-        <Activity className="h-5 w-5 text-slate-400" />
+        <h3 className="text-lg font-semibold text-zinc-900">Recent Activity</h3>
+        <Activity className="h-5 w-5 text-zinc-400" />
       </div>
       
       <div className="space-y-4">
         {activities.map((activity) => {
           const Icon = typeIcons[activity.type]
           return (
-            <div key={activity.id} className="flex items-start space-x-3 pb-4 border-b border-slate-100 last:border-0 last:pb-0">
+            <div key={activity.id} className="flex items-start space-x-3 pb-4 border-b border-zinc-100 last:border-0 last:pb-0">
               <div className={`p-2 rounded-lg ${typeColors[activity.type]}`}>
                 <Icon className="h-4 w-4" />
               </div>
               
               <div className="flex-1 min-w-0">
-                <p className="font-medium text-slate-900 truncate">{activity.title}</p>
+                <p className="font-medium text-zinc-900 truncate">{activity.title}</p>
                 {activity.description && (
-                  <p className="text-sm text-slate-600 truncate">{activity.description}</p>
+                  <p className="text-sm text-zinc-600 truncate">{activity.description}</p>
                 )}
                 
                 <div className="flex items-center space-x-2 mt-1">
                   {activity.contact_name && (
-                    <span className="text-xs text-slate-500 truncate">
+                    <span className="text-xs text-zinc-500 truncate">
                       {activity.contact_name}
                     </span>
                   )}
                   {activity.company_name && (
                     <>
-                      <span className="text-slate-300">•</span>
-                      <span className="text-xs text-slate-500 truncate">
+                      <span className="text-zinc-300">•</span>
+                      <span className="text-xs text-zinc-500 truncate">
                         {activity.company_name}
                       </span>
                     </>
@@ -98,7 +98,7 @@ export default function RecentActivity({ activities }: RecentActivityProps) {
                 </div>
               </div>
               
-              <div className="text-xs text-slate-400 whitespace-nowrap">
+              <div className="text-xs text-zinc-400 whitespace-nowrap">
                 {formatTime(activity.created_at)}
               </div>
             </div>

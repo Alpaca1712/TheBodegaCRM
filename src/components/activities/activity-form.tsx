@@ -103,13 +103,13 @@ export default function ActivityForm({
   };
 
   return (
-    <div className="bg-white rounded-lg border border-slate-200 p-6">
+    <div className="bg-white rounded-lg border border-zinc-200 p-6">
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h2 className="text-lg font-semibold text-slate-900">
+          <h2 className="text-lg font-semibold text-zinc-900">
             {initialData ? 'Edit Activity' : 'Log New Activity'}
           </h2>
-          <p className="text-sm text-slate-500 mt-1">
+          <p className="text-sm text-zinc-500 mt-1">
             {selectedTypeInfo && (
               <span className="inline-flex items-center gap-1">
                 <selectedTypeInfo.icon className="h-4 w-4" />
@@ -121,7 +121,7 @@ export default function ActivityForm({
         {onCancel && (
           <button
             onClick={onCancel}
-            className="text-slate-500 hover:text-slate-700"
+            className="text-zinc-500 hover:text-zinc-700"
             disabled={isLoading}
           >
             <X size={20} />
@@ -138,7 +138,7 @@ export default function ActivityForm({
       <form onSubmit={handleSubmit(handleFormSubmit)}>
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Activity Type
             </label>
             <div className="flex gap-2">
@@ -161,7 +161,7 @@ export default function ActivityForm({
                       'flex-1 flex flex-col items-center gap-2 p-3 rounded-lg border transition-colors',
                       isSelected
                         ? 'border-indigo-300 bg-indigo-50 text-indigo-700'
-                        : 'border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100'
+                        : 'border-zinc-200 bg-zinc-50 text-zinc-700 hover:bg-zinc-100'
                     )}
                   >
                     <Icon className="h-5 w-5" />
@@ -177,13 +177,13 @@ export default function ActivityForm({
           </div>
 
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="title" className="block text-sm font-medium text-zinc-700 mb-1">
               Title *
             </label>
             <input
               id="title"
               type="text"
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Enter activity title"
               {...register('title')}
               disabled={isLoading}
@@ -194,13 +194,13 @@ export default function ActivityForm({
           </div>
 
           <div>
-            <label htmlFor="description" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="description" className="block text-sm font-medium text-zinc-700 mb-1">
               Description
             </label>
             <textarea
               id="description"
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
               placeholder="Add details about this activity"
               {...register('description')}
               disabled={isLoading}
@@ -209,15 +209,15 @@ export default function ActivityForm({
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="due_date" className="block text-sm font-medium text-slate-700 mb-1">
+              <label htmlFor="due_date" className="block text-sm font-medium text-zinc-700 mb-1">
                 Due Date
               </label>
               <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-slate-400" />
+                <Clock className="absolute left-3 top-1/2 transform -tranzinc-y-1/2 h-4 w-4 text-zinc-400" />
                 <input
                   id="due_date"
                   type="datetime-local"
-                  className="w-full pl-10 pr-3 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
+                  className="w-full pl-10 pr-3 py-2 border border-zinc-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-transparent"
                   {...register('due_date')}
                   disabled={isLoading}
                 />
@@ -225,10 +225,10 @@ export default function ActivityForm({
             </div>
 
             <div>
-              <label className="flex items-center gap-2 text-sm text-slate-700">
+              <label className="flex items-center gap-2 text-sm text-zinc-700">
                 <input
                   type="checkbox"
-                  className="h-4 w-4 text-indigo-600 border-slate-300 rounded focus:ring-indigo-500"
+                  className="h-4 w-4 text-indigo-600 border-zinc-300 rounded focus:ring-indigo-500"
                   {...register('completed')}
                   disabled={isLoading}
                 />
@@ -238,12 +238,12 @@ export default function ActivityForm({
           </div>
 
           {(contactId || companyId || dealId) && (
-            <div className="text-sm text-slate-500 p-3 bg-slate-50 rounded-lg">
+            <div className="text-sm text-zinc-500 p-3 bg-zinc-50 rounded-lg">
               This activity will be linked to:
               <div className="mt-1 flex gap-2">
-                {contactId && <span className="px-2 py-1 bg-slate-200 rounded text-xs">Contact</span>}
-                {companyId && <span className="px-2 py-1 bg-slate-200 rounded text-xs">Company</span>}
-                {dealId && <span className="px-2 py-1 bg-slate-200 rounded text-xs">Deal</span>}
+                {contactId && <span className="px-2 py-1 bg-zinc-200 rounded text-xs">Contact</span>}
+                {companyId && <span className="px-2 py-1 bg-zinc-200 rounded text-xs">Company</span>}
+                {dealId && <span className="px-2 py-1 bg-zinc-200 rounded text-xs">Deal</span>}
               </div>
             </div>
           )}
@@ -263,7 +263,7 @@ export default function ActivityForm({
                 type="button"
                 onClick={onCancel}
                 disabled={isLoading}
-                className="px-4 py-3 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                className="px-4 py-3 border border-zinc-300 text-zinc-700 font-medium rounded-lg hover:bg-zinc-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Cancel
               </button>

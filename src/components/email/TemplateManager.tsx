@@ -137,7 +137,7 @@ export function TemplateManager({
           </div>
           <div className="flex flex-col sm:flex-row gap-2 mt-4">
             <div className="relative flex-1">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-2 top-2.5 h-4 w-4 text-zinc-500" />
               <Input
                 placeholder="Search templates..."
                 value={search}
@@ -173,12 +173,12 @@ export function TemplateManager({
         <CardContent>
           {isLoading ? (
             <div className="py-8 text-center">
-              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-slate-900 mx-auto" />
-              <p className="mt-2 text-slate-500">Loading templates...</p>
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-zinc-900 mx-auto" />
+              <p className="mt-2 text-zinc-500">Loading templates...</p>
             </div>
           ) : filteredTemplates.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-slate-500">
+              <p className="text-zinc-500">
                 {search || categoryFilter
                   ? 'No templates match your filters.'
                   : 'No templates yet. Create your first template!'}
@@ -187,7 +187,7 @@ export function TemplateManager({
           ) : (
             <div className="rounded-md border divide-y">
               {/* Header */}
-              <div className="grid grid-cols-6 gap-4 p-4 bg-slate-50 border-b">
+              <div className="grid grid-cols-6 gap-4 p-4 bg-zinc-50 border-b">
                 <div className="font-medium">Name</div>
                 <div className="font-medium">Subject</div>
                 <div className="font-medium">Category</div>
@@ -199,7 +199,7 @@ export function TemplateManager({
               {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className="grid grid-cols-6 gap-4 p-4 items-center cursor-pointer hover:bg-slate-50"
+                  className="grid grid-cols-6 gap-4 p-4 items-center cursor-pointer hover:bg-zinc-50"
                   onClick={() => handleSelect(template)}
                 >
                   <div className="font-medium">
@@ -210,7 +210,7 @@ export function TemplateManager({
                       )}
                     </div>
                   </div>
-                  <div className="text-slate-500">
+                  <div className="text-zinc-500">
                     {template.subject}
                   </div>
                   <div>
@@ -219,7 +219,7 @@ export function TemplateManager({
                     </Badge>
                   </div>
                   <div>
-                    <span className="text-slate-500">
+                    <span className="text-zinc-500">
                       {template.usage_count} uses
                     </span>
                   </div>
@@ -227,7 +227,7 @@ export function TemplateManager({
                     {template.is_shared ? (
                       <Badge variant="outline">Shared</Badge>
                     ) : (
-                      <span className="text-slate-400">Private</span>
+                      <span className="text-zinc-400">Private</span>
                     )}
                   </div>
                   <div className="text-right">

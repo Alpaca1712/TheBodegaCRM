@@ -41,9 +41,9 @@ export default function ContactsMobileList({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-slate-100 text-slate-800';
+      case 'inactive': return 'bg-zinc-100 text-zinc-800';
       case 'lead': return 'bg-indigo-100 text-indigo-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-zinc-100 text-zinc-800';
     }
   };
   
@@ -142,7 +142,7 @@ export default function ContactsMobileList({
   if (contacts.length === 0) {
     return (
       <div className="p-8 text-center">
-        <div className="text-slate-400 mb-2">No contacts found</div>
+        <div className="text-zinc-400 mb-2">No contacts found</div>
       </div>
     );
   }
@@ -171,7 +171,7 @@ export default function ContactsMobileList({
                   className="h-10 w-10 p-0 rounded-full"
                   onClick={(e) => handleActionButtonClick(e, contact.id, () => onArchive(contact.id))}
                 >
-                  <Archive size={16} className="text-slate-600" />
+                  <Archive size={16} className="text-zinc-600" />
                 </Button>
               )}
               
@@ -200,7 +200,7 @@ export default function ContactsMobileList({
             
             {/* Contact card */}
             <div 
-              className={`bg-white rounded-lg border border-slate-200 p-4 transition-transform duration-200 ${
+              className={`bg-white rounded-lg border border-zinc-200 p-4 transition-transform duration-200 ${
                 isSwiped ? 'shadow-lg' : ''
               }`}
               style={{
@@ -241,7 +241,7 @@ export default function ContactsMobileList({
                   {/* Contact info */}
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1">
-                      <h3 className="text-sm font-medium text-slate-900 truncate">
+                      <h3 className="text-sm font-medium text-zinc-900 truncate">
                         {contact.first_name} {contact.last_name}
                       </h3>
                       <span className={`text-xs px-2 py-0.5 rounded-full ${getStatusColor(contact.status)}`}>
@@ -251,27 +251,27 @@ export default function ContactsMobileList({
                     
                     <div className="space-y-1">
                       {contact.email && (
-                        <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <div className="flex items-center gap-1 text-xs text-zinc-600">
                           <Mail size={12} />
                           <span className="truncate">{contact.email}</span>
                         </div>
                       )}
                       
                       {contact.phone && (
-                        <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <div className="flex items-center gap-1 text-xs text-zinc-600">
                           <Phone size={12} />
                           <span>{contact.phone}</span>
                         </div>
                       )}
                       
                       {contact.company_id && (
-                        <div className="flex items-center gap-1 text-xs text-slate-600">
+                        <div className="flex items-center gap-1 text-xs text-zinc-600">
                           <Building size={12} />
                           <span>Company</span>
                         </div>
                       )}
                       
-                      <div className="flex items-center gap-1 text-xs text-slate-500">
+                      <div className="flex items-center gap-1 text-xs text-zinc-500">
                         <Calendar size={12} />
                         <span>Added {formatDate(contact.created_at)}</span>
                       </div>
@@ -279,12 +279,12 @@ export default function ContactsMobileList({
                   </div>
                   
                   {/* Chevron */}
-                  <ChevronRight className="text-slate-400 flex-shrink-0" size={18} />
+                  <ChevronRight className="text-zinc-400 flex-shrink-0" size={18} />
                 </div>
               </div>
               
               {/* Swipe hint for mobile */}
-              <div className="text-xs text-slate-400 text-center mt-2 md:hidden">
+              <div className="text-xs text-zinc-400 text-center mt-2 md:hidden">
                 Swipe left for actions • Tap to view details
               </div>
             </div>

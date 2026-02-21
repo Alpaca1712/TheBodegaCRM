@@ -18,9 +18,9 @@ export function Button({
   
   const variantStyles = {
     default: 'bg-indigo-600 text-white hover:bg-indigo-700',
-    outline: 'border border-slate-300 bg-transparent hover:bg-slate-100',
-    secondary: 'bg-slate-200 text-slate-900 hover:bg-slate-300',
-    ghost: 'hover:bg-slate-100',
+    outline: 'border border-zinc-300 bg-transparent hover:bg-zinc-100',
+    secondary: 'bg-zinc-200 text-zinc-900 hover:bg-zinc-300',
+    ghost: 'hover:bg-zinc-100',
     destructive: 'bg-red-600 text-white hover:bg-red-700',
   }
   

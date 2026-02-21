@@ -114,14 +114,14 @@ export function RemindersPanel() {
         <DropdownMenuSeparator />
         
         {isLoading ? (
-          <div className="py-8 text-center text-slate-500">
+          <div className="py-8 text-center text-zinc-500">
             Loading reminders...
           </div>
         ) : reminders.length === 0 ? (
-          <div className="py-8 text-center text-slate-500">
-            <Bell className="h-12 w-12 mx-auto mb-2 text-slate-300" />
+          <div className="py-8 text-center text-zinc-500">
+            <Bell className="h-12 w-12 mx-auto mb-2 text-zinc-300" />
             <p className="text-sm">No notifications</p>
-            <p className="text-xs text-slate-400 mt-1">You&apos;re all caught up!</p>
+            <p className="text-xs text-zinc-400 mt-1">You&apos;re all caught up!</p>
           </div>
         ) : (
           <div className="py-1">
@@ -134,7 +134,7 @@ export function RemindersPanel() {
                 <div className="flex items-start justify-between w-full">
                   <div className="flex items-start gap-2">
                     {typeConfig[reminder.type as ReminderType]?.icon || (
-                      <Bell className="h-4 w-4 mt-0.5 text-slate-500" />
+                      <Bell className="h-4 w-4 mt-0.5 text-zinc-500" />
                     )}
                     <div>
                       <div className="flex items-center gap-2">
@@ -142,14 +142,14 @@ export function RemindersPanel() {
                         <Badge 
                           variant="outline"
                           className={`text-xs ${
-                            typeConfig[reminder.type as ReminderType]?.color || 'bg-slate-100 text-slate-800 border-slate-200'
+                            typeConfig[reminder.type as ReminderType]?.color || 'bg-zinc-100 text-zinc-800 border-zinc-200'
                           }`}
                         >
                           {typeConfig[reminder.type as ReminderType]?.label || reminder.type}
                         </Badge>
                       </div>
-                      <p className="text-sm text-slate-600 mt-1">{reminder.description}</p>
-                      <div className="flex items-center gap-4 mt-2 text-xs text-slate-500">
+                      <p className="text-sm text-zinc-600 mt-1">{reminder.description}</p>
+                      <div className="flex items-center gap-4 mt-2 text-xs text-zinc-500">
                         {reminder.due_date && (
                           <span>
                             Due: {new Date(reminder.due_date).toLocaleDateString()}
@@ -215,7 +215,7 @@ export function RemindersPanel() {
         <DropdownMenuSeparator />
         
         <DropdownMenuItem 
-          className="text-xs text-slate-500 justify-center cursor-default"
+          className="text-xs text-zinc-500 justify-center cursor-default"
           onSelect={(e) => e.preventDefault()}
         >
           {reminders.length} notification{reminders.length !== 1 ? 's' : ''}

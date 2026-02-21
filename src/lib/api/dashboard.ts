@@ -17,6 +17,9 @@ export interface DashboardStats {
     type: 'call' | 'email' | 'meeting' | 'task' | 'note'
     title: string
     description: string | null
+    contact_id?: string
+    company_id?: string
+    deal_id?: string
     contact_name?: string
     company_name?: string
     created_at: string
@@ -25,6 +28,9 @@ export interface DashboardStats {
     id: string
     title: string
     due_date: string
+    contact_id?: string
+    company_id?: string
+    deal_id?: string
     contact_name?: string
     company_name?: string
     completed: boolean
@@ -101,6 +107,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
         description,
         contact_id,
         company_id,
+        deal_id,
         created_at
       `)
       .eq('org_id', orgId!)
@@ -121,6 +128,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
         due_date,
         contact_id,
         company_id,
+        deal_id,
         completed
       `)
       .eq('org_id', orgId!)

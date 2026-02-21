@@ -52,9 +52,18 @@ export default function SettingsPage() {
     loadUser()
   }, [])
   
-  const handleSaveProfile = () => {
-    console.log('Saving profile:', user)
-    setEditing(false)
+  const handleSaveProfile = async () => {
+    if (!user) return
+    try {
+      const supabase = createClient()
+      const { error } = await supabase.auth.updateUser({
+        data: { name: user.name },
+      })
+      if (error) throw error
+      setEditing(false)
+    } catch (err) {
+      console.error('Failed to save profile:', err)
+    }
   }
   
   const handleSignOut = async () => {
@@ -69,30 +78,30 @@ export default function SettingsPage() {
   
   if (loading) {
     return (
-      <div className="p-6">
-        <h1 className="text-3xl font-bold text-slate-900 mb-6">Settings</h1>
+      <div className="max-w-5xl mx-auto">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50 mb-6">Settings</h1>
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
           <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow p-6 animate-pulse">
-              <div className="h-6 w-32 bg-slate-200 rounded mb-6"></div>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 animate-pulse">
+              <div className="h-6 w-32 bg-zinc-200 rounded mb-6"></div>
               <div className="space-y-4">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="space-y-2">
-                    <div className="h-4 w-24 bg-slate-200 rounded"></div>
-                    <div className="h-10 w-full bg-slate-200 rounded"></div>
+                    <div className="h-4 w-24 bg-zinc-200 rounded"></div>
+                    <div className="h-10 w-full bg-zinc-200 rounded"></div>
                   </div>
                 ))}
               </div>
             </div>
           </div>
           <div>
-            <div className="bg-white rounded-xl shadow p-6 animate-pulse">
-              <div className="h-6 w-40 bg-slate-200 rounded mb-6"></div>
+            <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 p-6 animate-pulse">
+              <div className="h-6 w-40 bg-zinc-200 dark:bg-zinc-700 rounded mb-6"></div>
               <div className="space-y-4">
                 {[...Array(2)].map((_, i) => (
                   <div key={i} className="space-y-2">
-                    <div className="h-4 w-32 bg-slate-200 rounded"></div>
-                    <div className="h-10 w-full bg-slate-200 rounded"></div>
+                    <div className="h-4 w-32 bg-zinc-200 rounded"></div>
+                    <div className="h-10 w-full bg-zinc-200 rounded"></div>
                   </div>
                 ))}
               </div>
@@ -104,10 +113,10 @@ export default function SettingsPage() {
   }
   
   return (
-    <div className="p-6">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold text-slate-900">Settings</h1>
-        <p className="text-slate-600 mt-2">Manage your account preferences and profile</p>
+    <div className="max-w-5xl mx-auto">
+      <div className="mb-6">
+        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Settings</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Manage your account preferences and profile</p>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
@@ -139,15 +148,15 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="email">Email Address</Label>
                 <div className="flex items-center">
-                  <Mail className="h-4 w-4 text-slate-500 mr-2" />
+                  <Mail className="h-4 w-4 text-zinc-500 mr-2" />
                   <Input
                     id="email"
                     value={user?.email || ''}
                     disabled={true} // Email typically can't be changed
-                    className="bg-slate-50"
+                    className="bg-zinc-50"
                   />
                 </div>
-                <p className="text-xs text-slate-500 mt-1">Contact support to change your email address</p>
+                <p className="text-xs text-zinc-500 mt-1">Contact support to change your email address</p>
               </div>
               
               {editing ? (
@@ -176,7 +185,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Email Notifications</Label>
-                  <p className="text-sm text-slate-500">Receive email updates about your account</p>
+                  <p className="text-sm text-zinc-500">Receive email updates about your account</p>
                 </div>
                 <Switch
                   checked={notifications.email_notifications}
@@ -189,7 +198,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Deal Alerts</Label>
-                  <p className="text-sm text-slate-500">Get notified when deals change stages</p>
+                  <p className="text-sm text-zinc-500">Get notified when deals change stages</p>
                 </div>
                 <Switch
                   checked={notifications.deal_alerts}
@@ -202,7 +211,7 @@ export default function SettingsPage() {
               <div className="flex items-center justify-between">
                 <div className="space-y-0.5">
                   <Label>Weekly Reports</Label>
-                  <p className="text-sm text-slate-500">Receive weekly summary reports</p>
+                  <p className="text-sm text-zinc-500">Receive weekly summary reports</p>
                 </div>
                 <Switch
                   checked={notifications.weekly_reports}
@@ -213,7 +222,17 @@ export default function SettingsPage() {
               </div>
               
               <div className="pt-4">
-                <Button onClick={() => console.log('Saving notification preferences:', notifications)}>
+                <Button onClick={async () => {
+                  try {
+                    const supabase = createClient()
+                    const { error } = await supabase.auth.updateUser({
+                      data: { notification_preferences: notifications },
+                    })
+                    if (error) throw error
+                  } catch (err) {
+                    console.error('Failed to save preferences:', err)
+                  }
+                }}>
                   Save Preferences
                 </Button>
               </div>
@@ -258,13 +277,13 @@ export default function SettingsPage() {
               <div className="space-y-2">
                 <Label htmlFor="password">Password</Label>
                 <div className="flex items-center">
-                  <Key className="h-4 w-4 text-slate-500 mr-2" />
+                  <Key className="h-4 w-4 text-zinc-500 mr-2" />
                   <Input
                     id="password"
                     type="password"
                     value="********"
                     disabled={true}
-                    className="bg-slate-50"
+                    className="bg-zinc-50"
                   />
                 </div>
                 <Button variant="outline" className="mt-2" onClick={() => console.log('Change password')}>
@@ -272,7 +291,7 @@ export default function SettingsPage() {
                 </Button>
               </div>
               
-              <div className="pt-4 border-t border-slate-200">
+              <div className="pt-4 border-t border-zinc-200">
                 <Button 
                   variant="destructive" 
                   className="w-full flex items-center justify-center gap-2"
@@ -296,11 +315,11 @@ export default function SettingsPage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-slate-600">Version</span>
+                <span className="text-zinc-600">Version</span>
                 <span className="font-medium">1.0.0</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600">Last Updated</span>
+                <span className="text-zinc-600">Last Updated</span>
                 <span className="font-medium">Feb 19, 2024</span>
               </div>
               <div className="pt-4">

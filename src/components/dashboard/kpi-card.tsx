@@ -22,7 +22,7 @@ export default function KpiCard({
   const trendColors = {
     up: 'text-green-600 bg-green-50',
     down: 'text-red-600 bg-red-50',
-    neutral: 'text-slate-600 bg-slate-50'
+    neutral: 'text-zinc-600 bg-zinc-50'
   }
 
   const trendIcons = {
@@ -45,10 +45,10 @@ export default function KpiCard({
       </div>
       
       <div className="space-y-1">
-        <p className="text-slate-500 text-sm">{title}</p>
-        <p className="text-3xl font-bold text-slate-900">{value}</p>
+        <p className="text-zinc-500 text-sm">{title}</p>
+        <p className="text-3xl font-bold text-zinc-900">{value}</p>
         {description && (
-          <p className="text-slate-400 text-xs">{description}</p>
+          <p className="text-zinc-400 text-xs">{description}</p>
         )}
       </div>
     </div>

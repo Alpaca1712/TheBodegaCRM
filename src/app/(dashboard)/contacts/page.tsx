@@ -1,15 +1,19 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
-import { Search, UserPlus, ChevronLeft, ChevronRight, Download } from 'lucide-react';
+import { useState, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation';
+import { Search, UserPlus, ChevronLeft, ChevronRight, Download, Upload, Mail, Phone, Building, ExternalLink, Users } from 'lucide-react';
 import Link from 'next/link';
-import { getContacts, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
+import { getContacts, createContact, type Contact, type ContactFilters, type SortOptions } from '@/lib/api/contacts';
 import ContactsTable from '@/components/contacts/contacts-table';
 import ContactsMobileList from '@/components/contacts/contacts-mobile-list';
 import { exportContactsToCSV } from '@/lib/utils/csv-export';
+import { Sheet, SheetHeader, SheetBody, SheetFooter } from '@/components/ui/sheet';
+import ContactForm, { type ContactFormData } from '@/components/contacts/contact-form';
+import { toast } from 'sonner';
 
 const statusOptions = [
-  { value: 'all', label: 'All' },
+  { value: 'all', label: 'All Statuses' },
   { value: 'active', label: 'Active' },
   { value: 'inactive', label: 'Inactive' },
   { value: 'lead', label: 'Lead' },
@@ -26,6 +30,7 @@ const sortOptions = [
 type ContactSortField = 'first_name' | 'last_name' | 'email' | 'status' | 'created_at';
 
 export default function ContactsPage() {
+  const router = useRouter();
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -36,14 +41,29 @@ export default function ContactsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const limit = 20;
 
+  // Sheet states
+  const [isCreateOpen, setIsCreateOpen] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [previewContact, setPreviewContact] = useState<Contact | null>(null);
+  const [debouncedSearch, setDebouncedSearch] = useState('');
+  const debounceRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+
+  useEffect(() => {
+    debounceRef.current = setTimeout(() => {
+      setDebouncedSearch(searchTerm);
+      setPage(1);
+    }, 300);
+    return () => clearTimeout(debounceRef.current);
+  }, [searchTerm]);
+
   const fetchContacts = useCallback(async () => {
     setLoading(true);
     const filters: ContactFilters = {};
     if (statusFilter !== 'all') {
       filters.status = statusFilter as 'active' | 'inactive' | 'lead';
     }
-    if (searchTerm) {
-      filters.search = searchTerm;
+    if (debouncedSearch) {
+      filters.search = debouncedSearch;
     }
 
     const sort: SortOptions = {
@@ -59,18 +79,11 @@ export default function ContactsPage() {
       setTotalCount(result.count);
     }
     setLoading(false);
-  }, [statusFilter, sortField, sortDirection, page, searchTerm]);
+  }, [statusFilter, sortField, sortDirection, page, debouncedSearch]);
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- data fetch pattern
     fetchContacts();
   }, [fetchContacts]);
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault();
-    setPage(1);
-    fetchContacts();
-  };
 
   const handleSort = (field: ContactSortField) => {
     if (field === sortField) {
@@ -81,56 +94,105 @@ export default function ContactsPage() {
     }
   };
 
+  const handleCreateContact = async (data: ContactFormData) => {
+    setIsSubmitting(true);
+    try {
+      const result = await createContact({
+        first_name: data.first_name,
+        last_name: data.last_name,
+        email: data.email || undefined,
+        phone: data.phone || undefined,
+        company_id: data.company_id || undefined,
+        title: data.title || undefined,
+        status: data.status,
+        source: data.source || undefined,
+        notes: data.notes || undefined,
+      });
+      if (result.error) {
+        toast.error(result.error);
+      } else {
+        toast.success('Contact created');
+        setIsCreateOpen(false);
+        fetchContacts();
+      }
+    } catch {
+      toast.error('Failed to create contact');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleContactClick = (contact: Contact) => {
+    setPreviewContact(contact);
+  };
+
   const totalPages = Math.ceil(totalCount / limit);
 
-  return (
-    <div className="p-6">
-      <div className="flex justify-between items-center mb-6">
-        <div>
-          <h1 className="text-2xl font-semibold text-slate-900">Contacts</h1>
-          <p className="text-slate-600 mt-1">
-            Manage your contacts, leads, and customers
-          </p>
-        </div>
-        <div className="flex gap-3">
-          <button
-            onClick={() => exportContactsToCSV(contacts)}
-            disabled={loading || contacts.length === 0}
-            className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-700 font-medium rounded-lg hover:bg-slate-200 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Download size={18} />
-            Export CSV
-          </button>
-          <Link
-            href="/contacts/new"
-            className="flex items-center gap-2 px-4 py-2 bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-700 transition-colors"
-          >
-            <UserPlus size={18} />
-            Add Contact
-          </Link>
-        </div>
-      </div>
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'active': return 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/50 dark:text-emerald-400';
+      case 'inactive': return 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400';
+      case 'lead': return 'bg-indigo-50 text-indigo-700 dark:bg-indigo-950/50 dark:text-indigo-400';
+      default: return 'bg-zinc-100 text-zinc-600';
+    }
+  };
 
-      {/* Filters and Search */}
-      <div className="bg-white rounded-lg border border-slate-200 p-4 mb-6">
-        <div className="flex flex-col md:flex-row gap-4">
-          <form onSubmit={handleSearch} className="flex-1">
+  return (
+    <>
+      <div className="max-w-5xl mx-auto">
+        {/* Header */}
+        <div className="flex justify-between items-center mb-6">
+          <div>
+            <h1 className="text-2xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">Contacts</h1>
+            <p className="text-zinc-500 dark:text-zinc-400 text-sm mt-0.5">
+              {totalCount} contact{totalCount !== 1 ? 's' : ''}
+            </p>
+          </div>
+          <div className="flex gap-2">
+            <Link
+              href="/contacts/import"
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+            >
+              <Upload size={15} />
+              <span className="hidden sm:inline">Import</span>
+            </Link>
+            <button
+              onClick={() => exportContactsToCSV(contacts)}
+              disabled={loading || contacts.length === 0}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-white dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 border border-zinc-200 dark:border-zinc-700 font-medium rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            >
+              <Download size={15} />
+              <span className="hidden sm:inline">Export</span>
+            </button>
+            <button
+              onClick={() => setIsCreateOpen(true)}
+              className="flex items-center gap-2 px-3 py-2 text-sm bg-indigo-600 text-white font-medium rounded-lg hover:bg-indigo-500 transition-colors shadow-sm shadow-indigo-600/20"
+            >
+              <UserPlus size={15} />
+              Add Contact
+            </button>
+          </div>
+        </div>
+
+        {/* Filters */}
+        <div className="flex flex-col sm:flex-row gap-2.5 mb-4">
+          <div className="flex-1">
             <div className="relative">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400" size={20} />
+              <Search className="absolute left-3 top-1/2 transform -tranzinc-y-1/2 text-zinc-400" size={16} />
               <input
                 type="text"
-                placeholder="Search contacts by name or email..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                placeholder="Search contacts..."
+                className="w-full pl-9 pr-4 py-2 text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-          </form>
+          </div>
           <div className="flex gap-2">
             <select
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-zinc-100"
               value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
+              onChange={(e) => { setStatusFilter(e.target.value); setPage(1); }}
             >
               {statusOptions.map((option) => (
                 <option key={option.value} value={option.value}>
@@ -139,147 +201,244 @@ export default function ContactsPage() {
               ))}
             </select>
             <select
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 rounded-lg focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 dark:text-zinc-100"
               value={`${sortField}_${sortDirection}`}
               onChange={(e) => {
-                const [field, dir] = e.target.value.split('_');
+                const parts = e.target.value.split('_');
+                const dir = parts.pop() as 'asc' | 'desc';
+                const field = parts.join('_');
                 setSortField(field as ContactSortField);
-                setSortDirection(dir as 'asc' | 'desc');
+                setSortDirection(dir);
+                setPage(1);
               }}
             >
               {sortOptions.map((option) => (
-                <option key={option.value} value={`${option.value}_desc`}>
-                  Sort by: {option.label}
+                <option key={`${option.value}_desc`} value={`${option.value}_desc`}>
+                  {option.label} (Newest)
+                </option>
+              ))}
+              {sortOptions.filter(o => o.value !== 'created_at').map((option) => (
+                <option key={`${option.value}_asc`} value={`${option.value}_asc`}>
+                  {option.label} (A-Z)
                 </option>
               ))}
             </select>
           </div>
         </div>
+
+        {/* Table */}
+        <div className="bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 overflow-hidden">
+          {loading ? (
+            <div className="p-6">
+              <div className="animate-pulse space-y-4">
+                {Array.from({ length: 5 }).map((_, i) => (
+                  <div key={i} className="flex items-center gap-4">
+                    <div className="h-8 w-8 bg-zinc-100 dark:bg-zinc-800 rounded-full" />
+                    <div className="flex-1 space-y-2">
+                      <div className="h-4 w-32 bg-zinc-100 dark:bg-zinc-800 rounded-lg" />
+                      <div className="h-3 w-48 bg-zinc-50 dark:bg-zinc-800/50 rounded-lg" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          ) : contacts.length === 0 ? (
+            <div className="p-10 text-center">
+              <Users className="h-8 w-8 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+              <p className="text-sm font-medium text-zinc-600 dark:text-zinc-300 mb-1">No contacts found</p>
+              <button
+                onClick={() => setIsCreateOpen(true)}
+                className="text-indigo-600 dark:text-indigo-400 hover:text-indigo-700 dark:hover:text-indigo-300 font-medium text-xs transition-colors"
+              >
+                Create your first contact
+              </button>
+            </div>
+          ) : (
+            <>
+              <div className="hidden md:block">
+                <ContactsTable
+                  contacts={contacts}
+                  onSort={handleSort}
+                  onRefresh={fetchContacts}
+                  onContactClick={handleContactClick}
+                />
+              </div>
+              <div className="md:hidden">
+                <ContactsMobileList
+                  contacts={contacts}
+                  onDelete={async (contactId) => {
+                    const { deleteContact } = await import('@/lib/api/contacts');
+                    const result = await deleteContact(contactId);
+                    if (result.error) toast.error(result.error);
+                    else { toast.success('Contact deleted'); fetchContacts(); }
+                  }}
+                  onArchive={async (contactId) => {
+                    const { updateContact } = await import('@/lib/api/contacts');
+                    const result = await updateContact(contactId, { status: 'inactive' });
+                    if (result.error) toast.error(result.error);
+                    else { toast.success('Contact archived'); fetchContacts(); }
+                  }}
+                  onTag={async (contactId) => {
+                    toast.info(`Open contact to add tags`);
+                    router.push(`/contacts/${contactId}`);
+                  }}
+                />
+              </div>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between px-5 py-3 border-t border-zinc-100 dark:border-zinc-800">
+                  <div className="text-xs text-zinc-500 dark:text-zinc-400 tabular-nums">
+                    {(page - 1) * limit + 1}–{Math.min(page * limit, totalCount)} of {totalCount}
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <button
+                      onClick={() => setPage((p) => Math.max(1, p - 1))}
+                      disabled={page === 1}
+                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronLeft size={14} />
+                    </button>
+                    <span className="px-2.5 text-xs font-medium text-zinc-600 dark:text-zinc-300 tabular-nums">
+                      {page} / {totalPages}
+                    </span>
+                    <button
+                      onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                      disabled={page === totalPages}
+                      className="p-1.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors"
+                    >
+                      <ChevronRight size={14} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
+        </div>
       </div>
 
-      {/* Table */}
-      <div className="bg-white rounded-lg border border-slate-200 overflow-hidden">
-        {loading ? (
-          <div className="p-6">
-            <div className="animate-pulse">
-              {/* Desktop table skeleton */}
-              <div className="hidden md:block">
-                <div className="flex items-center justify-between px-6 py-3 bg-slate-50 border-b border-slate-200">
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                  <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                </div>
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="px-6 py-4 border-b border-slate-200">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center">
-                        <div className="h-10 w-10 bg-slate-300 rounded-full mr-4"></div>
-                        <div className="space-y-2">
-                          <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                          <div className="h-3 w-24 bg-slate-300 rounded"></div>
-                        </div>
-                      </div>
-                      <div className="h-4 w-48 bg-slate-300 rounded"></div>
-                      <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                      <div className="h-4 w-32 bg-slate-300 rounded"></div>
-                      <div className="h-6 w-16 bg-slate-300 rounded-full"></div>
-                      <div className="h-4 w-24 bg-slate-300 rounded"></div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-              
-              {/* Mobile list skeleton */}
-              <div className="md:hidden space-y-2 p-2">
-                {Array.from({ length: 5 }).map((_, i) => (
-                  <div key={i} className="bg-white rounded-lg border border-slate-200 p-4">
-                    <div className="flex items-center gap-3">
-                      <div className="h-12 w-12 bg-slate-300 rounded-full"></div>
-                      <div className="flex-1">
-                        <div className="h-4 w-32 bg-slate-300 rounded mb-2"></div>
-                        <div className="space-y-1">
-                          <div className="h-3 w-24 bg-slate-300 rounded"></div>
-                          <div className="h-3 w-20 bg-slate-300 rounded"></div>
-                          <div className="h-3 w-16 bg-slate-300 rounded"></div>
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        ) : contacts.length === 0 ? (
-          <div className="p-8 text-center">
-            <div className="text-slate-400 mb-2">No contacts found</div>
-            <Link
-              href="/contacts/new"
-              className="text-indigo-600 hover:text-indigo-800 font-medium"
-            >
-              Create your first contact
-            </Link>
-          </div>
-        ) : (
+      {/* Create Contact Sheet */}
+      <Sheet open={isCreateOpen} onOpenChange={setIsCreateOpen}>
+        <SheetHeader onClose={() => setIsCreateOpen(false)}>
+          <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">New Contact</h2>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">Add a new contact to your CRM</p>
+        </SheetHeader>
+        <SheetBody>
+          <ContactForm
+            onSubmit={handleCreateContact}
+            isSubmitting={isSubmitting}
+          />
+        </SheetBody>
+      </Sheet>
+
+      {/* Contact Preview Sheet */}
+      <Sheet open={!!previewContact} onOpenChange={(open) => { if (!open) setPreviewContact(null); }}>
+        {previewContact && (
           <>
-            {/* Desktop table */}
-            <div className="hidden md:block">
-              <ContactsTable contacts={contacts} onSort={handleSort} />
-            </div>
-            
-            {/* Mobile list with swipe actions */}
-            <div className="md:hidden">
-              <ContactsMobileList 
-                contacts={contacts}
-                onDelete={async (contactId) => {
-                  // Add delete logic here
-                  console.log('Delete contact:', contactId);
-                }}
-                onArchive={async (contactId) => {
-                  // Add archive logic here
-                  console.log('Archive contact:', contactId);
-                }}
-                onTag={async (contactId) => {
-                  // Add tag logic here
-                  console.log('Tag contact:', contactId);
-                }}
-              />
-            </div>
-            
-            {/* Pagination */}
-            <div className="flex items-center justify-between px-6 py-4 border-t border-slate-200">
-              <div className="text-sm text-slate-600">
-                Showing <span className="font-medium">{(page - 1) * limit + 1}</span> to{' '}
-                <span className="font-medium">
-                  {Math.min(page * limit, totalCount)}
-                </span>{' '}
-                of <span className="font-medium">{totalCount}</span> contacts
+            <SheetHeader onClose={() => setPreviewContact(null)}>
+              <div className="flex items-center gap-3">
+                <div className="h-10 w-10 rounded-full bg-indigo-100 dark:bg-indigo-900 flex items-center justify-center">
+                  <span className="text-indigo-700 dark:text-indigo-300 font-medium">
+                    {previewContact.first_name.charAt(0)}{previewContact.last_name.charAt(0)}
+                  </span>
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                    {previewContact.first_name} {previewContact.last_name}
+                  </h2>
+                  {previewContact.title && (
+                    <p className="text-sm text-zinc-500 dark:text-zinc-400">{previewContact.title}</p>
+                  )}
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <button
-                  onClick={() => setPage((p) => Math.max(1, p - 1))}
-                  disabled={page === 1}
-                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft size={18} />
-                </button>
-                <span className="px-3 text-sm font-medium">
-                  Page {page} of {totalPages}
-                </span>
-                <button
-                  onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-                  disabled={page === totalPages}
-                  className="p-2 rounded-lg border border-slate-300 hover:bg-slate-50 disabled:opacity-50 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight size={18} />
-                </button>
+            </SheetHeader>
+            <SheetBody>
+              <div className="space-y-6">
+                {/* Status badge */}
+                <div>
+                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${getStatusColor(previewContact.status)}`}>
+                    {previewContact.status.charAt(0).toUpperCase() + previewContact.status.slice(1)}
+                  </span>
+                </div>
+
+                {/* Contact details */}
+                <div className="space-y-3">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Details</h3>
+                  {previewContact.email && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Mail className="h-4 w-4 text-zinc-400" />
+                      <a href={`mailto:${previewContact.email}`} className="text-indigo-600 dark:text-indigo-400 hover:underline">
+                        {previewContact.email}
+                      </a>
+                    </div>
+                  )}
+                  {previewContact.phone && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Phone className="h-4 w-4 text-zinc-400" />
+                      <a href={`tel:${previewContact.phone}`} className="text-zinc-700 dark:text-zinc-300">
+                        {previewContact.phone}
+                      </a>
+                    </div>
+                  )}
+                  {previewContact.company_id && (
+                    <div className="flex items-center gap-3 text-sm">
+                      <Building className="h-4 w-4 text-zinc-400" />
+                      <Link
+                        href={`/companies/${previewContact.company_id}`}
+                        className="text-indigo-600 dark:text-indigo-400 hover:underline"
+                        onClick={() => setPreviewContact(null)}
+                      >
+                        {previewContact.company_name || 'View Company'}
+                      </Link>
+                    </div>
+                  )}
+                </div>
+
+                {/* Notes */}
+                {previewContact.notes && (
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Notes</h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300 whitespace-pre-wrap">{previewContact.notes}</p>
+                  </div>
+                )}
+
+                {/* Source */}
+                {previewContact.source && (
+                  <div className="space-y-2">
+                    <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Source</h3>
+                    <p className="text-sm text-zinc-600 dark:text-zinc-300">{previewContact.source}</p>
+                  </div>
+                )}
+
+                {/* Added date */}
+                <div className="space-y-2">
+                  <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-400 dark:text-zinc-500">Added</h3>
+                  <p className="text-sm text-zinc-600 dark:text-zinc-300">
+                    {new Date(previewContact.created_at).toLocaleDateString('en-US', {
+                      month: 'long', day: 'numeric', year: 'numeric'
+                    })}
+                  </p>
+                </div>
               </div>
-            </div>
+            </SheetBody>
+            <SheetFooter>
+              <button
+                onClick={() => setPreviewContact(null)}
+                className="px-3 py-2 text-sm border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 text-zinc-700 dark:text-zinc-300"
+              >
+                Close
+              </button>
+              <Link
+                href={`/contacts/${previewContact.id}`}
+                className="flex items-center gap-1.5 px-3 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700"
+              >
+                <ExternalLink className="h-3.5 w-3.5" />
+                Full Profile
+              </Link>
+            </SheetFooter>
           </>
         )}
-      </div>
-    </div>
+      </Sheet>
+    </>
   );
 }

@@ -9,16 +9,16 @@ export const metadata: Metadata = {
 
 export default function SignupPage() {
   return (
-    <div className="flex min-h-screen items-center justify-center bg-slate-50 px-4 py-12 sm:px-6 lg:px-8">
+    <div className="flex min-h-screen items-center justify-center bg-zinc-50 px-4 py-12 sm:px-6 lg:px-8">
       <div className="w-full max-w-md space-y-8">
         <div>
-          <h1 className="text-center text-3xl font-bold tracking-tight text-slate-900">
+          <h1 className="text-center text-3xl font-bold tracking-tight text-zinc-900">
             TheBodegaCRM
           </h1>
-          <h2 className="mt-6 text-center text-2xl font-bold text-slate-900">
+          <h2 className="mt-6 text-center text-2xl font-bold text-zinc-900">
             Create a new account
           </h2>
-          <p className="mt-2 text-center text-sm text-slate-600">
+          <p className="mt-2 text-center text-sm text-zinc-600">
             Or{' '}
             <Link
               href="/login"
@@ -29,7 +29,7 @@ export default function SignupPage() {
           </p>
         </div>
         <AuthForm mode="signup" />
-        <div className="text-center text-sm text-slate-500">
+        <div className="text-center text-sm text-zinc-500">
           <p>
             All accounts start with a 14-day free trial
           </p>

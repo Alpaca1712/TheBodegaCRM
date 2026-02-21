@@ -17,7 +17,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
-  
+
   const handleSignOut = async () => {
     try {
       setIsSigningOut(true);
@@ -27,100 +27,84 @@ export default function Header({ userEmail, userName }: HeaderProps) {
       setIsSigningOut(false);
     }
   };
-  
-  // Get initials from name or email for avatar fallback
+
   const getInitials = () => {
-    if (userName) {
-      return userName
-        .split(' ')
-        .map(word => word[0])
-        .join('')
-        .toUpperCase()
-        .slice(0, 2);
-    }
-    if (userEmail) {
-      return userEmail[0].toUpperCase();
-    }
+    if (userName) return userName.split(' ').map(w => w[0]).join('').toUpperCase().slice(0, 2);
+    if (userEmail) return userEmail[0].toUpperCase();
     return 'U';
   };
-  
-  // Close dropdown when clicking outside
+
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
         setIsDropdownOpen(false);
       }
     };
-    
     document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
+    return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
-  
+
   return (
     <>
-      <header className="sticky top-0 z-40 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-6 shadow-sm">
-        <div className="flex items-center">
-          <h1 className="text-xl font-semibold text-slate-900">TheBodegaCRM</h1>
+      <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-6">
+        <div className="flex items-center md:hidden">
+          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Bodega</span>
         </div>
-        
-        <div className="flex items-center space-x-4">
-          {/* Reminders panel */}
+
+        <div className="hidden md:block" />
+
+        <div className="flex items-center gap-2">
           <RemindersPanel />
-          
-          {/* Search button */}
+
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="hidden items-center space-x-2 rounded-lg bg-slate-50 px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 md:flex"
+            className="hidden md:flex items-center gap-2 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/80 px-3 py-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80 transition-colors"
           >
-            <Search className="h-4 w-4" />
-            <span>Search</span>
-            <kbd className="ml-2 rounded border border-slate-300 bg-white px-1.5 py-0.5 font-mono text-xs text-slate-500">
+            <Search className="h-3.5 w-3.5" />
+            <span>Search...</span>
+            <kbd className="ml-1 rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
               ⌘K
             </kbd>
           </button>
-          
-          {/* Mobile search button */}
+
           <button
             onClick={() => setIsSearchOpen(true)}
-            className="flex h-10 w-10 items-center justify-center rounded-lg bg-slate-50 hover:bg-slate-100 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2 md:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors md:hidden"
           >
-            <Search className="h-5 w-5 text-slate-600" />
+            <Search className="h-4 w-4" />
           </button>
-          
-          {/* Theme toggle */}
+
           <ThemeToggle />
-          
-          {/* User dropdown */}
+
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-              className="flex items-center space-x-3 rounded-lg p-2 hover:bg-slate-50 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2"
+              className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
-              <div className="flex h-8 w-8 items-center justify-center rounded-full bg-indigo-100 text-sm font-medium text-indigo-700">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
                 {getInitials()}
               </div>
               <div className="hidden text-left md:block">
-                <p className="text-sm font-medium text-slate-700">
+                <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 leading-none">
                   {userName || 'User'}
                 </p>
-                <p className="text-xs text-slate-500">
-                  {userEmail || 'No email'}
-                </p>
               </div>
-              <ChevronDown className="h-4 w-4 text-slate-400" />
+              <ChevronDown className="h-3 w-3 text-zinc-400 dark:text-zinc-500 hidden md:block" />
             </button>
-            
+
             {isDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-48 origin-top-right divide-y divide-slate-100 rounded-md bg-white shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none">
+              <div className="absolute right-0 mt-1.5 w-48 rounded-lg bg-white dark:bg-zinc-800 shadow-lg ring-1 ring-zinc-200/60 dark:ring-zinc-700/60 animate-scale-in overflow-hidden">
+                <div className="px-3 py-2 border-b border-zinc-100 dark:border-zinc-700">
+                  <p className="text-xs font-medium text-zinc-900 dark:text-zinc-200">{userName || 'User'}</p>
+                  <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{userEmail || ''}</p>
+                </div>
                 <div className="p-1">
                   <button
                     onClick={handleSignOut}
                     disabled={isSigningOut}
-                    className="group flex w-full items-center rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100 hover:text-slate-900 disabled:opacity-50"
+                    className="flex w-full items-center gap-2 rounded-md px-2.5 py-1.5 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors disabled:opacity-50"
                   >
-                    <LogOut className="mr-2 h-4 w-4" />
+                    <LogOut className="h-3.5 w-3.5" />
                     {isSigningOut ? 'Signing out...' : 'Sign out'}
                   </button>
                 </div>
@@ -129,12 +113,8 @@ export default function Header({ userEmail, userName }: HeaderProps) {
           </div>
         </div>
       </header>
-      
-      {/* Global search modal */}
-      <GlobalSearch 
-        isOpen={isSearchOpen} 
-        onClose={() => setIsSearchOpen(false)}
-      />
+
+      <GlobalSearch isOpen={isSearchOpen} onClose={() => setIsSearchOpen(false)} />
     </>
   );
 }

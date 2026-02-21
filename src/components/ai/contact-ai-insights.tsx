@@ -56,15 +56,15 @@ export default function ContactAiInsights({
   
   if (isLoading) {
     return (
-      <Card className="p-4 border-dashed border-slate-300 bg-slate-50">
+      <Card className="p-4 border-dashed border-zinc-300 bg-zinc-50">
         <div className="animate-pulse space-y-4">
           <div className="flex items-center gap-2">
-            <div className="h-8 w-8 rounded-full bg-slate-200" />
-            <div className="h-4 w-32 bg-slate-200 rounded" />
+            <div className="h-8 w-8 rounded-full bg-zinc-200" />
+            <div className="h-4 w-32 bg-zinc-200 rounded" />
           </div>
           <div className="space-y-2">
-            <div className="h-3 w-full bg-slate-200 rounded" />
-            <div className="h-3 w-3/4 bg-slate-200 rounded" />
+            <div className="h-3 w-full bg-zinc-200 rounded" />
+            <div className="h-3 w-3/4 bg-zinc-200 rounded" />
           </div>
         </div>
       </Card>
@@ -73,13 +73,13 @@ export default function ContactAiInsights({
   
   if (emailSummaries.length === 0) {
     return (
-      <Card className="p-6 border-dashed border-slate-300">
+      <Card className="p-6 border-dashed border-zinc-300">
         <div className="text-center">
-          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-slate-100 mb-4">
-            <Brain className="h-6 w-6 text-slate-400" />
+          <div className="mx-auto flex items-center justify-center h-12 w-12 rounded-full bg-zinc-100 mb-4">
+            <Brain className="h-6 w-6 text-zinc-400" />
           </div>
-          <h3 className="text-sm font-medium text-slate-900 mb-2">No AI insights yet</h3>
-          <p className="text-sm text-slate-500 mb-4 max-w-xs mx-auto">
+          <h3 className="text-sm font-medium text-zinc-900 mb-2">No AI insights yet</h3>
+          <p className="text-sm text-zinc-500 mb-4 max-w-xs mx-auto">
             Connect Gmail to automatically summarize emails and generate follow-up suggestions.
           </p>
           {contactEmail && (
@@ -101,8 +101,8 @@ export default function ContactAiInsights({
             <Brain className="h-5 w-5 text-indigo-600" />
           </div>
           <div>
-            <h3 className="font-medium text-slate-900">AI Insights</h3>
-            <p className="text-xs text-slate-500">Email analysis & suggestions</p>
+            <h3 className="font-medium text-zinc-900">AI Insights</h3>
+            <p className="text-xs text-zinc-500">Email analysis & suggestions</p>
           </div>
         </div>
         <Badge variant="outline" className="gap-1.5">
@@ -115,7 +115,7 @@ export default function ContactAiInsights({
         {/* Recent Email Summaries */}
         <div>
           <div className="flex items-center justify-between mb-4">
-            <h4 className="text-sm font-medium text-slate-700 flex items-center gap-2">
+            <h4 className="text-sm font-medium text-zinc-700 flex items-center gap-2">
               <Mail className="h-4 w-4" />
               Recent Email Summaries
             </h4>
@@ -124,7 +124,7 @@ export default function ContactAiInsights({
                 variant="ghost"
                 size="sm"
                 onClick={() => setShowAllSummaries(!showAllSummaries)}
-                className="text-xs text-slate-500 hover:text-slate-700"
+                className="text-xs text-zinc-500 hover:text-zinc-700"
               >
                 {showAllSummaries ? 'Show Less' : `Show All (${emailSummaries.length})`}
               </Button>
@@ -133,17 +133,17 @@ export default function ContactAiInsights({
           
           <div className="space-y-4">
             {recentSummaries.map((summary) => (
-              <div key={summary.id} className="border border-slate-200 rounded-lg overflow-hidden">
-                <div className="bg-slate-50 px-4 py-2 border-b border-slate-200">
+              <div key={summary.id} className="border border-zinc-200 rounded-lg overflow-hidden">
+                <div className="bg-zinc-50 px-4 py-2 border-b border-zinc-200">
                   <div className="flex justify-between items-center">
-                    <div className="text-xs font-medium text-slate-700 truncate">
+                    <div className="text-xs font-medium text-zinc-700 truncate">
                       {summary.subject}
                     </div>
-                    <div className="text-xs text-slate-500">
+                    <div className="text-xs text-zinc-500">
                       {new Date(summary.date).toLocaleDateString()}
                     </div>
                   </div>
-                  <div className="text-xs text-slate-500 truncate mt-0.5">
+                  <div className="text-xs text-zinc-500 truncate mt-0.5">
                     From: {summary.sender}
                   </div>
                 </div>
@@ -178,7 +178,7 @@ export default function ContactAiInsights({
         {/* Suggested Follow-ups */}
         {followUpSuggestions.length > 0 && (
           <div>
-            <h4 className="text-sm font-medium text-slate-700 mb-4 flex items-center gap-2">
+            <h4 className="text-sm font-medium text-zinc-700 mb-4 flex items-center gap-2">
               <AlertCircle className="h-4 w-4" />
               Suggested Follow-ups
             </h4>
@@ -191,16 +191,16 @@ export default function ContactAiInsights({
                     'border rounded-lg p-4 cursor-pointer transition-colors',
                     selectedFollowUp?.subject === suggestion.subject
                       ? 'border-indigo-300 bg-indigo-50'
-                      : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                      : 'border-zinc-200 hover:border-zinc-300 hover:bg-zinc-50'
                   )}
                   onClick={() => setSelectedFollowUp(suggestion)}
                 >
                   <div className="flex justify-between items-start">
                     <div>
-                      <h5 className="font-medium text-slate-900 mb-1">
+                      <h5 className="font-medium text-zinc-900 mb-1">
                         {suggestion.subject}
                       </h5>
-                      <p className="text-sm text-slate-600 line-clamp-2">
+                      <p className="text-sm text-zinc-600 line-clamp-2">
                         {suggestion.body.substring(0, 100)}...
                       </p>
                     </div>
@@ -219,8 +219,8 @@ export default function ContactAiInsights({
       {selectedFollowUp && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
           <div className="bg-white rounded-lg shadow-lg max-w-2xl w-full max-h-[90vh] overflow-y-auto">
-            <div className="sticky top-0 bg-white border-b border-slate-200 px-6 py-4 flex justify-between items-center">
-              <h3 className="font-medium text-slate-900">Edit & Send Follow-up</h3>
+            <div className="sticky top-0 bg-white border-b border-zinc-200 px-6 py-4 flex justify-between items-center">
+              <h3 className="font-medium text-zinc-900">Edit & Send Follow-up</h3>
               <Button
                 variant="ghost"
                 size="sm"

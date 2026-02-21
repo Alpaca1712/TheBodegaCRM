@@ -39,7 +39,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
 
   return (
     <Link href={`/companies/${company.id}`}>
-      <div className="bg-white rounded-lg border border-slate-200 p-6 hover:border-indigo-300 hover:shadow-sm transition-all duration-200 cursor-pointer group">
+      <div className="bg-white rounded-lg border border-zinc-200 p-6 hover:border-indigo-300 hover:shadow-sm transition-all duration-200 cursor-pointer group">
         <div className="flex items-start justify-between mb-4">
           <div className={`h-12 w-12 rounded-lg flex items-center justify-center ${getColorFromName(company.name)}`}>
             {company.logo_url ? (
@@ -56,18 +56,18 @@ export default function CompanyCard({ company }: CompanyCardProps) {
             )}
           </div>
           
-          <div className="flex items-center gap-2 bg-slate-100 text-slate-600 px-2 py-1 rounded text-sm">
+          <div className="flex items-center gap-2 bg-zinc-100 text-zinc-600 px-2 py-1 rounded text-sm">
             <Building2 className="h-3 w-3" />
             <span className="capitalize">{company.size || 'Unknown'}</span>
           </div>
         </div>
 
         <div className="space-y-3">
-          <h3 className="text-lg font-semibold text-slate-900 group-hover:text-indigo-600 transition-colors">
+          <h3 className="text-lg font-semibold text-zinc-900 group-hover:text-indigo-600 transition-colors">
             {company.name}
           </h3>
           
-          <div className="flex items-center gap-2 text-slate-600">
+          <div className="flex items-center gap-2 text-zinc-600">
             <Building2 className="h-4 w-4 flex-shrink-0" />
             <span className="text-sm truncate">
               {formatIndustry(company.industry)}
@@ -75,7 +75,7 @@ export default function CompanyCard({ company }: CompanyCardProps) {
           </div>
           
           {company.domain && (
-            <div className="flex items-center gap-2 text-slate-600">
+            <div className="flex items-center gap-2 text-zinc-600">
               <svg className="h-4 w-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 01-9 9m9-9a9 9 0 00-9-9m9 9H3" />
               </svg>
@@ -97,20 +97,20 @@ export default function CompanyCard({ company }: CompanyCardProps) {
         </div>
 
         {/* Stats Placeholder */}
-        <div className="mt-6 pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+        <div className="mt-6 pt-4 border-t border-zinc-100 grid grid-cols-2 gap-4">
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-slate-600 mb-1">
+            <div className="flex items-center justify-center gap-1 text-zinc-600 mb-1">
               <Users className="h-4 w-4" />
               <span className="text-xs">Contacts</span>
             </div>
-            <div className="text-lg font-semibold text-slate-900">0</div>
+            <div className="text-lg font-semibold text-zinc-900">0</div>
           </div>
           <div className="text-center">
-            <div className="flex items-center justify-center gap-1 text-slate-600 mb-1">
+            <div className="flex items-center justify-center gap-1 text-zinc-600 mb-1">
               <TrendingUp className="h-4 w-4" />
               <span className="text-xs">Deals</span>
             </div>
-            <div className="text-lg font-semibold text-slate-900">$0</div>
+            <div className="text-lg font-semibold text-zinc-900">$0</div>
           </div>
         </div>
       </div>

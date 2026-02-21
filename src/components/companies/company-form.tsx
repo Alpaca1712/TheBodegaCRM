@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -28,9 +28,10 @@ interface CompanyFormProps {
   initialData?: Company;
   onSubmit: (data: CompanyFormData) => Promise<void>;
   isSubmitting: boolean;
+  onCancel?: () => void;
 }
 
-export default function CompanyForm({ initialData, onSubmit, isSubmitting }: CompanyFormProps) {
+export default function CompanyForm({ initialData, onSubmit, isSubmitting, onCancel }: CompanyFormProps) {
   const router = useRouter();
 
   const {
@@ -55,8 +56,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
     },
   });
 
-  // Set initial data if editing
-  useState(() => {
+  useEffect(() => {
     if (initialData) {
       reset({
         name: initialData.name,
@@ -72,7 +72,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
         logo_url: initialData.logo_url || '',
       });
     }
-  });
+  }, [initialData, reset]);
 
   const handleFormSubmit = async (data: CompanyFormData) => {
     await onSubmit({
@@ -92,12 +92,12 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Company Details</h2>
+      <div className="bg-white rounded-lg border border-zinc-200 p-6">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4">Company Details</h2>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Building size={16} />
                 Company Name *
@@ -106,7 +106,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
             <input
               type="text"
               {...register('name')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.name ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.name ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="Acme Inc."
             />
             {errors.name && (
@@ -116,7 +116,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 <div className="flex items-center gap-1">
                   <Globe size={16} />
                   Domain
@@ -125,19 +125,19 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
               <input
                 type="text"
                 {...register('domain')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="example.com"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 Industry
               </label>
               <input
                 type="text"
                 {...register('industry')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="Technology, Healthcare, Finance, etc."
               />
             </div>
@@ -145,7 +145,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 <div className="flex items-center gap-1">
                   <Users size={16} />
                   Company Size
@@ -153,7 +153,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
               </label>
               <select
                 {...register('size')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               >
                 <option value="">Select size</option>
                 <option value="1-10">1-10 employees</option>
@@ -165,7 +165,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">
+              <label className="block text-sm font-medium text-zinc-700 mb-1">
                 <div className="flex items-center gap-1">
                   <Link size={16} />
                   Website
@@ -174,7 +174,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
               <input
                 type="url"
                 {...register('website')}
-                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.website ? 'border-red-500' : 'border-slate-300'}`}
+                className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.website ? 'border-red-500' : 'border-zinc-300'}`}
                 placeholder="https://example.com"
               />
               {errors.website && (
@@ -184,7 +184,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Phone size={16} />
                 Phone
@@ -193,19 +193,19 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
             <input
               type="tel"
               {...register('phone')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="(123) 456-7890"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Address</h2>
+      <div className="bg-white rounded-lg border border-zinc-200 p-6">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4">Address</h2>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <MapPin size={16} />
                 Street Address
@@ -214,38 +214,38 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
             <input
               type="text"
               {...register('address_line1')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="123 Main St"
             />
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">City</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">City</label>
               <input
                 type="text"
                 {...register('address_city')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="San Francisco"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">State</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">State</label>
               <input
                 type="text"
                 {...register('address_state')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="CA"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-slate-700 mb-1">Country</label>
+              <label className="block text-sm font-medium text-zinc-700 mb-1">Country</label>
               <input
                 type="text"
                 {...register('address_country')}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="United States"
               />
             </div>
@@ -253,30 +253,30 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Media & Notes</h2>
+      <div className="bg-white rounded-lg border border-zinc-200 p-6">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4">Media & Notes</h2>
         
         <div className="space-y-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Logo URL
             </label>
             <input
               type="url"
               {...register('logo_url')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.logo_url ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.logo_url ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="https://example.com/logo.png"
             />
             {errors.logo_url && (
               <p className="mt-1 text-sm text-red-600">{errors.logo_url.message}</p>
             )}
-            <p className="mt-1 text-sm text-slate-500">
+            <p className="mt-1 text-sm text-zinc-500">
               Enter a direct URL to the company logo image
             </p>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <FileText size={16} />
                 Additional Notes
@@ -284,7 +284,7 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
             </label>
             <textarea
               rows={3}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="Add any additional notes about this company..."
             />
           </div>
@@ -294,8 +294,8 @@ export default function CompanyForm({ initialData, onSubmit, isSubmitting }: Com
       <div className="flex justify-end gap-3 pt-4">
         <button
           type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+          onClick={() => onCancel ? onCancel() : router.back()}
+          className="px-4 py-2 border border-zinc-300 text-zinc-700 font-medium rounded-lg hover:bg-zinc-50 transition-colors flex items-center gap-2"
         >
           <X size={18} />
           Cancel

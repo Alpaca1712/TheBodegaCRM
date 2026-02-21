@@ -28,9 +28,10 @@ interface ContactFormProps {
   initialData?: Contact;
   onSubmit: (data: ContactFormData) => Promise<void>;
   isSubmitting: boolean;
+  onCancel?: () => void;
 }
 
-export default function ContactForm({ initialData, onSubmit, isSubmitting }: ContactFormProps) {
+export default function ContactForm({ initialData, onSubmit, isSubmitting, onCancel }: ContactFormProps) {
   const router = useRouter();
   const [companies, setCompanies] = useState<Company[]>([]);
 
@@ -92,11 +93,11 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
 
   return (
     <form onSubmit={handleSubmit(handleFormSubmit)} className="space-y-6">
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Basic Information</h2>
+      <div className="bg-white rounded-lg border border-zinc-200 p-6">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4">Basic Information</h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <User size={16} />
                 First Name *
@@ -105,7 +106,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             <input
               type="text"
               {...register('first_name')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.first_name ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.first_name ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="John"
             />
             {errors.first_name && (
@@ -114,13 +115,13 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               Last Name *
             </label>
             <input
               type="text"
               {...register('last_name')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.last_name ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.last_name ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="Doe"
             />
             {errors.last_name && (
@@ -131,7 +132,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Mail size={16} />
                 Email
@@ -140,7 +141,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             <input
               type="email"
               {...register('email')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.email ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.email ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="john.doe@example.com"
             />
             {errors.email && (
@@ -149,7 +150,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Phone size={16} />
                 Phone
@@ -158,7 +159,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             <input
               type="tel"
               {...register('phone')}
-              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.phone ? 'border-red-500' : 'border-slate-300'}`}
+              className={`w-full px-3 py-2 border rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500 ${errors.phone ? 'border-red-500' : 'border-zinc-300'}`}
               placeholder="(123) 456-7890"
             />
             {errors.phone && (
@@ -169,7 +170,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Briefcase size={16} />
                 Title
@@ -178,13 +179,13 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             <input
               type="text"
               {...register('title')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="CEO, Manager, etc."
             />
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Building size={16} />
                 Company
@@ -192,7 +193,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             </label>
             <select
               {...register('company_id')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="">No company selected</option>
               {companies.map((company) => (
@@ -205,12 +206,12 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
         </div>
       </div>
 
-      <div className="bg-white rounded-lg border border-slate-200 p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4">Additional Details</h2>
+      <div className="bg-white rounded-lg border border-zinc-200 p-6">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4">Additional Details</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">
+            <label className="block text-sm font-medium text-zinc-700 mb-1">
               <div className="flex items-center gap-1">
                 <Tag size={16} />
                 Status
@@ -218,7 +219,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
             </label>
             <select
               {...register('status')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             >
               <option value="active">Active</option>
               <option value="inactive">Inactive</option>
@@ -227,18 +228,18 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
           </div>
           
           <div>
-            <label className="block text-sm font-medium text-slate-700 mb-1">Source</label>
+            <label className="block text-sm font-medium text-zinc-700 mb-1">Source</label>
             <input
               type="text"
               {...register('source')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="Referral, Website, Conference, etc."
             />
           </div>
         </div>
         
         <div className="mt-4">
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             <div className="flex items-center gap-1">
               <FileText size={16} />
               Notes
@@ -247,7 +248,7 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
           <textarea
             {...register('notes')}
             rows={4}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             placeholder="Add any additional notes about this contact..."
           />
         </div>
@@ -256,8 +257,8 @@ export default function ContactForm({ initialData, onSubmit, isSubmitting }: Con
       <div className="flex justify-end gap-3 pt-4">
         <button
           type="button"
-          onClick={() => router.back()}
-          className="px-4 py-2 border border-slate-300 text-slate-700 font-medium rounded-lg hover:bg-slate-50 transition-colors flex items-center gap-2"
+          onClick={() => onCancel ? onCancel() : router.back()}
+          className="px-4 py-2 border border-zinc-300 text-zinc-700 font-medium rounded-lg hover:bg-zinc-50 transition-colors flex items-center gap-2"
         >
           <X size={18} />
           Cancel

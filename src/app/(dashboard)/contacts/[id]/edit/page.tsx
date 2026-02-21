@@ -72,13 +72,13 @@ export default function EditContactPage() {
         <div className="flex items-center gap-2 mb-6">
           <Link
             href={`/contacts/${contactId}`}
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Contact
           </Link>
         </div>
-        <div className="text-center py-12 text-slate-500">Loading contact data...</div>
+        <div className="text-center py-12 text-zinc-500">Loading contact data...</div>
       </div>
     );
   }
@@ -89,7 +89,7 @@ export default function EditContactPage() {
         <div className="flex items-center gap-2 mb-6">
           <Link
             href="/contacts"
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Contacts
@@ -108,14 +108,14 @@ export default function EditContactPage() {
         <div className="flex items-center gap-2 mb-4">
           <Link
             href={`/contacts/${contactId}`}
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Contact
           </Link>
         </div>
-        <h1 className="text-2xl font-semibold text-slate-900">Edit Contact</h1>
-        <p className="text-slate-600 mt-1">
+        <h1 className="text-2xl font-semibold text-zinc-900">Edit Contact</h1>
+        <p className="text-zinc-600 mt-1">
           Update contact information for {contact.first_name} {contact.last_name}
         </p>
       </div>

@@ -1,5 +1,5 @@
 const NOVITA_API_URL = 'https://api.novita.ai/openai/v1/chat/completions'
-const NOVITA_MODEL = 'deepseek/deepseek-v3.2'
+const NOVITA_MODEL = process.env.NOVITA_MODEL || 'meta-llama/llama-3.3-70b-instruct'
 
 interface AiCompletionOptions {
   systemPrompt: string

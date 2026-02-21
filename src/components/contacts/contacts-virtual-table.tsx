@@ -29,9 +29,9 @@ export default function ContactsVirtualTable({
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'active': return 'bg-green-100 text-green-800';
-      case 'inactive': return 'bg-slate-100 text-slate-800';
+      case 'inactive': return 'bg-zinc-100 text-zinc-800';
       case 'lead': return 'bg-indigo-100 text-indigo-800';
-      default: return 'bg-slate-100 text-slate-800';
+      default: return 'bg-zinc-100 text-zinc-800';
     }
   };
 
@@ -60,29 +60,29 @@ export default function ContactsVirtualTable({
   return (
     <div className="flex flex-col h-full">
       {/* Table header */}
-      <div className="bg-slate-50 border-b border-slate-200 sticky top-0 z-10">
-        <table className="min-w-full divide-y divide-slate-200">
+      <div className="bg-zinc-50 border-b border-zinc-200 sticky top-0 z-10">
+        <table className="min-w-full divide-y divide-zinc-200">
           <thead>
             <tr>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider w-12">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider w-12">
                 {/* Checkbox column - for consistency with original design */}
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Contact
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Email
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Phone
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Company
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Status
               </th>
-              <th className="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+              <th className="px-6 py-3 text-left text-xs font-medium text-zinc-500 uppercase tracking-wider">
                 Created
               </th>
             </tr>
@@ -102,7 +102,7 @@ export default function ContactsVirtualTable({
           </div>
         ) : contacts.length === 0 ? (
           <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-slate-500">No contacts found</div>
+            <div className="text-zinc-500">No contacts found</div>
           </div>
         ) : (
           <div 
@@ -125,15 +125,15 @@ export default function ContactsVirtualTable({
                     height: `${virtualRow.size}px`,
                     transform: `translateY(${virtualRow.start}px)`,
                   }}
-                  className="hover:bg-slate-50 cursor-pointer transition-colors border-b border-slate-200"
+                  className="hover:bg-zinc-50 cursor-pointer transition-colors border-b border-zinc-200"
                   onClick={() => handleContactClick(contact.id)}
                 >
-                  <table className="min-w-full divide-y divide-slate-200">
+                  <table className="min-w-full divide-y divide-zinc-200">
                     <tbody>
                       <tr>
                         <td className="px-6 py-4 whitespace-nowrap w-12">
                           {/* Checkbox placeholder - could add later */}
-                          <div className="h-4 w-4 border border-slate-300 rounded"></div>
+                          <div className="h-4 w-4 border border-zinc-300 rounded"></div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           <div className="flex items-center">
@@ -153,43 +153,43 @@ export default function ContactsVirtualTable({
                               )}
                             </div>
                             <div className="ml-4">
-                              <div className="text-sm font-medium text-slate-900">
+                              <div className="text-sm font-medium text-zinc-900">
                                 {contact.first_name} {contact.last_name}
                               </div>
                               {contact.title && (
-                                <div className="text-sm text-slate-500">{contact.title}</div>
+                                <div className="text-sm text-zinc-500">{contact.title}</div>
                               )}
                             </div>
                           </div>
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
                           {contact.email ? (
-                            <div className="flex items-center text-sm text-slate-900">
-                              <Mail className="mr-2 text-slate-400" size={16} />
+                            <div className="flex items-center text-sm text-zinc-900">
+                              <Mail className="mr-2 text-zinc-400" size={16} />
                               {contact.email}
                             </div>
                           ) : (
-                            <span className="text-sm text-slate-400">—</span>
+                            <span className="text-sm text-zinc-400">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
                           {contact.phone ? (
                             <div className="flex items-center">
-                              <Phone className="mr-2 text-slate-400" size={16} />
+                              <Phone className="mr-2 text-zinc-400" size={16} />
                               {contact.phone}
                             </div>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-zinc-400">—</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-900">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-900">
                           {contact.company_id ? (
                             <div className="flex items-center">
-                              <Building className="mr-2 text-slate-400" size={16} />
-                              <span className="text-slate-600">Company</span>
+                              <Building className="mr-2 text-zinc-400" size={16} />
+                              <span className="text-zinc-600">Company</span>
                             </div>
                           ) : (
-                            <span className="text-slate-400">—</span>
+                            <span className="text-zinc-400">—</span>
                           )}
                         </td>
                         <td className="px-6 py-4 whitespace-nowrap">
@@ -197,9 +197,9 @@ export default function ContactsVirtualTable({
                             {contact.status.charAt(0).toUpperCase() + contact.status.slice(1)}
                           </span>
                         </td>
-                        <td className="px-6 py-4 whitespace-nowrap text-sm text-slate-500">
+                        <td className="px-6 py-4 whitespace-nowrap text-sm text-zinc-500">
                           <div className="flex items-center">
-                            <Calendar className="mr-2 text-slate-400" size={16} />
+                            <Calendar className="mr-2 text-zinc-400" size={16} />
                             {formatDate(contact.created_at)}
                           </div>
                         </td>
@@ -214,7 +214,7 @@ export default function ContactsVirtualTable({
       </div>
 
       {/* Status bar */}
-      <div className="bg-slate-50 border-t border-slate-200 px-6 py-2 text-sm text-slate-600 sticky bottom-0">
+      <div className="bg-zinc-50 border-t border-zinc-200 px-6 py-2 text-sm text-zinc-600 sticky bottom-0">
         Showing {contacts.length} contacts
       </div>
     </div>

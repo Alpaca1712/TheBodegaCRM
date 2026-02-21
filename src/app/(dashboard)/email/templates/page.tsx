@@ -17,7 +17,7 @@ export default function EmailTemplatesPage() {
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Email Templates</h1>
-          <p className="text-slate-500">
+          <p className="text-zinc-500">
             Save and reuse email templates for consistent communication with contacts and investors
           </p>
         </div>
@@ -52,19 +52,19 @@ export default function EmailTemplatesPage() {
             <CardContent className="space-y-4">
               <div className="space-y-2">
                 <h4 className="font-medium">Variables</h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-zinc-600">
                   Use {'{{contact_name}}'}, {'{{company_name}}'}, and other variables to personalize emails.
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="font-medium">AI Generation</h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-zinc-600">
                   Use AI to generate templates based on your context and tone preferences.
                 </p>
               </div>
               <div className="space-y-2">
                 <h4 className="font-medium">Sharing</h4>
-                <p className="text-sm text-slate-600">
+                <p className="text-sm text-zinc-600">
                   Share templates with your team for consistent messaging across the organization.
                 </p>
               </div>

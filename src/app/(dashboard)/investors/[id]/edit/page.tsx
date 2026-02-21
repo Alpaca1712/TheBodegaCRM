@@ -77,13 +77,13 @@ export default function EditInvestorPage() {
         <div className="flex items-center gap-2 mb-6">
           <Link
             href={`/investors/${investorId}`}
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Investor
           </Link>
         </div>
-        <div className="text-center py-12 text-slate-500">Loading investor data...</div>
+        <div className="text-center py-12 text-zinc-500">Loading investor data...</div>
       </div>
     )
   }
@@ -94,7 +94,7 @@ export default function EditInvestorPage() {
         <div className="flex items-center gap-2 mb-6">
           <Link
             href="/investors"
-            className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900"
+            className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900"
           >
             <ArrowLeft size={16} className="mr-2" />
             Back to Investors
@@ -110,12 +110,12 @@ export default function EditInvestorPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href={`/investors/${investorId}`} className="inline-flex items-center gap-2 text-sm text-slate-600 hover:text-slate-900 mb-4">
+        <Link href={`/investors/${investorId}`} className="inline-flex items-center gap-2 text-sm text-zinc-600 hover:text-zinc-900 mb-4">
           <ArrowLeft className="h-4 w-4" />
           Back to Investor
         </Link>
-        <h1 className="text-3xl font-bold text-slate-900">Edit Investor</h1>
-        <p className="text-slate-600 mt-1">
+        <h1 className="text-3xl font-bold text-zinc-900">Edit Investor</h1>
+        <p className="text-zinc-600 mt-1">
           Update information for {investor.name}
         </p>
       </div>
@@ -130,56 +130,56 @@ export default function EditInvestorPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="name" className="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+              <label htmlFor="name" className="block text-sm font-medium text-zinc-700 mb-1">Name *</label>
               <input 
                 id="name" 
                 name="name" 
                 required 
                 defaultValue={investor.name}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
             <div>
-              <label htmlFor="firm" className="block text-sm font-medium text-slate-700 mb-1">Firm</label>
+              <label htmlFor="firm" className="block text-sm font-medium text-zinc-700 mb-1">Firm</label>
               <input 
                 id="firm" 
                 name="firm" 
                 defaultValue={investor.firm || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="email" className="block text-sm font-medium text-slate-700 mb-1">Email</label>
+              <label htmlFor="email" className="block text-sm font-medium text-zinc-700 mb-1">Email</label>
               <input 
                 id="email" 
                 name="email" 
                 type="email" 
                 defaultValue={investor.email || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
             <div>
-              <label htmlFor="phone" className="block text-sm font-medium text-slate-700 mb-1">Phone</label>
+              <label htmlFor="phone" className="block text-sm font-medium text-zinc-700 mb-1">Phone</label>
               <input 
                 id="phone" 
                 name="phone" 
                 defaultValue={investor.phone || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="type" className="block text-sm font-medium text-slate-700 mb-1">Investor Type</label>
+              <label htmlFor="type" className="block text-sm font-medium text-zinc-700 mb-1">Investor Type</label>
               <select 
                 id="type" 
                 name="type" 
                 defaultValue={investor.type}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="vc">VC</option>
                 <option value="angel">Angel</option>
@@ -190,12 +190,12 @@ export default function EditInvestorPage() {
               </select>
             </div>
             <div>
-              <label htmlFor="relationship_status" className="block text-sm font-medium text-slate-700 mb-1">Relationship</label>
+              <label htmlFor="relationship_status" className="block text-sm font-medium text-zinc-700 mb-1">Relationship</label>
               <select 
                 id="relationship_status" 
                 name="relationship_status" 
                 defaultValue={investor.relationship_status}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500"
               >
                 <option value="cold">Cold</option>
                 <option value="warm">Warm</option>
@@ -208,83 +208,83 @@ export default function EditInvestorPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="check_size_min" className="block text-sm font-medium text-slate-700 mb-1">Min Check Size ($)</label>
+              <label htmlFor="check_size_min" className="block text-sm font-medium text-zinc-700 mb-1">Min Check Size ($)</label>
               <input 
                 id="check_size_min" 
                 name="check_size_min" 
                 type="number" 
                 step="1000" 
                 defaultValue={investor.check_size_min || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
             <div>
-              <label htmlFor="check_size_max" className="block text-sm font-medium text-slate-700 mb-1">Max Check Size ($)</label>
+              <label htmlFor="check_size_max" className="block text-sm font-medium text-zinc-700 mb-1">Max Check Size ($)</label>
               <input 
                 id="check_size_max" 
                 name="check_size_max" 
                 type="number" 
                 step="1000" 
                 defaultValue={investor.check_size_max || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-              <label htmlFor="website" className="block text-sm font-medium text-slate-700 mb-1">Website</label>
+              <label htmlFor="website" className="block text-sm font-medium text-zinc-700 mb-1">Website</label>
               <input 
                 id="website" 
                 name="website" 
                 type="url" 
                 defaultValue={investor.website || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
             <div>
-              <label htmlFor="linkedin_url" className="block text-sm font-medium text-slate-700 mb-1">LinkedIn</label>
+              <label htmlFor="linkedin_url" className="block text-sm font-medium text-zinc-700 mb-1">LinkedIn</label>
               <input 
                 id="linkedin_url" 
                 name="linkedin_url" 
                 type="url" 
                 defaultValue={investor.linkedin_url || ''}
-                className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+                className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               />
             </div>
           </div>
 
           <div>
-            <label htmlFor="thesis" className="block text-sm font-medium text-slate-700 mb-1">Investment Thesis</label>
+            <label htmlFor="thesis" className="block text-sm font-medium text-zinc-700 mb-1">Investment Thesis</label>
             <textarea 
               id="thesis" 
               name="thesis" 
               rows={2} 
               defaultValue={investor.thesis || ''}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
               placeholder="What do they invest in?" 
             />
           </div>
 
           <div>
-            <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">Notes</label>
+            <label htmlFor="notes" className="block text-sm font-medium text-zinc-700 mb-1">Notes</label>
             <textarea 
               id="notes" 
               name="notes" 
               rows={3} 
               defaultValue={investor.notes || ''}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500" 
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-4 border-t border-slate-200">
-            <Link href={`/investors/${investorId}`} className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50">
+          <div className="flex justify-end gap-3 pt-4 border-t border-zinc-200">
+            <Link href={`/investors/${investorId}`} className="px-4 py-2 border border-zinc-300 rounded-lg text-zinc-700 hover:bg-zinc-50">
               Cancel
             </Link>
             <button 
               type="submit" 
               disabled={isSubmitting} 
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 shadow-sm shadow-indigo-600/20 disabled:opacity-50"
             >
               {isSubmitting ? 'Saving...' : 'Save Changes'}
             </button>

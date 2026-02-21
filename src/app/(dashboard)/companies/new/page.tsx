@@ -49,13 +49,13 @@ export default function NewCompanyPage() {
       <div className="mb-6">
         <Link
           href="/companies"
-          className="inline-flex items-center text-sm text-slate-600 hover:text-slate-900 mb-4"
+          className="inline-flex items-center text-sm text-zinc-600 hover:text-zinc-900 mb-4"
         >
           <ArrowLeft size={16} className="mr-2" />
           Back to Companies
         </Link>
-        <h1 className="text-2xl font-semibold text-slate-900">Create New Company</h1>
-        <p className="text-slate-600 mt-1">
+        <h1 className="text-2xl font-semibold text-zinc-900">Create New Company</h1>
+        <p className="text-zinc-600 mt-1">
           Add a new company to your CRM database
         </p>
       </div>

@@ -58,7 +58,7 @@ export default function DealSuggestionBanner({
   
   const currentStageLabel = stageLabels[currentStage] || currentStage
   const suggestedStageLabel = stageLabels[suggestedStage] || suggestedStage
-  const currentStageColor = stageColors[currentStage] || 'bg-slate-100 text-slate-800'
+  const currentStageColor = stageColors[currentStage] || 'bg-zinc-100 text-zinc-800'
   const suggestedStageColor = stageColors[suggestedStage] || 'bg-indigo-100 text-indigo-800'
   
   return (

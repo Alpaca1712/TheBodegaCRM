@@ -69,7 +69,7 @@ export default function FollowUpDraft({
       
       <CardContent className="space-y-4">
         <div>
-          <label className="block text-sm font-medium text-slate-700 mb-1">
+          <label className="block text-sm font-medium text-zinc-700 mb-1">
             Subject
           </label>
           {isEditing ? (
@@ -80,7 +80,7 @@ export default function FollowUpDraft({
               placeholder="Email subject"
             />
           ) : (
-            <div className="p-2.5 bg-slate-50 rounded border text-slate-700">
+            <div className="p-2.5 bg-zinc-50 rounded border text-zinc-700">
               {subject}
             </div>
           )}
@@ -88,10 +88,10 @@ export default function FollowUpDraft({
         
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="block text-sm font-medium text-slate-700">
+            <label className="block text-sm font-medium text-zinc-700">
               Body
             </label>
-            <span className="text-xs text-slate-500">
+            <span className="text-xs text-zinc-500">
               {isEditing ? 'Editing' : 'Read-only'}
             </span>
           </div>
@@ -103,7 +103,7 @@ export default function FollowUpDraft({
               placeholder="Email body"
             />
           ) : (
-            <div className="p-2.5 bg-slate-50 rounded border text-slate-700 whitespace-pre-line min-h-[200px]">
+            <div className="p-2.5 bg-zinc-50 rounded border text-zinc-700 whitespace-pre-line min-h-[200px]">
               {body}
             </div>
           )}

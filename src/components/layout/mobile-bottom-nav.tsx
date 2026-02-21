@@ -50,7 +50,7 @@ export default function MobileBottomNav({
   return (
     <>
       {/* Mobile bottom navigation - fixed at bottom on small screens */}
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-slate-200 shadow-lg">
+      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white border-t border-zinc-200 shadow-lg">
         <div className="flex items-center justify-around px-2 py-3">
           {/* Main navigation items - limited to 4 for mobile */}
           <Link 
@@ -58,7 +58,7 @@ export default function MobileBottomNav({
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isActive('/dashboard') 
                 ? 'text-indigo-600 bg-indigo-50' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                : 'text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50'
             }`}
           >
             <Home className="h-5 w-5" />
@@ -70,7 +70,7 @@ export default function MobileBottomNav({
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isActive('/contacts') 
                 ? 'text-indigo-600 bg-indigo-50' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                : 'text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50'
             }`}
           >
             <Users className="h-5 w-5" />
@@ -83,7 +83,7 @@ export default function MobileBottomNav({
               className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
                 isActive('/deals') 
                   ? 'text-indigo-600 bg-indigo-50' 
-                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                  : 'text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50'
               }`}
             >
               <DollarSign className="h-5 w-5" />
@@ -102,7 +102,7 @@ export default function MobileBottomNav({
               className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
                 isActive('/activities') 
                   ? 'text-indigo-600 bg-indigo-50' 
-                  : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                  : 'text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50'
               }`}
             >
               <Calendar className="h-5 w-5" />
@@ -121,7 +121,7 @@ export default function MobileBottomNav({
             className={`flex flex-col items-center justify-center p-2 rounded-lg transition-colors ${
               isSidebarOpen
                 ? 'text-indigo-600 bg-indigo-50' 
-                : 'text-slate-600 hover:text-indigo-600 hover:bg-slate-50'
+                : 'text-zinc-600 hover:text-indigo-600 hover:bg-zinc-50'
             }`}
           >
             {isSidebarOpen ? (
@@ -146,12 +146,12 @@ export default function MobileBottomNav({
           {/* Sidebar drawer */}
           <div className="md:hidden fixed inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform transition-transform duration-300 ease-in-out">
             <div className="flex flex-col h-full">
-              <div className="p-6 border-b border-slate-200">
+              <div className="p-6 border-b border-zinc-200">
                 <div className="flex items-center justify-between">
-                  <h2 className="text-xl font-bold text-slate-900">Navigation</h2>
+                  <h2 className="text-xl font-bold text-zinc-900">Navigation</h2>
                   <button
                     onClick={onToggleSidebar}
-                    className="p-2 rounded-lg hover:bg-slate-100 text-slate-500"
+                    className="p-2 rounded-lg hover:bg-zinc-100 text-zinc-500"
                   >
                     <X className="h-5 w-5" />
                   </button>
@@ -171,7 +171,7 @@ export default function MobileBottomNav({
                           className={`flex items-center gap-3 px-4 py-3 rounded-lg transition-colors ${
                             active
                               ? 'bg-indigo-50 text-indigo-600 font-medium'
-                              : 'text-slate-700 hover:bg-slate-100 hover:text-slate-900'
+                              : 'text-zinc-700 hover:bg-zinc-100 hover:text-zinc-900'
                           }`}
                         >
                           <Icon className="h-5 w-5" />

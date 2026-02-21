@@ -40,9 +40,9 @@ export default function ActivityTimeline({
       case 'task':
         return <CheckSquare className="h-4 w-4 text-amber-500" />;
       case 'note':
-        return <FileText className="h-4 w-4 text-slate-500" />;
+        return <FileText className="h-4 w-4 text-zinc-500" />;
       default:
-        return <Circle className="h-4 w-4 text-slate-500" />;
+        return <Circle className="h-4 w-4 text-zinc-500" />;
     }
   };
 
@@ -59,9 +59,9 @@ export default function ActivityTimeline({
       case 'task':
         return 'border-amber-200 bg-amber-50';
       case 'note':
-        return 'border-slate-200 bg-slate-50';
+        return 'border-zinc-200 bg-zinc-50';
       default:
-        return 'border-slate-200 bg-slate-50';
+        return 'border-zinc-200 bg-zinc-50';
     }
   };
 
@@ -97,7 +97,7 @@ export default function ActivityTimeline({
       }
     }
 
-    return 'text-slate-700';
+    return 'text-zinc-700';
   };
 
   const formatDateTime = (dateString: string) => {
@@ -113,10 +113,10 @@ export default function ActivityTimeline({
       <div className="space-y-4">
         {[1, 2, 3].map((i) => (
           <div key={i} className="animate-pulse flex items-start gap-4">
-            <div className="h-8 w-8 rounded-full bg-slate-200" />
+            <div className="h-8 w-8 rounded-full bg-zinc-200" />
             <div className="flex-1 space-y-2">
-              <div className="h-4 w-48 bg-slate-200 rounded" />
-              <div className="h-3 w-32 bg-slate-200 rounded" />
+              <div className="h-4 w-48 bg-zinc-200 rounded" />
+              <div className="h-3 w-32 bg-zinc-200 rounded" />
             </div>
           </div>
         ))}
@@ -127,9 +127,9 @@ export default function ActivityTimeline({
   if (activities.length === 0) {
     return (
       <div className="text-center py-8">
-        <Clock className="h-12 w-12 text-slate-300 mx-auto mb-3" />
-        <h3 className="text-lg font-medium text-slate-700 mb-1">No activities yet</h3>
-        <p className="text-slate-500 max-w-sm mx-auto">
+        <Clock className="h-12 w-12 text-zinc-300 mx-auto mb-3" />
+        <h3 className="text-lg font-medium text-zinc-700 mb-1">No activities yet</h3>
+        <p className="text-zinc-500 max-w-sm mx-auto">
           Activities will appear here when you log calls, send emails, schedule meetings, or add tasks.
         </p>
         {onRefresh && (
@@ -147,18 +147,18 @@ export default function ActivityTimeline({
   return (
     <div className="relative">
       {/* Timeline line */}
-      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-slate-200" />
+      <div className="absolute left-4 top-0 bottom-0 w-0.5 bg-zinc-200" />
 
       <div className="space-y-6">
         {activities.map((activity, index) => (
           <div key={activity.id} className="flex gap-4 relative">
             {/* Timeline dot */}
             <div className="relative">
-              <div className="h-8 w-8 rounded-full bg-white border-2 border-slate-300 flex items-center justify-center">
+              <div className="h-8 w-8 rounded-full bg-white border-2 border-zinc-300 flex items-center justify-center">
                 {getActivityIcon(activity.type, activity.completed)}
               </div>
               {index < activities.length - 1 && (
-                <div className="absolute left-1/2 top-8 -translate-x-1/2 h-6 w-0.5 bg-slate-200" />
+                <div className="absolute left-1/2 top-8 -tranzinc-x-1/2 h-6 w-0.5 bg-zinc-200" />
               )}
             </div>
 
@@ -170,9 +170,9 @@ export default function ActivityTimeline({
               )}>
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-3">
                   <div>
-                    <h3 className="font-medium text-slate-900">{activity.title}</h3>
-                    <div className="flex items-center gap-2 text-sm text-slate-600 mt-1">
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-slate-200">
+                    <h3 className="font-medium text-zinc-900">{activity.title}</h3>
+                    <div className="flex items-center gap-2 text-sm text-zinc-600 mt-1">
+                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-white border border-zinc-200">
                         {getActivityIcon(activity.type, activity.completed)}
                         <span className="capitalize">{activity.type}</span>
                       </span>
@@ -182,7 +182,7 @@ export default function ActivityTimeline({
                     </div>
                   </div>
                   
-                  <div className="text-sm text-slate-500">
+                  <div className="text-sm text-zinc-500">
                     {activity.due_date ? (
                       <div className="flex items-center gap-1">
                         <Calendar className="h-3 w-3" />
@@ -195,10 +195,10 @@ export default function ActivityTimeline({
                 </div>
 
                 {activity.description && (
-                  <p className="text-slate-700 text-sm mb-3">{activity.description}</p>
+                  <p className="text-zinc-700 text-sm mb-3">{activity.description}</p>
                 )}
 
-                <div className="flex items-center justify-between text-sm text-slate-500">
+                <div className="flex items-center justify-between text-sm text-zinc-500">
                   <div>
                     <span>Created {formatDateTime(activity.created_at)}</span>
                   </div>

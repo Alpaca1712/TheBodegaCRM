@@ -10,6 +10,7 @@ export interface Contact {
   email?: string
   phone?: string
   company_id?: string
+  company_name?: string
   title?: string
   status: 'active' | 'inactive' | 'lead'
   source?: string
@@ -63,7 +64,7 @@ export async function getContacts(
   
   let query = supabase
     .from('contacts')
-    .select('*', { count: 'exact' })
+    .select('*, companies:company_id(name)', { count: 'exact' })
     .eq('org_id', orgId)
     .range(start, end)
     .order(field, { ascending: direction === 'asc' })
@@ -81,8 +82,17 @@ export async function getContacts(
   if (error) {
     return { data: [], count: 0, error: error.message }
   }
+
+  const contacts = (data || []).map((row: Record<string, unknown>) => {
+    const { companies, ...rest } = row
+    const companyData = companies as { name: string } | null
+    return {
+      ...rest,
+      company_name: companyData?.name || undefined,
+    }
+  }) as Contact[]
   
-  return { data: data as Contact[], count: count || 0, error: null }
+  return { data: contacts, count: count || 0, error: null }
 }
 
 export async function getContactById(id: string) {

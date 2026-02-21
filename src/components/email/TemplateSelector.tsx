@@ -114,7 +114,7 @@ export function TemplateSelector({
             <div className="flex justify-between items-center mb-4">
               <div>
                 <h2 className="text-2xl font-bold">Select Email Template</h2>
-                <p className="text-slate-500">
+                <p className="text-zinc-500">
                   Choose from your saved templates or create a new one
                 </p>
               </div>
@@ -132,7 +132,7 @@ export function TemplateSelector({
           {/* Search and Filter */}
           <div className="space-y-4">
             <div className="relative">
-              <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-500" />
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
               <Input
                 placeholder="Search templates..."
                 value={search}
@@ -173,13 +173,13 @@ export function TemplateSelector({
                 {popularTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors"
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
                     onClick={() => handleSelect(template)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h5 className="font-medium">{template.name}</h5>
-                        <p className="text-sm text-slate-500 truncate">
+                        <p className="text-sm text-zinc-500 truncate">
                           {template.subject}
                         </p>
                       </div>
@@ -187,7 +187,7 @@ export function TemplateSelector({
                         {template.category.replace('_', ' ')}
                       </Badge>
                     </div>
-                    <div className="text-xs text-slate-400 flex items-center justify-between">
+                    <div className="text-xs text-zinc-400 flex items-center justify-between">
                       <span>{template.usage_count} uses</span>
                       <Button
                         size="sm"
@@ -215,13 +215,13 @@ export function TemplateSelector({
           <div>
             <div className="flex justify-between items-center mb-3">
               <h4 className="font-medium">All Templates</h4>
-              <span className="text-sm text-slate-500">
+              <span className="text-sm text-zinc-500">
                 {filteredTemplates.length} templates
               </span>
             </div>
             
             {filteredTemplates.length === 0 ? (
-              <div className="text-center py-8 text-slate-500">
+              <div className="text-center py-8 text-zinc-500">
                 {search ? (
                   <p>No templates match your search.</p>
                 ) : selectedCategory ? (
@@ -235,13 +235,13 @@ export function TemplateSelector({
                 {filteredTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-slate-300 hover:bg-slate-50 cursor-pointer transition-colors"
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
                     onClick={() => handleSelect(template)}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
                         <h5 className="font-medium">{template.name}</h5>
-                        <p className="text-sm text-slate-500">
+                        <p className="text-sm text-zinc-500">
                           {template.subject}
                         </p>
                       </div>
@@ -256,15 +256,15 @@ export function TemplateSelector({
                         )}
                       </div>
                     </div>
-                    <div className="text-xs text-slate-400 flex items-center justify-between">
+                    <div className="text-xs text-zinc-400 flex items-center justify-between">
                       <div className="flex gap-2">
                         {template.tags?.slice(0, 2).map((tag: string) => (
-                          <span key={tag} className="bg-slate-100 px-2 py-0.5 rounded">
+                          <span key={tag} className="bg-zinc-100 px-2 py-0.5 rounded">
                             {tag}
                           </span>
                         ))}
                         {template.tags && template.tags.length > 2 && (
-                          <span className="text-slate-400">
+                          <span className="text-zinc-400">
                             +{template.tags.length - 2} more
                           </span>
                         )}
@@ -293,7 +293,7 @@ export function TemplateSelector({
         </div>
 
             <div className="pt-4 border-t mt-6">
-              <p className="text-sm text-slate-500 text-center">
+              <p className="text-sm text-zinc-500 text-center">
                 Need a custom template? Use AI to generate one based on your context.
               </p>
             </div>

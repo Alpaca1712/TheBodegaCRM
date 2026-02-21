@@ -38,7 +38,7 @@ export function AvatarImage({ className, src, alt, ...props }: AvatarImageProps)
 export function AvatarFallback({ className, children, ...props }: AvatarProps) {
   return (
     <div
-      className={`flex h-full w-full items-center justify-center rounded-full bg-slate-200 ${className || ''}`}
+      className={`flex h-full w-full items-center justify-center rounded-full bg-zinc-200 ${className || ''}`}
       {...props}
     >
       {children}

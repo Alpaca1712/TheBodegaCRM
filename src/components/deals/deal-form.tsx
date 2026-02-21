@@ -29,9 +29,10 @@ interface DealFormProps {
   initialData?: Deal;
   onSubmit: (data: DealFormData) => Promise<void>;
   isSubmitting: boolean;
+  onCancel?: () => void;
 }
 
-export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFormProps) {
+export default function DealForm({ initialData, onSubmit, isSubmitting, onCancel }: DealFormProps) {
   const [contacts, setContacts] = useState<Contact[]>([]);
   const [companies, setCompanies] = useState<Company[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -91,17 +92,17 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
     <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
       {/* Basic Info */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-slate-900">Basic Information</h3>
+        <h3 className="text-lg font-medium text-zinc-900">Basic Information</h3>
         
         <div>
-          <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor="title" className="block text-sm font-medium text-zinc-700 mb-1">
             Deal Title *
           </label>
           <input
             id="title"
             type="text"
             {...register('title')}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             placeholder="e.g., Enterprise Software License"
           />
           {errors.title && (
@@ -111,12 +112,12 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="value" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="value" className="block text-sm font-medium text-zinc-700 mb-1">
               <DollarSign className="inline h-4 w-4 mr-1" />
               Value
             </label>
             <div className="flex">
-              <span className="inline-flex items-center px-3 py-2 border border-r-0 border-slate-300 rounded-l-lg bg-slate-50 text-slate-500 text-sm">
+              <span className="inline-flex items-center px-3 py-2 border border-r-0 border-zinc-300 rounded-l-lg bg-zinc-50 text-zinc-500 text-sm">
                 USD
               </span>
               <input
@@ -124,7 +125,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
                 type="number"
                 step="0.01"
                 {...register('value')}
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-r-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-1 px-3 py-2 border border-zinc-300 rounded-r-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
                 placeholder="0.00"
               />
             </div>
@@ -134,7 +135,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
           </div>
 
           <div>
-            <label htmlFor="probability" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="probability" className="block text-sm font-medium text-zinc-700 mb-1">
               <Percent className="inline h-4 w-4 mr-1" />
               Probability (%)
             </label>
@@ -144,7 +145,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
               min="0"
               max="100"
               {...register('probability')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               placeholder="0-100"
             />
             {errors.probability && (
@@ -156,14 +157,14 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
 
       {/* Stage */}
       <div>
-        <h3 className="text-lg font-medium text-slate-900 mb-3">Stage</h3>
+        <h3 className="text-lg font-medium text-zinc-900 mb-3">Stage</h3>
         <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
           {['lead', 'qualified', 'proposal', 'negotiation', 'closed_won', 'closed_lost'].map((stage) => {
             const label = stage.charAt(0).toUpperCase() + stage.slice(1).replace('_', ' ');
             return (
               <label
                 key={stage}
-                className={`flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-colors ${watch('stage') === stage ? 'bg-indigo-50 border-indigo-500 text-indigo-700' : 'border-slate-300 hover:bg-slate-50'}`}
+                className={`flex items-center justify-center p-3 border rounded-lg cursor-pointer transition-colors ${watch('stage') === stage ? 'bg-indigo-50 border-indigo-500 text-indigo-700' : 'border-zinc-300 hover:bg-zinc-50'}`}
               >
                 <input
                   type="radio"
@@ -183,18 +184,18 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
 
       {/* Relationships */}
       <div className="space-y-4">
-        <h3 className="text-lg font-medium text-slate-900">Relationships</h3>
+        <h3 className="text-lg font-medium text-zinc-900">Relationships</h3>
         
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label htmlFor="company_id" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="company_id" className="block text-sm font-medium text-zinc-700 mb-1">
               <Building className="inline h-4 w-4 mr-1" />
               Company
             </label>
             <select
               id="company_id"
               {...register('company_id')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               disabled={isLoading}
             >
               <option value="">Select a company</option>
@@ -210,14 +211,14 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
           </div>
 
           <div>
-            <label htmlFor="contact_id" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="contact_id" className="block text-sm font-medium text-zinc-700 mb-1">
               <User className="inline h-4 w-4 mr-1" />
               Contact
             </label>
             <select
               id="contact_id"
               {...register('contact_id')}
-              className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               disabled={isLoading}
             >
               <option value="">Select a contact</option>
@@ -236,9 +237,9 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
 
       {/* Timeline */}
       <div>
-        <h3 className="text-lg font-medium text-slate-900 mb-3">Timeline</h3>
+        <h3 className="text-lg font-medium text-zinc-900 mb-3">Timeline</h3>
         <div>
-          <label htmlFor="expected_close_date" className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor="expected_close_date" className="block text-sm font-medium text-zinc-700 mb-1">
             <Calendar className="inline h-4 w-4 mr-1" />
             Expected Close Date
           </label>
@@ -246,7 +247,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
             id="expected_close_date"
             type="date"
             {...register('expected_close_date')}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
           />
           {errors.expected_close_date && (
             <p className="mt-1 text-sm text-red-600">{errors.expected_close_date.message}</p>
@@ -256,9 +257,9 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
 
       {/* Notes */}
       <div>
-        <h3 className="text-lg font-medium text-slate-900 mb-3">Notes</h3>
+        <h3 className="text-lg font-medium text-zinc-900 mb-3">Notes</h3>
         <div>
-          <label htmlFor="notes" className="block text-sm font-medium text-slate-700 mb-1">
+          <label htmlFor="notes" className="block text-sm font-medium text-zinc-700 mb-1">
             <FileText className="inline h-4 w-4 mr-1" />
             Additional Notes
           </label>
@@ -266,7 +267,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
             id="notes"
             rows={4}
             {...register('notes')}
-            className="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+            className="w-full px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             placeholder="Add any additional details, context, or next steps..."
           />
           {errors.notes && (
@@ -276,11 +277,11 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
       </div>
 
       {/* Submit */}
-      <div className="flex justify-end space-x-3 pt-4 border-t border-slate-200">
+      <div className="flex justify-end space-x-3 pt-4 border-t border-zinc-200">
         <button
           type="button"
-          onClick={() => window.history.back()}
-          className="px-4 py-2 border border-slate-300 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+          onClick={() => onCancel ? onCancel() : window.history.back()}
+          className="px-4 py-2 border border-zinc-300 rounded-lg text-zinc-700 hover:bg-zinc-50 transition-colors"
           disabled={isSubmitting}
         >
           Cancel
@@ -290,7 +291,7 @@ export default function DealForm({ initialData, onSubmit, isSubmitting }: DealFo
           disabled={isSubmitting || !isDirty}
           className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
-          {isSubmitting ? 'Creating...' : 'Create Deal'}
+          {isSubmitting ? 'Saving...' : initialData ? 'Update Deal' : 'Create Deal'}
         </button>
       </div>
     </form>

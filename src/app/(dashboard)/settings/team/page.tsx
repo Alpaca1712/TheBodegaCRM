@@ -29,8 +29,8 @@ const ROLE_LABELS: Record<string, string> = {
 const ROLE_COLORS: Record<string, string> = {
   owner: 'bg-purple-100 text-purple-700',
   admin: 'bg-indigo-100 text-indigo-700',
-  member: 'bg-slate-100 text-slate-600',
-  viewer: 'bg-slate-50 text-slate-500',
+  member: 'bg-zinc-100 text-zinc-600',
+  viewer: 'bg-zinc-50 text-zinc-500',
 }
 
 export default function TeamSettingsPage() {
@@ -143,7 +143,7 @@ export default function TeamSettingsPage() {
   if (loading) {
     return (
       <div className="animate-pulse">
-        <div className="h-8 bg-slate-200 rounded w-48 mb-6" />
+        <div className="h-8 bg-zinc-200 rounded w-48 mb-6" />
         <div className="bg-white rounded-xl shadow p-6 h-64" />
       </div>
     )
@@ -152,9 +152,9 @@ export default function TeamSettingsPage() {
   if (!org) {
     return (
       <div className="text-center py-12">
-        <Building className="mx-auto h-12 w-12 text-slate-300" />
-        <h3 className="mt-4 text-lg font-medium text-slate-900">No organization found</h3>
-        <p className="mt-2 text-sm text-slate-500">Your account isn&apos;t associated with an organization yet.</p>
+        <Building className="mx-auto h-12 w-12 text-zinc-300" />
+        <h3 className="mt-4 text-lg font-medium text-zinc-900">No organization found</h3>
+        <p className="mt-2 text-sm text-zinc-500">Your account isn&apos;t associated with an organization yet.</p>
       </div>
     )
   }
@@ -162,9 +162,9 @@ export default function TeamSettingsPage() {
   return (
     <div>
       <div className="mb-6">
-        <Link href="/settings" className="text-sm text-slate-500 hover:text-slate-900">← Back to settings</Link>
-        <h1 className="text-3xl font-bold text-slate-900 mt-2">Team Settings</h1>
-        <p className="text-slate-500 mt-1">Manage your organization and team members</p>
+        <Link href="/settings" className="text-sm text-zinc-500 hover:text-zinc-900">← Back to settings</Link>
+        <h1 className="text-3xl font-bold text-zinc-900 mt-2">Team Settings</h1>
+        <p className="text-zinc-500 mt-1">Manage your organization and team members</p>
       </div>
 
       {error && (
@@ -176,7 +176,7 @@ export default function TeamSettingsPage() {
 
       {/* Organization Info */}
       <div className="bg-white rounded-xl shadow p-6 mb-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
           <Building className="h-5 w-5" />
           Organization
         </h2>
@@ -186,19 +186,19 @@ export default function TeamSettingsPage() {
               <input
                 value={orgName}
                 onChange={(e) => setOrgName(e.target.value)}
-                className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
               />
-              <button onClick={handleSaveName} className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm">Save</button>
-              <button onClick={() => { setEditingName(false); setOrgName(org.name) }} className="px-3 py-2 border border-slate-300 rounded-lg text-sm">Cancel</button>
+              <button onClick={handleSaveName} className="px-3 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 shadow-sm shadow-indigo-600/20 text-sm">Save</button>
+              <button onClick={() => { setEditingName(false); setOrgName(org.name) }} className="px-3 py-2 border border-zinc-300 rounded-lg text-sm">Cancel</button>
             </div>
           ) : (
             <>
               <div className="flex-1">
-                <p className="text-xl font-medium text-slate-900">{org.name}</p>
-                <p className="text-sm text-slate-500">slug: {org.slug}</p>
+                <p className="text-xl font-medium text-zinc-900">{org.name}</p>
+                <p className="text-sm text-zinc-500">slug: {org.slug}</p>
               </div>
               {isAdmin && (
-                <button onClick={() => setEditingName(true)} className="px-3 py-2 border border-slate-300 rounded-lg text-sm hover:bg-slate-50">
+                <button onClick={() => setEditingName(true)} className="px-3 py-2 border border-zinc-300 rounded-lg text-sm hover:bg-zinc-50">
                   Edit Name
                 </button>
               )}
@@ -210,7 +210,7 @@ export default function TeamSettingsPage() {
       {/* Invite Form */}
       {isAdmin && (
         <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
             <UserPlus className="h-5 w-5" />
             Invite Team Member
           </h2>
@@ -221,12 +221,12 @@ export default function TeamSettingsPage() {
               onChange={(e) => setInviteEmail(e.target.value)}
               placeholder="colleague@company.com"
               required
-              className="flex-1 px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+              className="flex-1 px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
             />
             <select
               value={inviteRole}
               onChange={(e) => setInviteRole(e.target.value as 'admin' | 'member' | 'viewer')}
-              className="px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
+              className="px-3 py-2 border border-zinc-300 rounded-lg focus:ring-2 focus:ring-indigo-500 text-sm"
             >
               <option value="admin">Admin</option>
               <option value="member">Member</option>
@@ -235,7 +235,7 @@ export default function TeamSettingsPage() {
             <button
               type="submit"
               disabled={inviting}
-              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 disabled:opacity-50 text-sm font-medium"
+              className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-500 shadow-sm shadow-indigo-600/20 disabled:opacity-50 text-sm font-medium"
             >
               {inviting ? 'Sending...' : 'Send Invite'}
             </button>
@@ -246,23 +246,23 @@ export default function TeamSettingsPage() {
       {/* Pending Invites */}
       {invites.length > 0 && (
         <div className="bg-white rounded-xl shadow p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+          <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
             <Mail className="h-5 w-5" />
             Pending Invites
           </h2>
           <div className="space-y-3">
             {invites.map((invite) => (
-              <div key={invite.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+              <div key={invite.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
                 <div>
-                  <p className="font-medium text-slate-900">{invite.email}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-zinc-900">{invite.email}</p>
+                  <p className="text-xs text-zinc-500">
                     Invited as {invite.role} · Expires {new Date(invite.expires_at).toLocaleDateString()}
                   </p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button
                     onClick={() => handleCopyInviteLink(invite.token)}
-                    className="p-2 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100"
+                    className="p-2 text-zinc-400 hover:text-zinc-600 rounded-lg hover:bg-zinc-100"
                     title="Copy invite link"
                   >
                     {copied ? <Check className="h-4 w-4 text-green-600" /> : <Copy className="h-4 w-4" />}
@@ -284,13 +284,13 @@ export default function TeamSettingsPage() {
 
       {/* Team Members */}
       <div className="bg-white rounded-xl shadow p-6">
-        <h2 className="text-lg font-semibold text-slate-900 mb-4 flex items-center gap-2">
+        <h2 className="text-lg font-semibold text-zinc-900 mb-4 flex items-center gap-2">
           <Users className="h-5 w-5" />
           Team Members ({members.length})
         </h2>
         <div className="space-y-3">
           {members.map((member) => (
-            <div key={member.id} className="flex items-center justify-between p-3 bg-slate-50 rounded-lg">
+            <div key={member.id} className="flex items-center justify-between p-3 bg-zinc-50 rounded-lg">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 bg-indigo-100 rounded-full flex items-center justify-center">
                   <span className="text-indigo-700 font-medium text-sm">
@@ -298,8 +298,8 @@ export default function TeamSettingsPage() {
                   </span>
                 </div>
                 <div>
-                  <p className="font-medium text-slate-900">{member.profiles?.full_name || 'Unnamed'}</p>
-                  <p className="text-xs text-slate-500">
+                  <p className="font-medium text-zinc-900">{member.profiles?.full_name || 'Unnamed'}</p>
+                  <p className="text-xs text-zinc-500">
                     Joined {new Date(member.joined_at).toLocaleDateString()}
                   </p>
                 </div>
@@ -309,7 +309,7 @@ export default function TeamSettingsPage() {
                   <select
                     value={member.role}
                     onChange={(e) => handleRoleChange(member.id, e.target.value as OrgRole)}
-                    className="px-2 py-1 border border-slate-200 rounded text-xs"
+                    className="px-2 py-1 border border-zinc-200 rounded text-xs"
                   >
                     <option value="admin">Admin</option>
                     <option value="member">Member</option>

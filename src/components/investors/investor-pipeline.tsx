@@ -74,8 +74,8 @@ export default function InvestorPipeline({
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-xl font-semibold text-slate-900">Investment Pipeline</h2>
-        <div className="text-sm text-slate-500">
+        <h2 className="text-xl font-semibold text-zinc-900">Investment Pipeline</h2>
+        <div className="text-sm text-zinc-500">
           Drag investments between stages to update
         </div>
       </div>
@@ -106,7 +106,7 @@ export default function InvestorPipeline({
               </div>
 
               {/* Investment cards */}
-              <div className="flex-1 min-h-[200px] bg-slate-50 rounded-lg p-2 space-y-2">
+              <div className="flex-1 min-h-[200px] bg-zinc-50 rounded-lg p-2 space-y-2">
                 {stageInvestments.map((investment) => (
                   <Card 
                     key={investment.id}
@@ -119,24 +119,24 @@ export default function InvestorPipeline({
                       <div className="space-y-1">
                         <div className="flex justify-between items-start">
                           <div>
-                            <h4 className="font-medium text-slate-900 truncate">
+                            <h4 className="font-medium text-zinc-900 truncate">
                               {investment.round_name}
                             </h4>
                             {investment.investors && (
-                              <p className="text-xs text-slate-600 truncate">
+                              <p className="text-xs text-zinc-600 truncate">
                                 {investment.investors.name}
                                 {investment.investors.firm && ` • ${investment.investors.firm}`}
                               </p>
                             )}
                           </div>
                           {investment.amount && (
-                            <span className="text-sm font-bold text-slate-900">
+                            <span className="text-sm font-bold text-zinc-900">
                               ${investment.amount.toLocaleString()}
                             </span>
                           )}
                         </div>
                         
-                        <div className="text-xs text-slate-500 space-y-1">
+                        <div className="text-xs text-zinc-500 space-y-1">
                           {investment.instrument && (
                             <div className="capitalize">
                               {investment.instrument.replace('_', ' ')}
@@ -156,7 +156,7 @@ export default function InvestorPipeline({
 
                 {stageInvestments.length === 0 && (
                   <div className="h-full flex items-center justify-center">
-                    <p className="text-sm text-slate-400 text-center p-4">
+                    <p className="text-sm text-zinc-400 text-center p-4">
                       No investments
                     </p>
                   </div>

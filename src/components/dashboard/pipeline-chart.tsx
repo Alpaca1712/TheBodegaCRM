@@ -12,8 +12,8 @@ export default function PipelineChart({ data, totalValue }: PipelineChartProps) 
   if (!data.length) {
     return (
       <div className="bg-white rounded-xl shadow p-6">
-        <h3 className="text-lg font-semibold text-slate-900 mb-4">Deal Pipeline</h3>
-        <div className="text-center py-8 text-slate-500">
+        <h3 className="text-lg font-semibold text-zinc-900 mb-4">Deal Pipeline</h3>
+        <div className="text-center py-8 text-zinc-500">
           No deals in pipeline yet
         </div>
       </div>
@@ -41,7 +41,7 @@ export default function PipelineChart({ data, totalValue }: PipelineChartProps) 
 
   return (
     <div className="bg-white rounded-xl shadow p-6">
-      <h3 className="text-lg font-semibold text-slate-900 mb-4">Deal Pipeline</h3>
+      <h3 className="text-lg font-semibold text-zinc-900 mb-4">Deal Pipeline</h3>
       
       <div className="space-y-4">
         {/* Bar chart */}
@@ -51,7 +51,7 @@ export default function PipelineChart({ data, totalValue }: PipelineChartProps) 
             return (
               <div 
                 key={item.stage}
-                className={`${colorClasses[item.stage] || 'bg-slate-400'} transition-all duration-300`}
+                className={`${colorClasses[item.stage] || 'bg-zinc-400'} transition-all duration-300`}
                 style={{ width: `${widthPercentage}%` }}
                 title={`${stageLabels[item.stage] || item.stage}: $${item.value.toLocaleString()} (${item.count} deals)`}
               />
@@ -63,12 +63,12 @@ export default function PipelineChart({ data, totalValue }: PipelineChartProps) 
         <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {data.map((item) => (
             <div key={item.stage} className="flex items-center space-x-2">
-              <div className={`w-3 h-3 rounded-full ${colorClasses[item.stage] || 'bg-slate-400'}`} />
+              <div className={`w-3 h-3 rounded-full ${colorClasses[item.stage] || 'bg-zinc-400'}`} />
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-slate-900 truncate">
+                <p className="text-sm font-medium text-zinc-900 truncate">
                   {stageLabels[item.stage] || item.stage}
                 </p>
-                <div className="flex justify-between text-xs text-slate-500">
+                <div className="flex justify-between text-xs text-zinc-500">
                   <span>${item.value.toLocaleString()}</span>
                   <span>{item.count} deal{item.count !== 1 ? 's' : ''}</span>
                 </div>
@@ -78,10 +78,10 @@ export default function PipelineChart({ data, totalValue }: PipelineChartProps) 
         </div>
 
         {/* Summary */}
-        <div className="pt-4 border-t border-slate-200">
+        <div className="pt-4 border-t border-zinc-200">
           <div className="flex justify-between items-center">
-            <span className="text-sm text-slate-600">Total Pipeline Value</span>
-            <span className="text-lg font-bold text-slate-900">
+            <span className="text-sm text-zinc-600">Total Pipeline Value</span>
+            <span className="text-lg font-bold text-zinc-900">
               ${totalValue.toLocaleString()}
             </span>
           </div>
