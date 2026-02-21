@@ -40,12 +40,12 @@ ALTER TABLE automation_runs ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage their org automations" ON automations
   FOR ALL USING (org_id IN (
-    SELECT org_id FROM organization_members WHERE user_id = auth.uid()
+    SELECT org_id FROM org_members WHERE user_id = auth.uid()
   ));
 
 CREATE POLICY "Users can view their org automation runs" ON automation_runs
   FOR ALL USING (automation_id IN (
     SELECT id FROM automations WHERE org_id IN (
-      SELECT org_id FROM organization_members WHERE user_id = auth.uid()
+      SELECT org_id FROM org_members WHERE user_id = auth.uid()
     )
   ));
