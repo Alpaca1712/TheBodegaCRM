@@ -12,6 +12,7 @@
 const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
   'https://www.googleapis.com/auth/gmail.metadata',
+  'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ')
 
 const GMAIL_API = 'https://gmail.googleapis.com/gmail/v1/users/me'
@@ -51,16 +52,42 @@ export async function exchangeCodeForTokens(code: string): Promise<{
   if (!tokenRes.ok) throw new Error(`Token exchange failed: ${await tokenRes.text()}`)
   const tokens = await tokenRes.json()
 
-  const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-    headers: { Authorization: `Bearer ${tokens.access_token}` },
-  })
-  const profile = await profileRes.json()
+  // Try userinfo endpoint first
+  let email: string | undefined
+  try {
+    const profileRes = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
+      headers: { Authorization: `Bearer ${tokens.access_token}` },
+    })
+    const profile = await profileRes.json()
+    email = profile.email
+    console.log('[Gmail OAuth] userinfo response:', { email: profile.email, id: profile.id })
+  } catch (err) {
+    console.warn('[Gmail OAuth] userinfo fetch failed:', err)
+  }
+
+  // Fallback: get email from Gmail API profile
+  if (!email) {
+    try {
+      const gmailRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+        headers: { Authorization: `Bearer ${tokens.access_token}` },
+      })
+      const gmailProfile = await gmailRes.json()
+      email = gmailProfile.emailAddress
+      console.log('[Gmail OAuth] Gmail profile fallback:', { email: gmailProfile.emailAddress })
+    } catch (err) {
+      console.warn('[Gmail OAuth] Gmail profile fallback failed:', err)
+    }
+  }
+
+  if (!email) {
+    throw new Error('Could not determine email address from Google OAuth')
+  }
 
   return {
     access_token: tokens.access_token,
     refresh_token: tokens.refresh_token,
     expires_in: tokens.expires_in,
-    email: profile.email,
+    email,
   }
 }
 
