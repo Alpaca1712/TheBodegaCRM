@@ -5,17 +5,13 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   Users,
-  Building2,
-  DollarSign,
-  Calendar,
+  Kanban,
   Mail,
   BarChart,
   Settings,
   X,
   Menu,
-  Landmark,
-  Zap,
-  Workflow,
+  Send,
 } from 'lucide-react';
 import { useNotificationBadges } from '@/hooks/use-notification-badges';
 
@@ -33,35 +29,28 @@ export default function MobileBottomNav({
   
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
-    { href: '/contacts', label: 'Contacts', icon: Users },
-    { href: '/companies', label: 'Companies', icon: Building2 },
-    { href: '/deals', label: 'Deals', icon: DollarSign },
-    { href: '/activities', label: 'Activities', icon: Calendar },
-    { href: '/sequences', label: 'Sequences', icon: Zap },
-    { href: '/automations', label: 'Automations', icon: Workflow },
-    { href: '/investors', label: 'Investors', icon: Landmark },
-    { href: '/email', label: 'Email AI', icon: Mail },
+    { href: '/leads', label: 'Leads', icon: Users },
+    { href: '/pipeline', label: 'Pipeline', icon: Kanban },
+    { href: '/follow-ups', label: 'Follow-ups', icon: Send },
+    { href: '/email', label: 'Email', icon: Mail },
     { href: '/analytics', label: 'Analytics', icon: BarChart },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
   
   const isActive = (href: string) => {
-    if (href === '/dashboard') {
-      return pathname === '/dashboard';
-    }
+    if (href === '/dashboard') return pathname === '/dashboard';
     return pathname?.startsWith(href);
   };
   
   return (
     <>
-      {/* Mobile bottom navigation - fixed at bottom on small screens */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-white dark:bg-zinc-900 border-t border-zinc-200 dark:border-zinc-800 shadow-lg">
         <div className="flex items-center justify-around px-2 py-2 safe-area-bottom">
           <Link 
             href="/dashboard" 
             className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
               isActive('/dashboard') 
-                ? 'text-indigo-600 dark:text-indigo-400' 
+                ? 'text-red-600 dark:text-red-400' 
                 : 'text-zinc-500 dark:text-zinc-400'
             }`}
           >
@@ -70,60 +59,53 @@ export default function MobileBottomNav({
           </Link>
           
           <Link 
-            href="/contacts" 
+            href="/leads" 
             className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
-              isActive('/contacts') 
-                ? 'text-indigo-600 dark:text-indigo-400' 
+              isActive('/leads') 
+                ? 'text-red-600 dark:text-red-400' 
                 : 'text-zinc-500 dark:text-zinc-400'
             }`}
           >
             <Users className="h-5 w-5" />
-            <span className="text-[10px] mt-0.5">Contacts</span>
+            <span className="text-[10px] mt-0.5">Leads</span>
           </Link>
           
           <div className="relative flex flex-col items-center justify-center">
             <Link 
-              href="/deals" 
+              href="/follow-ups" 
               className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
-                isActive('/deals') 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
+                isActive('/follow-ups') 
+                  ? 'text-red-600 dark:text-red-400' 
                   : 'text-zinc-500 dark:text-zinc-400'
               }`}
             >
-              <DollarSign className="h-5 w-5" />
-              <span className="text-[10px] mt-0.5">Deals</span>
+              <Send className="h-5 w-5" />
+              <span className="text-[10px] mt-0.5">Follow-ups</span>
             </Link>
-            {!loading && badges && badges.staleDeals > 0 && (
+            {!loading && badges && badges.followUpsDue > 0 && (
               <span className="absolute -top-0.5 right-0 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                {badges.staleDeals}
+                {badges.followUpsDue}
               </span>
             )}
           </div>
           
-          <div className="relative flex flex-col items-center justify-center">
-            <Link 
-              href="/activities" 
-              className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
-                isActive('/activities') 
-                  ? 'text-indigo-600 dark:text-indigo-400' 
-                  : 'text-zinc-500 dark:text-zinc-400'
-              }`}
-            >
-              <Calendar className="h-5 w-5" />
-              <span className="text-[10px] mt-0.5">Tasks</span>
-            </Link>
-            {!loading && badges && badges.overdueTasks > 0 && (
-              <span className="absolute -top-0.5 right-0 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
-                {badges.overdueTasks}
-              </span>
-            )}
-          </div>
+          <Link 
+            href="/pipeline" 
+            className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
+              isActive('/pipeline') 
+                ? 'text-red-600 dark:text-red-400' 
+                : 'text-zinc-500 dark:text-zinc-400'
+            }`}
+          >
+            <Kanban className="h-5 w-5" />
+            <span className="text-[10px] mt-0.5">Pipeline</span>
+          </Link>
           
           <button
             onClick={onToggleSidebar}
             className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
               isSidebarOpen
-                ? 'text-indigo-600 dark:text-indigo-400' 
+                ? 'text-red-600 dark:text-red-400' 
                 : 'text-zinc-500 dark:text-zinc-400'
             }`}
           >
@@ -133,7 +115,6 @@ export default function MobileBottomNav({
         </div>
       </nav>
       
-      {/* Mobile sidebar drawer */}
       {isSidebarOpen && (
         <>
           <div 
@@ -144,10 +125,10 @@ export default function MobileBottomNav({
             <div className="flex flex-col h-full">
               <div className="p-5 border-b border-zinc-200 dark:border-zinc-800 flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm">
-                    <span className="text-white font-bold text-xs">B</span>
+                  <div className="h-7 w-7 rounded-lg bg-red-600 flex items-center justify-center shadow-sm">
+                    <span className="text-white font-bold text-xs">R</span>
                   </div>
-                  <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Bodega</span>
+                  <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Rocoto</span>
                 </div>
                 <button
                   onClick={onToggleSidebar}
@@ -169,11 +150,11 @@ export default function MobileBottomNav({
                           onClick={onToggleSidebar}
                           className={`flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors ${
                             active
-                              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-600 dark:text-indigo-300 font-medium'
+                              ? 'bg-red-50 dark:bg-red-950/40 text-red-600 dark:text-red-300 font-medium'
                               : 'text-zinc-700 dark:text-zinc-300 hover:bg-zinc-100 dark:hover:bg-zinc-800'
                           }`}
                         >
-                          <Icon className={`h-4.5 w-4.5 ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
+                          <Icon className={`h-4.5 w-4.5 ${active ? 'text-red-600 dark:text-red-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
                           <span>{item.label}</span>
                         </Link>
                       </li>
@@ -186,7 +167,6 @@ export default function MobileBottomNav({
         </>
       )}
       
-      {/* Spacer for bottom nav */}
       <div className="md:hidden h-16" />
     </>
   );

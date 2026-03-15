@@ -1,148 +1,73 @@
-import { getActiveOrgId } from '@/lib/api/organizations'
-import { getContacts } from './contacts';
-import { getCompanies } from './companies';
-import { getDeals } from './deals';
+import { createClient } from '@/lib/supabase/client'
 
 type SearchResult = {
   id: string;
-  type: 'contact' | 'company' | 'deal';
+  type: 'customer' | 'investor';
   title: string;
   subtitle?: string;
-  value?: number | null;
-  avatar?: string;
   route: string;
 };
 
 type SearchCategory = {
-  type: 'contact' | 'company' | 'deal';
+  type: 'customer' | 'investor';
   title: string;
   icon: React.ReactNode;
   results: SearchResult[];
 };
 
 export async function searchAll(query: string): Promise<SearchCategory[]> {
-  if (!query.trim()) {
-    return [];
-  }
+  if (!query.trim()) return [];
 
-  const orgId = await getActiveOrgId()
-  if (!orgId) return []
+  const supabase = createClient()
+  const lowerQuery = `%${query.toLowerCase()}%`
 
   try {
-    // Search in parallel
-    const [contacts, companies, deals] = await Promise.all([
-      searchContacts(query),
-      searchCompanies(query),
-      searchDeals(query),
-    ]);
+    const { data: leads, error } = await supabase
+      .from('leads')
+      .select('id, type, contact_name, company_name, contact_email, stage')
+      .or(`contact_name.ilike.${lowerQuery},company_name.ilike.${lowerQuery},contact_email.ilike.${lowerQuery}`)
+      .limit(20)
 
-    const results: SearchCategory[] = [];
+    if (error || !leads) return []
 
-    if (contacts.length > 0) {
+    const customers = leads.filter(l => l.type === 'customer')
+    const investors = leads.filter(l => l.type === 'investor')
+
+    const results: SearchCategory[] = []
+
+    if (customers.length > 0) {
       results.push({
-        type: 'contact',
-        title: 'Contacts',
-        icon: null, // This will be replaced with actual icons in the component
-        results: contacts,
-      });
+        type: 'customer',
+        title: 'Customers',
+        icon: null,
+        results: customers.map(l => ({
+          id: l.id,
+          type: 'customer' as const,
+          title: l.contact_name,
+          subtitle: `${l.company_name} · ${l.stage}`,
+          route: `/leads/${l.id}`,
+        })),
+      })
     }
 
-    if (companies.length > 0) {
+    if (investors.length > 0) {
       results.push({
-        type: 'company',
-        title: 'Companies',
-        icon: null, // This will be replaced with actual icons in the component
-        results: companies,
-      });
+        type: 'investor',
+        title: 'Investors',
+        icon: null,
+        results: investors.map(l => ({
+          id: l.id,
+          type: 'investor' as const,
+          title: l.contact_name,
+          subtitle: `${l.company_name} · ${l.stage}`,
+          route: `/leads/${l.id}`,
+        })),
+      })
     }
 
-    if (deals.length > 0) {
-      results.push({
-        type: 'deal',
-        title: 'Deals',
-        icon: null, // This will be replaced with actual icons in the component
-        results: deals,
-      });
-    }
-
-    return results;
+    return results
   } catch (error) {
-    console.error('Search error:', error);
-    return [];
-  }
-}
-
-async function searchContacts(query: string): Promise<SearchResult[]> {
-  try {
-    const { data: contacts, error } = await getContacts(
-      { search: query },
-      { page: 1, limit: 10 }
-    );
-
-    if (error || !contacts) {
-      return [];
-    }
-
-    return contacts.map((contact) => ({
-      id: contact.id,
-      type: 'contact' as const,
-      title: `${contact.first_name} ${contact.last_name}`,
-      subtitle: contact.email || contact.phone || 'No contact info',
-      avatar: contact.avatar_url,
-      route: `/contacts/${contact.id}`,
-    }));
-  } catch (error) {
-    console.error('Contact search error:', error);
-    return [];
-  }
-}
-
-async function searchCompanies(query: string): Promise<SearchResult[]> {
-  try {
-    const { data: companies, error } = await getCompanies(
-      { search: query },
-      { page: 1, limit: 10 }
-    );
-
-    if (error || !companies) {
-      return [];
-    }
-
-    return companies.map((company) => ({
-      id: company.id,
-      type: 'company' as const,
-      title: company.name,
-      subtitle: `${company.industry || 'No industry'} • ${company.size || 'No size'}`, 
-      avatar: company.logo_url,
-      route: `/companies/${company.id}`,
-    }));
-  } catch (error) {
-    console.error('Company search error:', error);
-    return [];
-  }
-}
-
-async function searchDeals(query: string): Promise<SearchResult[]> {
-  try {
-    const { data: deals, error } = await getDeals(
-      { search: query },
-      { page: 1, limit: 10 }
-    );
-
-    if (error || !deals) {
-      return [];
-    }
-
-    return deals.map((deal) => ({
-      id: deal.id,
-      type: 'deal' as const,
-      title: deal.title,
-      subtitle: `$${deal.value?.toLocaleString() || '0'} • ${deal.stage}`,
-      value: deal.value,
-      route: `/deals/${deal.id}`,
-    }));
-  } catch (error) {
-    console.error('Deal search error:', error);
-    return [];
+    console.error('Search error:', error)
+    return []
   }
 }

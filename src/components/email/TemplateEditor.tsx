@@ -13,7 +13,6 @@ import { Switch } from '@/components/ui/switch'
 import { Badge } from '@/components/ui/badge'
 // Separator component not available, using custom divider
 // Toast functionality not available in current UI setup
-import { generateFollowUp } from '@/lib/api/ai'
 import {
   useCreateEmailTemplate,
   useUpdateEmailTemplate,
@@ -163,19 +162,24 @@ export function TemplateEditor({
     }
 
     try {
-      const result = await generateFollowUp({
-        contactName: 'Contact Name',
-        contactEmail: 'contact@example.com',
-        daysSinceLastContact: 7,
-        userName: 'Your Name',
+      const res = await fetch('/api/ai/generate-email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead: {
+            type: 'customer',
+            company_name: 'Example Company',
+            contact_name: 'Contact Name',
+            contact_email: 'contact@example.com',
+            company_description: subject || 'A company',
+            smykm_hooks: [],
+          },
+        }),
       })
-
-      if (result) {
-        const { subject: aiSubject, body: aiBody } = result
-        if (aiSubject) form.setValue('subject', aiSubject)
-        if (aiBody) form.setValue('body', aiBody)
-        
-        console.log('AI Generated: Follow-up template generated successfully.')
+      const data = await res.json()
+      if (data.mckenna) {
+        form.setValue('subject', data.mckenna.subject)
+        form.setValue('body', data.mckenna.body)
       }
     } catch (error) {
       console.error('Generation failed: Unable to generate template. Please try again.', error)

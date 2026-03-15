@@ -79,9 +79,14 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
+    const insertData = { ...validation.data, user_id: user.id } as Record<string, unknown>
+    if (typeof insertData.contact_email === 'string' && insertData.contact_email.includes('@')) {
+      insertData.email_domain = (insertData.contact_email as string).split('@')[1]?.toLowerCase()
+    }
+
     const { data, error } = await supabase
       .from('leads')
-      .insert({ ...validation.data, user_id: user.id })
+      .insert(insertData)
       .select()
       .single()
 

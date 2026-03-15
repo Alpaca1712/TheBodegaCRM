@@ -98,6 +98,24 @@ export interface Lead {
   last_contacted_at: string | null
   created_at: string
   updated_at: string
+  // Conversation intelligence
+  email_domain: string | null
+  conversation_summary: string | null
+  conversation_next_step: string | null
+  conversation_signals: ConversationSignal[]
+  auto_stage_reason: string | null
+  thread_count: number
+  total_emails_in: number
+  total_emails_out: number
+  last_inbound_at: string | null
+  last_outbound_at: string | null
+}
+
+export interface ConversationSignal {
+  type: 'positive' | 'negative' | 'neutral' | 'action_needed'
+  signal: string
+  source: string
+  detected_at: string
 }
 
 export interface LeadEmail {
@@ -113,11 +131,31 @@ export interface LeadEmail {
   reply_content: string | null
   created_at: string
   updated_at: string
+  direction: 'inbound' | 'outbound'
+  gmail_message_id: string | null
+  gmail_thread_id: string | null
+  from_address: string | null
+  to_address: string | null
 }
 
-export type LeadInsert = Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'last_contacted_at'> & {
+export type LeadInsert = Omit<Lead,
+  'id' | 'created_at' | 'updated_at' | 'last_contacted_at' |
+  'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
+  'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
+  'last_inbound_at' | 'last_outbound_at'
+> & {
   id?: string
   last_contacted_at?: string | null
+  email_domain?: string | null
+  conversation_summary?: string | null
+  conversation_next_step?: string | null
+  conversation_signals?: ConversationSignal[]
+  auto_stage_reason?: string | null
+  thread_count?: number
+  total_emails_in?: number
+  total_emails_out?: number
+  last_inbound_at?: string | null
+  last_outbound_at?: string | null
 }
 
 export type LeadUpdate = Partial<Omit<Lead, 'id' | 'user_id' | 'created_at' | 'updated_at'>>

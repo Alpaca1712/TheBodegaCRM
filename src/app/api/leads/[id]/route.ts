@@ -51,7 +51,21 @@ export async function GET(
       .eq('lead_id', id)
       .order('created_at', { ascending: true })
 
-    return NextResponse.json({ lead, emails: emails || [] })
+    // Fetch related leads at the same company (by domain)
+    let relatedLeads: Array<{ id: string; contact_name: string; contact_email: string | null; stage: string; type: string }> = []
+    const domain = lead.email_domain || (lead.contact_email ? lead.contact_email.split('@')[1] : null)
+    if (domain) {
+      const { data: related } = await supabase
+        .from('leads')
+        .select('id, contact_name, contact_email, stage, type')
+        .eq('user_id', user.id)
+        .eq('email_domain', domain)
+        .neq('id', id)
+        .limit(10)
+      relatedLeads = related || []
+    }
+
+    return NextResponse.json({ lead, emails: emails || [], relatedLeads })
   } catch (error) {
     console.error('GET /api/leads/[id] error:', error)
     return NextResponse.json(
@@ -77,9 +91,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
+    const updateData = { ...validation.data } as Record<string, unknown>
+    if (typeof updateData.contact_email === 'string' && updateData.contact_email.includes('@')) {
+      updateData.email_domain = (updateData.contact_email as string).split('@')[1]?.toLowerCase()
+    }
+
     const { data, error } = await supabase
       .from('leads')
-      .update(validation.data)
+      .update(updateData)
       .eq('id', id)
       .eq('user_id', user.id)
       .select()

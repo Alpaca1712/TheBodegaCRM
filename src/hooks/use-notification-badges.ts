@@ -11,7 +11,6 @@ export function useNotificationBadges() {
       try {
         setLoading(true)
         const { data, error } = await getNotificationBadges()
-        
         if (error) {
           setError(error)
         } else {
@@ -25,9 +24,7 @@ export function useNotificationBadges() {
     }
 
     fetchBadges()
-    // Refresh every 5 minutes
     const intervalId = setInterval(fetchBadges, 5 * 60 * 1000)
-    
     return () => clearInterval(intervalId)
   }, [])
 
