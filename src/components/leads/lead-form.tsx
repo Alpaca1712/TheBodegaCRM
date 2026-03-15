@@ -1,0 +1,335 @@
+'use client';
+
+import { useState } from 'react';
+import { useForm } from 'react-hook-form';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useRouter } from 'next/navigation';
+import { toast } from 'sonner';
+import {
+  leadFormSchema,
+  type LeadFormValues,
+  type LeadType,
+  LEAD_TYPES,
+  PIPELINE_STAGES,
+  STAGE_LABELS,
+  PRIORITIES,
+} from '@/types/leads';
+import { Loader2, Sparkles, Plus, X } from 'lucide-react';
+
+interface LeadFormProps {
+  defaultValues?: Partial<LeadFormValues>;
+  leadId?: string;
+  mode: 'create' | 'edit';
+}
+
+export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps) {
+  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isResearching, setIsResearching] = useState(false);
+  const [newHook, setNewHook] = useState('');
+
+  const form = useForm<LeadFormValues>({
+    resolver: zodResolver(leadFormSchema),
+    defaultValues: {
+      type: 'customer',
+      stage: 'researched',
+      priority: 'medium',
+      smykm_hooks: [],
+      ...defaultValues,
+    },
+  });
+
+  const watchType = form.watch('type');
+
+  const onSubmit = async (values: LeadFormValues) => {
+    setIsSubmitting(true);
+    try {
+      const url = mode === 'create' ? '/api/leads' : `/api/leads/${leadId}`;
+      const method = mode === 'create' ? 'POST' : 'PATCH';
+
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(values),
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Failed to save lead');
+      }
+
+      const lead = await res.json();
+      toast.success(mode === 'create' ? 'Lead created' : 'Lead updated');
+      router.push(`/leads/${lead.id || leadId}`);
+      router.refresh();
+    } catch (e) {
+      toast.error(e instanceof Error ? e.message : 'Something went wrong');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleResearch = async () => {
+    const contactName = form.getValues('contact_name');
+    const companyName = form.getValues('company_name');
+    if (!contactName || !companyName) {
+      toast.error('Enter contact name and company name first');
+      return;
+    }
+
+    setIsResearching(true);
+    try {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: form.getValues('type'),
+          contact_name: contactName,
+          company_name: companyName,
+          product_name: form.getValues('product_name'),
+          fund_name: form.getValues('fund_name'),
+          linkedin_url: form.getValues('contact_linkedin'),
+          twitter_url: form.getValues('contact_twitter'),
+        }),
+      });
+
+      if (!res.ok) throw new Error('Research failed');
+      const data = await res.json();
+
+      if (data.company_description) form.setValue('company_description', data.company_description);
+      if (data.attack_surface_notes) form.setValue('attack_surface_notes', data.attack_surface_notes);
+      if (data.investment_thesis_notes) form.setValue('investment_thesis_notes', data.investment_thesis_notes);
+      if (data.personal_details) form.setValue('personal_details', data.personal_details);
+      if (data.smykm_hooks?.length) form.setValue('smykm_hooks', data.smykm_hooks);
+
+      toast.success('Research complete');
+    } catch {
+      toast.error('Failed to research lead. Check API keys.');
+    } finally {
+      setIsResearching(false);
+    }
+  };
+
+  const addHook = () => {
+    if (!newHook.trim()) return;
+    const current = form.getValues('smykm_hooks') || [];
+    form.setValue('smykm_hooks', [...current, newHook.trim()]);
+    setNewHook('');
+  };
+
+  const removeHook = (index: number) => {
+    const current = form.getValues('smykm_hooks') || [];
+    form.setValue('smykm_hooks', current.filter((_, i) => i !== index));
+  };
+
+  const inputClass = 'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors';
+  const labelClass = 'block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1';
+  const textareaClass = `${inputClass} min-h-[80px] resize-y`;
+
+  return (
+    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      {/* Type & Basic Info */}
+      <div className="space-y-4">
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Basic Information</h3>
+
+        <div className="flex gap-2">
+          {LEAD_TYPES.map((t) => (
+            <button
+              key={t}
+              type="button"
+              onClick={() => form.setValue('type', t as LeadType)}
+              className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
+                watchType === t
+                  ? 'bg-red-600 text-white'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {t === 'customer' ? 'Customer' : 'Investor'}
+            </button>
+          ))}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className={labelClass}>Contact Name *</label>
+            <input {...form.register('contact_name')} className={inputClass} placeholder="Felix Schlegel" />
+            {form.formState.errors.contact_name && (
+              <p className="text-xs text-red-500 mt-1">{form.formState.errors.contact_name.message}</p>
+            )}
+          </div>
+          <div>
+            <label className={labelClass}>Contact Title</label>
+            <input {...form.register('contact_title')} className={inputClass} placeholder="CTO" />
+          </div>
+          <div>
+            <label className={labelClass}>Company Name *</label>
+            <input {...form.register('company_name')} className={inputClass} placeholder="Parahelp" />
+            {form.formState.errors.company_name && (
+              <p className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
+            )}
+          </div>
+          {watchType === 'customer' ? (
+            <div>
+              <label className={labelClass}>Product Name</label>
+              <input {...form.register('product_name')} className={inputClass} placeholder="Mason" />
+            </div>
+          ) : (
+            <div>
+              <label className={labelClass}>Fund Name</label>
+              <input {...form.register('fund_name')} className={inputClass} placeholder="Notation Capital" />
+            </div>
+          )}
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className={labelClass}>Email</label>
+            <input {...form.register('contact_email')} className={inputClass} type="email" placeholder="name@company.com" />
+          </div>
+          <div>
+            <label className={labelClass}>Twitter</label>
+            <input {...form.register('contact_twitter')} className={inputClass} placeholder="@handle" />
+          </div>
+          <div>
+            <label className={labelClass}>LinkedIn</label>
+            <input {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+          <div>
+            <label className={labelClass}>Stage</label>
+            <select {...form.register('stage')} className={inputClass}>
+              {PIPELINE_STAGES.map((s) => (
+                <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Priority</label>
+            <select {...form.register('priority')} className={inputClass}>
+              {PRIORITIES.map((p) => (
+                <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label className={labelClass}>Source</label>
+            <input {...form.register('source')} className={inputClass} placeholder="LinkedIn, referral, etc." />
+          </div>
+        </div>
+      </div>
+
+      {/* Research Section */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Research (SMYKM)</h3>
+          <button
+            type="button"
+            onClick={handleResearch}
+            disabled={isResearching}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/40 hover:bg-red-100 dark:hover:bg-red-950/60 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isResearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {isResearching ? 'Researching...' : 'Auto-Research'}
+          </button>
+        </div>
+
+        <div>
+          <label className={labelClass}>Company Description</label>
+          <textarea {...form.register('company_description')} className={textareaClass} placeholder="What does this company do? What's their product?" />
+        </div>
+
+        {watchType === 'customer' ? (
+          <div>
+            <label className={labelClass}>Attack Surface Notes</label>
+            <textarea
+              {...form.register('attack_surface_notes')}
+              className={textareaClass}
+              placeholder="How is their AI agent vulnerable? What channels does it use? What tools does it connect to? What data can it access?"
+            />
+          </div>
+        ) : (
+          <div>
+            <label className={labelClass}>Investment Thesis Notes</label>
+            <textarea
+              {...form.register('investment_thesis_notes')}
+              className={textareaClass}
+              placeholder="What do they invest in? What's their thesis? What blog posts have they written?"
+            />
+          </div>
+        )}
+
+        <div>
+          <label className={labelClass}>Personal Details</label>
+          <textarea
+            {...form.register('personal_details')}
+            className={textareaClass}
+            placeholder="Blog posts, podcast quotes, GitHub activity, personal story, career arc, side projects..."
+          />
+        </div>
+
+        <div>
+          <label className={labelClass}>SMYKM Hooks</label>
+          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2">
+            Specific details that only this person would recognize in a subject line
+          </p>
+          <div className="flex flex-wrap gap-2 mb-2">
+            {(form.watch('smykm_hooks') || []).map((hook, i) => (
+              <span
+                key={i}
+                className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-md text-xs"
+              >
+                {hook}
+                <button type="button" onClick={() => removeHook(i)}>
+                  <X className="h-3 w-3" />
+                </button>
+              </span>
+            ))}
+          </div>
+          <div className="flex gap-2">
+            <input
+              value={newHook}
+              onChange={(e) => setNewHook(e.target.value)}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addHook(); } }}
+              className={inputClass}
+              placeholder="e.g. Jugend Hackt → boring machines → AI"
+            />
+            <button
+              type="button"
+              onClick={addHook}
+              className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Add
+            </button>
+          </div>
+        </div>
+
+        <div>
+          <label className={labelClass}>Notes</label>
+          <textarea {...form.register('notes')} className={textareaClass} placeholder="Any other notes about this lead..." />
+        </div>
+      </div>
+
+      {/* Submit */}
+      <div className="flex items-center gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
+        <button
+          type="submit"
+          disabled={isSubmitting}
+          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
+        >
+          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
+          {mode === 'create' ? 'Create Lead' : 'Save Changes'}
+        </button>
+        <button
+          type="button"
+          onClick={() => router.back()}
+          className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}

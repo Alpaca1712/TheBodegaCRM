@@ -6,23 +6,20 @@ import { usePathname } from 'next/navigation';
 import {
   LayoutDashboard,
   Users,
-  Building2,
-  Handshake,
-  CalendarCheck,
-  Landmark,
+  Crosshair,
   Mail,
   BarChart3,
   Settings,
   Plus,
   ChevronDown,
-  Zap,
-  Workflow,
+  Kanban,
+  Bell,
+  Target,
 } from 'lucide-react';
 import Header from '@/components/layout/header';
 import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper';
 import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
 import KeyboardShortcutsDialog from '@/components/ui/keyboard-shortcuts-dialog';
-import { useNotificationBadges } from '@/hooks/use-notification-badges';
 import { useGlobalShortcuts } from '@/hooks/use-keyboard-shortcuts';
 
 interface DashboardLayoutClientProps {
@@ -50,7 +47,6 @@ export default function DashboardLayoutClient({
 }: DashboardLayoutClientProps) {
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
   const [isQuickCreateOpen, setIsQuickCreateOpen] = useState(false);
-  const { badges, loading } = useNotificationBadges();
   const pathname = usePathname();
   useGlobalShortcuts();
 
@@ -71,36 +67,30 @@ export default function DashboardLayoutClient({
       ],
     },
     {
-      label: 'CRM',
+      label: 'Outreach',
       items: [
-        { href: '/contacts', label: 'Contacts', icon: Users },
-        { href: '/companies', label: 'Companies', icon: Building2 },
-        { href: '/deals', label: 'Deals', icon: Handshake, badge: (!loading && badges?.staleDeals) || undefined },
-        { href: '/activities', label: 'Activities', icon: CalendarCheck, badge: (!loading && badges?.overdueTasks) || undefined },
-        { href: '/sequences', label: 'Sequences', icon: Zap },
-        { href: '/automations', label: 'Automations', icon: Workflow },
+        { href: '/leads', label: 'Leads', icon: Target },
+        { href: '/pipeline', label: 'Pipeline', icon: Kanban },
+        { href: '/follow-ups', label: 'Follow-ups', icon: Bell },
       ],
     },
     {
-      label: 'Fundraising',
+      label: 'Email',
       items: [
-        { href: '/investors', label: 'Investors', icon: Landmark },
+        { href: '/email', label: 'Gmail Sync', icon: Mail },
       ],
     },
     {
       label: 'Tools',
       items: [
-        { href: '/email', label: 'Email AI', icon: Mail },
         { href: '/analytics', label: 'Analytics', icon: BarChart3 },
       ],
     },
   ];
 
   const quickCreateItems = [
-    { href: '/contacts/new', label: 'New Contact', icon: Users },
-    { href: '/companies/new', label: 'New Company', icon: Building2 },
-    { href: '/deals/new', label: 'New Deal', icon: Handshake },
-    { href: '/investors/new', label: 'New Investor', icon: Landmark },
+    { href: '/leads/new?type=customer', label: 'New Customer Lead', icon: Users },
+    { href: '/leads/new?type=investor', label: 'New Investor Lead', icon: Crosshair },
   ];
 
   return (
@@ -111,10 +101,10 @@ export default function DashboardLayoutClient({
           {/* Logo */}
           <div className="flex items-center h-14 px-5">
             <Link href="/dashboard" className="flex items-center gap-2.5 group">
-              <div className="h-7 w-7 rounded-lg bg-indigo-600 flex items-center justify-center shadow-sm shadow-indigo-600/20">
-                <span className="text-white font-bold text-xs">B</span>
+              <div className="h-7 w-7 rounded-lg bg-red-600 flex items-center justify-center shadow-sm shadow-red-600/20">
+                <span className="text-white font-bold text-xs">R</span>
               </div>
-              <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Bodega</span>
+              <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Rocoto</span>
             </Link>
           </div>
 
@@ -123,10 +113,10 @@ export default function DashboardLayoutClient({
             <div className="relative">
               <button
                 onClick={() => setIsQuickCreateOpen(!isQuickCreateOpen)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-indigo-600 hover:bg-indigo-500 rounded-lg transition-colors shadow-sm shadow-indigo-600/20"
+                className="w-full flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
               >
                 <Plus className="h-3.5 w-3.5" />
-                Create
+                New Lead
                 <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${isQuickCreateOpen ? 'rotate-180' : ''}`} />
               </button>
               {isQuickCreateOpen && (
@@ -167,14 +157,14 @@ export default function DashboardLayoutClient({
                           href={item.href}
                           className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                             active
-                              ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+                              ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
                               : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200'
                           }`}
                         >
-                          <Icon className={`h-4 w-4 ${active ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
+                          <Icon className={`h-4 w-4 ${active ? 'text-red-600 dark:text-red-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
                           <span>{item.label}</span>
                           {item.badge ? (
-                            <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-rose-100 dark:bg-rose-900/60 px-1 text-[10px] font-semibold text-rose-600 dark:text-rose-300 tabular-nums">
+                            <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-red-100 dark:bg-red-900/60 px-1 text-[10px] font-semibold text-red-600 dark:text-red-300 tabular-nums">
                               {item.badge}
                             </span>
                           ) : null}
@@ -193,11 +183,11 @@ export default function DashboardLayoutClient({
               href="/settings"
               className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                 isActive('/settings')
-                  ? 'bg-indigo-50 dark:bg-indigo-950/40 text-indigo-700 dark:text-indigo-300'
+                  ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
                   : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 hover:text-zinc-900 dark:hover:text-zinc-200'
               }`}
             >
-              <Settings className={`h-4 w-4 ${isActive('/settings') ? 'text-indigo-600 dark:text-indigo-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
+              <Settings className={`h-4 w-4 ${isActive('/settings') ? 'text-red-600 dark:text-red-400' : 'text-zinc-400 dark:text-zinc-500'}`} />
               <span>Settings</span>
             </Link>
           </div>

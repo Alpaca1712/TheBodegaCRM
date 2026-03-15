@@ -11,6 +11,7 @@
     "test:run": "vitest run"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.78.0",
     "@hookform/resolvers": "^3",
     "@radix-ui/react-dropdown-menu": "^2.1.16",
     "@supabase/ssr": "^0.5.2",

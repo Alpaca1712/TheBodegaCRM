@@ -7,19 +7,19 @@
   --card-foreground: #020817;
   --popover: #ffffff;
   --popover-foreground: #020817;
-  --primary: #4f46e5;
+  --primary: #dc2626;
   --primary-foreground: #ffffff;
   --secondary: #f1f5f9;
   --secondary-foreground: #0f172a;
   --muted: #f1f5f9;
   --muted-foreground: #64748b;
-  --accent: #eef2ff;
-  --accent-foreground: #3730a3;
+  --accent: #fef2f2;
+  --accent-foreground: #991b1b;
   --destructive: #ef4444;
   --destructive-foreground: #ffffff;
   --border: #e5e7eb;
   --input: #ffffff;
-  --ring: #4f46e5;
+  --ring: #dc2626;
   --radius: 0.625rem;
 }
 
@@ -30,19 +30,19 @@
   --card-foreground: #f4f4f5;
   --popover: #111113;
   --popover-foreground: #f4f4f5;
-  --primary: #818cf8;
+  --primary: #f87171;
   --primary-foreground: #0f172a;
   --secondary: #1c1c1f;
   --secondary-foreground: #f4f4f5;
   --muted: #18181b;
   --muted-foreground: #a1a1aa;
-  --accent: #1e1b4b;
-  --accent-foreground: #c7d2fe;
+  --accent: #450a0a;
+  --accent-foreground: #fecaca;
   --destructive: #dc2626;
   --destructive-foreground: #fef2f2;
   --border: #27272a;
   --input: #18181b;
-  --ring: #818cf8;
+  --ring: #f87171;
 }
 
 @theme inline {
@@ -87,11 +87,11 @@ body {
 }
 
 ::selection {
-  background: rgb(79 70 229 / 0.2);
+  background: rgb(220 38 38 / 0.2);
 }
 
 .dark ::selection {
-  background: rgb(129 140 248 / 0.3);
+  background: rgb(248 113 113 / 0.3);
 }
 
 @keyframes slide-in-right {

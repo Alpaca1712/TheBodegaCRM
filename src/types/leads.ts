@@ -1,0 +1,184 @@
+import { z } from 'zod'
+
+export const LEAD_TYPES = ['customer', 'investor'] as const
+export type LeadType = (typeof LEAD_TYPES)[number]
+
+export const PIPELINE_STAGES = [
+  'researched',
+  'email_drafted',
+  'email_sent',
+  'replied',
+  'meeting_booked',
+  'meeting_held',
+  'follow_up',
+  'closed_won',
+  'closed_lost',
+  'no_response',
+] as const
+export type PipelineStage = (typeof PIPELINE_STAGES)[number]
+
+export const STAGE_LABELS: Record<PipelineStage, string> = {
+  researched: 'Researched',
+  email_drafted: 'Email Drafted',
+  email_sent: 'Email Sent',
+  replied: 'Replied',
+  meeting_booked: 'Meeting Booked',
+  meeting_held: 'Meeting Held',
+  follow_up: 'Follow Up',
+  closed_won: 'Closed Won',
+  closed_lost: 'Closed Lost',
+  no_response: 'No Response',
+}
+
+export const STAGE_DESCRIPTIONS: Record<PipelineStage, string> = {
+  researched: 'Lead info gathered, research complete',
+  email_drafted: 'Email written, ready to review',
+  email_sent: 'Initial email sent',
+  replied: 'They replied (positive or neutral)',
+  meeting_booked: 'Meeting scheduled',
+  meeting_held: 'Meeting completed',
+  follow_up: 'In active follow-up sequence',
+  closed_won: 'Deal done (pilot signed or investment committed)',
+  closed_lost: 'Not interested',
+  no_response: 'No reply after full follow-up sequence',
+}
+
+export const STAGE_NEXT_ACTIONS: Record<PipelineStage, string> = {
+  researched: 'Draft initial SMYKM email',
+  email_drafted: 'Review and send',
+  email_sent: 'Wait 3-5 days, then follow up',
+  replied: 'Use ACA framework to respond',
+  meeting_booked: 'Prep SMYKM research for the call',
+  meeting_held: 'Send follow-up within 24 hours',
+  follow_up: 'Continue multi-channel follow-up',
+  closed_won: 'Onboard / close',
+  closed_lost: 'Archive, revisit in 3 months',
+  no_response: 'Move to next channel or archive',
+}
+
+export const PRIORITIES = ['high', 'medium', 'low'] as const
+export type Priority = (typeof PRIORITIES)[number]
+
+export const EMAIL_TYPES = [
+  'initial',
+  'follow_up_1',
+  'follow_up_2',
+  'follow_up_3',
+  'reply_response',
+  'meeting_request',
+  'lead_magnet',
+  'break_up',
+] as const
+export type EmailType = (typeof EMAIL_TYPES)[number]
+
+export const CTA_TYPES = ['mckenna', 'hormozi'] as const
+export type CtaType = (typeof CTA_TYPES)[number]
+
+export interface Lead {
+  id: string
+  user_id: string
+  type: LeadType
+  company_name: string
+  product_name: string | null
+  fund_name: string | null
+  contact_name: string
+  contact_title: string | null
+  contact_email: string | null
+  contact_twitter: string | null
+  contact_linkedin: string | null
+  company_description: string | null
+  attack_surface_notes: string | null
+  investment_thesis_notes: string | null
+  personal_details: string | null
+  smykm_hooks: string[]
+  stage: PipelineStage
+  source: string | null
+  priority: Priority
+  notes: string | null
+  last_contacted_at: string | null
+  created_at: string
+  updated_at: string
+}
+
+export interface LeadEmail {
+  id: string
+  lead_id: string
+  user_id: string
+  email_type: EmailType
+  cta_type: CtaType | null
+  subject: string
+  body: string
+  sent_at: string | null
+  replied_at: string | null
+  reply_content: string | null
+  created_at: string
+  updated_at: string
+}
+
+export type LeadInsert = Omit<Lead, 'id' | 'created_at' | 'updated_at' | 'last_contacted_at'> & {
+  id?: string
+  last_contacted_at?: string | null
+}
+
+export type LeadUpdate = Partial<Omit<Lead, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
+
+export type LeadEmailInsert = Omit<LeadEmail, 'id' | 'created_at' | 'updated_at'> & {
+  id?: string
+}
+
+// Zod schemas for form validation
+export const leadFormSchema = z.object({
+  type: z.enum(LEAD_TYPES),
+  company_name: z.string().min(1, 'Company name is required'),
+  product_name: z.string().optional().nullable(),
+  fund_name: z.string().optional().nullable(),
+  contact_name: z.string().min(1, 'Contact name is required'),
+  contact_title: z.string().optional().nullable(),
+  contact_email: z.string().email('Invalid email').optional().or(z.literal('')).nullable(),
+  contact_twitter: z.string().optional().nullable(),
+  contact_linkedin: z.string().optional().nullable(),
+  company_description: z.string().optional().nullable(),
+  attack_surface_notes: z.string().optional().nullable(),
+  investment_thesis_notes: z.string().optional().nullable(),
+  personal_details: z.string().optional().nullable(),
+  smykm_hooks: z.array(z.string()).default([]),
+  stage: z.enum(PIPELINE_STAGES).default('researched'),
+  source: z.string().optional().nullable(),
+  priority: z.enum(PRIORITIES).default('medium'),
+  notes: z.string().optional().nullable(),
+})
+
+export type LeadFormValues = z.infer<typeof leadFormSchema>
+
+export interface PipelineStats {
+  stage: PipelineStage
+  count: number
+}
+
+export interface DashboardStats {
+  totalLeads: number
+  emailsSentThisWeek: number
+  repliesThisWeek: number
+  meetingsBooked: number
+  pipelineByStage: PipelineStats[]
+}
+
+export interface FollowUpSuggestion {
+  lead: Lead
+  lastEmail: LeadEmail | null
+  daysSinceLastEmail: number
+  suggestedFollowUpType: EmailType
+  suggestedChannel: 'email' | 'linkedin' | 'twitter'
+}
+
+export interface EmailVariant {
+  subject: string
+  body: string
+  ctaType: CtaType
+  wordCount: number
+}
+
+export interface GeneratedEmail {
+  mckenna: EmailVariant
+  hormozi: EmailVariant
+}

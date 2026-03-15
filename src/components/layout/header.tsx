@@ -48,7 +48,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
     <>
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-6">
         <div className="flex items-center md:hidden">
-          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Bodega</span>
+          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Rocoto</span>
         </div>
 
         <div className="hidden md:block" />
@@ -81,7 +81,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
               className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
-              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-indigo-100 dark:bg-indigo-900/50 text-xs font-semibold text-indigo-700 dark:text-indigo-300">
+              <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50 text-xs font-semibold text-red-700 dark:text-red-300">
                 {getInitials()}
               </div>
               <div className="hidden text-left md:block">

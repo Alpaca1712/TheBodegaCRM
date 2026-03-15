@@ -281,16 +281,44 @@ async function findMatches(
     result.contactId = contact.id
   }
 
+  // Try to match reply to a Rocoto lead and auto-update pipeline
+  const resolvedSupabase = await supabase
+  const { data: matchedLead } = await resolvedSupabase
+    .from('leads')
+    .select('id, stage')
+    .eq('user_id', userId)
+    .eq('contact_email', fromEmail)
+    .in('stage', ['email_sent', 'follow_up', 'no_response'])
+    .maybeSingle()
+
+  if (matchedLead) {
+    await resolvedSupabase
+      .from('leads')
+      .update({ stage: 'replied', last_contacted_at: new Date().toISOString() })
+      .eq('id', matchedLead.id)
+
+    await resolvedSupabase
+      .from('lead_emails')
+      .insert({
+        lead_id: matchedLead.id,
+        user_id: userId,
+        email_type: 'reply_response',
+        subject: `Re: ${subject}`,
+        body: snippet,
+        replied_at: new Date().toISOString(),
+        reply_content: snippet,
+      })
+  }
+
   // Try to find deal by searching in subject/snippet
-  // This is a simple implementation - could be enhanced with AI
   const dealKeywords = ['deal', 'proposal', 'contract', 'quote', 'order', 'sale']
   const hasDealKeyword = dealKeywords.some(keyword => 
     subject.toLowerCase().includes(keyword) || snippet.toLowerCase().includes(keyword)
   )
 
   if (hasDealKeyword) {
-    // Get the most recent deal for this user
-    const { data: deal } = await supabase
+    const resolvedSb = await supabase
+    const { data: deal } = await resolvedSb
       .from('deals')
       .select('id')
       .eq('user_id', userId)
@@ -311,8 +339,8 @@ async function findMatches(
   )
 
   if (hasInvestorKeyword) {
-    // Get the most recent investor for this user
-    const { data: investor } = await supabase
+    const resolvedSb = await supabase
+    const { data: investor } = await resolvedSb
       .from('investors')
       .select('id')
       .eq('user_id', userId)
