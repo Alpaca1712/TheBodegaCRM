@@ -297,15 +297,22 @@ export async function fetchThreadsByDomain(
   domain: string,
   maxResults = 10
 ): Promise<string[]> {
-  const query = encodeURIComponent(`from:@${domain} OR to:@${domain}`)
-  const res = await fetch(
-    `${GMAIL_API}/threads?q=${query}&maxResults=${maxResults}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  )
-  if (!res.ok) return []
+  const query = `from:@${domain} OR to:@${domain}`
+  const url = `${GMAIL_API}/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`
+  console.log('[Gmail] fetchThreadsByDomain:', { domain, query })
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+
+  if (!res.ok) {
+    const errorText = await res.text()
+    console.error('[Gmail] Domain thread search failed:', res.status, errorText)
+    return []
+  }
 
   const data = await res.json()
-  return (data.threads || []).map((t: { id: string }) => t.id)
+  const threadIds = (data.threads || []).map((t: { id: string }) => t.id)
+  console.log('[Gmail] fetchThreadsByDomain result:', { domain, threadsFound: threadIds.length })
+  return threadIds
 }
 
 // ─── Search messages by specific email address ───
@@ -315,15 +322,22 @@ export async function fetchThreadsByEmail(
   email: string,
   maxResults = 15
 ): Promise<string[]> {
-  const query = encodeURIComponent(`from:${email} OR to:${email}`)
-  const res = await fetch(
-    `${GMAIL_API}/threads?q=${query}&maxResults=${maxResults}`,
-    { headers: { Authorization: `Bearer ${accessToken}` } }
-  )
-  if (!res.ok) return []
+  const query = `from:${email} OR to:${email}`
+  const url = `${GMAIL_API}/threads?q=${encodeURIComponent(query)}&maxResults=${maxResults}`
+  console.log('[Gmail] fetchThreadsByEmail:', { email, query, url: url.replace(accessToken, '***') })
+
+  const res = await fetch(url, { headers: { Authorization: `Bearer ${accessToken}` } })
+
+  if (!res.ok) {
+    const errorText = await res.text()
+    console.error('[Gmail] Thread search failed:', res.status, errorText)
+    return []
+  }
 
   const data = await res.json()
-  return (data.threads || []).map((t: { id: string }) => t.id)
+  const threadIds = (data.threads || []).map((t: { id: string }) => t.id)
+  console.log('[Gmail] fetchThreadsByEmail result:', { email, resultSizeEstimate: data.resultSizeEstimate, threadsFound: threadIds.length })
+  return threadIds
 }
 
 // ─── Build full conversation context for a lead ───

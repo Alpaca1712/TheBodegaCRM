@@ -131,6 +131,27 @@ export async function POST() {
           console.log('[Sync] Token refreshed successfully')
         }
 
+        // Quick health check: verify the Gmail API token works
+        try {
+          const profileRes = await fetch('https://gmail.googleapis.com/gmail/v1/users/me/profile', {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          })
+          if (!profileRes.ok) {
+            const errText = await profileRes.text()
+            console.error('[Sync] Gmail API health check FAILED:', profileRes.status, errText)
+            results.debugLog.push(`Gmail API error ${profileRes.status}: ${errText}`)
+            results.errors++
+            continue
+          }
+          const gmailProfile = await profileRes.json()
+          console.log('[Sync] Gmail API OK:', { email: gmailProfile.emailAddress, messagesTotal: gmailProfile.messagesTotal, threadsTotal: gmailProfile.threadsTotal })
+        } catch (healthErr) {
+          console.error('[Sync] Gmail API health check exception:', healthErr)
+          results.debugLog.push(`Gmail API unreachable: ${healthErr}`)
+          results.errors++
+          continue
+        }
+
         // For each lead, search Gmail for threads with that person
         for (const lead of leads) {
           if (!lead.contact_email) continue
