@@ -41,24 +41,39 @@ export default function EmailPage() {
     setSyncing(true)
     try {
       const res = await fetch('/api/gmail/sync', { method: 'POST' })
-      if (res.ok) {
-        toast.success('Emails synced successfully')
+      const body = await res.json()
+      console.log('[Email Sync] Response:', JSON.stringify(body, null, 2))
+
+      if (res.ok && body.success) {
+        const parts = []
+        if (body.newSummaries > 0) parts.push(`${body.newSummaries} new emails`)
+        if (body.leadsMatched > 0) parts.push(`${body.leadsMatched} leads matched`)
+        if (body.leadsUpdated > 0) parts.push(`${body.leadsUpdated} leads updated`)
+        if (body.pipelineChanges?.length > 0) {
+          for (const change of body.pipelineChanges) {
+            parts.push(`${change.leadName}: ${change.from} → ${change.to}`)
+          }
+        }
+        toast.success(parts.length > 0 ? parts.join(' | ') : 'Synced — nothing new')
+
         const supabase = createClient()
-        const { data: { session } } = await supabase.auth.getSession()
-        if (session) {
+        const { data: { user } } = await supabase.auth.getUser()
+        if (user) {
           const { data: summaries } = await supabase
             .from('email_summaries')
             .select('*')
-            .eq('user_id', session.user.id)
+            .eq('user_id', user.id)
             .order('date', { ascending: false })
             .limit(30)
           setEmails(summaries || [])
         }
       } else {
-        toast.error('Sync failed')
+        console.error('[Email Sync] Failed:', body)
+        toast.error(body.error || body.message || 'Sync failed')
       }
-    } catch {
-      toast.error('Sync failed')
+    } catch (err) {
+      console.error('[Email Sync] Error:', err)
+      toast.error('Sync failed — check console')
     }
     setSyncing(false)
   }
@@ -71,8 +86,8 @@ export default function EmailPage() {
   useEffect(() => {
     async function loadData() {
       const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (!session) {
+      const { data: { user } } = await supabase.auth.getUser()
+      if (!user) {
         setLoading(false)
         return
       }
@@ -80,7 +95,7 @@ export default function EmailPage() {
       const { data: accts } = await supabase
         .from('email_accounts')
         .select('id, email_address, sync_enabled, last_synced_at')
-        .eq('user_id', session.user.id)
+        .eq('user_id', user.id)
 
       setAccounts(accts || [])
 
@@ -88,7 +103,7 @@ export default function EmailPage() {
         const { data: summaries } = await supabase
           .from('email_summaries')
           .select('*')
-          .eq('user_id', session.user.id)
+          .eq('user_id', user.id)
           .order('date', { ascending: false })
           .limit(30)
 

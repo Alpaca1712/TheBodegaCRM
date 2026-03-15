@@ -29,23 +29,36 @@ interface ConversationAnalysis {
 }
 
 export async function POST() {
+  console.log('[Sync] ===== Gmail sync started =====')
+
   try {
     const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
 
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (authError || !user) {
+      console.error('[Sync] Auth failed:', authError?.message)
+      return NextResponse.json({ error: 'Unauthorized', detail: authError?.message }, { status: 401 })
     }
 
-    const { data: emailAccounts } = await supabase
+    console.log('[Sync] User authenticated:', user.id, user.email)
+
+    const { data: emailAccounts, error: acctError } = await supabase
       .from('email_accounts')
       .select('*')
       .eq('user_id', user.id)
       .eq('sync_enabled', true)
 
+    if (acctError) {
+      console.error('[Sync] Failed to fetch email accounts:', acctError)
+      return NextResponse.json({ error: 'DB error fetching accounts', detail: acctError.message }, { status: 500 })
+    }
+
     if (!emailAccounts?.length) {
+      console.log('[Sync] No email accounts with sync enabled for user:', user.id)
       return NextResponse.json({ message: 'No email accounts with sync enabled' }, { status: 200 })
     }
+
+    console.log('[Sync] Found', emailAccounts.length, 'email account(s):', emailAccounts.map(a => a.email_address))
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -59,36 +72,65 @@ export async function POST() {
       totalMessages: 0,
       newSummaries: 0,
       leadsUpdated: 0,
+      leadsMatched: 0,
       pipelineChanges: [] as Array<{ leadName: string; from: string; to: string; reason: string }>,
       errors: 0,
-      accountResults: [] as Array<{ email: string; messagesFetched: number; newSummaries: number; errors: number }>,
+      debugLog: [] as string[],
+      accountResults: [] as Array<{ email: string; messagesFetched: number; newSummaries: number; newMessages: number; errors: number }>,
     }
 
     for (const account of emailAccounts) {
       let accessToken = account.access_token
-      const accountResult = { email: account.email_address, messagesFetched: 0, newSummaries: 0, errors: 0 }
+      const accountResult = { email: account.email_address, messagesFetched: 0, newSummaries: 0, newMessages: 0, errors: 0 }
 
       try {
         // Refresh token if needed
         const expiresAt = new Date(account.token_expires_at)
+        const now = new Date()
+        console.log('[Sync] Token expires at:', expiresAt.toISOString(), '| Now:', now.toISOString())
+
         if (expiresAt < new Date(Date.now() + 5 * 60 * 1000)) {
-          const newTokens = await refreshAccessToken(account.refresh_token)
-          accessToken = newTokens.access_token
-          await supabase
-            .from('email_accounts')
-            .update({ access_token: newTokens.access_token, token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString() })
-            .eq('id', account.id)
+          console.log('[Sync] Refreshing token for', account.email_address)
+          try {
+            const newTokens = await refreshAccessToken(account.refresh_token)
+            accessToken = newTokens.access_token
+            await supabase
+              .from('email_accounts')
+              .update({ access_token: newTokens.access_token, token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString() })
+              .eq('id', account.id)
+            console.log('[Sync] Token refreshed successfully')
+          } catch (refreshErr) {
+            console.error('[Sync] Token refresh FAILED:', refreshErr)
+            results.debugLog.push(`Token refresh failed: ${refreshErr}`)
+            accountResult.errors++
+            results.errors++
+            results.accountResults.push(accountResult)
+            continue
+          }
         }
 
         // Fetch recent messages
+        console.log('[Sync] Fetching recent messages for', account.email_address)
         const messages = await fetchRecentMessages(accessToken, 50)
         accountResult.messagesFetched = messages.length
         results.totalMessages += messages.length
+        console.log('[Sync] Fetched', messages.length, 'messages from Gmail')
+
+        if (messages.length > 0) {
+          console.log('[Sync] Sample messages:', messages.slice(0, 3).map(m => ({
+            id: m.id,
+            from: m.from,
+            to: m.to,
+            subject: m.subject?.slice(0, 50),
+          })))
+        }
 
         // Get already-processed message IDs
         const existingIds = messages.length > 0
           ? await getExistingMessageIds(supabase, user.id, messages.map(m => m.id))
           : new Set<string>()
+
+        console.log('[Sync] Already processed:', existingIds.size, 'of', messages.length, 'messages')
 
         // Group new messages by thread to avoid re-analyzing the same thread
         const threadMap = new Map<string, typeof messages>()
@@ -97,6 +139,15 @@ export async function POST() {
           const existing = threadMap.get(msg.threadId) || []
           existing.push(msg)
           threadMap.set(msg.threadId, existing)
+        }
+
+        const newMessageCount = Array.from(threadMap.values()).reduce((s, msgs) => s + msgs.length, 0)
+        accountResult.newMessages = newMessageCount
+        console.log('[Sync] New messages to process:', newMessageCount, 'across', threadMap.size, 'threads')
+
+        if (threadMap.size === 0) {
+          console.log('[Sync] Nothing new to process — all messages already synced')
+          results.debugLog.push('All messages already synced, nothing new')
         }
 
         // Process each thread that has new messages
@@ -115,13 +166,19 @@ export async function POST() {
               }
             }
 
-            if (externalEmails.size === 0) continue
+            console.log('[Sync] Thread', threadId.slice(0, 8) + '...', '| External emails:', Array.from(externalEmails), '| Messages:', newMessages.length)
+
+            if (externalEmails.size === 0) {
+              console.log('[Sync] Skipping thread — no external emails found')
+              continue
+            }
 
             // Try matching each external address to a lead (first match wins)
             let lead: LeadRow | null = null
             let domainLeads: LeadRow[] = []
             for (const extEmail of externalEmails) {
               const match = await findLeadsForEmail(supabase, user.id, extEmail)
+              console.log('[Sync] Lead lookup for', extEmail, '→', match.lead ? `MATCH: ${match.lead.contact_name} (${match.lead.contact_email})` : 'no match', '| Domain leads:', match.domainLeads.length)
               if (match.lead) {
                 lead = match.lead
                 domainLeads = match.domainLeads
@@ -130,6 +187,13 @@ export async function POST() {
               if (match.domainLeads.length > 0 && domainLeads.length === 0) {
                 domainLeads = match.domainLeads
               }
+            }
+
+            if (lead) {
+              results.leadsMatched++
+              results.debugLog.push(`Matched thread ${threadId.slice(0, 8)} → ${lead.contact_name} (${lead.contact_email})`)
+            } else {
+              results.debugLog.push(`No lead match for thread ${threadId.slice(0, 8)} | emails: ${Array.from(externalEmails).join(', ')}`)
             }
 
             // Store each new message as an email summary
@@ -154,14 +218,16 @@ export async function POST() {
                   is_read: false,
                 })
 
-              if (!insertError) {
+              if (insertError) {
+                console.error('[Sync] email_summaries insert error:', insertError.message, '| gmail_message_id:', msg.id)
+              } else {
                 accountResult.newSummaries++
                 results.newSummaries++
               }
 
               // Also store in lead_emails if we have a matching lead
               if (lead) {
-                await supabase.from('lead_emails').insert({
+                const { error: leadEmailError } = await supabase.from('lead_emails').insert({
                   lead_id: lead.id,
                   user_id: user.id,
                   email_type: isFromMe ? 'initial' : 'reply_response',
@@ -176,12 +242,17 @@ export async function POST() {
                     ? { sent_at: new Date(msg.date).toISOString() }
                     : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.snippet }),
                 })
+
+                if (leadEmailError) {
+                  console.error('[Sync] lead_emails insert error:', leadEmailError.message, '| lead:', lead.contact_name)
+                }
               }
             }
 
             // If we matched a lead, build full context and run AI analysis
             if (lead && lead.contact_email) {
               try {
+                console.log('[Sync] Building conversation context for', lead.contact_name, '(', lead.contact_email, ')')
                 const context = await buildConversationContext(
                   accessToken,
                   account.email_address,
@@ -189,9 +260,18 @@ export async function POST() {
                   { includeDomainContext: true, maxThreads: 10 }
                 )
 
+                console.log('[Sync] Context built:', context.directThreads.length, 'direct threads,', context.domainThreads.length, 'domain threads,', context.totalMessages, 'total messages')
+
                 const analysis = await analyzeConversation(lead, context.directThreads, context.domainThreads)
 
                 if (analysis) {
+                  console.log('[Sync] AI analysis for', lead.contact_name, ':', {
+                    suggested_stage: analysis.suggested_stage,
+                    confidence: analysis.stage_confidence,
+                    reason: analysis.stage_reason,
+                    urgency: analysis.reply_urgency,
+                  })
+
                   const previousStage = lead.stage
 
                   const inboundCount = context.directThreads.reduce(
@@ -209,8 +289,8 @@ export async function POST() {
                     .flatMap(t => t.messages.filter(m => m.direction === 'outbound'))
                     .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
 
-                  // Only auto-advance stage, never regress (unless AI is highly confident)
                   const shouldUpdate = shouldUpdateStage(previousStage, analysis.suggested_stage, analysis.stage_confidence)
+                  console.log('[Sync] Stage update?', { previousStage, suggestedStage: analysis.suggested_stage, confidence: analysis.stage_confidence, shouldUpdate })
 
                   const updatePayload: Record<string, unknown> = {
                     conversation_summary: analysis.conversation_summary,
@@ -239,10 +319,14 @@ export async function POST() {
                     })
                   }
 
-                  await supabase.from('leads').update(updatePayload).eq('id', lead.id)
-                  results.leadsUpdated++
+                  const { error: updateError } = await supabase.from('leads').update(updatePayload).eq('id', lead.id)
+                  if (updateError) {
+                    console.error('[Sync] Lead update error:', updateError.message, '| lead:', lead.contact_name)
+                  } else {
+                    console.log('[Sync] Lead updated:', lead.contact_name, shouldUpdate ? `stage: ${previousStage} → ${analysis.suggested_stage}` : '(stage unchanged)')
+                    results.leadsUpdated++
+                  }
 
-                  // Also update other leads at the same domain with domain insights
                   if (analysis.domain_insights && domainLeads.length > 0) {
                     for (const dl of domainLeads) {
                       await supabase.from('leads').update({
@@ -252,13 +336,17 @@ export async function POST() {
                       }).eq('id', dl.id)
                     }
                   }
+                } else {
+                  console.log('[Sync] AI analysis returned null for', lead.contact_name, '(no direct messages?)')
                 }
               } catch (analysisError) {
-                console.error('Conversation analysis failed for lead:', lead.contact_name, analysisError)
+                console.error('[Sync] Conversation analysis failed for lead:', lead.contact_name, analysisError)
+                results.debugLog.push(`Analysis failed for ${lead.contact_name}: ${analysisError}`)
               }
             }
           } catch (threadError) {
-            console.error('Error processing thread:', threadId, threadError)
+            console.error('[Sync] Error processing thread:', threadId, threadError)
+            results.debugLog.push(`Thread ${threadId.slice(0, 8)} error: ${threadError}`)
             accountResult.errors++
             results.errors++
           }
@@ -270,7 +358,8 @@ export async function POST() {
           .eq('id', account.id)
 
       } catch (accountError) {
-        console.error('Error syncing account', account.email_address, accountError)
+        console.error('[Sync] Error syncing account', account.email_address, accountError)
+        results.debugLog.push(`Account error (${account.email_address}): ${accountError}`)
         accountResult.errors++
         results.errors++
       }
@@ -278,10 +367,11 @@ export async function POST() {
       results.accountResults.push(accountResult)
     }
 
+    console.log('[Sync] ===== Sync complete =====', JSON.stringify(results, null, 2))
     return NextResponse.json({ success: true, ...results })
   } catch (error) {
-    console.error('Gmail sync error:', error)
-    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
+    console.error('[Sync] FATAL error:', error)
+    return NextResponse.json({ error: 'Internal server error', detail: String(error) }, { status: 500 })
   }
 }
 
@@ -322,8 +412,7 @@ async function findLeadsForEmail(
 ): Promise<{ lead: LeadRow | null; domainLeads: LeadRow[] }> {
   const domain = extractDomain(fromEmail)
 
-  // Exact email match first
-  const { data: exactMatch } = await supabase
+  const { data: exactMatch, error: exactError } = await supabase
     .from('leads')
     .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
     .eq('user_id', userId)
@@ -331,14 +420,21 @@ async function findLeadsForEmail(
     .limit(1)
     .maybeSingle()
 
-  // Domain matches (other people at the same company)
-  const { data: domainMatches } = await supabase
+  if (exactError) {
+    console.error('[Sync] Lead exact match query error:', exactError.message, '| email:', fromEmail)
+  }
+
+  const { data: domainMatches, error: domainError } = await supabase
     .from('leads')
     .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
     .eq('user_id', userId)
     .eq('email_domain', domain)
     .neq('contact_email', fromEmail)
     .limit(10)
+
+  if (domainError) {
+    console.error('[Sync] Lead domain match query error:', domainError.message, '| domain:', domain)
+  }
 
   return {
     lead: exactMatch as LeadRow | null,
@@ -425,7 +521,7 @@ JSON response:
   try {
     return await generateJSON<ConversationAnalysis>(systemPrompt, userPrompt, { maxTokens: 2048, temperature: 0.3 })
   } catch (err) {
-    console.error('AI analysis failed:', err)
+    console.error('[Sync] AI analysis failed:', err)
     return null
   }
 }
@@ -443,20 +539,16 @@ function shouldUpdateStage(
 ): boolean {
   if (current === suggested) return false
 
-  // Terminal stages only change with high confidence
   if (['closed_won', 'closed_lost'].includes(current)) {
     return confidence === 'high'
   }
 
-  // closed_lost requires high confidence to set
   if (suggested === 'closed_lost' && confidence !== 'high') return false
 
   const currentIdx = STAGE_ORDER.indexOf(current as PipelineStage)
   const suggestedIdx = STAGE_ORDER.indexOf(suggested)
 
-  // Forward progression: always allow with medium+ confidence
   if (suggestedIdx > currentIdx) return confidence !== 'low'
 
-  // Backward movement: only with high confidence (e.g., they un-booked a meeting)
   return confidence === 'high'
 }
