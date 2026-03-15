@@ -3,7 +3,7 @@ import { z } from 'zod'
 import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 
 const requestSchema = z.object({
-  type: z.enum(['customer', 'investor']),
+  type: z.enum(['customer', 'investor', 'partnership']),
   contact_name: z.string().min(1),
   company_name: z.string().min(1),
   product_name: z.string().optional().nullable(),
@@ -56,16 +56,21 @@ function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
     .filter(Boolean)
     .join('\n')
 
-  return `Research this ${input.type === 'customer' ? 'potential customer' : 'potential investor'} thoroughly using web search:
+  const typeLabel = input.type === 'customer' ? 'potential customer' : input.type === 'investor' ? 'potential investor' : 'potential partner'
+
+  const focusMap: Record<string, string> = {
+    customer: 'Focus on: how their AI agent/product works, what channels it uses, what data it accesses, what tools it connects to, and specifically how it could be vulnerable to prompt injection, jailbreaking, data exfiltration, or tool abuse. Search their product docs, blog, and any technical content.',
+    investor: 'Focus on: their investment thesis, what kinds of founders they back, their stated beliefs about the market, blog posts they have written, and how Rocoto (autonomous AI agent security) fits their worldview. Search for their writing, interviews, and portfolio.',
+    partnership: 'Focus on: what services/products they offer, their client base, how a partnership with Rocoto (autonomous AI agent security) would create mutual value. For agencies: what kind of leads they generate and for whom. For cyber insurance: their coverage areas and how AI agent security fits. For resellers/integrators: their technology stack and distribution channels. Search for their case studies, partnerships, and market positioning.',
+  }
+
+  return `Research this ${typeLabel} thoroughly using web search:
 
 ${clues}
 
 Search the web for deep, specific details for a "Show Me You Know Me" cold email. I need details that would make them think "this person actually did their homework." Do NOT make anything up — only include details you actually found via search.
 
-${input.type === 'customer'
-    ? 'Focus on: how their AI agent/product works, what channels it uses, what data it accesses, what tools it connects to, and specifically how it could be vulnerable to prompt injection, jailbreaking, data exfiltration, or tool abuse. Search their product docs, blog, and any technical content.'
-    : 'Focus on: their investment thesis, what kinds of founders they back, their stated beliefs about the market, blog posts they have written, and how Rocoto (autonomous AI agent security) fits their worldview. Search for their writing, interviews, and portfolio.'
-  }`
+${focusMap[input.type]}`
 }
 
 interface ResearchResult {

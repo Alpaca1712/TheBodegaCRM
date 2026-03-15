@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Loader2, Target, Users, Crosshair } from 'lucide-react';
+import { Loader2, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadPipelineBoard from '@/components/leads/lead-pipeline-board';
 import type { Lead, LeadType, PipelineStage } from '@/types/leads';
 
@@ -74,6 +74,15 @@ export default function PipelinePage() {
           >
             <Crosshair className="h-3.5 w-3.5" />
             Investors
+          </button>
+          <button
+            onClick={() => setTypeFilter(typeFilter === 'partnership' ? '' : 'partnership')}
+            className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
+              typeFilter === 'partnership' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+            }`}
+          >
+            <Handshake className="h-3.5 w-3.5" />
+            Partnerships
           </button>
         </div>
       </div>

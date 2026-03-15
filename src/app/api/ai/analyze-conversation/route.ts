@@ -5,7 +5,7 @@ import type { PipelineStage } from '@/types/leads'
 
 const requestSchema = z.object({
   lead: z.object({
-    type: z.enum(['customer', 'investor']),
+    type: z.enum(['customer', 'investor', 'partnership']),
     contact_name: z.string(),
     company_name: z.string(),
     contact_email: z.string().optional(),
@@ -63,9 +63,12 @@ export async function POST(req: NextRequest) {
           .join('\n\n---\n\n')
     }
 
-    const leadContext = parsed.lead.type === 'customer'
-      ? `Company: ${parsed.lead.company_name}${parsed.lead.company_description ? `\nDescription: ${parsed.lead.company_description}` : ''}${parsed.lead.attack_surface_notes ? `\nSecurity notes: ${parsed.lead.attack_surface_notes}` : ''}`
-      : `Fund/Firm: ${parsed.lead.company_name}${parsed.lead.investment_thesis_notes ? `\nThesis: ${parsed.lead.investment_thesis_notes}` : ''}`
+    const leadContextMap: Record<string, string> = {
+      customer: `Company: ${parsed.lead.company_name}${parsed.lead.company_description ? `\nDescription: ${parsed.lead.company_description}` : ''}${parsed.lead.attack_surface_notes ? `\nSecurity notes: ${parsed.lead.attack_surface_notes}` : ''}`,
+      investor: `Fund/Firm: ${parsed.lead.company_name}${parsed.lead.investment_thesis_notes ? `\nThesis: ${parsed.lead.investment_thesis_notes}` : ''}`,
+      partnership: `Partner: ${parsed.lead.company_name}${parsed.lead.company_description ? `\nDescription: ${parsed.lead.company_description}` : ''}${parsed.lead.investment_thesis_notes ? `\nPartnership notes: ${parsed.lead.investment_thesis_notes}` : ''}`,
+    }
+    const leadContext = leadContextMap[parsed.lead.type] || leadContextMap.customer
 
     const systemPrompt = `You are an expert sales intelligence analyst for Rocoto, an AI agent security company doing cold email outreach.
 

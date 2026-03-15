@@ -8,7 +8,7 @@ export interface AnalyticsData {
   replyRate: number
   meetingConversionRate: number
   funnelData: Array<{ stage: string; count: number }>
-  byType: { customers: number; investors: number }
+  byType: { customers: number; investors: number; partnerships: number }
   byPriority: Record<string, number>
   bySource: Array<{ source: string; count: number }>
 }
@@ -75,6 +75,7 @@ export async function getAnalyticsData(): Promise<AnalyticsData> {
     byType: {
       customers: allLeads.filter(l => l.type === 'customer').length,
       investors: allLeads.filter(l => l.type === 'investor').length,
+      partnerships: allLeads.filter(l => l.type === 'partnership').length,
     },
     byPriority,
     bySource,

@@ -6,7 +6,7 @@ export interface DashboardStats {
   replies: number
   meetingsBooked: number
   replyRate: number
-  leadsByType: { customers: number; investors: number }
+  leadsByType: { customers: number; investors: number; partnerships: number }
   leadsByStage: Record<string, number>
   recentLeads: Array<{
     id: string
@@ -89,6 +89,7 @@ export async function getDashboardStats(): Promise<{ data: DashboardStats | null
         leadsByType: {
           customers: allLeads.filter(l => l.type === 'customer').length,
           investors: allLeads.filter(l => l.type === 'investor').length,
+          partnerships: allLeads.filter(l => l.type === 'partnership').length,
         },
         leadsByStage,
         recentLeads,

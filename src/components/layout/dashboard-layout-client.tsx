@@ -15,6 +15,7 @@ import {
   Kanban,
   Bell,
   Target,
+  Handshake,
 } from 'lucide-react';
 import Header from '@/components/layout/header';
 import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper';
@@ -91,6 +92,7 @@ export default function DashboardLayoutClient({
   const quickCreateItems = [
     { href: '/leads/new?type=customer', label: 'New Customer Lead', icon: Users },
     { href: '/leads/new?type=investor', label: 'New Investor Lead', icon: Crosshair },
+    { href: '/leads/new?type=partnership', label: 'New Partnership Lead', icon: Handshake },
   ];
 
   return (

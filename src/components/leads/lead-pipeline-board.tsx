@@ -4,7 +4,7 @@ import { useState } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage } from '@/types/leads';
+import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
 import { GripVertical } from 'lucide-react';
 
 interface LeadPipelineBoardProps {
@@ -118,12 +118,8 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
                       <span className={`inline-block h-1.5 w-1.5 rounded-full ${
                         lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
                       }`} />
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${
-                        lead.type === 'customer'
-                          ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
-                          : 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300'
-                      }`}>
-                        {lead.type === 'customer' ? 'Cust' : 'Inv'}
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                        {LEAD_TYPE_SHORT[lead.type]}
                       </span>
                       {lead.last_contacted_at && (
                         <span className="text-[10px] text-zinc-400">

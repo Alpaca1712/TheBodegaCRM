@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
 import type { Lead } from '@/types/leads';
-import { STAGE_LABELS } from '@/types/leads';
+import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -76,12 +76,8 @@ export default function LeadsTable({ leads }: LeadsTableProps) {
                 )}
               </td>
               <td className="py-3">
-                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${
-                  lead.type === 'customer'
-                    ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                    : 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
-                }`}>
-                  {lead.type === 'customer' ? 'Customer' : 'Investor'}
+                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                  {LEAD_TYPE_LABELS[lead.type]}
                 </span>
               </td>
               <td className="py-3">

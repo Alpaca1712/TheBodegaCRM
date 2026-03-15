@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const requestSchema = z.object({
   lead: z.object({
-    type: z.enum(['customer', 'investor']),
+    type: z.enum(['customer', 'investor', 'partnership']),
     company_name: z.string(),
     product_name: z.string().optional().nullable(),
     fund_name: z.string().optional().nullable(),
@@ -72,6 +72,29 @@ RULES: Same as customer emails. Under 200 words. No AI slop. Casual and human.
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "..."}`
 
+const PARTNERSHIP_SYSTEM_PROMPT = `You are writing a cold email from Daniel Chalco, co-founder of Rocoto, to a potential partner. Rocoto is an autonomous AI agent that hacks other AI agents.
+
+Follow Sam McKenna's "Show Me You Know Me" framework:
+
+1. SUBJECT LINE: Reference something specific about this person or their company that only they would recognize. A recent deal, a case study, a specific client they serve, their approach to the market.
+
+2. OPENER: "We've yet to be properly introduced. I'm Daniel Chalco, co-founder of Rocoto. My co-founder David and I build autonomous AI agent security."
+
+3. SMYKM SIGNAL: Reference something specific from your research that shows you understand their business and how a partnership would benefit both sides.
+
+4. THE OPPORTUNITY: Frame the partnership as mutually beneficial. Be specific about how Rocoto complements what they already do. For agencies: "your clients building AI agents need security testing." For cyber insurance: "AI agent vulnerabilities are an emerging risk category." For resellers: "your customers are asking about AI security."
+
+5. ROCOTO (brief): "Rocoto is an AI agent that hacks other AI agents. It attacks through the same channels real users interact with and finds exactly where the agent can be manipulated. Every finding comes with a reproducible exploit and clear steps to fix it."
+
+6. CTA: For this variant, use the specified CTA style.
+
+7. SIGN-OFF: "Daniel Chalco" + "rocoto.artoo.love"
+
+RULES: Same as other emails. Under 200 words. No AI slop. Casual and human.
+
+Respond with ONLY valid JSON:
+{"subject": "...", "body": "..."}`
+
 function buildUserPrompt(
   lead: z.infer<typeof requestSchema>['lead'],
   ctaStyle: 'mckenna' | 'hormozi'
@@ -113,8 +136,12 @@ export async function POST(request: NextRequest) {
     }
 
     const { lead } = validation.data
-    const systemPrompt =
-      lead.type === 'customer' ? CUSTOMER_SYSTEM_PROMPT : INVESTOR_SYSTEM_PROMPT
+    const systemPromptMap: Record<string, string> = {
+      customer: CUSTOMER_SYSTEM_PROMPT,
+      investor: INVESTOR_SYSTEM_PROMPT,
+      partnership: PARTNERSHIP_SYSTEM_PROMPT,
+    }
+    const systemPrompt = systemPromptMap[lead.type] || CUSTOMER_SYSTEM_PROMPT
 
     const [mckennaResult, hormoziResult] = await Promise.all([
       generateJSON<{ subject: string; body: string }>(

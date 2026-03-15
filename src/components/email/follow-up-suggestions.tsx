@@ -51,67 +51,82 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
 };
 
 function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | null {
-  const lastContactDate = lead.last_contacted_at || lead.updated_at;
-  if (!lastContactDate) return null;
-
-  const daysSince = Math.floor(
-    (Date.now() - new Date(lastContactDate).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
   const lastEmail = allEmails.length > 0 ? allEmails[0] : null;
 
-  // Build a set of email types already sent for this lead
+  // Use the last OUTBOUND email date as the reference, not last_contacted_at
+  // (last_contacted_at gets reset on every sync)
+  const outboundEmails = allEmails.filter(e => e.direction === 'outbound');
+  const lastOutbound = outboundEmails[0];
+  const lastOutboundDate = lastOutbound?.sent_at || lastOutbound?.created_at;
+
+  // For stages where we care about their last reply
+  const inboundEmails = allEmails.filter(e => e.direction === 'inbound');
+  const lastInbound = inboundEmails[0];
+
   const sentTypes = new Set(
-    allEmails
-      .filter(e => e.direction === 'outbound')
-      .map(e => e.email_type)
+    outboundEmails.map(e => e.email_type as string).filter(Boolean)
   );
 
   // Replied leads need an ACA response
   if (lead.stage === 'replied') {
-    // Check if we already responded to their reply
-    const theirReplyDate = lead.last_inbound_at;
-    const ourLastOutbound = allEmails.find(e => e.direction === 'outbound');
-    if (theirReplyDate && ourLastOutbound?.sent_at && new Date(ourLastOutbound.sent_at) > new Date(theirReplyDate)) {
-      return null; // Already responded
+    const replyDate = lastInbound?.replied_at || lastInbound?.created_at || lead.last_inbound_at;
+    if (!replyDate) return null;
+
+    const daysSinceReply = Math.floor(
+      (Date.now() - new Date(replyDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    // Check if we already responded after their reply
+    if (lastOutboundDate && replyDate && new Date(lastOutboundDate) > new Date(replyDate)) {
+      return null;
     }
 
     return {
       lead,
       lastEmail,
-      daysSinceLastContact: daysSince,
+      daysSinceLastContact: daysSinceReply,
       suggestedAction: 'They replied — respond using ACA framework',
       suggestedType: 'reply_needed',
       suggestedChannel: 'email',
-      urgency: daysSince >= 2 ? 'overdue' : daysSince >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSince}d since reply`,
+      urgency: daysSinceReply >= 2 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: `${daysSinceReply}d since reply`,
     };
   }
 
   // Post-meeting follow-up
   if (lead.stage === 'meeting_held') {
-    if (sentTypes.has('reply_response') && daysSince < 2) return null;
+    const meetingDate = lead.last_contacted_at || lead.updated_at;
+    if (!meetingDate) return null;
+    const daysSinceMeeting = Math.floor(
+      (Date.now() - new Date(meetingDate).getTime()) / (1000 * 60 * 60 * 24)
+    );
+
+    if (sentTypes.has('reply_response') && daysSinceMeeting < 2) return null;
     return {
       lead,
       lastEmail,
-      daysSinceLastContact: daysSince,
+      daysSinceLastContact: daysSinceMeeting,
       suggestedAction: 'Send post-meeting follow-up with next steps',
       suggestedType: 'post_meeting',
       suggestedChannel: 'email',
-      urgency: daysSince >= 2 ? 'overdue' : daysSince >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSince}d since meeting`,
+      urgency: daysSinceMeeting >= 2 ? 'overdue' : daysSinceMeeting >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: `${daysSinceMeeting}d since meeting`,
     };
   }
 
-  // Email sent / follow_up / no_response — use the McKenna+Hormozi sequence
-  if (daysSince < 3) return null;
+  // email_sent / follow_up / no_response — McKenna+Hormozi sequence
+  // Use last outbound email date, or fall back to lead creation date
+  const referenceDate = lastOutboundDate || lead.created_at;
+  const daysSinceLastOutbound = Math.floor(
+    (Date.now() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24)
+  );
 
   // Walk the sequence: find the next step that hasn't been done
   const sequence: Array<{ type: FollowUpItem['suggestedType']; channel: FollowUpItem['suggestedChannel']; minDays: number; label: string }> = [
-    { type: 'follow_up_1', channel: 'email', minDays: 4, label: 'Day 4' },
-    { type: 'follow_up_2', channel: 'email', minDays: 9, label: 'Day 9' },
-    { type: 'follow_up_3', channel: 'linkedin', minDays: 14, label: 'Day 14' },
-    { type: 'break_up', channel: 'email', minDays: 21, label: 'Day 21+' },
+    { type: 'follow_up_1', channel: 'email', minDays: 3, label: 'Day 4' },
+    { type: 'follow_up_2', channel: 'email', minDays: 5, label: 'Day 9' },
+    { type: 'follow_up_3', channel: 'linkedin', minDays: 5, label: 'Day 14' },
+    { type: 'break_up', channel: 'email', minDays: 7, label: 'Day 21+' },
   ];
 
   let nextStep = null;
@@ -125,17 +140,19 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
   // If all follow-ups have been sent, nothing to do
   if (!nextStep) return null;
 
-  const urgency: FollowUpItem['urgency'] =
-    daysSince >= nextStep.minDays + 5 ? 'overdue' :
-    daysSince >= nextStep.minDays ? 'due_today' : 'upcoming';
+  // For no_response leads, always show — they need follow-up regardless of timing
+  const isOverdue = lead.stage === 'no_response' || daysSinceLastOutbound >= nextStep.minDays + 3;
+  const isDue = daysSinceLastOutbound >= nextStep.minDays;
 
-  // Don't show if it's too early for this step
-  if (daysSince < nextStep.minDays - 1) return null;
+  const urgency: FollowUpItem['urgency'] = isOverdue ? 'overdue' : isDue ? 'due_today' : 'upcoming';
+
+  // Show upcoming items too (within 1 day of being due), and always show no_response
+  if (lead.stage !== 'no_response' && daysSinceLastOutbound < nextStep.minDays - 1) return null;
 
   return {
     lead,
     lastEmail,
-    daysSinceLastContact: daysSince,
+    daysSinceLastContact: daysSinceLastOutbound,
     suggestedAction: ACTION_LABELS[nextStep.type].description,
     suggestedType: nextStep.type,
     suggestedChannel: nextStep.channel,

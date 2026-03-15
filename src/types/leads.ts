@@ -1,6 +1,6 @@
 import { z } from 'zod'
 
-export const LEAD_TYPES = ['customer', 'investor'] as const
+export const LEAD_TYPES = ['customer', 'investor', 'partnership'] as const
 export type LeadType = (typeof LEAD_TYPES)[number]
 
 export const PIPELINE_STAGES = [
@@ -54,6 +54,33 @@ export const STAGE_NEXT_ACTIONS: Record<PipelineStage, string> = {
   closed_won: 'Onboard / close',
   closed_lost: 'Archive, revisit in 3 months',
   no_response: 'Move to next channel or archive',
+}
+
+export const LEAD_TYPE_LABELS: Record<LeadType, string> = {
+  customer: 'Customer',
+  investor: 'Investor',
+  partnership: 'Partnership',
+}
+
+export const LEAD_TYPE_SHORT: Record<LeadType, string> = {
+  customer: 'Cust',
+  investor: 'Inv',
+  partnership: 'Ptnr',
+}
+
+export const LEAD_TYPE_COLORS: Record<LeadType, { bg: string; text: string }> = {
+  customer: {
+    bg: 'bg-blue-50 dark:bg-blue-950/40',
+    text: 'text-blue-600 dark:text-blue-300',
+  },
+  investor: {
+    bg: 'bg-purple-50 dark:bg-purple-950/40',
+    text: 'text-purple-600 dark:text-purple-300',
+  },
+  partnership: {
+    bg: 'bg-emerald-50 dark:bg-emerald-950/40',
+    text: 'text-emerald-600 dark:text-emerald-300',
+  },
 }
 
 export const PRIORITIES = ['high', 'medium', 'low'] as const

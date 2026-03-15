@@ -2,14 +2,14 @@ import { createClient } from '@/lib/supabase/client'
 
 type SearchResult = {
   id: string;
-  type: 'customer' | 'investor';
+  type: 'customer' | 'investor' | 'partnership';
   title: string;
   subtitle?: string;
   route: string;
 };
 
 type SearchCategory = {
-  type: 'customer' | 'investor';
+  type: 'customer' | 'investor' | 'partnership';
   title: string;
   icon: React.ReactNode;
   results: SearchResult[];

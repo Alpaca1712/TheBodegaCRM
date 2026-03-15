@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import type { Lead, LeadType, PipelineStage } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS } from '@/types/leads';
@@ -109,6 +109,15 @@ export default function LeadsPage() {
           >
             <Crosshair className="h-3.5 w-3.5" />
             Investors
+          </button>
+          <button
+            onClick={() => setTypeFilter(typeFilter === 'partnership' ? '' : 'partnership')}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
+              typeFilter === 'partnership' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
+            }`}
+          >
+            <Handshake className="h-3.5 w-3.5" />
+            Partnerships
           </button>
         </div>
 

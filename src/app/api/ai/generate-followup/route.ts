@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const requestSchema = z.object({
   lead: z.object({
-    type: z.enum(['customer', 'investor']),
+    type: z.enum(['customer', 'investor', 'partnership']),
     company_name: z.string(),
     product_name: z.string().optional().nullable(),
     fund_name: z.string().optional().nullable(),
@@ -65,7 +65,7 @@ Use Hormozi's ACA framework to respond:
 - Compliment: Tie it to a positive character trait
 - Ask: Lead the conversation toward next steps
 
-If they asked for more info: ${lead.type === 'investor' ? 'offer to send the one-page memo' : 'offer a specific breakdown of their vulnerabilities'}
+If they asked for more info: ${lead.type === 'investor' ? 'offer to send the one-page memo' : lead.type === 'partnership' ? 'offer to send a partnership overview with mutual value prop' : 'offer a specific breakdown of their vulnerabilities'}
 If they said "let's chat": suggest they pick a time. "What works for you? I'll send over an invite."
 If they said "not right now": thank them, leave the door open
 Keep it SHORT. Match the length and energy of their reply.`
@@ -89,6 +89,14 @@ This is follow-up #1 (Day 4 — The Bump).
 This is follow-up #2 (Day 9 — Memo Drop for investors).
 - Send the investor memo (one-page doc)
 - Example: "Hey [Name], I put together a one-page memo on what we're building. Figured it might be easier than a cold email to get a feel for the opportunity. Happy to go deeper on anything."
+- Don't ask for a meeting. Just deliver value.`
+    }
+    if (lead.type === 'partnership') {
+      return `${context}
+
+This is follow-up #2 (Day 9 — Partnership Overview Drop).
+- Send a brief partnership overview
+- Example: "Hey [Name], I put together a quick overview of how Rocoto could complement what you're doing at [company]. Covers the mutual value prop and how our existing partners are structuring it. Want me to send it over?"
 - Don't ask for a meeting. Just deliver value.`
     }
     return `${context}

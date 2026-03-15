@@ -20,7 +20,7 @@ import {
   CheckCircle2,
   Clock,
 } from 'lucide-react';
-import { STAGE_LABELS, STAGE_NEXT_ACTIONS, type Lead, type LeadEmail, type PipelineStage, PIPELINE_STAGES, type ConversationSignal } from '@/types/leads';
+import { STAGE_LABELS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, type Lead, type LeadEmail, type PipelineStage, PIPELINE_STAGES, type ConversationSignal } from '@/types/leads';
 import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
 
@@ -128,12 +128,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <div>
             <div className="flex items-center gap-3">
               <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">{lead.contact_name}</h1>
-              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${
-                lead.type === 'customer'
-                  ? 'bg-blue-50 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300'
-                  : 'bg-purple-50 text-purple-700 dark:bg-purple-950/40 dark:text-purple-300'
-              }`}>
-                {lead.type === 'customer' ? 'Customer' : 'Investor'}
+              <span className={`px-2 py-0.5 rounded text-[11px] font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                {LEAD_TYPE_LABELS[lead.type]}
               </span>
             </div>
             <p className="text-sm text-zinc-500 dark:text-zinc-400">
@@ -215,10 +211,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {activeTab === 'research' && (
             <div className="space-y-4">
               <ResearchField label="Company Description" value={lead.company_description} />
-              {lead.type === 'customer' ? (
+              {lead.type === 'customer' && (
                 <ResearchField label="Attack Surface Notes" value={lead.attack_surface_notes} />
-              ) : (
+              )}
+              {lead.type === 'investor' && (
                 <ResearchField label="Investment Thesis Notes" value={lead.investment_thesis_notes} />
+              )}
+              {lead.type === 'partnership' && (
+                <ResearchField label="Partnership Opportunity Notes" value={lead.investment_thesis_notes} />
               )}
               <ResearchField label="Personal Details" value={lead.personal_details} />
               {lead.smykm_hooks?.length > 0 && (
@@ -284,7 +284,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {/* Metadata Card */}
           <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-4 space-y-3">
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Details</h3>
-            <InfoRow label="Type" value={lead.type === 'customer' ? 'Customer' : 'Investor'} />
+            <InfoRow label="Type" value={LEAD_TYPE_LABELS[lead.type]} />
             {lead.product_name && <InfoRow label="Product" value={lead.product_name} />}
             {lead.fund_name && <InfoRow label="Fund" value={lead.fund_name} />}
             <InfoRow label="Priority" value={lead.priority} />

@@ -10,16 +10,18 @@ import {
   ArrowRight,
   Users,
   Crosshair,
+  Handshake,
   Loader2,
   Plus,
 } from 'lucide-react';
-import { PIPELINE_STAGES, STAGE_LABELS, type Lead, type PipelineStage } from '@/types/leads';
+import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 
 interface DashboardData {
   totalLeads: number;
   customerCount: number;
   investorCount: number;
+  partnershipCount: number;
   emailsSentThisWeek: number;
   repliesThisWeek: number;
   meetingsBooked: number;
@@ -51,6 +53,7 @@ export default function DashboardPage() {
         totalLeads: count || allLeads.length,
         customerCount: allLeads.filter((l: Lead) => l.type === 'customer').length,
         investorCount: allLeads.filter((l: Lead) => l.type === 'investor').length,
+        partnershipCount: allLeads.filter((l: Lead) => l.type === 'partnership').length,
         emailsSentThisWeek: allLeads.filter((l: Lead) => l.stage !== 'researched' && l.stage !== 'email_drafted').length,
         repliesThisWeek: allLeads.filter((l: Lead) => l.stage === 'replied').length,
         meetingsBooked: allLeads.filter((l: Lead) => l.stage === 'meeting_booked' || l.stage === 'meeting_held').length,
@@ -156,6 +159,25 @@ export default function DashboardPage() {
             <ArrowRight className="h-4 w-4 text-zinc-400" />
           </div>
         </Link>
+
+        <Link
+          href="/leads?type=partnership"
+          className="flex items-center justify-between p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+        >
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 rounded-lg bg-emerald-50 dark:bg-emerald-950/40 flex items-center justify-center">
+              <Handshake className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">Partnerships</p>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">Agencies, cyber insurance, resellers</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="text-lg font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{data.partnershipCount}</span>
+            <ArrowRight className="h-4 w-4 text-zinc-400" />
+          </div>
+        </Link>
       </div>
 
       {/* Pipeline Overview */}
@@ -211,11 +233,7 @@ export default function DashboardPage() {
                   <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{lead.contact_name}</p>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.company_name}</p>
                 </div>
-                <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${
-                  lead.type === 'customer'
-                    ? 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300'
-                    : 'bg-purple-50 text-purple-600 dark:bg-purple-950/40 dark:text-purple-300'
-                }`}>
+                <span className={`text-[11px] px-2 py-0.5 rounded font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
                   {STAGE_LABELS[lead.stage]}
                 </span>
               </Link>

@@ -144,7 +144,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-200 dark:hover:bg-zinc-700'
               }`}
             >
-              {t === 'customer' ? 'Customer' : 'Investor'}
+              {t === 'customer' ? 'Customer' : t === 'investor' ? 'Investor' : 'Partnership'}
             </button>
           ))}
         </div>
@@ -168,15 +168,22 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               <p className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
             )}
           </div>
-          {watchType === 'customer' ? (
+          {watchType === 'customer' && (
             <div>
               <label className={labelClass}>Product Name</label>
               <input {...form.register('product_name')} className={inputClass} placeholder="Mason" />
             </div>
-          ) : (
+          )}
+          {watchType === 'investor' && (
             <div>
               <label className={labelClass}>Fund Name</label>
               <input {...form.register('fund_name')} className={inputClass} placeholder="Notation Capital" />
+            </div>
+          )}
+          {watchType === 'partnership' && (
+            <div>
+              <label className={labelClass}>Partnership Type</label>
+              <input {...form.register('product_name')} className={inputClass} placeholder="Agency, cyber insurance, reseller..." />
             </div>
           )}
         </div>
@@ -240,7 +247,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           <textarea {...form.register('company_description')} className={textareaClass} placeholder="What does this company do? What's their product?" />
         </div>
 
-        {watchType === 'customer' ? (
+        {watchType === 'customer' && (
           <div>
             <label className={labelClass}>Attack Surface Notes</label>
             <textarea
@@ -249,13 +256,24 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               placeholder="How is their AI agent vulnerable? What channels does it use? What tools does it connect to? What data can it access?"
             />
           </div>
-        ) : (
+        )}
+        {watchType === 'investor' && (
           <div>
             <label className={labelClass}>Investment Thesis Notes</label>
             <textarea
               {...form.register('investment_thesis_notes')}
               className={textareaClass}
               placeholder="What do they invest in? What's their thesis? What blog posts have they written?"
+            />
+          </div>
+        )}
+        {watchType === 'partnership' && (
+          <div>
+            <label className={labelClass}>Partnership Opportunity Notes</label>
+            <textarea
+              {...form.register('investment_thesis_notes')}
+              className={textareaClass}
+              placeholder="What kind of partnership? Lead gen agency, cyber insurance, reseller, integration partner? What's the mutual value prop?"
             />
           </div>
         )}

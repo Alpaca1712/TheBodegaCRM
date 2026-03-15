@@ -13,7 +13,7 @@ interface AnalyticsData {
   meetingConversionRate: number;
   avgDaysToReply: number;
   avgDaysToMeeting: number;
-  byType: { customers: number; investors: number };
+  byType: { customers: number; investors: number; partnerships: number };
   byPriority: { high: number; medium: number; low: number };
   byStage: { stage: PipelineStage; count: number }[];
   bySource: { source: string; count: number }[];
@@ -69,6 +69,7 @@ export default function AnalyticsPage() {
         byType: {
           customers: allLeads.filter((l) => l.type === 'customer').length,
           investors: allLeads.filter((l) => l.type === 'investor').length,
+          partnerships: allLeads.filter((l) => l.type === 'partnership').length,
         },
         byPriority: {
           high: allLeads.filter((l) => l.priority === 'high').length,
@@ -176,6 +177,10 @@ export default function AnalyticsPage() {
                 <div className="flex-1 p-3 rounded-lg bg-purple-50 dark:bg-purple-950/30">
                   <p className="text-lg font-semibold text-purple-700 dark:text-purple-300">{data.byType.investors}</p>
                   <p className="text-xs text-purple-600 dark:text-purple-400">Investors</p>
+                </div>
+                <div className="flex-1 p-3 rounded-lg bg-emerald-50 dark:bg-emerald-950/30">
+                  <p className="text-lg font-semibold text-emerald-700 dark:text-emerald-300">{data.byType.partnerships}</p>
+                  <p className="text-xs text-emerald-600 dark:text-emerald-400">Partnerships</p>
                 </div>
               </div>
             </div>
