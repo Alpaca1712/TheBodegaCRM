@@ -54,6 +54,28 @@ export default function EmailGenerator({ lead, onEmailSaved }: EmailGeneratorPro
 
     setSendingSide(side);
     try {
+      // Determine the email_type based on current stage
+      let emailType = 'initial';
+      if (lead.stage === 'email_sent' || lead.stage === 'no_response') emailType = 'follow_up_1';
+      if (lead.stage === 'follow_up') emailType = 'follow_up_2';
+      if (lead.stage === 'replied') emailType = 'reply_response';
+      if (lead.stage === 'meeting_held') emailType = 'reply_response';
+
+      // Save the email to lead_emails with the correct type
+      await fetch('/api/lead-emails', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          email_type: emailType,
+          cta_type: side,
+          subject: variant.subject,
+          body: variant.body,
+          direction: 'outbound',
+        }),
+      });
+
+      // Update the lead stage
       const res = await fetch(`/api/leads/${lead.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },

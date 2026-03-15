@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk'
 
 const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
-const RESEARCH_MODEL = 'claude-opus-4-0-20250514'
+const RESEARCH_MODEL = 'claude-opus-4-6'
 
 function getClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY

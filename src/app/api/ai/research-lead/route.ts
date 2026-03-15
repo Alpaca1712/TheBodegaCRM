@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { researchWithWebSearchJSON, generateJSON } from '@/lib/ai/anthropic'
+import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 
 const requestSchema = z.object({
   type: z.enum(['customer', 'investor']),
@@ -94,24 +94,11 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    let result: ResearchResult
-
-    try {
-      // Primary: Claude with web search (autonomous multi-query research)
-      result = await researchWithWebSearchJSON<ResearchResult>(
-        RESEARCH_SYSTEM_PROMPT,
-        buildResearchPrompt(validation.data),
-        { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
-      )
-    } catch (webSearchError) {
-      // Fallback: Claude without web search (training data only)
-      console.warn('Web search research failed, falling back to training data:', webSearchError)
-      result = await generateJSON<ResearchResult>(
-        RESEARCH_SYSTEM_PROMPT,
-        buildResearchPrompt(validation.data),
-        { temperature: 0.3, maxTokens: 2048 }
-      )
-    }
+    const result = await researchWithWebSearchJSON<ResearchResult>(
+      RESEARCH_SYSTEM_PROMPT,
+      buildResearchPrompt(validation.data),
+      { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
+    )
 
     return NextResponse.json(result)
   } catch (error) {

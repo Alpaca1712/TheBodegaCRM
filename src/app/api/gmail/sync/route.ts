@@ -13,6 +13,11 @@ import type { PipelineStage } from '@/types/leads'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
+interface EmailClassification {
+  gmail_message_id: string
+  email_type: 'initial' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'reply_response' | 'meeting_request' | 'lead_magnet'
+}
+
 interface ConversationAnalysis {
   suggested_stage: PipelineStage
   stage_confidence: 'high' | 'medium' | 'low'
@@ -26,6 +31,13 @@ interface ConversationAnalysis {
   }>
   reply_urgency: 'immediate' | 'soon' | 'can_wait' | 'none'
   domain_insights: string | null
+  email_classifications: EmailClassification[]
+  next_follow_up: {
+    type: 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'none'
+    channel: 'email' | 'linkedin' | 'twitter'
+    days_until_due: number
+    reason: string
+  }
 }
 
 export async function POST() {
@@ -325,6 +337,22 @@ export async function POST() {
                   results.leadsUpdated++
                 }
 
+                // Update lead_emails with AI-classified email types
+                if (analysis.email_classifications?.length > 0) {
+                  console.log('[Sync] Classifying', analysis.email_classifications.length, 'emails for', lead.contact_name)
+                  for (const classification of analysis.email_classifications) {
+                    const { error: classifyError } = await supabase
+                      .from('lead_emails')
+                      .update({ email_type: classification.email_type })
+                      .eq('lead_id', lead.id)
+                      .eq('gmail_message_id', classification.gmail_message_id)
+
+                    if (classifyError) {
+                      console.error('[Sync] Email classify error:', classifyError.message, '| msg:', classification.gmail_message_id)
+                    }
+                  }
+                }
+
                 if (analysis.domain_insights && domainLeads.length > 0) {
                   for (const dl of domainLeads) {
                     await supabase.from('leads').update({
@@ -394,11 +422,6 @@ async function analyzeConversation(
   const directMessages = directThreads.flatMap(t => t.messages)
   if (directMessages.length === 0) return null
 
-  const directConvo = directMessages
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-    .map((m, i) => `[${i + 1}] ${m.direction === 'outbound' ? 'YOU →' : '← THEM'} | ${m.date}\nSubject: ${m.subject}\nFrom: ${m.from}\n${m.bodyPlainText.slice(0, 1500)}`)
-    .join('\n\n---\n\n')
-
   let domainContext = ''
   if (domainThreads.length > 0) {
     const domainMessages = domainThreads.flatMap(t => t.messages)
@@ -416,7 +439,10 @@ async function analyzeConversation(
 
   const systemPrompt = `You are an expert sales intelligence analyst for Rocoto, an AI agent security company.
 
-Read the FULL email conversation history and determine exactly where this relationship stands.
+Read the FULL email conversation history and determine:
+1. Where this relationship stands (pipeline stage)
+2. What TYPE each email is in the outreach sequence
+3. What the NEXT follow-up action should be
 
 Pipeline stages:
 - researched: Know about them, haven't emailed
@@ -430,13 +456,23 @@ Pipeline stages:
 - closed_lost: Said no, unsubscribed, asked to stop
 - no_response: Multiple follow-ups, zero response
 
+Email types for classification:
+- initial: The first cold outreach email
+- follow_up_1: Short bump (Day 4 style), references original email
+- follow_up_2: Lead magnet / value drop (Day 9 style), offers free resource
+- follow_up_3: Channel switch (Day 14 style), LinkedIn/Twitter DM
+- reply_response: Any reply to something they said
+- meeting_request: Email specifically about scheduling a meeting
+- lead_magnet: Sending a free resource, memo, or breakdown
+
 RULES:
 - The LATEST emails determine the stage
-- Meeting/call/demo mentioned → meeting_booked
-- "Let's circle back" or silence after interest → follow_up
-- "Not interested" / "remove me" → closed_lost
-- Commitment language ("let's do it", "send contract") → closed_won
-- Use domain conversations for company-wide context
+- Classify EVERY email in the conversation by reading its content and position
+- The first outbound cold email is always "initial"
+- Short bumps that reference the original are "follow_up_1"
+- Emails offering free resources/breakdowns without asking for a meeting are "follow_up_2" or "lead_magnet"
+- Messages on LinkedIn/Twitter or referencing channel switch are "follow_up_3"
+- For next_follow_up: figure out what has NOT been done yet in the sequence
 
 Respond with valid JSON only.`
 
@@ -446,8 +482,12 @@ ${leadContext}
 Current stage: ${lead.stage}
 
 === DIRECT EMAILS (chronological) ===
+Each email has a gmail_message_id in brackets. Use these IDs in email_classifications.
 
-${directConvo}
+${directMessages
+    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
+    .map((m, i) => `[${i + 1}] gmail_message_id: "${m.id}" | ${m.direction === 'outbound' ? 'YOU →' : '← THEM'} | ${m.date}\nSubject: ${m.subject}\nFrom: ${m.from}\n${m.bodyPlainText.slice(0, 1500)}`)
+    .join('\n\n---\n\n')}
 ${domainContext}
 
 JSON response:
@@ -459,7 +499,9 @@ JSON response:
   "next_step": "specific next action",
   "signals": [{"type": "positive|negative|neutral|action_needed", "signal": "what", "source": "which email"}],
   "reply_urgency": "immediate|soon|can_wait|none",
-  "domain_insights": "context from other people at the company, or null"
+  "domain_insights": "context from other people at the company, or null",
+  "email_classifications": [{"gmail_message_id": "actual_id_from_above", "email_type": "initial|follow_up_1|follow_up_2|follow_up_3|reply_response|meeting_request|lead_magnet"}],
+  "next_follow_up": {"type": "follow_up_1|follow_up_2|follow_up_3|break_up|reply_needed|none", "channel": "email|linkedin|twitter", "days_until_due": 0, "reason": "why this follow-up"}
 }`
 
   try {
