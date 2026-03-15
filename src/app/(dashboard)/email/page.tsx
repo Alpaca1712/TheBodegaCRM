@@ -46,8 +46,8 @@ export default function EmailPage() {
 
       if (res.ok && body.success) {
         const parts = []
-        if (body.newSummaries > 0) parts.push(`${body.newSummaries} new emails`)
-        if (body.leadsMatched > 0) parts.push(`${body.leadsMatched} leads matched`)
+        if (body.leadsScanned > 0) parts.push(`${body.leadsScanned} leads scanned`)
+        if (body.newEmails > 0) parts.push(`${body.newEmails} new emails`)
         if (body.leadsUpdated > 0) parts.push(`${body.leadsUpdated} leads updated`)
         if (body.pipelineChanges?.length > 0) {
           for (const change of body.pipelineChanges) {

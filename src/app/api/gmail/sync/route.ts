@@ -2,10 +2,10 @@ import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   refreshAccessToken,
-  fetchRecentMessages,
   buildConversationContext,
+  fetchThreadsByEmail,
+  fetchFullThread,
   extractEmailAddress,
-  extractDomain,
   type GmailThread,
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
@@ -60,6 +60,39 @@ export async function POST() {
 
     console.log('[Sync] Found', emailAccounts.length, 'email account(s):', emailAccounts.map(a => a.email_address))
 
+    // Fetch all leads with email addresses — these are the ONLY people we care about
+    const { data: leads, error: leadsError } = await supabase
+      .from('leads')
+      .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
+      .eq('user_id', user.id)
+      .not('contact_email', 'is', null)
+
+    if (leadsError) {
+      console.error('[Sync] Failed to fetch leads:', leadsError)
+      return NextResponse.json({ error: 'DB error fetching leads', detail: leadsError.message }, { status: 500 })
+    }
+
+    if (!leads?.length) {
+      console.log('[Sync] No leads with email addresses — nothing to sync')
+      return NextResponse.json({ success: true, message: 'No leads with email addresses to sync' })
+    }
+
+    console.log('[Sync] Found', leads.length, 'leads with emails:', leads.map(l => `${l.contact_name} <${l.contact_email}>`))
+
+    // Build a map of email → lead for quick lookup
+    const emailToLead = new Map<string, LeadRow>()
+    const domainToLeads = new Map<string, LeadRow[]>()
+    for (const lead of leads) {
+      if (!lead.contact_email) continue
+      emailToLead.set(lead.contact_email.toLowerCase(), lead as LeadRow)
+      const domain = lead.email_domain || lead.contact_email.split('@')[1]?.toLowerCase()
+      if (domain) {
+        const existing = domainToLeads.get(domain) || []
+        existing.push(lead as LeadRow)
+        domainToLeads.set(domain, existing)
+      }
+    }
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('active_org_id')
@@ -69,285 +102,229 @@ export async function POST() {
     const orgId = profile?.active_org_id || null
 
     const results = {
-      totalMessages: 0,
-      newSummaries: 0,
+      leadsScanned: leads.length,
+      leadsWithEmails: 0,
       leadsUpdated: 0,
-      leadsMatched: 0,
+      newEmails: 0,
       pipelineChanges: [] as Array<{ leadName: string; from: string; to: string; reason: string }>,
       errors: 0,
       debugLog: [] as string[],
-      accountResults: [] as Array<{ email: string; messagesFetched: number; newSummaries: number; newMessages: number; errors: number }>,
     }
 
     for (const account of emailAccounts) {
       let accessToken = account.access_token
-      const accountResult = { email: account.email_address, messagesFetched: 0, newSummaries: 0, newMessages: 0, errors: 0 }
 
       try {
         // Refresh token if needed
         const expiresAt = new Date(account.token_expires_at)
-        const now = new Date()
-        console.log('[Sync] Token expires at:', expiresAt.toISOString(), '| Now:', now.toISOString())
-
         if (expiresAt < new Date(Date.now() + 5 * 60 * 1000)) {
           console.log('[Sync] Refreshing token for', account.email_address)
+          const newTokens = await refreshAccessToken(account.refresh_token)
+          accessToken = newTokens.access_token
+          await supabase
+            .from('email_accounts')
+            .update({
+              access_token: newTokens.access_token,
+              token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
+            })
+            .eq('id', account.id)
+          console.log('[Sync] Token refreshed successfully')
+        }
+
+        // For each lead, search Gmail for threads with that person
+        for (const lead of leads) {
+          if (!lead.contact_email) continue
+
           try {
-            const newTokens = await refreshAccessToken(account.refresh_token)
-            accessToken = newTokens.access_token
-            await supabase
-              .from('email_accounts')
-              .update({ access_token: newTokens.access_token, token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString() })
-              .eq('id', account.id)
-            console.log('[Sync] Token refreshed successfully')
-          } catch (refreshErr) {
-            console.error('[Sync] Token refresh FAILED:', refreshErr)
-            results.debugLog.push(`Token refresh failed: ${refreshErr}`)
-            accountResult.errors++
-            results.errors++
-            results.accountResults.push(accountResult)
-            continue
-          }
-        }
+            console.log('[Sync] Searching Gmail for threads with', lead.contact_name, '<' + lead.contact_email + '>')
 
-        // Fetch recent messages
-        console.log('[Sync] Fetching recent messages for', account.email_address)
-        const messages = await fetchRecentMessages(accessToken, 50)
-        accountResult.messagesFetched = messages.length
-        results.totalMessages += messages.length
-        console.log('[Sync] Fetched', messages.length, 'messages from Gmail')
+            const threadIds = await fetchThreadsByEmail(accessToken, lead.contact_email, 15)
 
-        if (messages.length > 0) {
-          console.log('[Sync] Sample messages:', messages.slice(0, 3).map(m => ({
-            id: m.id,
-            from: m.from,
-            to: m.to,
-            subject: m.subject?.slice(0, 50),
-          })))
-        }
-
-        // Get already-processed message IDs
-        const existingIds = messages.length > 0
-          ? await getExistingMessageIds(supabase, user.id, messages.map(m => m.id))
-          : new Set<string>()
-
-        console.log('[Sync] Already processed:', existingIds.size, 'of', messages.length, 'messages')
-
-        // Group new messages by thread to avoid re-analyzing the same thread
-        const threadMap = new Map<string, typeof messages>()
-        for (const msg of messages) {
-          if (existingIds.has(msg.id)) continue
-          const existing = threadMap.get(msg.threadId) || []
-          existing.push(msg)
-          threadMap.set(msg.threadId, existing)
-        }
-
-        const newMessageCount = Array.from(threadMap.values()).reduce((s, msgs) => s + msgs.length, 0)
-        accountResult.newMessages = newMessageCount
-        console.log('[Sync] New messages to process:', newMessageCount, 'across', threadMap.size, 'threads')
-
-        if (threadMap.size === 0) {
-          console.log('[Sync] Nothing new to process — all messages already synced')
-          results.debugLog.push('All messages already synced, nothing new')
-        }
-
-        // Process each thread that has new messages
-        for (const [threadId, newMessages] of threadMap) {
-          try {
-            // Collect all external email addresses from the thread (not our own)
-            const myEmail = account.email_address.toLowerCase()
-            const externalEmails = new Set<string>()
-
-            for (const msg of newMessages) {
-              const from = extractEmailAddress(msg.from)
-              if (from && from.toLowerCase() !== myEmail) externalEmails.add(from.toLowerCase())
-              for (const toAddr of (msg.to || [])) {
-                const to = extractEmailAddress(toAddr)
-                if (to && to.toLowerCase() !== myEmail) externalEmails.add(to.toLowerCase())
-              }
-            }
-
-            console.log('[Sync] Thread', threadId.slice(0, 8) + '...', '| External emails:', Array.from(externalEmails), '| Messages:', newMessages.length)
-
-            if (externalEmails.size === 0) {
-              console.log('[Sync] Skipping thread — no external emails found')
+            if (threadIds.length === 0) {
+              console.log('[Sync] No Gmail threads found for', lead.contact_name)
+              results.debugLog.push(`${lead.contact_name}: no threads found`)
               continue
             }
 
-            // Try matching each external address to a lead (first match wins)
-            let lead: LeadRow | null = null
-            let domainLeads: LeadRow[] = []
-            for (const extEmail of externalEmails) {
-              const match = await findLeadsForEmail(supabase, user.id, extEmail)
-              console.log('[Sync] Lead lookup for', extEmail, '→', match.lead ? `MATCH: ${match.lead.contact_name} (${match.lead.contact_email})` : 'no match', '| Domain leads:', match.domainLeads.length)
-              if (match.lead) {
-                lead = match.lead
-                domainLeads = match.domainLeads
-                break
-              }
-              if (match.domainLeads.length > 0 && domainLeads.length === 0) {
-                domainLeads = match.domainLeads
-              }
-            }
+            console.log('[Sync]', lead.contact_name, ':', threadIds.length, 'threads found')
+            results.leadsWithEmails++
 
-            if (lead) {
-              results.leadsMatched++
-              results.debugLog.push(`Matched thread ${threadId.slice(0, 8)} → ${lead.contact_name} (${lead.contact_email})`)
-            } else {
-              results.debugLog.push(`No lead match for thread ${threadId.slice(0, 8)} | emails: ${Array.from(externalEmails).join(', ')}`)
-            }
-
-            // Store each new message as an email summary
-            for (const msg of newMessages) {
-              const msgFromEmail = extractEmailAddress(msg.from)
-              const isFromMe = msgFromEmail?.toLowerCase() === account.email_address.toLowerCase()
-
-              const { error: insertError } = await supabase
-                .from('email_summaries')
-                .insert({
-                  user_id: user.id,
-                  org_id: orgId,
-                  email_account_id: account.id,
-                  gmail_message_id: msg.id,
-                  thread_id: msg.threadId,
-                  subject: msg.subject,
-                  from_address: msgFromEmail || msg.from,
-                  to_addresses: msg.to,
-                  date: new Date(msg.date).toISOString(),
-                  snippet: msg.snippet,
-                  lead_id: lead?.id || null,
-                  is_read: false,
-                })
-
-              if (insertError) {
-                console.error('[Sync] email_summaries insert error:', insertError.message, '| gmail_message_id:', msg.id)
-              } else {
-                accountResult.newSummaries++
-                results.newSummaries++
-              }
-
-              // Also store in lead_emails if we have a matching lead
-              if (lead) {
-                const { error: leadEmailError } = await supabase.from('lead_emails').insert({
-                  lead_id: lead.id,
-                  user_id: user.id,
-                  email_type: isFromMe ? 'initial' : 'reply_response',
-                  subject: msg.subject || '(no subject)',
-                  body: msg.snippet,
-                  direction: isFromMe ? 'outbound' : 'inbound',
-                  gmail_message_id: msg.id,
-                  gmail_thread_id: msg.threadId,
-                  from_address: msgFromEmail || undefined,
-                  to_address: msg.to?.[0] || undefined,
-                  ...(isFromMe
-                    ? { sent_at: new Date(msg.date).toISOString() }
-                    : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.snippet }),
-                })
-
-                if (leadEmailError) {
-                  console.error('[Sync] lead_emails insert error:', leadEmailError.message, '| lead:', lead.contact_name)
-                }
-              }
-            }
-
-            // If we matched a lead, build full context and run AI analysis
-            if (lead && lead.contact_email) {
+            // Fetch full threads and store new messages
+            let newMessageCount = 0
+            for (const threadId of threadIds) {
               try {
-                console.log('[Sync] Building conversation context for', lead.contact_name, '(', lead.contact_email, ')')
-                const context = await buildConversationContext(
-                  accessToken,
-                  account.email_address,
-                  lead.contact_email,
-                  { includeDomainContext: true, maxThreads: 10 }
-                )
+                const thread = await fetchFullThread(accessToken, threadId, account.email_address)
 
-                console.log('[Sync] Context built:', context.directThreads.length, 'direct threads,', context.domainThreads.length, 'domain threads,', context.totalMessages, 'total messages')
+                for (const msg of thread.messages) {
+                  // Check if we already stored this message
+                  const { data: existing } = await supabase
+                    .from('email_summaries')
+                    .select('id')
+                    .eq('user_id', user.id)
+                    .eq('gmail_message_id', msg.id)
+                    .limit(1)
+                    .maybeSingle()
 
-                const analysis = await analyzeConversation(lead, context.directThreads, context.domainThreads)
+                  if (existing) continue
 
-                if (analysis) {
-                  console.log('[Sync] AI analysis for', lead.contact_name, ':', {
-                    suggested_stage: analysis.suggested_stage,
-                    confidence: analysis.stage_confidence,
-                    reason: analysis.stage_reason,
-                    urgency: analysis.reply_urgency,
+                  const msgFromEmail = extractEmailAddress(msg.from)
+                  const isFromMe = msg.direction === 'outbound'
+
+                  // Store in email_summaries
+                  const { error: insertError } = await supabase
+                    .from('email_summaries')
+                    .insert({
+                      user_id: user.id,
+                      org_id: orgId,
+                      email_account_id: account.id,
+                      gmail_message_id: msg.id,
+                      thread_id: msg.threadId,
+                      subject: msg.subject,
+                      from_address: msgFromEmail || msg.from,
+                      to_addresses: msg.to,
+                      date: new Date(msg.date).toISOString(),
+                      snippet: msg.snippet,
+                      lead_id: lead.id,
+                      is_read: false,
+                    })
+
+                  if (insertError) {
+                    console.error('[Sync] email_summaries insert error:', insertError.message, '| msg:', msg.id)
+                  } else {
+                    newMessageCount++
+                    results.newEmails++
+                  }
+
+                  // Store in lead_emails
+                  const { error: leadEmailError } = await supabase.from('lead_emails').insert({
+                    lead_id: lead.id,
+                    user_id: user.id,
+                    email_type: isFromMe ? 'initial' : 'reply_response',
+                    subject: msg.subject || '(no subject)',
+                    body: msg.snippet,
+                    direction: isFromMe ? 'outbound' : 'inbound',
+                    gmail_message_id: msg.id,
+                    gmail_thread_id: msg.threadId,
+                    from_address: msgFromEmail || undefined,
+                    to_address: msg.to?.[0] || undefined,
+                    ...(isFromMe
+                      ? { sent_at: new Date(msg.date).toISOString() }
+                      : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.snippet }),
                   })
 
-                  const previousStage = lead.stage
-
-                  const inboundCount = context.directThreads.reduce(
-                    (sum, t) => sum + t.messages.filter(m => m.direction === 'inbound').length, 0
-                  )
-                  const outboundCount = context.directThreads.reduce(
-                    (sum, t) => sum + t.messages.filter(m => m.direction === 'outbound').length, 0
-                  )
-
-                  const lastInbound = context.directThreads
-                    .flatMap(t => t.messages.filter(m => m.direction === 'inbound'))
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-
-                  const lastOutbound = context.directThreads
-                    .flatMap(t => t.messages.filter(m => m.direction === 'outbound'))
-                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
-
-                  const shouldUpdate = shouldUpdateStage(previousStage, analysis.suggested_stage, analysis.stage_confidence)
-                  console.log('[Sync] Stage update?', { previousStage, suggestedStage: analysis.suggested_stage, confidence: analysis.stage_confidence, shouldUpdate })
-
-                  const updatePayload: Record<string, unknown> = {
-                    conversation_summary: analysis.conversation_summary,
-                    conversation_next_step: analysis.next_step,
-                    conversation_signals: analysis.signals.map(s => ({
-                      ...s,
-                      detected_at: new Date().toISOString(),
-                    })),
-                    thread_count: context.directThreads.length,
-                    total_emails_in: inboundCount,
-                    total_emails_out: outboundCount,
-                    last_contacted_at: new Date().toISOString(),
-                    ...(lastInbound ? { last_inbound_at: new Date(lastInbound.date).toISOString() } : {}),
-                    ...(lastOutbound ? { last_outbound_at: new Date(lastOutbound.date).toISOString() } : {}),
+                  if (leadEmailError) {
+                    console.error('[Sync] lead_emails insert error:', leadEmailError.message)
                   }
-
-                  if (shouldUpdate) {
-                    updatePayload.stage = analysis.suggested_stage
-                    updatePayload.auto_stage_reason = analysis.stage_reason
-
-                    results.pipelineChanges.push({
-                      leadName: lead.contact_name,
-                      from: previousStage,
-                      to: analysis.suggested_stage,
-                      reason: analysis.stage_reason,
-                    })
-                  }
-
-                  const { error: updateError } = await supabase.from('leads').update(updatePayload).eq('id', lead.id)
-                  if (updateError) {
-                    console.error('[Sync] Lead update error:', updateError.message, '| lead:', lead.contact_name)
-                  } else {
-                    console.log('[Sync] Lead updated:', lead.contact_name, shouldUpdate ? `stage: ${previousStage} → ${analysis.suggested_stage}` : '(stage unchanged)')
-                    results.leadsUpdated++
-                  }
-
-                  if (analysis.domain_insights && domainLeads.length > 0) {
-                    for (const dl of domainLeads) {
-                      await supabase.from('leads').update({
-                        notes: dl.notes
-                          ? `${dl.notes}\n\n[Auto] Domain intel: ${analysis.domain_insights}`
-                          : `[Auto] Domain intel: ${analysis.domain_insights}`,
-                      }).eq('id', dl.id)
-                    }
-                  }
-                } else {
-                  console.log('[Sync] AI analysis returned null for', lead.contact_name, '(no direct messages?)')
                 }
-              } catch (analysisError) {
-                console.error('[Sync] Conversation analysis failed for lead:', lead.contact_name, analysisError)
-                results.debugLog.push(`Analysis failed for ${lead.contact_name}: ${analysisError}`)
+              } catch (threadErr) {
+                console.error('[Sync] Thread fetch error:', threadId, threadErr)
               }
             }
-          } catch (threadError) {
-            console.error('[Sync] Error processing thread:', threadId, threadError)
-            results.debugLog.push(`Thread ${threadId.slice(0, 8)} error: ${threadError}`)
-            accountResult.errors++
+
+            console.log('[Sync]', lead.contact_name, ':', newMessageCount, 'new messages stored')
+            results.debugLog.push(`${lead.contact_name}: ${threadIds.length} threads, ${newMessageCount} new messages`)
+
+            // Build full conversation context and run AI analysis
+            try {
+              console.log('[Sync] Running AI analysis for', lead.contact_name)
+              const context = await buildConversationContext(
+                accessToken,
+                account.email_address,
+                lead.contact_email,
+                { includeDomainContext: true, maxThreads: 10 }
+              )
+
+              console.log('[Sync] Context:', context.directThreads.length, 'direct threads,', context.domainThreads.length, 'domain threads,', context.totalMessages, 'total messages')
+
+              // Get domain leads (other people at the same company)
+              const domain = lead.email_domain || lead.contact_email.split('@')[1]?.toLowerCase()
+              const domainLeads = (domainToLeads.get(domain || '') || []).filter(dl => dl.id !== lead.id)
+
+              const analysis = await analyzeConversation(lead as LeadRow, context.directThreads, context.domainThreads)
+
+              if (analysis) {
+                console.log('[Sync] AI result for', lead.contact_name, ':', {
+                  suggested_stage: analysis.suggested_stage,
+                  confidence: analysis.stage_confidence,
+                  reason: analysis.stage_reason,
+                })
+
+                const previousStage = lead.stage
+
+                const inboundCount = context.directThreads.reduce(
+                  (sum, t) => sum + t.messages.filter(m => m.direction === 'inbound').length, 0
+                )
+                const outboundCount = context.directThreads.reduce(
+                  (sum, t) => sum + t.messages.filter(m => m.direction === 'outbound').length, 0
+                )
+
+                const lastInbound = context.directThreads
+                  .flatMap(t => t.messages.filter(m => m.direction === 'inbound'))
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+
+                const lastOutbound = context.directThreads
+                  .flatMap(t => t.messages.filter(m => m.direction === 'outbound'))
+                  .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())[0]
+
+                const shouldUpdate = shouldUpdateStage(previousStage, analysis.suggested_stage, analysis.stage_confidence)
+                console.log('[Sync] Stage update?', { previousStage, suggested: analysis.suggested_stage, confidence: analysis.stage_confidence, shouldUpdate })
+
+                const updatePayload: Record<string, unknown> = {
+                  conversation_summary: analysis.conversation_summary,
+                  conversation_next_step: analysis.next_step,
+                  conversation_signals: analysis.signals.map(s => ({
+                    ...s,
+                    detected_at: new Date().toISOString(),
+                  })),
+                  thread_count: context.directThreads.length,
+                  total_emails_in: inboundCount,
+                  total_emails_out: outboundCount,
+                  last_contacted_at: new Date().toISOString(),
+                  ...(lastInbound ? { last_inbound_at: new Date(lastInbound.date).toISOString() } : {}),
+                  ...(lastOutbound ? { last_outbound_at: new Date(lastOutbound.date).toISOString() } : {}),
+                }
+
+                if (shouldUpdate) {
+                  updatePayload.stage = analysis.suggested_stage
+                  updatePayload.auto_stage_reason = analysis.stage_reason
+
+                  results.pipelineChanges.push({
+                    leadName: lead.contact_name,
+                    from: previousStage,
+                    to: analysis.suggested_stage,
+                    reason: analysis.stage_reason,
+                  })
+                }
+
+                const { error: updateError } = await supabase.from('leads').update(updatePayload).eq('id', lead.id)
+                if (updateError) {
+                  console.error('[Sync] Lead update error:', updateError.message, '| lead:', lead.contact_name)
+                } else {
+                  console.log('[Sync] Lead updated:', lead.contact_name, shouldUpdate ? `stage: ${previousStage} → ${analysis.suggested_stage}` : '(stage unchanged)')
+                  results.leadsUpdated++
+                }
+
+                if (analysis.domain_insights && domainLeads.length > 0) {
+                  for (const dl of domainLeads) {
+                    await supabase.from('leads').update({
+                      notes: dl.notes
+                        ? `${dl.notes}\n\n[Auto] Domain intel: ${analysis.domain_insights}`
+                        : `[Auto] Domain intel: ${analysis.domain_insights}`,
+                    }).eq('id', dl.id)
+                  }
+                }
+              } else {
+                console.log('[Sync] AI analysis returned null for', lead.contact_name)
+                results.debugLog.push(`${lead.contact_name}: AI returned null (no direct messages in context)`)
+              }
+            } catch (analysisError) {
+              console.error('[Sync] Analysis failed for', lead.contact_name, ':', analysisError)
+              results.debugLog.push(`${lead.contact_name}: analysis error — ${analysisError}`)
+              results.errors++
+            }
+          } catch (leadError) {
+            console.error('[Sync] Error processing lead', lead.contact_name, ':', leadError)
+            results.debugLog.push(`${lead.contact_name}: error — ${leadError}`)
             results.errors++
           }
         }
@@ -358,13 +335,10 @@ export async function POST() {
           .eq('id', account.id)
 
       } catch (accountError) {
-        console.error('[Sync] Error syncing account', account.email_address, accountError)
+        console.error('[Sync] Account error:', account.email_address, accountError)
         results.debugLog.push(`Account error (${account.email_address}): ${accountError}`)
-        accountResult.errors++
         results.errors++
       }
-
-      results.accountResults.push(accountResult)
     }
 
     console.log('[Sync] ===== Sync complete =====', JSON.stringify(results, null, 2))
@@ -376,20 +350,6 @@ export async function POST() {
 }
 
 // ─── Helpers ───
-
-async function getExistingMessageIds(
-  supabase: SupabaseClient,
-  userId: string,
-  messageIds: string[]
-): Promise<Set<string>> {
-  if (messageIds.length === 0) return new Set()
-  const { data } = await supabase
-    .from('email_summaries')
-    .select('gmail_message_id')
-    .eq('user_id', userId)
-    .in('gmail_message_id', messageIds)
-  return new Set(data?.map(row => row.gmail_message_id) || [])
-}
 
 interface LeadRow {
   id: string
@@ -403,43 +363,6 @@ interface LeadRow {
   attack_surface_notes: string | null
   investment_thesis_notes: string | null
   notes: string | null
-}
-
-async function findLeadsForEmail(
-  supabase: SupabaseClient,
-  userId: string,
-  fromEmail: string
-): Promise<{ lead: LeadRow | null; domainLeads: LeadRow[] }> {
-  const domain = extractDomain(fromEmail)
-
-  const { data: exactMatch, error: exactError } = await supabase
-    .from('leads')
-    .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
-    .eq('user_id', userId)
-    .eq('contact_email', fromEmail)
-    .limit(1)
-    .maybeSingle()
-
-  if (exactError) {
-    console.error('[Sync] Lead exact match query error:', exactError.message, '| email:', fromEmail)
-  }
-
-  const { data: domainMatches, error: domainError } = await supabase
-    .from('leads')
-    .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
-    .eq('user_id', userId)
-    .eq('email_domain', domain)
-    .neq('contact_email', fromEmail)
-    .limit(10)
-
-  if (domainError) {
-    console.error('[Sync] Lead domain match query error:', domainError.message, '| domain:', domain)
-  }
-
-  return {
-    lead: exactMatch as LeadRow | null,
-    domainLeads: (domainMatches || []) as LeadRow[],
-  }
 }
 
 async function analyzeConversation(
