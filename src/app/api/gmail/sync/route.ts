@@ -102,12 +102,35 @@ export async function POST() {
         // Process each thread that has new messages
         for (const [threadId, newMessages] of threadMap) {
           try {
-            const firstMsg = newMessages[0]
-            const fromEmail = extractEmailAddress(firstMsg.from)
-            if (!fromEmail) continue
+            // Collect all external email addresses from the thread (not our own)
+            const myEmail = account.email_address.toLowerCase()
+            const externalEmails = new Set<string>()
 
-            // Find matching lead(s) by email or domain
-            const { lead, domainLeads } = await findLeadsForEmail(supabase, user.id, fromEmail)
+            for (const msg of newMessages) {
+              const from = extractEmailAddress(msg.from)
+              if (from && from.toLowerCase() !== myEmail) externalEmails.add(from.toLowerCase())
+              for (const toAddr of (msg.to || [])) {
+                const to = extractEmailAddress(toAddr)
+                if (to && to.toLowerCase() !== myEmail) externalEmails.add(to.toLowerCase())
+              }
+            }
+
+            if (externalEmails.size === 0) continue
+
+            // Try matching each external address to a lead (first match wins)
+            let lead: LeadRow | null = null
+            let domainLeads: LeadRow[] = []
+            for (const extEmail of externalEmails) {
+              const match = await findLeadsForEmail(supabase, user.id, extEmail)
+              if (match.lead) {
+                lead = match.lead
+                domainLeads = match.domainLeads
+                break
+              }
+              if (match.domainLeads.length > 0 && domainLeads.length === 0) {
+                domainLeads = match.domainLeads
+              }
+            }
 
             // Store each new message as an email summary
             for (const msg of newMessages) {
