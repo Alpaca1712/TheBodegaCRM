@@ -23,6 +23,16 @@ const updateSchema = z.object({
   priority: z.enum(PRIORITIES).optional(),
   notes: z.string().optional().nullable(),
   last_contacted_at: z.string().optional().nullable(),
+  // Conversation intelligence (updated by AI analysis after interactions)
+  conversation_summary: z.string().optional().nullable(),
+  conversation_next_step: z.string().optional().nullable(),
+  conversation_signals: z.array(z.object({
+    type: z.enum(['positive', 'negative', 'neutral', 'action_needed']),
+    signal: z.string(),
+    source: z.string(),
+    detected_at: z.string().optional(),
+  })).optional(),
+  auto_stage_reason: z.string().optional().nullable(),
 })
 
 export async function GET(
@@ -51,6 +61,12 @@ export async function GET(
       .eq('lead_id', id)
       .order('created_at', { ascending: true })
 
+    const { data: interactions } = await supabase
+      .from('lead_interactions')
+      .select('*')
+      .eq('lead_id', id)
+      .order('occurred_at', { ascending: true })
+
     // Fetch related leads at the same company (by domain)
     let relatedLeads: Array<{ id: string; contact_name: string; contact_email: string | null; stage: string; type: string }> = []
     const domain = lead.email_domain || (lead.contact_email ? lead.contact_email.split('@')[1] : null)
@@ -65,7 +81,7 @@ export async function GET(
       relatedLeads = related || []
     }
 
-    return NextResponse.json({ lead, emails: emails || [], relatedLeads })
+    return NextResponse.json({ lead, emails: emails || [], interactions: interactions || [], relatedLeads })
   } catch (error) {
     console.error('GET /api/leads/[id] error:', error)
     return NextResponse.json(

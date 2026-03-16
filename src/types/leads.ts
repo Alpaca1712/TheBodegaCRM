@@ -215,6 +215,58 @@ export const leadFormSchema = z.object({
 
 export type LeadFormValues = z.infer<typeof leadFormSchema>
 
+// --- Interaction tracking (LinkedIn, calls, etc.) ---
+
+export const INTERACTION_CHANNELS = ['linkedin', 'twitter', 'phone', 'in_person', 'other'] as const
+export type InteractionChannel = (typeof INTERACTION_CHANNELS)[number]
+
+export const INTERACTION_TYPES = [
+  'dm_sent', 'dm_received', 'connection_request', 'connection_accepted',
+  'comment', 'post_like', 'post_share', 'call', 'meeting', 'other',
+] as const
+export type InteractionType = (typeof INTERACTION_TYPES)[number]
+
+export const CHANNEL_LABELS: Record<InteractionChannel, string> = {
+  linkedin: 'LinkedIn',
+  twitter: 'Twitter/X',
+  phone: 'Phone',
+  in_person: 'In Person',
+  other: 'Other',
+}
+
+export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
+  dm_sent: 'DM Sent',
+  dm_received: 'DM Received',
+  connection_request: 'Connection Request',
+  connection_accepted: 'Connection Accepted',
+  comment: 'Comment',
+  post_like: 'Post Like',
+  post_share: 'Post Share',
+  call: 'Call',
+  meeting: 'Meeting',
+  other: 'Other',
+}
+
+export const CHANNEL_INTERACTION_TYPES: Record<InteractionChannel, InteractionType[]> = {
+  linkedin: ['dm_sent', 'dm_received', 'connection_request', 'connection_accepted', 'comment', 'post_like', 'post_share'],
+  twitter: ['dm_sent', 'dm_received', 'comment', 'post_like', 'post_share'],
+  phone: ['call'],
+  in_person: ['meeting'],
+  other: ['other'],
+}
+
+export interface LeadInteraction {
+  id: string
+  lead_id: string
+  user_id: string
+  channel: InteractionChannel
+  interaction_type: InteractionType
+  content: string | null
+  summary: string | null
+  occurred_at: string
+  created_at: string
+}
+
 export interface PipelineStats {
   stage: PipelineStage
   count: number

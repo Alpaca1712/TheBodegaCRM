@@ -79,7 +79,25 @@ export async function researchWithWebSearch(
 }
 
 /**
+ * Try to extract a JSON object from text that may contain prose around it.
+ * Finds the outermost { ... } pair by tracking brace depth.
+ */
+function extractJSON(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start === -1) return null
+  let depth = 0
+  for (let i = start; i < text.length; i++) {
+    if (text[i] === '{') depth++
+    else if (text[i] === '}') depth--
+    if (depth === 0) return text.slice(start, i + 1)
+  }
+  return null
+}
+
+/**
  * Like researchWithWebSearch, but parses the final text as JSON.
+ * Uses a three-layer strategy: direct parse, regex extraction, then
+ * a cheap AI call to reformat prose into JSON as a last resort.
  */
 export async function researchWithWebSearchJSON<T>(
   systemPrompt: string,
@@ -88,5 +106,28 @@ export async function researchWithWebSearchJSON<T>(
 ): Promise<T> {
   const result = await researchWithWebSearch(systemPrompt, userPrompt, options)
   const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  return JSON.parse(cleaned)
+
+  try {
+    return JSON.parse(cleaned)
+  } catch {
+    // Claude wrapped JSON in prose — try extracting the object
+  }
+
+  const jsonStr = extractJSON(cleaned)
+  if (jsonStr) {
+    try {
+      return JSON.parse(jsonStr)
+    } catch {
+      // Malformed JSON inside braces — fall through to AI extraction
+    }
+  }
+
+  // Last resort: ask a fast model to extract/reformat the JSON
+  const extracted = await generateCompletion(
+    'Extract the JSON object from the following text. Return ONLY the raw JSON object, no markdown fences, no explanation, no prose. If the text contains research findings but no JSON, reformat the findings into the JSON structure described in the text.',
+    result,
+    { maxTokens: 4096, temperature: 0 }
+  )
+  const extractedCleaned = extracted.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  return JSON.parse(extractedCleaned)
 }
