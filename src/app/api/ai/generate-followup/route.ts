@@ -33,20 +33,30 @@ const requestSchema = z.object({
   followUpNumber: z.number().int().min(1).max(4),
 })
 
-const SYSTEM_PROMPT = `You are writing a follow-up email from Daniel Chalco, co-founder of Rocoto. Rocoto is an autonomous AI agent that hacks other AI agents.
+const SYSTEM_PROMPT = `You are Daniel Chalco writing a follow-up. Rocoto is an AI agent that hacks other AI agents.
 
-You have access to the FULL conversation history, deep research notes, and SMYKM hooks for this lead. Use ALL of this context to write the most personalized, cheeky, memorable follow-up possible.
+You have the FULL conversation history, deep research, and SMYKM hooks. Your job: write a follow-up so short and so personally specific that they HAVE to respond.
 
-CRITICAL RULES:
+GOLDEN RULE: Each follow-up is SHORTER than the last. If the initial email was 100 words, follow-up #1 is 40-60 words, #2 is 30-50, #3 is 20-30, break-up is 15-25.
+
+TONE: Witty, cheeky, slightly funny. You're the founder who did way too much homework and isn't afraid to show it. Make them smile. Make them think "okay this person is clever." Never desperate, never corporate.
+
+FORMATTING:
+- Always start the body with "Hello [First Name]," on its own line (for email follow-ups). For LinkedIn/Twitter DMs, use "Hey [First Name]," instead.
+- Always end email follow-ups with exactly:
+Best,
+Daniel Chalco
+CEO of Rocoto
+- For LinkedIn/Twitter DMs, just end with "Daniel" or no sign-off.
+
+HARD RULES:
 - Reply on the same thread (Re: original subject)
-- No em dashes. Use commas, periods, or "and"
-- No AI slop: no "the question nobody's asking," "in today's landscape," "at the intersection of," "game-changer," "revolutionize"
-- SHORTER than the original email. Follow-ups get progressively shorter.
-- Human and casual. Write like a founder texting another founder.
-- Reference something SPECIFIC from the research or their background — not generic filler
-- Be cheeky and memorable. The goal is to make them smile or think "this person is clever"
-- Use the SMYKM hooks — these are details only this person would recognize
-- If you have conversation intel or AI summary, use it to understand where the relationship stands
+- No em dashes ever
+- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that"
+- Use a DIFFERENT SMYKM hook than previous emails. Don't recycle.
+- One paragraph. Maybe two short ones. Never three.
+- The SMYKM reference should make them think "okay HOW does this person know that"
+- If they replied, match their energy and length exactly
 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "...", "channel": "email|linkedin|twitter"}`
@@ -114,77 +124,70 @@ Stage: ${lead.stage}`)
     const lastInbound = [...emailThread].reverse().find(e => e.direction === 'inbound')
     return `${context}
 
-=== TASK ===
-They REPLIED. Their latest message is above in the thread.
+=== TASK: THEY REPLIED ===
+Match their length EXACTLY. If they wrote 2 sentences, you write 2 sentences.
 
-Use Hormozi's ACA framework to respond:
-- Acknowledge: Mirror back what they said in your own words
-- Compliment: Tie it to a positive character trait (not sycophantic — genuine)
-- Ask: Lead the conversation toward next steps
+Hormozi ACA framework:
+- Acknowledge what they said (mirror, don't parrot)
+- Compliment a character trait (genuine, not sycophantic)
+- Ask toward next steps
 
-If they asked for more info: ${lead.type === 'investor' ? 'offer to send the one-page memo' : lead.type === 'partnership' ? 'offer to send a partnership overview' : 'offer a specific breakdown of their vulnerabilities'}
-If they said "let's chat": suggest they pick a time. "What works for you? I'll send over an invite."
-If they said "not right now": thank them, leave the door open. Be graceful.
+${lead.type === 'investor' ? 'If they want more info: "I have a one-pager that says it better than I can. Want me to send it?"' : lead.type === 'partnership' ? 'If they want more info: "I have a quick overview of how this works together. Want me to send it?"' : 'If they want more info: "I put together a breakdown specific to [their product]. Want me to send it?"'}
+If "let's chat": "What works for you? I'll send an invite."
+If "not now": Be graceful. One sentence. Door open.
 
-Their reply: "${lastInbound?.body || ''}"
-
-Keep it SHORT. Match the length and energy of their reply. Use a SMYKM hook if you can work one in naturally.`
+Weave in a SMYKM hook if it fits naturally. Don't force it.
+MAX: 40-60 words.`
   }
 
   if (followUpNumber === 1) {
     return `${context}
 
 === TASK: FOLLOW-UP #1 (Day 4 — The Bump) ===
-- 2-3 sentences MAX
-- Reference the original email briefly
-- Add ONE new piece of value — use something from the research or SMYKM hooks that you DIDN'T use in the original email
-- Be cheeky. Make them remember you.
-- Don't repeat the pitch. They already know what Rocoto does.
-- If you found something new about their company (a blog post, a product update, a vulnerability pattern), reference it specifically.`
+40-60 words. Two sentences, maybe three.
+- Do NOT reference the original email ("as I mentioned," "following up on my last email"). They know.
+- Lead with a NEW SMYKM hook you didn't use before. Something you found about them or their company that's interesting, funny, or impressive.
+- Pivot to value in one sentence. Something new, not a pitch repeat.
+- Be the person they'd want to grab coffee with.`
   }
 
   if (followUpNumber === 2) {
     const typeSpecific = lead.type === 'investor'
-      ? `This is the Memo Drop. Offer to send the one-page investor memo.
-- Frame it as "easier than a cold email to get a feel for the opportunity"
-- Don't ask for a meeting. Just deliver value.`
+      ? `Offer the one-page memo. Frame it casually: "easier to skim than another email from me."`
       : lead.type === 'partnership'
-      ? `This is the Partnership Overview Drop. Offer a brief overview of how Rocoto complements their business.
-- Frame it around mutual value — what's in it for THEM
-- Don't ask for a meeting. Just deliver value.`
-      : `This is the Lead Magnet Drop. Offer a specific free resource.
-- Use the attack surface notes to offer something concrete: "I put together a breakdown of the top 3 ways [their specific agent type] can be manipulated through [their specific channel]"
-- Don't ask for a meeting. Just deliver value.
-- The more specific to THEIR product, the better.`
+      ? `Offer a quick overview of the mutual value. Frame it around what's in it for THEM.`
+      : `Offer something concrete using their attack surface notes. "I put together a breakdown of how [their specific agent] can be manipulated through [their specific channel]. Want it?"`
 
     return `${context}
 
 === TASK: FOLLOW-UP #2 (Day 9 — Value Drop) ===
+30-50 words. Two sentences.
 ${typeSpecific}
-- Use a SMYKM hook you haven't used yet
-- Be brief. 3-4 sentences max.`
+- New SMYKM hook. Don't recycle.
+- Don't ask for a meeting. Just offer the thing.
+- Slightly funny or clever framing. Not corporate.`
   }
 
   if (followUpNumber === 3) {
     return `${context}
 
 === TASK: FOLLOW-UP #3 (Day 14 — Channel Switch) ===
-- Write for LinkedIn DM or Twitter DM, NOT email
-- 2-3 sentences MAX. DMs are short.
-- Reference that you emailed them. Acknowledge they're busy.
-- Use a SMYKM hook — something personal that shows you're not just mass-blasting
+Write for LinkedIn DM or Twitter DM. NOT email.
+20-30 words. Two sentences max. DMs are SHORT.
+- Acknowledge you emailed. Don't apologize for it.
+- One SMYKM hook that proves you're not mass-blasting
 - Offer value, not a meeting
-- Be human. "Hey [Name], I sent you a note about AI agent security a couple weeks ago..." tone.`
+- Tone: casual, like you're DMing someone you met at a conference`
   }
 
   return `${context}
 
-=== TASK: BREAK-UP EMAIL (Day 21+ — The Graceful Exit) ===
-- Last email. Give them an easy out.
-- Be graceful and memorable. Leave the door open.
-- 2-3 sentences max.
-- Optional: one final cheeky reference to something from their background
-- Tone: "Hey [Name], I've reached out a couple of times and I know you're busy. If [specific thing about their situation] isn't making AI security a priority right now, totally understand. If it ever becomes one, I'm easy to find."`
+=== TASK: BREAK-UP (Day 21+ — The Graceful Exit) ===
+15-25 words. Two sentences max.
+- Give them an easy out. Be memorable.
+- One final cheeky SMYKM reference if it fits
+- Leave the door open without being needy
+- Example energy: "If [their specific situation] ever makes AI security a thing, you know where to find me."`
 }
 
 export async function POST(request: NextRequest) {
@@ -203,8 +206,8 @@ export async function POST(request: NextRequest) {
       body: string
       channel: 'email' | 'linkedin' | 'twitter'
     }>(SYSTEM_PROMPT, buildFullContext(validation.data), {
-      temperature: 0.8,
-      maxTokens: 800,
+      temperature: 0.9,
+      maxTokens: 400,
     })
 
     return NextResponse.json(result)
