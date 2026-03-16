@@ -51,8 +51,8 @@ CEO of Rocoto
 
 HARD RULES:
 - Reply on the same thread (Re: original subject)
-- No em dashes ever
-- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that"
+- ABSOLUTELY NO EM DASHES. Never use the character "\u2014" or "\u2013". Use commas, periods, "and", or parentheses instead. This is the #1 rule. If you use a single em dash the email is rejected.
+- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that," "fascinating intersection"
 - Use a DIFFERENT SMYKM hook than previous emails. Don't recycle.
 - One paragraph. Maybe two short ones. Never three.
 - The SMYKM reference should make them think "okay HOW does this person know that"
@@ -92,7 +92,7 @@ Stage: ${lead.stage}`)
   }
 
   if (lead.smykm_hooks?.length) {
-    sections.push(`=== SMYKM HOOKS (use these — they're details only this person would recognize) ===\n${lead.smykm_hooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}`)
+    sections.push(`=== SMYKM HOOKS (use these, they're details only this person would recognize) ===\n${lead.smykm_hooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}`)
   }
 
   if (lead.conversation_summary) {
@@ -143,7 +143,7 @@ MAX: 40-60 words.`
   if (followUpNumber === 1) {
     return `${context}
 
-=== TASK: FOLLOW-UP #1 (Day 4 — The Bump) ===
+=== TASK: FOLLOW-UP #1 (Day 4, The Bump) ===
 40-60 words. Two sentences, maybe three.
 - Do NOT reference the original email ("as I mentioned," "following up on my last email"). They know.
 - Lead with a NEW SMYKM hook you didn't use before. Something you found about them or their company that's interesting, funny, or impressive.
@@ -160,7 +160,7 @@ MAX: 40-60 words.`
 
     return `${context}
 
-=== TASK: FOLLOW-UP #2 (Day 9 — Value Drop) ===
+=== TASK: FOLLOW-UP #2 (Day 9, Value Drop) ===
 30-50 words. Two sentences.
 ${typeSpecific}
 - New SMYKM hook. Don't recycle.
@@ -171,7 +171,7 @@ ${typeSpecific}
   if (followUpNumber === 3) {
     return `${context}
 
-=== TASK: FOLLOW-UP #3 (Day 14 — Channel Switch) ===
+=== TASK: FOLLOW-UP #3 (Day 14, Channel Switch) ===
 Write for LinkedIn DM or Twitter DM. NOT email.
 20-30 words. Two sentences max. DMs are SHORT.
 - Acknowledge you emailed. Don't apologize for it.
@@ -182,7 +182,7 @@ Write for LinkedIn DM or Twitter DM. NOT email.
 
   return `${context}
 
-=== TASK: BREAK-UP (Day 21+ — The Graceful Exit) ===
+=== TASK: BREAK-UP (Day 21+, The Graceful Exit) ===
 15-25 words. Two sentences max.
 - Give them an easy out. Be memorable.
 - One final cheeky SMYKM reference if it fits
@@ -209,6 +209,10 @@ export async function POST(request: NextRequest) {
       temperature: 0.9,
       maxTokens: 400,
     })
+
+    const stripEmDashes = (text: string) => text.replace(/[\u2013\u2014]/g, ',')
+    result.subject = stripEmDashes(result.subject)
+    result.body = stripEmDashes(result.body)
 
     return NextResponse.json(result)
   } catch (error) {
