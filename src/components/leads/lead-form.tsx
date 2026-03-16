@@ -72,8 +72,13 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
   const handleResearch = async () => {
     const contactName = form.getValues('contact_name');
     const companyName = form.getValues('company_name');
-    if (!contactName || !companyName) {
-      toast.error('Enter contact name and company name first');
+    const linkedinUrl = form.getValues('contact_linkedin');
+
+    const hasNameAndCompany = contactName && companyName;
+    const hasLinkedIn = linkedinUrl && linkedinUrl.trim().length > 0;
+
+    if (!hasNameAndCompany && !hasLinkedIn) {
+      toast.error('Enter name + company, or paste a LinkedIn URL');
       return;
     }
 
@@ -84,11 +89,11 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           type: form.getValues('type'),
-          contact_name: contactName,
-          company_name: companyName,
+          contact_name: contactName || null,
+          company_name: companyName || null,
           product_name: form.getValues('product_name'),
           fund_name: form.getValues('fund_name'),
-          linkedin_url: form.getValues('contact_linkedin'),
+          linkedin_url: linkedinUrl,
           twitter_url: form.getValues('contact_twitter'),
         }),
       });
@@ -96,13 +101,40 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
       if (!res.ok) throw new Error('Research failed');
       const data = await res.json();
 
+      // Auto-fill name and company (critical for LinkedIn-only flow)
+      const autoFilled: string[] = [];
+      if (data.contact_name && !form.getValues('contact_name')) {
+        form.setValue('contact_name', data.contact_name);
+        autoFilled.push('name');
+      }
+      if (data.company_name && !form.getValues('company_name')) {
+        form.setValue('company_name', data.company_name);
+        autoFilled.push('company');
+      }
+
       if (data.company_description) form.setValue('company_description', data.company_description);
       if (data.attack_surface_notes) form.setValue('attack_surface_notes', data.attack_surface_notes);
       if (data.investment_thesis_notes) form.setValue('investment_thesis_notes', data.investment_thesis_notes);
       if (data.personal_details) form.setValue('personal_details', data.personal_details);
       if (data.smykm_hooks?.length) form.setValue('smykm_hooks', data.smykm_hooks);
 
-      toast.success('Research complete');
+      if (data.contact_email && !form.getValues('contact_email')) {
+        form.setValue('contact_email', data.contact_email);
+        autoFilled.push('email');
+      }
+      if (data.contact_linkedin && !form.getValues('contact_linkedin')) {
+        form.setValue('contact_linkedin', data.contact_linkedin);
+        autoFilled.push('LinkedIn');
+      }
+      if (data.contact_twitter && !form.getValues('contact_twitter')) {
+        form.setValue('contact_twitter', data.contact_twitter);
+        autoFilled.push('Twitter');
+      }
+      if (data.contact_title && !form.getValues('contact_title')) {
+        form.setValue('contact_title', data.contact_title);
+        autoFilled.push('title');
+      }
+      toast.success(`Research complete${autoFilled.length ? ` — found: ${autoFilled.join(', ')}` : ''}`);
     } catch {
       toast.error('Failed to research lead. Check API keys.');
     } finally {
