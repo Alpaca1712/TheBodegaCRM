@@ -48,6 +48,11 @@ Also search for their contact information and company details:
 - Their job title at the company
 - The company website URL
 
+WRITING RULES FOR ALL TEXT FIELDS:
+- NEVER use em dashes (\u2014) or en dashes (\u2013) anywhere in any field. Use commas, periods, "and", colons, or parentheses instead. This is critical because this research feeds directly into cold emails.
+- Write in plain, conversational English. No corporate jargon.
+- Be specific and cite real sources (blog post titles, podcast names, repo names).
+
 After searching, return ONLY valid JSON with this structure:
 {
   "contact_name": "The person's full name (ALWAYS include this, even if it was provided in the input)",
@@ -56,7 +61,7 @@ After searching, return ONLY valid JSON with this structure:
   "attack_surface_notes": "For customers: specific ways their AI agent/product could be vulnerable. Name channels, tools, data access patterns. For investors: null",
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
   "personal_details": "Personal story, career arc, interesting background details. Include specific blog post titles, podcast episode names, conference talk titles, GitHub repos. Cite real sources you found.",
-  "smykm_hooks": ["3-5 specific details that ONLY this person would recognize in a subject line or email opener. These should reference real things you found — a specific blog post title, a quote from a podcast, a GitHub repo name, an old company they founded, etc."],
+  "smykm_hooks": ["3-5 specific details that ONLY this person would recognize in a subject line or email opener. These should reference real things you found: a specific blog post title, a quote from a podcast, a GitHub repo name, an old company they founded, etc."],
   "contact_email": "Their email address if found, or null",
   "contact_linkedin": "Full LinkedIn profile URL if found (e.g. https://linkedin.com/in/...), or null",
   "contact_twitter": "Twitter/X handle with @ prefix if found (e.g. @handle), or null",
@@ -97,7 +102,7 @@ function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
 
 ${clues}
 
-Search the web for deep, specific details for a "Show Me You Know Me" cold email. I need details that would make them think "this person actually did their homework." Do NOT make anything up — only include details you actually found via search.
+Search the web for deep, specific details for a "Show Me You Know Me" cold email. I need details that would make them think "this person actually did their homework." Do NOT make anything up, only include details you actually found via search.
 
 IMPORTANT: Always return "contact_name" and "company_name" in your JSON response, even if they were provided in the input.
 
@@ -143,6 +148,13 @@ export async function POST(request: NextRequest) {
       buildResearchPrompt(validation.data),
       { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
     )
+
+    const strip = (s: string | null) => s ? s.replace(/[\u2013\u2014]/g, ',') : s
+    result.company_description = strip(result.company_description) ?? result.company_description
+    result.attack_surface_notes = strip(result.attack_surface_notes)
+    result.investment_thesis_notes = strip(result.investment_thesis_notes)
+    result.personal_details = strip(result.personal_details) ?? result.personal_details
+    result.smykm_hooks = result.smykm_hooks.map(h => h.replace(/[\u2013\u2014]/g, ','))
 
     return NextResponse.json(result)
   } catch (error) {
