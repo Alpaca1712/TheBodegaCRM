@@ -48,6 +48,12 @@ Also search for their contact information and company details:
 - Their job title at the company
 - The company website URL
 
+SOURCING RULES:
+- For EVERY fact you include in personal_details, smykm_hooks, attack_surface_notes, or investment_thesis_notes, you MUST include the source URL in the "research_sources" array.
+- Each source should have: the URL you found it at, a short title, and a one-sentence description of what you found there.
+- Include ALL URLs you found useful during research (blog posts, GitHub repos, podcast pages, news articles, company pages, etc.)
+- If you found a detail but can't provide a URL, still include it in the text fields but don't fabricate a URL.
+
 WRITING RULES FOR ALL TEXT FIELDS:
 - NEVER use em dashes (\u2014) or en dashes (\u2013) anywhere in any field. Use commas, periods, "and", colons, or parentheses instead. This is critical because this research feeds directly into cold emails.
 - Write in plain, conversational English. No corporate jargon.
@@ -62,6 +68,10 @@ After searching, return ONLY valid JSON with this structure:
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
   "personal_details": "Personal story, career arc, interesting background details. Include specific blog post titles, podcast episode names, conference talk titles, GitHub repos. Cite real sources you found.",
   "smykm_hooks": ["3-5 specific details that ONLY this person would recognize in a subject line or email opener. These should reference real things you found: a specific blog post title, a quote from a podcast, a GitHub repo name, an old company they founded, etc."],
+  "research_sources": [
+    {"url": "https://example.com/article", "title": "Article or page title", "detail": "What you found here (1 sentence)"},
+    {"url": "https://github.com/user/repo", "title": "GitHub repo name", "detail": "What this repo is about"}
+  ],
   "contact_email": "Their email address if found, or null",
   "contact_linkedin": "Full LinkedIn profile URL if found (e.g. https://linkedin.com/in/...), or null",
   "contact_twitter": "Twitter/X handle with @ prefix if found (e.g. @handle), or null",
@@ -109,6 +119,12 @@ IMPORTANT: Always return "contact_name" and "company_name" in your JSON response
 ${focusMap[input.type]}`
 }
 
+interface ResearchSource {
+  url: string
+  title: string
+  detail: string
+}
+
 interface ResearchResult {
   contact_name: string | null
   company_name: string | null
@@ -117,6 +133,7 @@ interface ResearchResult {
   investment_thesis_notes: string | null
   personal_details: string
   smykm_hooks: string[]
+  research_sources: ResearchSource[]
   contact_email: string | null
   contact_linkedin: string | null
   contact_twitter: string | null

@@ -46,5 +46,24 @@ create trigger profiles_updated_at
     for each row
     execute function public.handle_updated_at();
 
+-- Auto-create a profile row when a new user signs up
+create or replace function public.handle_new_user()
+returns trigger as $$
+begin
+  insert into public.profiles (user_id, full_name, avatar_url)
+  values (
+    new.id,
+    coalesce(new.raw_user_meta_data->>'full_name', new.raw_user_meta_data->>'name'),
+    new.raw_user_meta_data->>'avatar_url'
+  );
+  return new;
+end;
+$$ language plpgsql security definer;
+
+drop trigger if exists on_auth_user_created on auth.users;
+create trigger on_auth_user_created
+  after insert on auth.users
+  for each row execute function public.handle_new_user();
+
 -- Enable realtime for profiles
 alter publication supabase_realtime add table profiles;

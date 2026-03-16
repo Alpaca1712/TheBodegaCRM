@@ -41,7 +41,6 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('leads')
       .select('*', { count: 'exact' })
-      .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
 
     if (type) query = query.eq('type', type)
@@ -79,7 +78,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
-    const insertData = { ...validation.data, user_id: user.id } as Record<string, unknown>
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_org_id')
+      .eq('user_id', user.id)
+      .single()
+
+    const orgId = profile?.active_org_id
+    if (!orgId) {
+      return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+    }
+
+    const insertData = { ...validation.data, user_id: user.id, org_id: orgId } as Record<string, unknown>
     if (typeof insertData.contact_email === 'string' && insertData.contact_email.includes('@')) {
       insertData.email_domain = (insertData.contact_email as string).split('@')[1]?.toLowerCase()
     }

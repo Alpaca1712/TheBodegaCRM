@@ -19,6 +19,11 @@ const updateSchema = z.object({
   investment_thesis_notes: z.string().optional().nullable(),
   personal_details: z.string().optional().nullable(),
   smykm_hooks: z.array(z.string()).optional(),
+  research_sources: z.array(z.object({
+    url: z.string(),
+    title: z.string(),
+    detail: z.string(),
+  })).optional(),
   stage: z.enum(PIPELINE_STAGES).optional(),
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).optional(),
@@ -50,7 +55,6 @@ export async function GET(
       .from('leads')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
       .single()
 
     if (error) throw error
@@ -75,7 +79,6 @@ export async function GET(
       const { data: related } = await supabase
         .from('leads')
         .select('id, contact_name, contact_email, stage, type')
-        .eq('user_id', user.id)
         .eq('email_domain', domain)
         .neq('id', id)
         .limit(10)
@@ -117,7 +120,6 @@ export async function PATCH(
       .from('leads')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', user.id)
       .select()
       .single()
 
@@ -146,7 +148,6 @@ export async function DELETE(
       .from('leads')
       .delete()
       .eq('id', id)
-      .eq('user_id', user.id)
 
     if (error) throw error
     return NextResponse.json({ success: true })

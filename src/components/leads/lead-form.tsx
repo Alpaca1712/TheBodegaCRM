@@ -118,6 +118,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
       if (data.investment_thesis_notes) form.setValue('investment_thesis_notes', data.investment_thesis_notes);
       if (data.personal_details) form.setValue('personal_details', data.personal_details);
       if (data.smykm_hooks?.length) form.setValue('smykm_hooks', data.smykm_hooks);
+      if (data.research_sources?.length) form.setValue('research_sources', data.research_sources);
 
       if (data.contact_email && !form.getValues('contact_email')) {
         form.setValue('contact_email', data.contact_email);

@@ -83,6 +83,12 @@ export const LEAD_TYPE_COLORS: Record<LeadType, { bg: string; text: string }> = 
   },
 }
 
+export interface ResearchSource {
+  url: string
+  title: string
+  detail: string
+}
+
 export const PRIORITIES = ['high', 'medium', 'low'] as const
 export type Priority = (typeof PRIORITIES)[number]
 
@@ -119,6 +125,7 @@ export interface Lead {
   investment_thesis_notes: string | null
   personal_details: string | null
   smykm_hooks: string[]
+  research_sources: ResearchSource[]
   stage: PipelineStage
   source: string | null
   priority: Priority
@@ -167,13 +174,14 @@ export interface LeadEmail {
 }
 
 export type LeadInsert = Omit<Lead,
-  'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' |
+  'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' | 'research_sources' |
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
   'last_inbound_at' | 'last_outbound_at'
 > & {
   id?: string
   contact_phone?: string | null
+  research_sources?: ResearchSource[]
   last_contacted_at?: string | null
   email_domain?: string | null
   conversation_summary?: string | null
@@ -210,6 +218,11 @@ export const leadFormSchema = z.object({
   investment_thesis_notes: z.string().optional().nullable(),
   personal_details: z.string().optional().nullable(),
   smykm_hooks: z.array(z.string()).default([]),
+  research_sources: z.array(z.object({
+    url: z.string(),
+    title: z.string(),
+    detail: z.string(),
+  })).default([]),
   stage: z.enum(PIPELINE_STAGES).default('researched'),
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).default('medium'),

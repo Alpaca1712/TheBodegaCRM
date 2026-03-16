@@ -152,7 +152,6 @@ export async function GET(request: NextRequest) {
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', leadId)
-      .eq('user_id', user.id)
       .order('occurred_at', { ascending: true })
 
     if (error) throw error
@@ -178,12 +177,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
-    // Insert the interaction
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_org_id')
+      .eq('user_id', user.id)
+      .single()
+
     const { data: interaction, error: insertError } = await supabase
       .from('lead_interactions')
       .insert({
         ...validation.data,
         user_id: user.id,
+        org_id: profile?.active_org_id || null,
         occurred_at: validation.data.occurred_at || new Date().toISOString(),
       })
       .select()
@@ -193,7 +198,7 @@ export async function POST(request: NextRequest) {
 
     // Fetch full lead + all emails + all interactions for AI analysis
     const [leadRes, emailsRes, interactionsRes] = await Promise.all([
-      supabase.from('leads').select('*').eq('id', validation.data.lead_id).eq('user_id', user.id).single(),
+      supabase.from('leads').select('*').eq('id', validation.data.lead_id).single(),
       supabase.from('lead_emails').select('*').eq('lead_id', validation.data.lead_id).order('created_at', { ascending: true }),
       supabase.from('lead_interactions').select('*').eq('lead_id', validation.data.lead_id).order('occurred_at', { ascending: true }),
     ])

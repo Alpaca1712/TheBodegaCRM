@@ -258,6 +258,31 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   </div>
                 </div>
               )}
+              {lead.research_sources?.length > 0 && (
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-2">Research Sources</p>
+                  <div className="space-y-2">
+                    {lead.research_sources.map((source, i) => (
+                      <a
+                        key={i}
+                        href={source.url}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex items-start gap-2 p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-50/50 dark:hover:bg-red-950/20 transition-colors group"
+                      >
+                        <ExternalLink className="h-3.5 w-3.5 mt-0.5 text-zinc-400 group-hover:text-red-500 shrink-0" />
+                        <div className="min-w-0">
+                          <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 group-hover:text-red-600 dark:group-hover:text-red-400 truncate">
+                            {source.title}
+                          </p>
+                          <p className="text-[11px] text-zinc-500 dark:text-zinc-400 line-clamp-1">{source.detail}</p>
+                          <p className="text-[10px] text-zinc-400 dark:text-zinc-500 truncate mt-0.5">{source.url}</p>
+                        </div>
+                      </a>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

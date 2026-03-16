@@ -23,11 +23,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_org_id')
+      .eq('user_id', user.id)
+      .single()
+
     const { data, error } = await supabase
       .from('lead_emails')
       .insert({
         ...validation.data,
         user_id: user.id,
+        org_id: profile?.active_org_id || null,
       })
       .select()
       .single()
