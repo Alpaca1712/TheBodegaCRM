@@ -113,6 +113,7 @@ export interface Lead {
   contact_email: string | null
   contact_twitter: string | null
   contact_linkedin: string | null
+  contact_phone: string | null
   company_description: string | null
   attack_surface_notes: string | null
   investment_thesis_notes: string | null
@@ -166,12 +167,13 @@ export interface LeadEmail {
 }
 
 export type LeadInsert = Omit<Lead,
-  'id' | 'created_at' | 'updated_at' | 'last_contacted_at' |
+  'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' |
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
   'last_inbound_at' | 'last_outbound_at'
 > & {
   id?: string
+  contact_phone?: string | null
   last_contacted_at?: string | null
   email_domain?: string | null
   conversation_summary?: string | null
@@ -202,6 +204,7 @@ export const leadFormSchema = z.object({
   contact_email: z.string().email('Invalid email').optional().or(z.literal('')).nullable(),
   contact_twitter: z.string().optional().nullable(),
   contact_linkedin: z.string().optional().nullable(),
+  contact_phone: z.string().optional().nullable(),
   company_description: z.string().optional().nullable(),
   attack_surface_notes: z.string().optional().nullable(),
   investment_thesis_notes: z.string().optional().nullable(),

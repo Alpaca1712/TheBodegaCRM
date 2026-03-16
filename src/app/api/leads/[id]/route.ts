@@ -13,6 +13,7 @@ const updateSchema = z.object({
   contact_email: z.string().optional().nullable(),
   contact_twitter: z.string().optional().nullable(),
   contact_linkedin: z.string().optional().nullable(),
+  contact_phone: z.string().optional().nullable(),
   company_description: z.string().optional().nullable(),
   attack_surface_notes: z.string().optional().nullable(),
   investment_thesis_notes: z.string().optional().nullable(),

@@ -44,6 +44,7 @@ Also search for their contact information and company details:
 - Their LinkedIn profile URL (search "[name] LinkedIn")
 - Their Twitter/X handle (search "[name] Twitter" or look on their personal site)
 - Their email address (check company website contact pages, personal blogs, GitHub profiles)
+- Their phone number (check company website, personal site, or public directories)
 - Their job title at the company
 - The company website URL
 
@@ -60,6 +61,7 @@ After searching, return ONLY valid JSON with this structure:
   "contact_linkedin": "Full LinkedIn profile URL if found (e.g. https://linkedin.com/in/...), or null",
   "contact_twitter": "Twitter/X handle with @ prefix if found (e.g. @handle), or null",
   "contact_title": "Their current job title if found, or null",
+  "contact_phone": "Their phone number if found, or null",
   "company_website": "Company website URL if found, or null"
 }`
 
@@ -114,6 +116,7 @@ interface ResearchResult {
   contact_linkedin: string | null
   contact_twitter: string | null
   contact_title: string | null
+  contact_phone: string | null
   company_website: string | null
 }
 

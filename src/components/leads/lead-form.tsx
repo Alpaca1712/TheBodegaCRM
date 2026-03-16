@@ -101,14 +101,15 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
       if (!res.ok) throw new Error('Research failed');
       const data = await res.json();
 
-      // Auto-fill name and company (critical for LinkedIn-only flow)
       const autoFilled: string[] = [];
+
+      // Auto-fill required fields with shouldValidate to clear errors
       if (data.contact_name && !form.getValues('contact_name')) {
-        form.setValue('contact_name', data.contact_name);
+        form.setValue('contact_name', data.contact_name, { shouldValidate: true });
         autoFilled.push('name');
       }
       if (data.company_name && !form.getValues('company_name')) {
-        form.setValue('company_name', data.company_name);
+        form.setValue('company_name', data.company_name, { shouldValidate: true });
         autoFilled.push('company');
       }
 
@@ -131,9 +132,17 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         autoFilled.push('Twitter');
       }
       if (data.contact_title && !form.getValues('contact_title')) {
-        form.setValue('contact_title', data.contact_title);
+        form.setValue('contact_title', data.contact_title, { shouldValidate: true });
         autoFilled.push('title');
       }
+      if (data.contact_phone && !form.getValues('contact_phone')) {
+        form.setValue('contact_phone', data.contact_phone);
+        autoFilled.push('phone');
+      }
+
+      // Clear any remaining validation errors from before research filled fields
+      form.clearErrors();
+
       toast.success(`Research complete${autoFilled.length ? ` — found: ${autoFilled.join(', ')}` : ''}`);
     } catch {
       toast.error('Failed to research lead. Check API keys.');
@@ -220,10 +229,14 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           )}
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label className={labelClass}>Email</label>
             <input {...form.register('contact_email')} className={inputClass} type="email" placeholder="name@company.com" />
+          </div>
+          <div>
+            <label className={labelClass}>Phone</label>
+            <input {...form.register('contact_phone')} className={inputClass} type="tel" placeholder="+1 (555) 123-4567" />
           </div>
           <div>
             <label className={labelClass}>Twitter</label>
@@ -232,6 +245,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           <div>
             <label className={labelClass}>LinkedIn</label>
             <input {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
           </div>
         </div>
 

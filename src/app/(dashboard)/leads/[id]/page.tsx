@@ -309,6 +309,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 </a>
               </div>
             )}
+            {lead.contact_phone && (
+              <div className="flex items-center gap-2">
+                <Phone className="h-3.5 w-3.5 text-zinc-400" />
+                <a href={`tel:${lead.contact_phone}`} className="text-sm text-red-600 dark:text-red-400 hover:underline">
+                  {lead.contact_phone}
+                </a>
+              </div>
+            )}
           </div>
 
           {/* Log Interaction */}
