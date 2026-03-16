@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, use } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import {
@@ -35,11 +35,16 @@ interface RelatedLead {
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const urlTab = searchParams.get('tab');
+  const urlFollowup = searchParams.get('followup');
   const [lead, setLead] = useState<Lead | null>(null);
   const [emails, setEmails] = useState<LeadEmail[]>([]);
   const [relatedLeads, setRelatedLeads] = useState<RelatedLead[]>([]);
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<'email' | 'research' | 'thread' | 'conversation'>('research');
+  const [activeTab, setActiveTab] = useState<'email' | 'research' | 'thread' | 'conversation'>(
+    (urlTab === 'email' || urlTab === 'thread' || urlTab === 'conversation') ? urlTab : 'research'
+  );
   const [isDeleting, setIsDeleting] = useState(false);
 
   useEffect(() => {
@@ -241,7 +246,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {activeTab === 'email' && (
-            <EmailGenerator lead={lead} onEmailSaved={handleEmailSaved} />
+            <EmailGenerator
+              lead={lead}
+              emails={emails}
+              followUpType={urlFollowup}
+              onEmailSaved={handleEmailSaved}
+            />
           )}
 
           {activeTab === 'thread' && (
