@@ -9,6 +9,7 @@ export async function signIn(formData: FormData) {
   
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
+  const inviteToken = formData.get('invite_token') as string | null;
   
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -20,9 +21,8 @@ export async function signIn(formData: FormData) {
     return { error: error.message };
   }
 
-  // Check for pending org invites matching this email
-  const { data: { session } } = await supabase.auth.getSession();
-  if (session) {
+  const { data: { user } } = await supabase.auth.getUser();
+  if (user) {
     const { data: pendingInvites } = await supabase
       .from('org_invites')
       .select('id, org_id, role, expires_at')
@@ -34,16 +34,21 @@ export async function signIn(formData: FormData) {
         if (new Date(invite.expires_at ?? '2099-01-01') > new Date()) {
           await supabase.from('org_members').upsert({
             org_id: invite.org_id,
-            user_id: session.user.id,
+            user_id: user.id,
             role: invite.role,
           }, { onConflict: 'org_id,user_id' });
           await supabase.from('org_invites').update({ accepted_at: new Date().toISOString() }).eq('id', invite.id);
+          await supabase.from('profiles').update({ active_org_id: invite.org_id }).eq('user_id', user.id);
         }
       }
     }
   }
   
   revalidatePath('/', 'layout');
+
+  if (inviteToken) {
+    redirect(`/invite/${inviteToken}`);
+  }
   redirect('/dashboard');
 }
 
@@ -53,7 +58,13 @@ export async function signUp(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const name = formData.get('name') as string;
+  const inviteToken = formData.get('invite_token') as string | null;
   
+  const baseUrl = process.env.NEXT_PUBLIC_SITE_URL || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000');
+  const callbackUrl = inviteToken
+    ? `${baseUrl}/callback?invite_token=${inviteToken}`
+    : `${baseUrl}/callback`;
+
   const { data, error } = await supabase.auth.signUp({
     email,
     password,
@@ -61,7 +72,7 @@ export async function signUp(formData: FormData) {
       data: {
         name,
       },
-      emailRedirectTo: `${process.env.NEXT_PUBLIC_SITE_URL || (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : 'http://localhost:3000')}/callback`,
+      emailRedirectTo: callbackUrl,
     },
   });
   

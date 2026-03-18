@@ -1,6 +1,7 @@
 'use client';
 
-import { useState } from 'react';
+import { Suspense, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -27,6 +28,15 @@ interface AuthFormProps {
 }
 
 export default function AuthForm({ mode }: AuthFormProps) {
+  return (
+    <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-md bg-zinc-100" />}>
+      <AuthFormInner mode={mode} />
+    </Suspense>
+  );
+}
+
+function AuthFormInner({ mode }: AuthFormProps) {
+  const searchParams = useSearchParams();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   
@@ -56,6 +66,10 @@ export default function AuthForm({ mode }: AuthFormProps) {
       formData.append('password', data.password);
       if (!isLogin && data.name) {
         formData.append('name', data.name);
+      }
+      const inviteToken = searchParams.get('invite_token');
+      if (inviteToken) {
+        formData.append('invite_token', inviteToken);
       }
       
       if (isLogin) {
