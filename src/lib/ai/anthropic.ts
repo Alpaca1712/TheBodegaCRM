@@ -8,7 +8,7 @@ function getClient(): Anthropic {
   if (!apiKey) {
     throw new Error('ANTHROPIC_API_KEY is not set. Add it to your .env.local file.')
   }
-  return new Anthropic({ apiKey })
+  return new Anthropic({ apiKey, maxRetries: 5 })
 }
 
 export async function generateCompletion(

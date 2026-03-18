@@ -355,30 +355,41 @@ export async function buildConversationContext(
   const maxThreads = options?.maxThreads ?? 10
   const domain = extractDomain(contactEmail)
 
-  const directThreadIds = await fetchThreadsByEmail(accessToken, contactEmail, maxThreads)
-  const directThreads: GmailThread[] = []
+  // Search for direct and domain threads in parallel
+  const [directThreadIds, domainThreadIds] = await Promise.all([
+    fetchThreadsByEmail(accessToken, contactEmail, maxThreads),
+    options?.includeDomainContext && domain
+      ? fetchThreadsByDomain(accessToken, domain, maxThreads)
+      : Promise.resolve([] as string[]),
+  ])
 
-  for (const threadId of directThreadIds) {
-    try {
-      const thread = await fetchFullThread(accessToken, threadId, myEmailAddress)
-      directThreads.push(thread)
-    } catch (err) {
-      console.error(`Failed to fetch thread ${threadId}:`, err)
-    }
-  }
+  // Fetch all direct threads in parallel
+  const directResults = await Promise.all(
+    directThreadIds.map(id =>
+      fetchFullThread(accessToken, id, myEmailAddress).catch(err => {
+        console.error(`Failed to fetch thread ${id}:`, err)
+        return null
+      })
+    )
+  )
+  const directThreads = directResults.filter((t): t is GmailThread => t !== null)
 
+  // Fetch domain threads in parallel (excluding already-fetched direct threads)
   let domainThreads: GmailThread[] = []
-  if (options?.includeDomainContext && domain) {
-    const domainThreadIds = await fetchThreadsByDomain(accessToken, domain, maxThreads)
-    const newDomainIds = domainThreadIds.filter(id => !directThreadIds.includes(id))
+  if (domainThreadIds.length > 0) {
+    const directIdSet = new Set(directThreadIds)
+    const newDomainIds = domainThreadIds.filter(id => !directIdSet.has(id)).slice(0, 5)
 
-    for (const threadId of newDomainIds.slice(0, 5)) {
-      try {
-        const thread = await fetchFullThread(accessToken, threadId, myEmailAddress)
-        domainThreads.push(thread)
-      } catch (err) {
-        console.error(`Failed to fetch domain thread ${threadId}:`, err)
-      }
+    if (newDomainIds.length > 0) {
+      const domainResults = await Promise.all(
+        newDomainIds.map(id =>
+          fetchFullThread(accessToken, id, myEmailAddress).catch(err => {
+            console.error(`Failed to fetch domain thread ${id}:`, err)
+            return null
+          })
+        )
+      )
+      domainThreads = domainResults.filter((t): t is GmailThread => t !== null)
     }
   }
 
