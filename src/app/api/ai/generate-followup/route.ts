@@ -139,7 +139,15 @@ Stage: ${lead.stage}`)
   }
 
   if (customContext?.trim()) {
-    sections.push(`=== STRATEGIC DIRECTION (this is the #1 priority, build the ENTIRE email around this) ===\nDaniel's notes on the angle/offer he wants to use. NEVER quote, paraphrase, or summarize these notes. Instead, write a completely original email that executes this strategy as if Daniel thought of it himself. The recipient must NEVER be able to guess these notes existed.\n\n${customContext.trim()}`)
+    sections.push(`=== STRATEGIC DIRECTION (this is the #1 priority, build the ENTIRE email around this) ===
+INSTRUCTIONS: Below are Daniel's notes. They might be a strategy description, an example email to a different person, a link, or raw ideas. Your job:
+1. Extract the CORE STRATEGY or OFFER from these notes (e.g. "free pentest if we find nothing" or "cheat on your current vendor" angle).
+2. Apply that strategy to THIS lead (${lead.contact_name} at ${lead.company_name}), using THEIR specific product, attack surface, and situation.
+3. Write a completely original email. Do NOT copy any sentences from the notes. Do NOT reference the notes. The recipient must never know these notes existed.
+4. If the notes contain an example email to someone else, extract the strategy and rewrite it for this person. Do NOT reuse any phrasing.
+
+DANIEL'S NOTES:
+${customContext.trim()}`)
   }
 
   const context = sections.join('\n\n')
@@ -234,13 +242,18 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const fullContext = buildFullContext(validation.data)
+    const hasCustomContext = !!validation.data.customContext?.trim()
+
+    console.log('[Follow-up] customContext present:', hasCustomContext, 'length:', validation.data.customContext?.length || 0)
+
     const result = await generateJSON<{
       subject: string
       body: string
       channel: 'email' | 'linkedin' | 'twitter'
-    }>(SYSTEM_PROMPT, buildFullContext(validation.data), {
-      temperature: 0.9,
-      maxTokens: 400,
+    }>(SYSTEM_PROMPT, fullContext, {
+      temperature: 0.95,
+      maxTokens: 4096,
     })
 
     const stripEmDashes = (text: string) => text.replace(/[\u2013\u2014]/g, ',')
