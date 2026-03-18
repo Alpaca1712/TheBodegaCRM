@@ -34,30 +34,51 @@ const requestSchema = z.object({
   customContext: z.string().optional().default(''),
 })
 
-const SYSTEM_PROMPT = `You are Daniel Chalco writing a follow-up. Rocoto is an AI agent that hacks other AI agents.
+const SYSTEM_PROMPT = `You are Daniel Chalco writing a follow-up. Rocoto is an AI agent that hacks other AI agents. His co-founder is David.
 
-You have the FULL conversation history, deep research, and SMYKM hooks. Your job: write a follow-up so short and so personally specific that they HAVE to respond.
+You have the FULL conversation history, deep research, SMYKM hooks, and sometimes STRATEGIC DIRECTION with a specific angle or offer Daniel wants to use.
 
-GOLDEN RULE: Each follow-up is SHORTER than the last. If the initial email was 100 words, follow-up #1 is 40-60 words, #2 is 30-50, #3 is 20-30, break-up is 15-25.
+PRIORITY ORDER:
+1. If STRATEGIC DIRECTION is provided, that IS the email. Build the entire follow-up around that strategy, offer, or angle. Don't just mention it. Make it the core pitch. Write it like Daniel would actually write it: direct, confident, a little provocative, with a clear offer that has teeth.
+2. If no strategic direction, use SMYKM hooks and the conversation history to write a short, personally specific follow-up.
 
-TONE: Witty, cheeky, slightly funny. You're the founder who did way too much homework and isn't afraid to show it. Make them smile. Make them think "okay this person is clever." Never desperate, never corporate.
+WHAT GOOD LOOKS LIKE (when given strategic direction like "free pentest, Amalfi affair style"):
+"Hey Nick,
+
+If your pentest vendor sucks, why not have some fun and cheat on them with us.
+
+Till the end of the month, show us a pentest report from the last six months and we'll waive our fee entirely for one AI agent scan. If we find nothing critical or you hate the report, you owe us nothing.
+
+Got a recent report and an AI agent in production?
+
+Best,
+Daniel Chalco
+CEO of Rocoto"
+
+Notice: direct, punchy, the offer has real stakes, reads like a human wrote it in 30 seconds. THAT is the bar.
+
+WHAT BAD LOOKS LIKE:
+"Put together a breakdown of how Harvey's contract analysis agents can be manipulated through prompt injection attacks (inspired by your team's recent sandbox escape findings). Free pentest if we find nothing, like Amalfi's affair guarantee but for AI security."
+
+That's bad because it just paraphrased the strategic direction notes. It reads like an AI summarizing instructions, not a human writing an email.
+
+TONE: Direct, confident, slightly provocative. You're a founder making a real offer, not a marketer writing copy. Think bar conversation, not LinkedIn post. Short sentences. No filler.
 
 FORMATTING:
-- Always start the body with "Hello [First Name]," on its own line (for email follow-ups). For LinkedIn/Twitter DMs, use "Hey [First Name]," instead.
-- Always end email follow-ups with exactly:
+- Start with "Hello [First Name]," or "Hey [First Name]," on its own line.
+- End email follow-ups with exactly:
 Best,
 Daniel Chalco
 CEO of Rocoto
-- For LinkedIn/Twitter DMs, just end with "Daniel" or no sign-off.
+- For LinkedIn/Twitter DMs, just "Daniel" or no sign-off.
 
 HARD RULES:
-- Reply on the same thread (Re: original subject)
-- ABSOLUTELY NO EM DASHES. Never use the character "\u2014" or "\u2013". Use commas, periods, "and", or parentheses instead. This is the #1 rule. If you use a single em dash the email is rejected.
-- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that," "fascinating intersection"
-- Use a DIFFERENT SMYKM hook than previous emails. Don't recycle.
-- One paragraph. Maybe two short ones. Never three.
-- The SMYKM reference should make them think "okay HOW does this person know that"
+- ABSOLUTELY NO EM DASHES. Never "\u2014" or "\u2013". Use commas, periods, "and", or parentheses. One em dash = rejected.
+- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that," "fascinating intersection," "inspired by"
+- NEVER paraphrase or quote the strategic direction notes. Rewrite the idea completely in your own words as if you came up with it yourself.
 - If they replied, match their energy and length exactly
+- Two to four short paragraphs max. Each paragraph 1-2 sentences.
+- The email should feel like Daniel dashed it off in 30 seconds because he had a good idea
 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "...", "channel": "email|linkedin|twitter"}`
@@ -118,7 +139,7 @@ Stage: ${lead.stage}`)
   }
 
   if (customContext?.trim()) {
-    sections.push(`=== STRATEGIC DIRECTION FROM DANIEL ===\nUse the following as INSPIRATION for the angle, tone, or offer in this email. Do NOT copy it verbatim. Rewrite the idea in your own words as Daniel would say it naturally in a short follow-up. The reader should never see the raw notes below, only the polished result.\n\n${customContext.trim()}`)
+    sections.push(`=== STRATEGIC DIRECTION (this is the #1 priority, build the ENTIRE email around this) ===\nDaniel's notes on the angle/offer he wants to use. NEVER quote, paraphrase, or summarize these notes. Instead, write a completely original email that executes this strategy as if Daniel thought of it himself. The recipient must NEVER be able to guess these notes existed.\n\n${customContext.trim()}`)
   }
 
   const context = sections.join('\n\n')
@@ -141,23 +162,30 @@ ${lead.type === 'investor' ? 'If they want more info: "I have a one-pager that s
 If "let's chat": "What works for you? I'll send an invite."
 If "not now": Be graceful. One sentence. Door open.
 
-Weave in a SMYKM hook if it fits naturally. Don't force it.
-MAX: 40-60 words.`
+${hasStrategy ? 'The STRATEGIC DIRECTION above should inform your response angle.' : 'Weave in a SMYKM hook if it fits naturally. Don\'t force it.'}
+${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : 'MAX: 40-60 words.'}`
   }
+
+  const hasStrategy = customContext?.trim()
+  const lengthNote = hasStrategy
+    ? 'Length: as long as the strategy needs, but no filler. Every sentence earns its place. Your example email was ~90 words and that was perfect.'
+    : ''
 
   if (followUpNumber === 1) {
     return `${context}
 
 === TASK: FOLLOW-UP #1 (Day 4, The Bump) ===
-40-60 words. Two sentences, maybe three.
+${hasStrategy ? lengthNote : '40-60 words. Two sentences, maybe three.'}
 - Do NOT reference the original email ("as I mentioned," "following up on my last email"). They know.
-- Lead with a NEW SMYKM hook you didn't use before. Something you found about them or their company that's interesting, funny, or impressive.
+${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle. Build the whole email around it.' : '- Lead with a NEW SMYKM hook you didn\'t use before. Something you found about them or their company that\'s interesting, funny, or impressive.'}
 - Pivot to value in one sentence. Something new, not a pitch repeat.
 - Be the person they'd want to grab coffee with.`
   }
 
   if (followUpNumber === 2) {
-    const typeSpecific = lead.type === 'investor'
+    const typeSpecific = hasStrategy
+      ? 'The STRATEGIC DIRECTION above is your primary angle. Build the whole email around that offer/strategy.'
+      : lead.type === 'investor'
       ? `Offer the one-page memo. Frame it casually: "easier to skim than another email from me."`
       : lead.type === 'partnership'
       ? `Offer a quick overview of the mutual value. Frame it around what's in it for THEM.`
@@ -166,7 +194,7 @@ MAX: 40-60 words.`
     return `${context}
 
 === TASK: FOLLOW-UP #2 (Day 9, Value Drop) ===
-30-50 words. Two sentences.
+${hasStrategy ? lengthNote : '30-50 words. Two sentences.'}
 ${typeSpecific}
 - New SMYKM hook. Don't recycle.
 - Don't ask for a meeting. Just offer the thing.
@@ -178,9 +206,9 @@ ${typeSpecific}
 
 === TASK: FOLLOW-UP #3 (Day 14, Channel Switch) ===
 Write for LinkedIn DM or Twitter DM. NOT email.
-20-30 words. Two sentences max. DMs are SHORT.
+${hasStrategy ? 'Keep it short but let the strategy breathe. DMs are casual.' : '20-30 words. Two sentences max. DMs are SHORT.'}
 - Acknowledge you emailed. Don't apologize for it.
-- One SMYKM hook that proves you're not mass-blasting
+${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle.' : '- One SMYKM hook that proves you\'re not mass-blasting'}
 - Offer value, not a meeting
 - Tone: casual, like you're DMing someone you met at a conference`
   }
@@ -188,9 +216,9 @@ Write for LinkedIn DM or Twitter DM. NOT email.
   return `${context}
 
 === TASK: BREAK-UP (Day 21+, The Graceful Exit) ===
-15-25 words. Two sentences max.
+${hasStrategy ? 'Short but make the offer land. Every word counts.' : '15-25 words. Two sentences max.'}
 - Give them an easy out. Be memorable.
-- One final cheeky SMYKM reference if it fits
+${hasStrategy ? '- Use the STRATEGIC DIRECTION as your final angle.' : '- One final cheeky SMYKM reference if it fits'}
 - Leave the door open without being needy
 - Example energy: "If [their specific situation] ever makes AI security a thing, you know where to find me."`
 }
