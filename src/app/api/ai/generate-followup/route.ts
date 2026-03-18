@@ -118,7 +118,7 @@ Stage: ${lead.stage}`)
   }
 
   if (customContext?.trim()) {
-    sections.push(`=== ADDITIONAL CONTEXT FROM DANIEL (incorporate this naturally, do NOT ignore it) ===\n${customContext.trim()}`)
+    sections.push(`=== STRATEGIC DIRECTION FROM DANIEL ===\nUse the following as INSPIRATION for the angle, tone, or offer in this email. Do NOT copy it verbatim. Rewrite the idea in your own words as Daniel would say it naturally in a short follow-up. The reader should never see the raw notes below, only the polished result.\n\n${customContext.trim()}`)
   }
 
   const context = sections.join('\n\n')

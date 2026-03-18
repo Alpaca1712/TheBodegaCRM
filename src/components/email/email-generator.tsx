@@ -75,25 +75,34 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
       if (isFollowUp) {
         const followUpNumber = getFollowUpNumber(resolvedType!);
         const emailThread = buildEmailThread();
+        const payload = {
+          lead,
+          emailThread,
+          followUpNumber,
+          customContext: customContext.trim() || undefined,
+        };
 
-        const res = await fetch('/api/ai/generate-followup', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            lead,
-            emailThread,
-            followUpNumber,
-            customContext: customContext.trim() || undefined,
+        const [resA, resB] = await Promise.all([
+          fetch('/api/ai/generate-followup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
           }),
-        });
+          fetch('/api/ai/generate-followup', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(payload),
+          }),
+        ]);
 
-        if (!res.ok) throw new Error('Failed to generate follow-up');
-        const followUpResult = await res.json();
-        const wc = followUpResult.body.split(/\s+/).filter(Boolean).length;
+        if (!resA.ok || !resB.ok) throw new Error('Failed to generate follow-up');
+        const [resultA, resultB] = await Promise.all([resA.json(), resB.json()]);
+        const wcA = resultA.body.split(/\s+/).filter(Boolean).length;
+        const wcB = resultB.body.split(/\s+/).filter(Boolean).length;
 
         data = {
-          mckenna: { subject: followUpResult.subject, body: followUpResult.body, ctaType: 'mckenna', wordCount: wc },
-          hormozi: { subject: followUpResult.subject, body: followUpResult.body, ctaType: 'hormozi', wordCount: wc },
+          mckenna: { subject: resultA.subject, body: resultA.body, ctaType: 'mckenna', wordCount: wcA },
+          hormozi: { subject: resultB.subject, body: resultB.body, ctaType: 'hormozi', wordCount: wcB },
         };
       } else {
         // Initial email — use the standard generate-email API

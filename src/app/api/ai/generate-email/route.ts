@@ -153,7 +153,7 @@ FORMULA: "I put together [SPECIFIC DELIVERABLE about THEIR specific vulnerabilit
 The [SPECIFIC DELIVERABLE] must use their attack surface notes to name the exact threat. NOT "a breakdown of AI security risks." YES "a breakdown of how [their specific channel/tool] can be used to manipulate [their specific agent type]." Make the deliverable so specific they think you already did the work.`
 
   const customSection = customContext?.trim()
-    ? `\n\nADDITIONAL CONTEXT FROM DANIEL (incorporate this naturally into the email, do NOT ignore it):\n${customContext.trim()}`
+    ? `\n\nSTRATEGIC DIRECTION FROM DANIEL:\nUse the following as INSPIRATION for the angle, tone, or offer in this email. Do NOT copy it verbatim. Rewrite the idea in your own words as Daniel would say it naturally. The reader should never see the raw notes below, only the polished result.\n\n${customContext.trim()}`
     : ''
 
   return `Write a cold email to ${lead.contact_name}${lead.contact_title ? ` (${lead.contact_title})` : ''} at ${lead.company_name}.
