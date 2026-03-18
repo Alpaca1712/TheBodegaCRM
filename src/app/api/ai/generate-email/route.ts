@@ -16,6 +16,7 @@ const requestSchema = z.object({
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
   }),
+  customContext: z.string().optional().default(''),
 })
 
 const CUSTOMER_SYSTEM_PROMPT = `You are Daniel Chalco writing a cold email. Daniel is co-founder of Rocoto, an AI agent that hacks other AI agents. His co-founder is David.
@@ -127,7 +128,8 @@ Respond with ONLY valid JSON:
 
 function buildUserPrompt(
   lead: z.infer<typeof requestSchema>['lead'],
-  ctaStyle: 'mckenna' | 'hormozi'
+  ctaStyle: 'mckenna' | 'hormozi',
+  customContext?: string
 ): string {
   const research = [
     lead.company_description && `Company: ${lead.company_description}`,
@@ -150,12 +152,16 @@ The [SPECIFIC THING] must reference their actual product, their actual attack su
 FORMULA: "I put together [SPECIFIC DELIVERABLE about THEIR specific vulnerability]. Want me to send it your way?"
 The [SPECIFIC DELIVERABLE] must use their attack surface notes to name the exact threat. NOT "a breakdown of AI security risks." YES "a breakdown of how [their specific channel/tool] can be used to manipulate [their specific agent type]." Make the deliverable so specific they think you already did the work.`
 
+  const customSection = customContext?.trim()
+    ? `\n\nADDITIONAL CONTEXT FROM DANIEL (incorporate this naturally into the email, do NOT ignore it):\n${customContext.trim()}`
+    : ''
+
   return `Write a cold email to ${lead.contact_name}${lead.contact_title ? ` (${lead.contact_title})` : ''} at ${lead.company_name}.
 
 ${ctaInstruction}
 
 LEAD RESEARCH:
-${research}`
+${research}${customSection}`
 }
 
 export async function POST(request: NextRequest) {
@@ -169,7 +175,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { lead } = validation.data
+    const { lead, customContext } = validation.data
     const systemPromptMap: Record<string, string> = {
       customer: CUSTOMER_SYSTEM_PROMPT,
       investor: INVESTOR_SYSTEM_PROMPT,
@@ -180,12 +186,12 @@ export async function POST(request: NextRequest) {
     const [mckennaResult, hormoziResult] = await Promise.all([
       generateJSON<{ subject: string; body: string }>(
         systemPrompt,
-        buildUserPrompt(lead, 'mckenna'),
+        buildUserPrompt(lead, 'mckenna', customContext),
         { temperature: 0.9, maxTokens: 500 }
       ),
       generateJSON<{ subject: string; body: string }>(
         systemPrompt,
-        buildUserPrompt(lead, 'hormozi'),
+        buildUserPrompt(lead, 'hormozi', customContext),
         { temperature: 0.9, maxTokens: 500 }
       ),
     ])

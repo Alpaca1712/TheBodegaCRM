@@ -31,6 +31,7 @@ const requestSchema = z.object({
   }),
   emailThread: z.array(emailSchema).optional().default([]),
   followUpNumber: z.number().int().min(1).max(4),
+  customContext: z.string().optional().default(''),
 })
 
 const SYSTEM_PROMPT = `You are Daniel Chalco writing a follow-up. Rocoto is an AI agent that hacks other AI agents.
@@ -62,7 +63,7 @@ Respond with ONLY valid JSON:
 {"subject": "...", "body": "...", "channel": "email|linkedin|twitter"}`
 
 function buildFullContext(input: z.infer<typeof requestSchema>): string {
-  const { lead, emailThread, followUpNumber } = input
+  const { lead, emailThread, followUpNumber, customContext } = input
 
   const sections: string[] = []
 
@@ -114,6 +115,10 @@ Stage: ${lead.stage}`)
       })
       .join('\n\n---\n\n')
     sections.push(`=== FULL EMAIL THREAD (oldest first) ===\n${threadStr}`)
+  }
+
+  if (customContext?.trim()) {
+    sections.push(`=== ADDITIONAL CONTEXT FROM DANIEL (incorporate this naturally, do NOT ignore it) ===\n${customContext.trim()}`)
   }
 
   const context = sections.join('\n\n')
