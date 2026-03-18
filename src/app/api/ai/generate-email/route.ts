@@ -25,13 +25,13 @@ YOUR GOAL: Write an email that reads like one smooth thought. Short sentences. N
 
 SUBJECT LINE: Something ONLY this person would get. An obscure detail from their life. If anyone else read it, they'd be confused.
 
-BODY STRUCTURE (3 sections, each its own short paragraph):
+BODY STRUCTURE (3 paragraphs, each does ONE job):
 
-1. SMYKM PARAGRAPH:
-"We've yet to be properly introduced." Then the personal detail. 2-3 sentences max. ALL about them. Make them think "how does this person know that?"
+1. INTRO + SMYKM PARAGRAPH:
+"We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto." That is the FIRST SENTENCE. Then flow directly into the SMYKM personal detail about THEM. 2-3 more sentences showing deep research. Make them think "how does this person know that?" This paragraph is about building credibility and connection.
 
-2. INTRO + PROBLEM PARAGRAPH:
-"I'm Daniel, co-founder of Rocoto. We hack AI agents." Then ONE sentence connecting their specific product to a specific vulnerability. Name the product. Name the threat. Keep it to 2 sentences total (intro + problem).
+2. PROBLEM PARAGRAPH:
+"We hack AI agents." That opens this paragraph as a bridge. Then 1-2 SHORT sentences connecting their specific product to a specific vulnerability. Name the product. Name the threat. Keep this paragraph punchy and tight.
 
 3. CTA PARAGRAPH:
 The ask. One sentence. Its own paragraph so it stands out.
@@ -44,28 +44,29 @@ CEO of Rocoto
 EXAMPLE (match this rhythm, do NOT copy):
 "Hello Minna,
 
-We've yet to be properly introduced. Your origin story of deliberately taking an admin assistant job at a NYC real estate firm to learn the industry from the inside before building EliseAI is one of the best founder research stories I've heard. Most founders would skip straight to building the tech, but you embedded yourself in the actual workflow chaos first.
+We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto. Your origin story of deliberately taking an admin assistant job at a NYC real estate firm to learn the industry from the inside before building EliseAI is one of the best founder research stories I've heard.
 
-I'm Daniel, co-founder of Rocoto. We hack AI agents. Your platform handles 1.5M+ customer interactions across SMS, email, web chat, and VoiceAI, all processing free-text input in real time. That's a massive prompt injection surface, especially when your AI pulls from Knowledge Banks that property managers populate with pricing strategies and custom policies.
+We hack AI agents. Your platform handles 1.5M+ customer interactions across SMS, email, and VoiceAI, all processing free-text input. That's a prompt injection surface your leasing agents weren't built to handle.
 
-I put together a breakdown of how SMS and web chat channels can be exploited to extract sensitive Knowledge Bank content from your leasing agents. Want me to send it your way?
+I put together a breakdown of how SMS and web chat channels can be exploited to extract sensitive Knowledge Bank content. Want me to send it your way?
 
 Best,
 Daniel Chalco
 CEO of Rocoto"
 
-NOTICE: Three short paragraphs. Each one does ONE job. The CTA is its own line. Short sentences throughout.
+NOTICE THE RHYTHM: Paragraph 1 opens with "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto." then goes straight into the personal detail. Paragraph 2 opens with "We hack AI agents." then the problem. Paragraph 3 is just the CTA. Short sentences throughout.
 
 TONE: Genuinely curious, slightly cheeky, warm. NOT robotic, NOT salesy, NOT a template.
 
 HARD RULES:
 - 80-150 words body (not counting greeting/sign-off)
 - ABSOLUTELY NO EM DASHES. Never "\u2014" or "\u2013". Use commas, periods, "and", or parentheses. One em dash = rejected.
-- BANNED PHRASES: "the question nobody's asking," "in today's landscape," "at the intersection of," "it's not just X it's Y," "game-changer," "revolutionize," "I hope this finds you well," "I came across your," "I was impressed by," "I noticed that," "I wanted to reach out," "I'd love to connect," "fascinating intersection," "fascinating attack surface," "fun contrast," "which creates a fascinating," "perfect storm," "creates a perfect"
+- BANNED PHRASES: "the question nobody's asking," "in today's landscape," "at the intersection of," "it's not just X it's Y," "game-changer," "revolutionize," "I hope this finds you well," "I came across your," "I was impressed by," "I noticed that," "I wanted to reach out," "I'd love to connect," "fascinating intersection," "fascinating attack surface," "fun contrast," "which creates a fascinating," "perfect storm," "creates a perfect," "massive attack surface," "across all," "across your"
 - No bullet points in the email body
-- THREE paragraphs: SMYKM, then intro+problem, then CTA
+- THREE paragraphs: intro+SMYKM, then problem, then CTA
 - No sentence longer than 25 words. If a sentence is getting long, split it.
 - The SMYKM detail should be so specific it's almost creepy
+- Paragraph 1 MUST start with "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto."
 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "..."}`
@@ -76,13 +77,13 @@ YOUR GOAL: Make this investor feel like you genuinely studied their worldview. N
 
 SUBJECT LINE: Something only this investor would get. A quote from their blog, a portfolio company pattern, their thesis language. Confuse everyone else.
 
-BODY STRUCTURE (3 sections, each its own short paragraph):
+BODY STRUCTURE (3 paragraphs, each does ONE job):
 
-1. SMYKM PARAGRAPH:
-"We've yet to be properly introduced." Then the personal detail about this investor. Mirror their language. Reference a specific belief, blog post, or portfolio pattern. 2-3 sentences. ALL about them.
+1. INTRO + SMYKM PARAGRAPH:
+"We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto." That is the FIRST SENTENCE. Then flow directly into the SMYKM personal detail about this investor. Mirror their language. Reference a specific belief, blog post, or portfolio pattern. 2-3 more sentences. ALL about them and their worldview.
 
-2. INTRO + THESIS PARAGRAPH:
-"I'm Daniel, co-founder of Rocoto. We hack AI agents." Then ONE sentence connecting Rocoto to their thesis using THEIR words. 2 sentences total.
+2. THESIS PARAGRAPH:
+"We hack AI agents." That opens this paragraph as a bridge. Then 1-2 SHORT sentences connecting Rocoto to their thesis using THEIR words. Keep it punchy.
 
 3. CTA PARAGRAPH:
 The ask. One sentence. Its own paragraph.
@@ -97,11 +98,12 @@ TONE: Confident but warm. Think "I read your blog post and it changed how I thin
 HARD RULES:
 - 80-150 words body (not counting greeting/sign-off)
 - ABSOLUTELY NO EM DASHES. Never "\u2014" or "\u2013". One em dash = rejected.
-- BANNED PHRASES: "landscape," "intersection," "game-changer," "I hope this finds you well," "I came across," "I was impressed by," "I noticed that," "I wanted to reach out," "fascinating intersection," "fun contrast," "perfect storm," "creates a perfect"
+- BANNED PHRASES: "landscape," "intersection," "game-changer," "I hope this finds you well," "I came across," "I was impressed by," "I noticed that," "I wanted to reach out," "fascinating intersection," "fun contrast," "perfect storm," "creates a perfect," "massive attack surface," "across all," "across your"
 - No bullet points
-- THREE paragraphs: SMYKM, then intro+thesis, then CTA
+- THREE paragraphs: intro+SMYKM, then thesis, then CTA
 - No sentence longer than 25 words
 - The SMYKM detail should be so specific it's almost creepy
+- Paragraph 1 MUST start with "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto."
 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "..."}`
@@ -112,13 +114,13 @@ YOUR GOAL: Show you understand their business so well they think "this person ge
 
 SUBJECT LINE: Something only this person would get. A recent case study, a specific client vertical, a deal they closed. Confuse everyone else.
 
-BODY STRUCTURE (3 sections, each its own short paragraph):
+BODY STRUCTURE (3 paragraphs, each does ONE job):
 
-1. SMYKM PARAGRAPH:
-"We've yet to be properly introduced." Then the personal detail about their business. Show why it caught your attention. 2-3 sentences. ALL about them.
+1. INTRO + SMYKM PARAGRAPH:
+"We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto." That is the FIRST SENTENCE. Then flow directly into the SMYKM personal detail about their business. Show why it caught your attention. 2-3 more sentences. ALL about them and what they do.
 
-2. INTRO + VALUE PARAGRAPH:
-"I'm Daniel, co-founder of Rocoto. We hack AI agents." Then ONE sentence on why this partnership makes sense for THEIR clients. 2 sentences total.
+2. VALUE PARAGRAPH:
+"We hack AI agents." That opens this paragraph as a bridge. Then 1-2 SHORT sentences on why this partnership makes sense for THEIR clients. Keep it punchy.
 
 3. CTA PARAGRAPH:
 The ask. One sentence. Its own paragraph.
@@ -133,11 +135,12 @@ TONE: Genuinely curious, slightly cheeky, warm.
 HARD RULES:
 - 80-150 words body (not counting greeting/sign-off)
 - ABSOLUTELY NO EM DASHES. Never "\u2014" or "\u2013". One em dash = rejected.
-- BANNED PHRASES: "landscape," "intersection," "game-changer," "I hope this finds you well," "I came across," "I was impressed by," "I noticed that," "I wanted to reach out," "fascinating intersection," "fun contrast," "perfect storm," "creates a perfect"
+- BANNED PHRASES: "landscape," "intersection," "game-changer," "I hope this finds you well," "I came across," "I was impressed by," "I noticed that," "I wanted to reach out," "fascinating intersection," "fun contrast," "perfect storm," "creates a perfect," "massive attack surface," "across all," "across your"
 - No bullet points
-- THREE paragraphs: SMYKM, then intro+value, then CTA
+- THREE paragraphs: intro+SMYKM, then value, then CTA
 - No sentence longer than 25 words
 - Creepy-good SMYKM detail
+- Paragraph 1 MUST start with "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto."
 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "..."}`

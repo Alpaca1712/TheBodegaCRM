@@ -152,6 +152,7 @@ ${customContext.trim()}`)
 
   const context = sections.join('\n\n')
 
+  const hasStrategy = customContext?.trim()
   const hasReply = emailThread.some(e => e.direction === 'inbound')
 
   if (hasReply) {
@@ -174,7 +175,6 @@ ${hasStrategy ? 'The STRATEGIC DIRECTION above should inform your response angle
 ${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : 'MAX: 40-60 words.'}`
   }
 
-  const hasStrategy = customContext?.trim()
   const lengthNote = hasStrategy
     ? 'Length: as long as the strategy needs, but no filler. Every sentence earns its place. Your example email was ~90 words and that was perfect.'
     : ''
