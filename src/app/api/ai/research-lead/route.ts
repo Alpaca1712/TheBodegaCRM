@@ -40,13 +40,16 @@ IMPORTANT: You may receive ONLY a LinkedIn URL with no name or company. In that 
 1. Search the LinkedIn URL directly to find the person's name, title, and company
 2. Then proceed with the full research using the name and company you found
 
-Also search for their contact information and company details:
+Also search for their contact information, company details, and visual identity:
 - Their LinkedIn profile URL (search "[name] LinkedIn")
 - Their Twitter/X handle (search "[name] Twitter" or look on their personal site)
 - Their email address (check company website contact pages, personal blogs, GitHub profiles)
 - Their phone number (check company website, personal site, or public directories)
 - Their job title at the company
 - The company website URL
+- Their profile photo URL (check LinkedIn, company team page, GitHub, Twitter, Gravatar). Look for direct image URLs from team pages, about pages, or speaker bios.
+- The company logo URL (check the company website favicon, logo on their homepage, or press kit page). Look for direct image URLs.
+- Key team members at the company: search the company's team/about page and LinkedIn company page. Find names, titles, departments, and LinkedIn URLs of key people (executives, VPs, directors, product leads). This is critical for building an org chart.
 
 SOURCING RULES:
 - For EVERY fact you include in personal_details, smykm_hooks, attack_surface_notes, or investment_thesis_notes, you MUST include the source URL in the "research_sources" array.
@@ -77,7 +80,12 @@ After searching, return ONLY valid JSON with this structure:
   "contact_twitter": "Twitter/X handle with @ prefix if found (e.g. @handle), or null",
   "contact_title": "Their current job title if found, or null",
   "contact_phone": "Their phone number if found, or null",
-  "company_website": "Company website URL if found, or null"
+  "company_website": "Company website URL if found, or null",
+  "contact_photo_url": "Direct URL to their profile photo (from team page, LinkedIn CDN, GitHub avatar, speaker bio, etc.), or null. Must be a direct image URL ending in .jpg/.png/.webp or a CDN URL.",
+  "company_logo_url": "Direct URL to the company logo image (from website, press kit, clearbit logo API at https://logo.clearbit.com/[domain]), or null",
+  "team_members": [
+    {"name": "Full name", "title": "Job title", "department": "Engineering|Sales|Product|Marketing|Leadership|Operations|Other", "linkedin_url": "LinkedIn URL or null"}
+  ]
 }`
 
 function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
@@ -125,6 +133,13 @@ interface ResearchSource {
   detail: string
 }
 
+interface TeamMember {
+  name: string
+  title: string
+  department: string | null
+  linkedin_url: string | null
+}
+
 interface ResearchResult {
   contact_name: string | null
   company_name: string | null
@@ -140,6 +155,9 @@ interface ResearchResult {
   contact_title: string | null
   contact_phone: string | null
   company_website: string | null
+  contact_photo_url: string | null
+  company_logo_url: string | null
+  team_members: TeamMember[]
 }
 
 export async function POST(request: NextRequest) {
@@ -172,6 +190,16 @@ export async function POST(request: NextRequest) {
     result.investment_thesis_notes = strip(result.investment_thesis_notes)
     result.personal_details = strip(result.personal_details) ?? result.personal_details
     result.smykm_hooks = result.smykm_hooks.map(h => h.replace(/[\u2013\u2014]/g, ','))
+
+    // Fallback: generate company logo from Clearbit if we have a website domain
+    if (!result.company_logo_url && result.company_website) {
+      try {
+        const domain = new URL(result.company_website.startsWith('http') ? result.company_website : `https://${result.company_website}`).hostname.replace('www.', '')
+        result.company_logo_url = `https://logo.clearbit.com/${domain}`
+      } catch { /* ignore */ }
+    }
+
+    if (!result.team_members) result.team_members = []
 
     return NextResponse.json(result)
   } catch (error) {

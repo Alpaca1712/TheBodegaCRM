@@ -33,12 +33,30 @@ const updateSchema = z.object({
   conversation_summary: z.string().optional().nullable(),
   conversation_next_step: z.string().optional().nullable(),
   conversation_signals: z.array(z.object({
-    type: z.enum(['positive', 'negative', 'neutral', 'action_needed']),
+    type: z.enum(['positive', 'negative', 'neutral', 'action_needed', 'upsell_opportunity']),
     signal: z.string(),
     source: z.string(),
     detected_at: z.string().optional(),
   })).optional(),
   auto_stage_reason: z.string().optional().nullable(),
+  // Enrichment
+  contact_photo_url: z.string().optional().nullable(),
+  company_website: z.string().optional().nullable(),
+  company_logo_url: z.string().optional().nullable(),
+  org_chart: z.array(z.object({
+    name: z.string(),
+    title: z.string(),
+    department: z.string().nullable().optional(),
+    linkedin_url: z.string().nullable().optional(),
+    photo_url: z.string().nullable().optional(),
+    reports_to: z.string().nullable().optional(),
+    lead_id: z.string().nullable().optional(),
+  })).optional(),
+  // GTM
+  icp_score: z.number().optional().nullable(),
+  icp_reasons: z.array(z.string()).optional(),
+  battle_card: z.record(z.unknown()).optional().nullable(),
+  battle_card_generated_at: z.string().optional().nullable(),
 })
 
 export async function GET(
@@ -73,12 +91,12 @@ export async function GET(
       .order('occurred_at', { ascending: true })
 
     // Fetch related leads at the same company (by domain)
-    let relatedLeads: Array<{ id: string; contact_name: string; contact_email: string | null; stage: string; type: string }> = []
+    let relatedLeads: Array<{ id: string; contact_name: string; contact_email: string | null; contact_title: string | null; contact_photo_url: string | null; stage: string; type: string }> = []
     const domain = lead.email_domain || (lead.contact_email ? lead.contact_email.split('@')[1] : null)
     if (domain) {
       const { data: related } = await supabase
         .from('leads')
-        .select('id, contact_name, contact_email, stage, type')
+        .select('id, contact_name, contact_email, contact_title, contact_photo_url, stage, type')
         .eq('email_domain', domain)
         .neq('id', id)
         .limit(10)

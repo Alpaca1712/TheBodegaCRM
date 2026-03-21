@@ -107,6 +107,16 @@ export type EmailType = (typeof EMAIL_TYPES)[number]
 export const CTA_TYPES = ['mckenna', 'hormozi'] as const
 export type CtaType = (typeof CTA_TYPES)[number]
 
+export interface OrgChartMember {
+  name: string
+  title: string
+  department: string | null
+  linkedin_url: string | null
+  photo_url: string | null
+  reports_to: string | null
+  lead_id: string | null
+}
+
 export interface Lead {
   id: string
   user_id: string
@@ -139,6 +149,16 @@ export interface Lead {
   risk_score: number | null
   risk_factors: string[]
   risk_assessed_at: string | null
+  // Enrichment & org chart
+  contact_photo_url: string | null
+  company_website: string | null
+  company_logo_url: string | null
+  org_chart: OrgChartMember[]
+  // GTM features
+  icp_score: number | null
+  icp_reasons: string[]
+  battle_card: Record<string, unknown> | null
+  battle_card_generated_at: string | null
   // Conversation intelligence
   email_domain: string | null
   conversation_summary: string | null
@@ -184,7 +204,9 @@ export type LeadInsert = Omit<Lead,
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
   'last_inbound_at' | 'last_outbound_at' |
-  'account_snapshot' | 'snapshot_generated_at' | 'risk_score' | 'risk_factors' | 'risk_assessed_at'
+  'account_snapshot' | 'snapshot_generated_at' | 'risk_score' | 'risk_factors' | 'risk_assessed_at' |
+  'contact_photo_url' | 'company_website' | 'company_logo_url' | 'org_chart' |
+  'icp_score' | 'icp_reasons' | 'battle_card' | 'battle_card_generated_at'
 > & {
   id?: string
   contact_phone?: string | null

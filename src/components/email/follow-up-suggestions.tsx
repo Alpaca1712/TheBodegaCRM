@@ -2,8 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail, AlertTriangle, CheckCircle2 } from 'lucide-react';
+import {
+  Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
+  AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
+  User, Building2, ChevronDown,
+} from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
+import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
 
 interface FollowUpSuggestionsProps {
@@ -19,160 +24,109 @@ interface FollowUpItem {
   suggestedChannel: 'email' | 'linkedin' | 'twitter';
   urgency: 'overdue' | 'due_today' | 'upcoming';
   sequenceDay: string;
+  outboundCount: number;
+  inboundCount: number;
 }
 
 const FOLLOW_UP_STAGES = ['email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held'] as const;
 
-const ACTION_LABELS: Record<string, { label: string; description: string }> = {
-  follow_up_1: { label: 'Bump (Day 4)', description: 'Short 2-3 sentence bump. Reference original email + one new piece of value.' },
-  follow_up_2: { label: 'Lead Magnet (Day 9)', description: "Hormozi approach: deliver value, don't ask for a meeting. Offer a free breakdown or resource." },
-  follow_up_3: { label: 'Channel Switch (Day 14)', description: 'Move to LinkedIn or Twitter DM. Short, reference the email, acknowledge they are busy.' },
-  break_up: { label: 'Break-up (Day 21+)', description: 'Last email. Give them an easy out. "If this isn\'t a priority right now, totally understand."' },
-  reply_needed: { label: 'Reply to Response', description: 'They replied! Use Hormozi ACA framework: Acknowledge, Compliment, Ask.' },
-  post_meeting: { label: 'Post-Meeting Follow-up', description: 'Send follow-up within 24 hours with next steps.' },
+const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
+  follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
+  follow_up_2: { label: 'Lead Magnet (Day 9)', short: 'Value Drop', description: 'Hormozi approach: deliver value, offer a free breakdown or resource.' },
+  follow_up_3: { label: 'Channel Switch (Day 14)', short: 'Channel Switch', description: 'Move to LinkedIn or Twitter DM. Short, casual, acknowledge the emails.' },
+  break_up: { label: 'Break-up (Day 21+)', short: 'Break-up', description: 'Last email. Give them an easy out. Leave the door open.' },
+  reply_needed: { label: 'Reply to Response', short: 'Reply', description: 'They replied! Use ACA framework: Acknowledge, Compliment, Ask.' },
+  post_meeting: { label: 'Post-Meeting Follow-up', short: 'Post-Meeting', description: 'Send follow-up within 24 hours with next steps.' },
 };
 
-const URGENCY_STYLES: Record<string, string> = {
-  overdue: 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-200 dark:border-red-800',
-  due_today: 'bg-amber-50 dark:bg-amber-950/40 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800',
-  upcoming: 'bg-blue-50 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800',
-};
-
-const URGENCY_LABELS: Record<string, string> = {
-  overdue: 'Overdue',
-  due_today: 'Due today',
-  upcoming: 'Coming up',
+const URGENCY_CONFIG = {
+  overdue: { label: 'Overdue', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-200 dark:border-red-800', dot: 'bg-red-500' },
+  due_today: { label: 'Due', color: 'text-amber-600 dark:text-amber-400', bg: 'bg-amber-50 dark:bg-amber-950/40', border: 'border-amber-200 dark:border-amber-800', dot: 'bg-amber-500' },
+  upcoming: { label: 'Soon', color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-200 dark:border-blue-800', dot: 'bg-blue-500' },
 };
 
 const CHANNEL_ICONS: Record<string, React.ReactNode> = {
-  email: <Mail className="h-3 w-3" />,
-  linkedin: <MessageSquare className="h-3 w-3" />,
-  twitter: <Twitter className="h-3 w-3" />,
+  email: <Mail className="h-3.5 w-3.5" />,
+  linkedin: <Linkedin className="h-3.5 w-3.5" />,
+  twitter: <Twitter className="h-3.5 w-3.5" />,
 };
+
+type FilterType = 'all' | 'overdue' | 'due_today' | 'upcoming' | 'reply_needed' | 'cold_sequence';
 
 function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | null {
   const lastEmail = allEmails.length > 0 ? allEmails[0] : null;
-
   const outboundEmails = allEmails.filter(e => e.direction === 'outbound');
   const lastOutbound = outboundEmails[0];
   const lastOutboundDate = lastOutbound?.sent_at || lastOutbound?.created_at;
-
   const inboundEmails = allEmails.filter(e => e.direction === 'inbound');
   const lastInbound = inboundEmails[0];
-
   const outboundCount = outboundEmails.length;
+  const inboundCount = inboundEmails.length;
 
-  // --- "replied" stage: they responded, we need to reply back ---
   if (lead.stage === 'replied') {
     const replyDate = lastInbound?.replied_at || lastInbound?.created_at || lead.last_inbound_at;
     if (!replyDate) return null;
-
-    const daysSinceReply = Math.floor(
-      (Date.now() - new Date(replyDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    // If we already responded after their reply, no follow-up needed
-    if (lastOutboundDate && replyDate && new Date(lastOutboundDate) > new Date(replyDate)) {
-      return null;
-    }
-
+    const daysSinceReply = Math.floor((Date.now() - new Date(replyDate).getTime()) / 86400000);
+    if (lastOutboundDate && replyDate && new Date(lastOutboundDate) > new Date(replyDate)) return null;
     return {
-      lead,
-      lastEmail,
-      daysSinceLastContact: daysSinceReply,
+      lead, lastEmail, daysSinceLastContact: daysSinceReply,
       suggestedAction: 'They replied. Respond using ACA framework.',
-      suggestedType: 'reply_needed',
-      suggestedChannel: 'email',
+      suggestedType: 'reply_needed', suggestedChannel: 'email',
       urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSinceReply}d since reply`,
+      sequenceDay: `${daysSinceReply}d since reply`, outboundCount, inboundCount,
     };
   }
 
-  // --- "meeting_held" stage: post-meeting follow-up ---
   if (lead.stage === 'meeting_held') {
     const meetingDate = lead.last_contacted_at || lead.updated_at;
     if (!meetingDate) return null;
-    const daysSinceMeeting = Math.floor(
-      (Date.now() - new Date(meetingDate).getTime()) / (1000 * 60 * 60 * 24)
-    );
-
-    // If we already sent something after the meeting, no follow-up needed
-    if (lastOutboundDate && new Date(lastOutboundDate) > new Date(meetingDate)) {
-      return null;
-    }
-
+    const daysSinceMeeting = Math.floor((Date.now() - new Date(meetingDate).getTime()) / 86400000);
+    if (lastOutboundDate && new Date(lastOutboundDate) > new Date(meetingDate)) return null;
     return {
-      lead,
-      lastEmail,
-      daysSinceLastContact: daysSinceMeeting,
+      lead, lastEmail, daysSinceLastContact: daysSinceMeeting,
       suggestedAction: 'Send post-meeting follow-up with next steps',
-      suggestedType: 'post_meeting',
-      suggestedChannel: 'email',
+      suggestedType: 'post_meeting', suggestedChannel: 'email',
       urgency: daysSinceMeeting >= 3 ? 'overdue' : daysSinceMeeting >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSinceMeeting}d since meeting`,
+      sequenceDay: `${daysSinceMeeting}d since meeting`, outboundCount, inboundCount,
     };
   }
 
-  // --- email_sent / follow_up / no_response: McKenna+Hormozi cold outreach sequence ---
   if (!lastOutboundDate) return null;
+  const daysSinceLastOutbound = Math.floor((Date.now() - new Date(lastOutboundDate).getTime()) / 86400000);
 
-  const daysSinceLastOutbound = Math.floor(
-    (Date.now() - new Date(lastOutboundDate).getTime()) / (1000 * 60 * 60 * 24)
-  );
-
-  // Sequence: each step triggers AFTER the previous outbound + a waiting period
-  // outboundCount=1 (initial sent) -> next is follow_up_1 after 3 days
-  // outboundCount=2 (initial + bump) -> next is follow_up_2 after 5 days
-  // outboundCount=3 -> next is follow_up_3 after 5 days
-  // outboundCount=4+ -> next is break_up after 7 days
-  const sequence: Array<{ type: FollowUpItem['suggestedType']; channel: FollowUpItem['suggestedChannel']; afterOutboundCount: number; waitDays: number; label: string; overdueDays: number }> = [
-    { type: 'follow_up_1', channel: 'email', afterOutboundCount: 1, waitDays: 3, label: 'Day 4', overdueDays: 7 },
-    { type: 'follow_up_2', channel: 'email', afterOutboundCount: 2, waitDays: 5, label: 'Day 9', overdueDays: 9 },
-    { type: 'follow_up_3', channel: 'linkedin', afterOutboundCount: 3, waitDays: 5, label: 'Day 14', overdueDays: 9 },
-    { type: 'break_up', channel: 'email', afterOutboundCount: 4, waitDays: 7, label: 'Day 21+', overdueDays: 14 },
+  const sequence = [
+    { type: 'follow_up_1' as const, channel: 'email' as const, afterOutboundCount: 1, waitDays: 3, label: 'Day 4', overdueDays: 7 },
+    { type: 'follow_up_2' as const, channel: 'email' as const, afterOutboundCount: 2, waitDays: 5, label: 'Day 9', overdueDays: 9 },
+    { type: 'follow_up_3' as const, channel: 'linkedin' as const, afterOutboundCount: 3, waitDays: 5, label: 'Day 14', overdueDays: 9 },
+    { type: 'break_up' as const, channel: 'email' as const, afterOutboundCount: 4, waitDays: 7, label: 'Day 21+', overdueDays: 14 },
   ];
 
   let nextStep = null;
   for (const step of sequence) {
-    if (outboundCount <= step.afterOutboundCount) {
-      nextStep = step;
-      break;
-    }
+    if (outboundCount <= step.afterOutboundCount) { nextStep = step; break; }
   }
-
-  // If we've exhausted the sequence (5+ outbound), no more follow-ups
   if (!nextStep) return null;
 
-  // Urgency is based on days since the LAST outbound email vs the wait period for the next step.
-  // "upcoming" = still within the wait window (too early to follow up)
-  // "due_today" = wait period elapsed, time to send
-  // "overdue" = significantly past the wait period
   const isDue = daysSinceLastOutbound >= nextStep.waitDays;
   const isOverdue = daysSinceLastOutbound >= nextStep.overdueDays;
-  const urgency: FollowUpItem['urgency'] = isOverdue ? 'overdue' : isDue ? 'due_today' : 'upcoming';
-
-  // Don't show upcoming follow-ups that are more than 1 day away (reduces noise)
+  const urgency = isOverdue ? 'overdue' as const : isDue ? 'due_today' as const : 'upcoming' as const;
   if (!isDue && daysSinceLastOutbound < nextStep.waitDays - 1) return null;
 
   return {
-    lead,
-    lastEmail,
-    daysSinceLastContact: daysSinceLastOutbound,
+    lead, lastEmail, daysSinceLastContact: daysSinceLastOutbound,
     suggestedAction: ACTION_LABELS[nextStep.type].description,
-    suggestedType: nextStep.type,
-    suggestedChannel: nextStep.channel,
-    urgency,
-    sequenceDay: nextStep.label,
+    suggestedType: nextStep.type, suggestedChannel: nextStep.channel, urgency,
+    sequenceDay: nextStep.label, outboundCount, inboundCount,
   };
 }
 
 export default function FollowUpSuggestions({ compact = false }: FollowUpSuggestionsProps) {
   const [items, setItems] = useState<FollowUpItem[]>([]);
   const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<FilterType>('all');
+  const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    loadFollowUps();
-  }, []);
+  useEffect(() => { loadFollowUps(); }, []);
 
   const loadFollowUps = async () => {
     try {
@@ -180,7 +134,6 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Fetch leads in stages that need follow-up
       const { data: leads } = await supabase
         .from('leads')
         .select('*')
@@ -188,12 +141,8 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
         .in('stage', FOLLOW_UP_STAGES)
         .order('last_contacted_at', { ascending: true });
 
-      if (!leads?.length) {
-        setLoading(false);
-        return;
-      }
+      if (!leads?.length) { setLoading(false); return; }
 
-      // Fetch all emails for these leads (sorted newest first)
       const leadIds = leads.map(l => l.id);
       const { data: emails } = await supabase
         .from('lead_emails')
@@ -201,7 +150,6 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
         .in('lead_id', leadIds)
         .order('created_at', { ascending: false });
 
-      // Group emails by lead_id
       const emailsByLead = new Map<string, LeadEmail[]>();
       for (const email of emails || []) {
         const existing = emailsByLead.get(email.lead_id) || [];
@@ -211,14 +159,14 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
 
       const computed: FollowUpItem[] = [];
       for (const lead of leads) {
-        const leadEmails = emailsByLead.get(lead.id) || [];
-        const item = computeFollowUp(lead as Lead, leadEmails);
+        const item = computeFollowUp(lead as Lead, emailsByLead.get(lead.id) || []);
         if (item) computed.push(item);
       }
 
-      // Sort: overdue first, then due_today, then upcoming. Within each, most days first.
       const urgencyOrder = { overdue: 0, due_today: 1, upcoming: 2 };
       computed.sort((a, b) => {
+        if (a.suggestedType === 'reply_needed' && b.suggestedType !== 'reply_needed') return -1;
+        if (b.suggestedType === 'reply_needed' && a.suggestedType !== 'reply_needed') return 1;
         const urgDiff = urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
         if (urgDiff !== 0) return urgDiff;
         return b.daysSinceLastContact - a.daysSinceLastContact;
@@ -232,12 +180,18 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
     }
   };
 
+  const filtered = items.filter(item => {
+    if (filter === 'all') return true;
+    if (filter === 'overdue') return item.urgency === 'overdue';
+    if (filter === 'due_today') return item.urgency === 'due_today';
+    if (filter === 'upcoming') return item.urgency === 'upcoming';
+    if (filter === 'reply_needed') return item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
+    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting'].includes(item.suggestedType);
+    return true;
+  });
+
   if (loading) {
-    return (
-      <div className="flex items-center justify-center py-8">
-        <Loader2 className="h-5 w-5 animate-spin text-zinc-400" />
-      </div>
-    );
+    return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-zinc-400" /></div>;
   }
 
   if (!items.length) {
@@ -245,108 +199,224 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
       <div className="text-center py-12">
         <CheckCircle2 className="h-10 w-10 text-green-400 mx-auto mb-3" />
         <p className="text-sm font-medium text-zinc-700 dark:text-zinc-300">All caught up!</p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">
-          No leads need follow-up right now. Follow-ups appear when leads are in the email_sent, replied, follow_up, no_response, or meeting_held stages.
-        </p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">No leads need follow-up right now.</p>
       </div>
     );
   }
 
-  const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueTodayCount = items.filter(i => i.urgency === 'due_today').length;
-
-  return (
-    <div className="space-y-3">
-      {!compact && (
-        <div className="flex items-center gap-4 text-sm">
-          {overdueCount > 0 && (
-            <span className="flex items-center gap-1.5 text-red-600 dark:text-red-400 font-medium">
-              <AlertTriangle className="h-4 w-4" />
-              {overdueCount} overdue
-            </span>
-          )}
-          {dueTodayCount > 0 && (
-            <span className="flex items-center gap-1.5 text-amber-600 dark:text-amber-400 font-medium">
-              <Clock className="h-4 w-4" />
-              {dueTodayCount} due today
-            </span>
-          )}
-          <span className="text-zinc-500 dark:text-zinc-400">
-            {items.length} total follow-up{items.length !== 1 ? 's' : ''}
-          </span>
-        </div>
-      )}
-
-      {compact && (
+  // Compact mode for dashboard widget
+  if (compact) {
+    const topItems = items.slice(0, 5);
+    return (
+      <div className="space-y-2">
         <div className="flex items-center gap-2 mb-1">
           <Bell className="h-4 w-4 text-red-500" />
           <span className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
-            {items.length} lead{items.length !== 1 ? 's' : ''} need follow-up
+            {items.length} follow-up{items.length !== 1 ? 's' : ''}
           </span>
         </div>
-      )}
+        {topItems.map(item => (
+          <CompactCard key={item.lead.id} item={item} />
+        ))}
+        {items.length > 5 && (
+          <Link href="/follow-ups" className="block text-center text-xs text-red-600 dark:text-red-400 hover:text-red-500 py-2 font-medium">
+            View all {items.length} follow-ups →
+          </Link>
+        )}
+      </div>
+    );
+  }
 
-      {(compact ? items.slice(0, 5) : items).map((item) => (
-        <div
-          key={item.lead.id}
-          className={`rounded-xl border p-4 transition-colors ${URGENCY_STYLES[item.urgency]}`}
-        >
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <div className="flex items-center gap-2 mb-1">
-                <Link
-                  href={`/leads/${item.lead.id}`}
-                  className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
-                >
-                  {item.lead.contact_name}
-                </Link>
-                <span className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  {item.lead.company_name}
-                </span>
-              </div>
+  // Full page mode
+  const overdueCount = items.filter(i => i.urgency === 'overdue').length;
+  const dueCount = items.filter(i => i.urgency === 'due_today').length;
+  const replyCount = items.filter(i => i.suggestedType === 'reply_needed' || i.suggestedType === 'post_meeting').length;
+  const coldCount = items.filter(i => !['reply_needed', 'post_meeting'].includes(i.suggestedType)).length;
 
-              <div className="flex items-center gap-3 text-[11px] mb-2">
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  {item.daysSinceLastContact}d since last contact
-                </span>
-                <span className="font-medium">
-                  {URGENCY_LABELS[item.urgency]}
-                </span>
-              </div>
+  const filters: Array<{ id: FilterType; label: string; count: number; color?: string }> = [
+    { id: 'all', label: 'All', count: items.length },
+    { id: 'overdue', label: 'Overdue', count: overdueCount, color: 'text-red-600' },
+    { id: 'due_today', label: 'Due', count: dueCount, color: 'text-amber-600' },
+    { id: 'reply_needed', label: 'Replies', count: replyCount, color: 'text-blue-600' },
+    { id: 'cold_sequence', label: 'Cold Sequence', count: coldCount },
+  ];
 
-              {!compact && (
-                <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">
-                  {item.suggestedAction}
-                </p>
-              )}
-            </div>
+  return (
+    <div className="space-y-4">
+      {/* Stats bar */}
+      <div className="grid grid-cols-4 gap-3">
+        <StatCard label="Total" value={items.length} icon={<Bell className="h-4 w-4" />} color="zinc" />
+        <StatCard label="Overdue" value={overdueCount} icon={<AlertTriangle className="h-4 w-4" />} color="red" />
+        <StatCard label="Need Reply" value={replyCount} icon={<MessageSquare className="h-4 w-4" />} color="blue" />
+        <StatCard label="Cold Sequence" value={coldCount} icon={<Send className="h-4 w-4" />} color="amber" />
+      </div>
 
-            <div className="flex flex-col items-end gap-2 shrink-0">
-              <span className="flex items-center gap-1 text-[11px] px-2 py-0.5 rounded-full bg-white/60 dark:bg-black/20 font-medium">
-                {CHANNEL_ICONS[item.suggestedChannel]}
-                {ACTION_LABELS[item.suggestedType].label}
-              </span>
-              <Link
-                href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
-                className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
-              >
-                <Send className="h-3 w-3" />
-                Generate
-              </Link>
-            </div>
-          </div>
+      {/* Filters */}
+      <div className="flex items-center gap-1.5 flex-wrap">
+        <button onClick={() => setShowFilters(!showFilters)} className="flex items-center gap-1 px-2 py-1 text-[11px] font-medium text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors lg:hidden">
+          <Filter className="h-3 w-3" />
+          Filter
+          <ChevronDown className={`h-3 w-3 transition-transform ${showFilters ? 'rotate-180' : ''}`} />
+        </button>
+        <div className={`flex gap-1.5 flex-wrap ${showFilters ? '' : 'hidden lg:flex'}`}>
+          {filters.map(f => (
+            <button
+              key={f.id}
+              onClick={() => setFilter(f.id)}
+              className={`px-2.5 py-1 rounded-lg text-[11px] font-medium transition-all ${
+                filter === f.id
+                  ? 'bg-red-600 text-white shadow-sm'
+                  : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+              }`}
+            >
+              {f.label}
+              <span className={`ml-1 tabular-nums ${filter === f.id ? 'text-red-200' : 'text-zinc-400'}`}>{f.count}</span>
+            </button>
+          ))}
         </div>
-      ))}
+      </div>
 
-      {compact && items.length > 5 && (
-        <Link
-          href="/follow-ups"
-          className="block text-center text-xs text-red-600 dark:text-red-400 hover:text-red-500 py-2 font-medium"
-        >
-          View all {items.length} follow-ups →
-        </Link>
+      {/* Items grouped by urgency */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-sm text-zinc-500">No follow-ups match this filter.</p>
+        </div>
+      ) : (
+        <div className="space-y-2">
+          {filtered.map(item => (
+            <FollowUpCard key={item.lead.id} item={item} />
+          ))}
+        </div>
       )}
     </div>
+  );
+}
+
+function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
+  const colors: Record<string, { bg: string; iconColor: string; text: string }> = {
+    zinc: { bg: 'bg-zinc-50 dark:bg-zinc-800/50', iconColor: 'text-zinc-400', text: 'text-zinc-900 dark:text-zinc-100' },
+    red: { bg: 'bg-red-50 dark:bg-red-950/30', iconColor: 'text-red-500', text: 'text-red-700 dark:text-red-300' },
+    blue: { bg: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300' },
+    amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', iconColor: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300' },
+  };
+  const c = colors[color] || colors.zinc;
+  return (
+    <div className={`rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 ${c.bg} p-3`}>
+      <div className={`${c.iconColor} mb-1`}>{icon}</div>
+      <p className={`text-xl font-bold tabular-nums ${c.text}`}>{value}</p>
+      <p className="text-[10px] text-zinc-500 font-medium">{label}</p>
+    </div>
+  );
+}
+
+function FollowUpCard({ item }: { item: FollowUpItem }) {
+  const urg = URGENCY_CONFIG[item.urgency];
+  const action = ACTION_LABELS[item.suggestedType];
+  const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+  const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
+
+  return (
+    <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm`}>
+      <div className="flex items-start gap-3">
+        {/* Avatar */}
+        <div className="shrink-0">
+          {item.lead.contact_photo_url ? (
+            <img src={item.lead.contact_photo_url} alt="" className="h-10 w-10 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+          ) : (
+            <div className="h-10 w-10 rounded-full bg-white/60 dark:bg-black/20 flex items-center justify-center text-xs font-bold text-zinc-500">{initials}</div>
+          )}
+        </div>
+
+        {/* Content */}
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 mb-0.5">
+            <Link href={`/leads/${item.lead.id}`} className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate">
+              {item.lead.contact_name}
+            </Link>
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${urg.bg} ${urg.color} border ${urg.border}`}>
+              {urg.label}
+            </span>
+          </div>
+
+          <div className="flex items-center gap-2 text-[11px] text-zinc-500 mb-2">
+            <span className="flex items-center gap-1">
+              <Building2 className="h-3 w-3" />
+              {item.lead.company_name}
+            </span>
+            <span>·</span>
+            <span>{STAGE_LABELS[item.lead.stage as PipelineStage]}</span>
+            <span>·</span>
+            <span>{LEAD_TYPE_LABELS[item.lead.type]}</span>
+          </div>
+
+          {/* Sequence progress */}
+          <div className="flex items-center gap-1.5 mb-2">
+            {[1, 2, 3, 4].map(step => {
+              const stepTypes = ['follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up'];
+              const currentStepIdx = stepTypes.indexOf(item.suggestedType);
+              const isCompleted = step <= item.outboundCount && !isReply;
+              const isCurrent = step - 1 === currentStepIdx && !isReply;
+              return (
+                <div key={step} className="flex items-center gap-1.5">
+                  <div className={`h-1.5 w-6 rounded-full ${
+                    isCompleted ? 'bg-emerald-400' : isCurrent ? `${urg.dot} animate-pulse` : 'bg-zinc-200 dark:bg-zinc-700'
+                  }`} />
+                </div>
+              );
+            })}
+            <span className="text-[10px] text-zinc-400 ml-1">
+              {isReply ? item.sequenceDay : `${item.outboundCount} sent · ${item.sequenceDay}`}
+            </span>
+          </div>
+
+          {/* Action description */}
+          <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{item.suggestedAction}</p>
+
+          {/* Email stats */}
+          <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-400">
+            <span className="flex items-center gap-1"><Mail className="h-3 w-3" />{item.outboundCount} sent</span>
+            <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{item.inboundCount} replies</span>
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{item.daysSinceLastContact}d ago</span>
+          </div>
+        </div>
+
+        {/* Actions */}
+        <div className="flex flex-col items-end gap-2 shrink-0">
+          <div className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-white/60 dark:bg-black/20 font-medium text-zinc-600 dark:text-zinc-400">
+            {CHANNEL_ICONS[item.suggestedChannel]}
+            <span>{action.short}</span>
+          </div>
+          <Link
+            href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+          >
+            <Send className="h-3 w-3" />
+            Generate
+            <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function CompactCard({ item }: { item: FollowUpItem }) {
+  const urg = URGENCY_CONFIG[item.urgency];
+  const action = ACTION_LABELS[item.suggestedType];
+  return (
+    <Link
+      href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
+      className={`flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm`}
+    >
+      <div className={`h-2 w-2 rounded-full shrink-0 ${urg.dot}`} />
+      <div className="flex-1 min-w-0">
+        <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{item.lead.contact_name}</p>
+        <p className="text-[10px] text-zinc-500 truncate">{action.short} · {item.daysSinceLastContact}d</p>
+      </div>
+      <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
+        {CHANNEL_ICONS[item.suggestedChannel]}
+        <ArrowRight className="h-3 w-3" />
+      </div>
+    </Link>
   );
 }

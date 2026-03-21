@@ -22,6 +22,19 @@ const createSchema = z.object({
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).optional().default('medium'),
   notes: z.string().optional().nullable(),
+  contact_phone: z.string().optional().nullable(),
+  research_sources: z.array(z.object({ url: z.string(), title: z.string(), detail: z.string() })).optional().default([]),
+  contact_photo_url: z.string().optional().nullable(),
+  company_website: z.string().optional().nullable(),
+  company_logo_url: z.string().optional().nullable(),
+  org_chart: z.array(z.object({
+    name: z.string(), title: z.string(),
+    department: z.string().nullable().optional(),
+    linkedin_url: z.string().nullable().optional(),
+    photo_url: z.string().nullable().optional(),
+    reports_to: z.string().nullable().optional(),
+    lead_id: z.string().nullable().optional(),
+  })).optional(),
 })
 
 export async function GET(request: NextRequest) {

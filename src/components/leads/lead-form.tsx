@@ -27,6 +27,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isResearching, setIsResearching] = useState(false);
   const [newHook, setNewHook] = useState('');
+  const [enrichmentData, setEnrichmentData] = useState<Record<string, unknown>>({});
 
   const form = useForm<LeadFormValues>({
     resolver: zodResolver(leadFormSchema),
@@ -50,7 +51,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
       const res = await fetch(url, {
         method,
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(values),
+        body: JSON.stringify({ ...values, ...enrichmentData }),
       });
 
       if (!res.ok) {
@@ -141,10 +142,39 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         autoFilled.push('phone');
       }
 
-      // Clear any remaining validation errors from before research filled fields
+      // Store enrichment data that doesn't have form fields
+      const extra: Record<string, unknown> = {};
+      if (data.contact_photo_url) extra.contact_photo_url = data.contact_photo_url;
+      if (data.company_website) extra.company_website = data.company_website;
+      if (data.company_logo_url) extra.company_logo_url = data.company_logo_url;
+      if (data.team_members?.length) {
+        extra.org_chart = data.team_members.map((m: { name: string; title: string; department?: string; linkedin_url?: string }) => ({
+          name: m.name,
+          title: m.title,
+          department: m.department || null,
+          linkedin_url: m.linkedin_url || null,
+          photo_url: null,
+          reports_to: null,
+          lead_id: null,
+        }));
+        autoFilled.push(`${data.team_members.length} team members`);
+      }
+      if (data.contact_photo_url) autoFilled.push('photo');
+      if (data.company_logo_url) autoFilled.push('logo');
+      setEnrichmentData(prev => ({ ...prev, ...extra }));
+
+      // If editing, also PATCH enrichment data immediately
+      if (mode === 'edit' && leadId && Object.keys(extra).length > 0) {
+        fetch(`/api/leads/${leadId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(extra),
+        }).catch(() => {});
+      }
+
       form.clearErrors();
 
-      toast.success(`Research complete${autoFilled.length ? ` — found: ${autoFilled.join(', ')}` : ''}`);
+      toast.success(`Research complete${autoFilled.length ? `: ${autoFilled.join(', ')}` : ''}`);
     } catch {
       toast.error('Failed to research lead. Check API keys.');
     } finally {

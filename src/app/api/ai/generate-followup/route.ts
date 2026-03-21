@@ -159,10 +159,16 @@ ${customContext.trim()}`)
   const context = sections.join('\n\n')
 
   const hasStrategy = customContext?.trim()
-  const hasReply = emailThread.some(e => e.direction === 'inbound')
+  const lengthNote = hasStrategy
+    ? 'Length: as long as the strategy needs, but no filler. Every sentence earns its place. Your example email was ~90 words and that was perfect.'
+    : ''
 
-  if (hasReply) {
-    const lastInbound = [...emailThread].reverse().find(e => e.direction === 'inbound')
+  // Stage-driven routing: the frontend explicitly sets lead.stage to 'replied' or 'meeting_held'
+  // when the user picks reply_needed or post_meeting mode. This prevents the old bug where
+  // ANY inbound email in the thread would hijack the prompt into "THEY REPLIED" mode
+  // even when the user wanted a cold follow-up sequence step.
+
+  if (lead.stage === 'replied') {
     return `${context}
 
 === TASK: THEY REPLIED ===
@@ -181,9 +187,22 @@ ${hasStrategy ? 'The STRATEGIC DIRECTION above should inform your response angle
 ${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : 'MAX: 40-60 words.'}`
   }
 
-  const lengthNote = hasStrategy
-    ? 'Length: as long as the strategy needs, but no filler. Every sentence earns its place. Your example email was ~90 words and that was perfect.'
-    : ''
+  if (lead.stage === 'meeting_held') {
+    return `${context}
+
+=== TASK: POST-MEETING FOLLOW-UP ===
+Send within 24 hours of the meeting. This is NOT a cold follow-up, it's a warm continuation.
+${hasStrategy ? lengthNote : '60-100 words. Three short paragraphs max.'}
+
+Structure:
+1. Open with energy from the meeting. Reference something specific they said or a moment that stood out. NOT "great meeting you" or "thanks for your time."
+2. Restate the one thing you agreed on or the next step. Be specific: what, who, when.
+3. Close with a clear, low-friction ask. If there's a deliverable, mention it.
+
+${hasStrategy ? 'The STRATEGIC DIRECTION above should shape the angle of this follow-up.' : 'Use SMYKM hooks from the meeting if you have them.'}
+- Tone: warm but direct. You're building on momentum, not restarting.
+- Do NOT summarize the entire meeting. Pick the one thing that matters most.`
+  }
 
   if (followUpNumber === 1) {
     return `${context}

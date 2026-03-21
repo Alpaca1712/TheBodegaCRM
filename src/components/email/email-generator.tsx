@@ -1,35 +1,66 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Send, Copy, Check } from 'lucide-react';
+import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown } from 'lucide-react';
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';
 
-const FOLLOWUP_LABELS: Record<string, string> = {
-  follow_up_1: 'Follow-up #1 — Bump (Day 4)',
-  follow_up_2: 'Follow-up #2 — Lead Magnet (Day 9)',
-  follow_up_3: 'Follow-up #3 — Channel Switch (Day 14)',
-  break_up: 'Break-up Email (Day 21+)',
-  reply_needed: 'Reply to Their Response (ACA)',
-  post_meeting: 'Post-Meeting Follow-up',
+type EmailMode = 'initial' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
+
+const MODE_CONFIG: Record<EmailMode, { label: string; description: string; followUpNumber: number; isFollowUp: boolean }> = {
+  initial: { label: 'Initial SMYKM Email', description: 'First cold outreach with McKenna + Hormozi CTAs', followUpNumber: 0, isFollowUp: false },
+  follow_up_1: { label: 'Follow-up #1 (Day 4 Bump)', description: 'Short bump with a new SMYKM hook, no reference to the original', followUpNumber: 1, isFollowUp: true },
+  follow_up_2: { label: 'Follow-up #2 (Day 9 Value Drop)', description: 'Hormozi-style lead magnet or free resource offer', followUpNumber: 2, isFollowUp: true },
+  follow_up_3: { label: 'Follow-up #3 (Day 14 Channel Switch)', description: 'LinkedIn or Twitter DM, short and casual', followUpNumber: 3, isFollowUp: true },
+  break_up: { label: 'Break-up (Day 21+)', description: 'Graceful exit, leave the door open', followUpNumber: 4, isFollowUp: true },
+  reply_needed: { label: 'Reply to Their Response', description: 'They replied! Use ACA framework: Acknowledge, Compliment, Ask', followUpNumber: 1, isFollowUp: true },
+  post_meeting: { label: 'Post-Meeting Follow-up', description: 'Send within 24 hours with next steps', followUpNumber: 1, isFollowUp: true },
 };
 
-function getFollowUpNumber(type: string): number {
-  const map: Record<string, number> = { follow_up_1: 1, follow_up_2: 2, follow_up_3: 3, break_up: 4 };
-  return map[type] || 1;
-}
+function detectBestMode(emails: LeadEmail[], lead: Lead): EmailMode {
+  const hasInbound = emails.some(e => e.direction === 'inbound');
+  const outbound = emails.filter(e => e.direction === 'outbound');
+  const outboundCount = outbound.length;
 
-function detectFollowUpType(emails: LeadEmail[], lead: Lead): string | null {
-  if (lead.stage === 'replied') return 'reply_needed';
+  // If they replied and we haven't responded yet, reply takes priority
+  if (hasInbound) {
+    const lastInbound = emails.filter(e => e.direction === 'inbound')
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+    const lastOutbound = outbound
+      .sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())[0];
+
+    const inboundDate = new Date(lastInbound?.replied_at || lastInbound?.created_at || 0);
+    const outboundDate = lastOutbound ? new Date(lastOutbound.sent_at || lastOutbound.created_at) : new Date(0);
+
+    // Their last message is newer than our last message = we need to reply
+    if (inboundDate > outboundDate) return 'reply_needed';
+  }
+
   if (lead.stage === 'meeting_held') return 'post_meeting';
 
-  const outboundCount = emails.filter(e => e.direction === 'outbound').length;
-  if (outboundCount === 0) return null; // needs initial, not a follow-up
+  if (outboundCount === 0) return 'initial';
   if (outboundCount === 1) return 'follow_up_1';
   if (outboundCount === 2) return 'follow_up_2';
   if (outboundCount === 3) return 'follow_up_3';
-  if (outboundCount >= 4) return 'break_up';
-  return null;
+  return 'break_up';
+}
+
+function getAvailableModes(emails: LeadEmail[], lead: Lead): EmailMode[] {
+  const hasInbound = emails.some(e => e.direction === 'inbound');
+  const outboundCount = emails.filter(e => e.direction === 'outbound').length;
+  const modes: EmailMode[] = [];
+
+  // Always allow initial (user might want to restart)
+  modes.push('initial');
+
+  if (outboundCount >= 1) modes.push('follow_up_1');
+  if (outboundCount >= 1) modes.push('follow_up_2');
+  if (outboundCount >= 1) modes.push('follow_up_3');
+  if (outboundCount >= 1) modes.push('break_up');
+  if (hasInbound) modes.push('reply_needed');
+  modes.push('post_meeting');
+
+  return modes;
 }
 
 interface EmailGeneratorProps {
@@ -40,6 +71,14 @@ interface EmailGeneratorProps {
 }
 
 export default function EmailGenerator({ lead, emails = [], followUpType, onEmailSaved }: EmailGeneratorProps) {
+  const detectedMode = useMemo(() => detectBestMode(emails, lead), [emails, lead]);
+  const availableModes = useMemo(() => getAvailableModes(emails, lead), [emails, lead]);
+
+  const initialMode = (followUpType && followUpType in MODE_CONFIG)
+    ? followUpType as EmailMode
+    : detectedMode;
+
+  const [mode, setMode] = useState<EmailMode>(initialMode);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GeneratedEmail | null>(null);
   const [editedMckenna, setEditedMckenna] = useState<EmailVariant | null>(null);
@@ -48,11 +87,9 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   const [sendingSide, setSendingSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [customContext, setCustomContext] = useState('');
   const [showContext, setShowContext] = useState(false);
+  const [showModeSelector, setShowModeSelector] = useState(false);
 
-  const resolvedType = followUpType || detectFollowUpType(emails, lead);
-  const isFollowUp = resolvedType && resolvedType !== 'initial';
-
-  // No longer auto-generating — let the user add custom context first
+  const config = MODE_CONFIG[mode];
 
   const buildEmailThread = () => {
     return [...emails]
@@ -72,16 +109,27 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
     try {
       let data: GeneratedEmail;
 
-      if (isFollowUp) {
-        const followUpNumber = getFollowUpNumber(resolvedType!);
+      if (config.isFollowUp) {
+        // For reply_needed/post_meeting, the follow-up API handles them via hasReply detection
+        // and the followUpNumber. We pass the thread so the API can see inbound messages.
         const emailThread = buildEmailThread();
+
+        // Determine the right followUpNumber for the API
+        let followUpNumber = config.followUpNumber;
+        // reply_needed and post_meeting use followUpNumber=1 but the API
+        // detects them via hasReply in the thread or the stage context
+        if (mode === 'reply_needed' || mode === 'post_meeting') {
+          followUpNumber = 1;
+        }
+
         const payload = {
-          lead,
+          lead: { ...lead, stage: mode === 'reply_needed' ? 'replied' : mode === 'post_meeting' ? 'meeting_held' : lead.stage },
           emailThread,
           followUpNumber,
           customContext: customContext.trim() || undefined,
         };
 
+        // Generate two distinct variants in parallel
         const [resA, resB] = await Promise.all([
           fetch('/api/ai/generate-followup', {
             method: 'POST',
@@ -105,7 +153,6 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           hormozi: { subject: resultB.subject, body: resultB.body, ctaType: 'hormozi', wordCount: wcB },
         };
       } else {
-        // Initial email — use the standard generate-email API
         const res = await fetch('/api/ai/generate-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -144,7 +191,10 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
 
     setSendingSide(side);
     try {
-      const emailType = resolvedType || 'initial';
+      const emailType = mode === 'initial' ? 'initial'
+        : mode === 'reply_needed' ? 'reply_response'
+        : mode === 'post_meeting' ? 'reply_response'
+        : mode;
 
       await fetch('/api/lead-emails', {
         method: 'POST',
@@ -159,20 +209,33 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         }),
       });
 
-      const res = await fetch(`/api/leads/${lead.id}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ stage: 'email_drafted' }),
-      });
-      if (!res.ok) throw new Error('Failed to update stage');
+      // Only update stage if it makes sense
+      // Don't regress from advanced stages, don't override replied/meeting_held
+      const noStageUpdate = ['replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'];
+      if (!noStageUpdate.includes(lead.stage)) {
+        const newStage = mode === 'initial' ? 'email_drafted' : 'follow_up';
+        await fetch(`/api/leads/${lead.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ stage: newStage }),
+        });
+      }
 
       onEmailSaved?.(variant, side);
-      toast.success('Email saved and stage updated to "Email Drafted"');
+      toast.success('Email saved');
     } catch {
       toast.error('Failed to save email');
     } finally {
       setSendingSide(null);
     }
+  };
+
+  const handleModeChange = (newMode: EmailMode) => {
+    setMode(newMode);
+    setResult(null);
+    setEditedMckenna(null);
+    setEditedHormozi(null);
+    setShowModeSelector(false);
   };
 
   const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
@@ -190,20 +253,78 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
     );
   }
 
+  // Pre-generation view
   if (!result) {
     return (
-      <div className="py-6 space-y-4 max-w-lg mx-auto">
-        {isFollowUp && (
-          <div className="text-center">
-            <div className="px-4 py-2 rounded-lg bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 inline-block">
-              <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-                {FOLLOWUP_LABELS[resolvedType!] || resolvedType}
-              </p>
-            </div>
+      <div className="space-y-4">
+        {/* Mode selector */}
+        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-xs font-semibold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Email Type</p>
+            {mode !== detectedMode && (
+              <button
+                onClick={() => handleModeChange(detectedMode)}
+                className="text-[10px] text-red-600 dark:text-red-400 hover:underline font-medium"
+              >
+                Reset to auto-detected
+              </button>
+            )}
           </div>
-        )}
 
-        <div>
+          <div className="relative">
+            <button
+              onClick={() => setShowModeSelector(!showModeSelector)}
+              className="w-full flex items-center justify-between px-3 py-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors text-left"
+            >
+              <div>
+                <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{config.label}</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{config.description}</p>
+              </div>
+              <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${showModeSelector ? 'rotate-180' : ''}`} />
+            </button>
+
+            {showModeSelector && (
+              <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700 shadow-lg shadow-black/5 dark:shadow-black/30 py-1 z-50 max-h-[320px] overflow-y-auto">
+                {availableModes.map((m) => {
+                  const c = MODE_CONFIG[m];
+                  const isDetected = m === detectedMode;
+                  const isActive = m === mode;
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => handleModeChange(m)}
+                      className={`w-full text-left px-3 py-2.5 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 transition-colors ${
+                        isActive ? 'bg-red-50 dark:bg-red-950/30' : ''
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <p className={`text-sm font-medium ${isActive ? 'text-red-600 dark:text-red-400' : 'text-zinc-900 dark:text-zinc-100'}`}>
+                          {c.label}
+                        </p>
+                        {isDetected && (
+                          <span className="text-[9px] px-1.5 py-0.5 rounded-full bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-400 font-semibold">
+                            AUTO
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 mt-0.5">{c.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Outbound count context */}
+          <div className="mt-3 flex items-center gap-3 text-[11px] text-zinc-400">
+            <span>{emails.filter(e => e.direction === 'outbound').length} outbound sent</span>
+            <span>{emails.filter(e => e.direction === 'inbound').length} inbound received</span>
+            <span>Stage: {lead.stage}</span>
+          </div>
+        </div>
+
+        {/* Custom context */}
+        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
           <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
             Custom context <span className="text-zinc-400 dark:text-zinc-500 font-normal">(optional)</span>
           </label>
@@ -212,44 +333,35 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
             onChange={(e) => setCustomContext(e.target.value)}
             placeholder="e.g. Mention our free pilot offer, reference their recent Series B, include a specific vulnerability we found..."
             rows={3}
-            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
           />
           <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
-            Add anything the AI should weave into the email: special offers, recent news, specific angles, etc.
+            The AI will build the entire email around this if provided.
           </p>
         </div>
 
-        <div className="text-center">
+        {/* Generate button */}
+        <div className="text-center pt-2">
           <button
             onClick={generate}
             disabled={isGenerating}
-            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
+            className="inline-flex items-center gap-2 px-6 py-3 text-sm font-medium text-white bg-linear-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg transition-all shadow-sm shadow-red-600/20 disabled:opacity-50"
           >
-            {isGenerating ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            {isGenerating ? 'Generating...' : isFollowUp ? `Generate ${FOLLOWUP_LABELS[resolvedType!]?.split(' — ')[0] || 'Follow-up'}` : 'Generate SMYKM Email'}
+            {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {isGenerating ? 'Generating...' : `Generate ${config.label.split(' (')[0]}`}
           </button>
-          <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-2">
-            {isFollowUp ? 'Generates a follow-up based on your conversation history' : 'Generates McKenna CTA and Hormozi CTA side by side'}
-          </p>
         </div>
       </div>
     );
   }
 
+  // Post-generation view
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <div>
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Generated Email</h3>
-          {isFollowUp && (
-            <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">
-              {FOLLOWUP_LABELS[resolvedType!] || resolvedType}
-            </p>
-          )}
+          <p className="text-[11px] text-amber-600 dark:text-amber-400 font-medium mt-0.5">{config.label}</p>
         </div>
         <div className="flex items-center gap-2">
           <button
@@ -261,6 +373,12 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
             }`}
           >
             {customContext ? 'Context *' : 'Context'}
+          </button>
+          <button
+            onClick={() => { setResult(null); setEditedMckenna(null); setEditedHormozi(null); }}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+          >
+            Change Type
           </button>
           <button
             onClick={generate}
@@ -287,8 +405,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <VariantCard
-          title={isFollowUp ? 'Variant A' : 'McKenna CTA'}
-          subtitle={isFollowUp ? 'Edit and send' : 'Sell the conversation'}
+          title={config.isFollowUp ? 'Variant A' : 'McKenna CTA'}
+          subtitle={config.isFollowUp ? 'Edit and send' : 'Sell the conversation'}
           variant={editedMckenna!}
           onSubjectChange={(s) => setEditedMckenna((v) => v ? { ...v, subject: s } : v)}
           onBodyChange={(b) => setEditedMckenna((v) => v ? { ...v, body: b, wordCount: countWords(b) } : v)}
@@ -299,8 +417,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         />
 
         <VariantCard
-          title={isFollowUp ? 'Variant B' : 'Hormozi CTA'}
-          subtitle={isFollowUp ? 'Alternative version' : 'Lead with value'}
+          title={config.isFollowUp ? 'Variant B' : 'Hormozi CTA'}
+          subtitle={config.isFollowUp ? 'Alternative version' : 'Lead with value'}
           variant={editedHormozi!}
           onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s } : v)}
           onBodyChange={(b) => setEditedHormozi((v) => v ? { ...v, body: b, wordCount: countWords(b) } : v)}
@@ -336,7 +454,7 @@ function VariantCard({
   isSending: boolean;
 }) {
   return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-4 space-y-3">
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</p>
@@ -347,7 +465,7 @@ function VariantCard({
             ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
             : 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400'
         }`}>
-          {variant.wordCount} words
+          {variant.wordCount}w
         </span>
       </div>
 
@@ -356,7 +474,7 @@ function VariantCard({
         <input
           value={variant.subject}
           onChange={(e) => onSubjectChange(e.target.value)}
-          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
         />
       </div>
 
@@ -366,7 +484,7 @@ function VariantCard({
           value={variant.body}
           onChange={(e) => onBodyChange(e.target.value)}
           rows={10}
-          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
+          className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
         />
       </div>
 
@@ -384,7 +502,7 @@ function VariantCard({
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
         >
           {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-          Save & Stage
+          Save
         </button>
       </div>
     </div>

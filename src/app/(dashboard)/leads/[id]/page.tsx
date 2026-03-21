@@ -35,13 +35,22 @@ import {
   Sparkles,
   BookOpen,
   Trash,
+  RefreshCw,
+  Globe,
+  Building2,
+  Swords,
+  Target,
+  ChevronDown,
+  ChevronRight,
+  Network,
+  User,
 } from 'lucide-react';
 import {
   STAGE_LABELS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS,
   CHANNEL_LABELS, INTERACTION_TYPE_LABELS, CHANNEL_INTERACTION_TYPES,
   INTERACTION_CHANNELS,
   type Lead, type LeadEmail, type LeadInteraction, type PipelineStage, type InteractionChannel, type InteractionType,
-  PIPELINE_STAGES, type ConversationSignal,
+  PIPELINE_STAGES, type ConversationSignal, type OrgChartMember,
 } from '@/types/leads';
 import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
@@ -50,6 +59,8 @@ interface RelatedLead {
   id: string;
   contact_name: string;
   contact_email: string | null;
+  contact_title: string | null;
+  contact_photo_url: string | null;
   stage: string;
   type: string;
 }
@@ -63,7 +74,7 @@ interface AgentMemory {
   created_at: string;
 }
 
-type TabId = 'overview' | 'emails' | 'conversation' | 'memory';
+type TabId = 'overview' | 'emails' | 'conversation' | 'company' | 'memory';
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -78,13 +89,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [memories, setMemories] = useState<AgentMemory[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>(
-    urlTab === 'emails' || urlTab === 'conversation' || urlTab === 'memory' ? urlTab : 'overview'
+    urlTab === 'emails' || urlTab === 'conversation' || urlTab === 'company' || urlTab === 'memory' ? urlTab : 'overview'
   );
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<Record<string, unknown> | null>(null);
   const [coachingLoading, setCoachingLoading] = useState(false);
   const [coaching, setCoaching] = useState<Record<string, unknown> | null>(null);
+  const [battleCardLoading, setBattleCardLoading] = useState(false);
+  const [battleCard, setBattleCard] = useState<Record<string, unknown> | null>(null);
+  const [orgChartLoading, setOrgChartLoading] = useState(false);
 
   const fetchLead = useCallback(async () => {
     try {
@@ -96,6 +111,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       setInteractions(data.interactions || []);
       setRelatedLeads(data.relatedLeads || []);
       if (data.lead?.account_snapshot) setSnapshot(data.lead.account_snapshot);
+      if (data.lead?.battle_card) setBattleCard(data.lead.battle_card);
     } catch {
       toast.error('Lead not found');
       router.push('/leads');
@@ -160,6 +176,64 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } catch { /* silent */ }
   };
 
+  const generateBattleCard = async () => {
+    setBattleCardLoading(true);
+    try {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      setBattleCard(data);
+      await fetchLead();
+      toast.success('Battle card generated');
+    } catch { toast.error('Failed to generate battle card'); } finally { setBattleCardLoading(false); }
+  };
+
+  const enrichOrgChart = async () => {
+    setOrgChartLoading(true);
+    try {
+      const res = await fetch('/api/ai/enrich-company', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id }),
+      });
+      if (!res.ok) throw new Error('Failed');
+      const data = await res.json();
+      await fetchLead();
+      toast.success(`Found ${data.org_chart?.length || 0} team members`);
+    } catch { toast.error('Failed to enrich company'); } finally { setOrgChartLoading(false); }
+  };
+
+  const handleSyncLead = async () => {
+    setIsSyncing(true);
+    try {
+      const res = await fetch('/api/gmail/sync-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Sync failed');
+      }
+      const data = await res.json();
+      const parts: string[] = [];
+      if (data.newEmails > 0) parts.push(`${data.newEmails} new emails`);
+      if (data.stageChanged) parts.push(`stage: ${data.previousStage} \u2192 ${data.newStage}`);
+      if (data.memoriesExtracted > 0) parts.push(`${data.memoriesExtracted} memories`);
+      toast.success(parts.length > 0 ? `Synced: ${parts.join(', ')}` : 'Synced (no new data)');
+      await fetchLead();
+      await fetchMemories();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Sync failed');
+    } finally {
+      setIsSyncing(false);
+    }
+  };
+
   const generateSnapshot = async () => {
     setSnapshotLoading(true);
     try {
@@ -218,10 +292,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   if (!lead) return null;
 
+  const orgChartCount = lead.org_chart?.length || 0;
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
     { id: 'conversation', label: 'Conversation' },
+    { id: 'company', label: 'Company', count: orgChartCount + relatedLeads.length },
     { id: 'memory', label: 'Memory', count: memories.length },
   ];
 
@@ -239,6 +315,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               <span className={`px-2 py-0.5 rounded text-[11px] font-semibold ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
                 {LEAD_TYPE_LABELS[lead.type]}
               </span>
+              {lead.icp_score != null && (
+                <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+                  lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                  lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                  'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                }`}>
+                  ICP: {lead.icp_score}
+                </span>
+              )}
               {lead.risk_score != null && (
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
                   lead.risk_score > 50 ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
@@ -255,6 +340,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           </div>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={generateBattleCard}
+            disabled={battleCardLoading}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {battleCardLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+            Battle Card
+          </button>
+          <button
+            onClick={handleSyncLead}
+            disabled={isSyncing || !lead.contact_email}
+            title={lead.contact_email ? 'Sync Gmail for this lead' : 'No email address on this lead'}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
+            Sync
+          </button>
           <button
             onClick={generateSnapshot}
             disabled={snapshotLoading}
@@ -350,6 +452,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {activeTab === 'overview' && (
             <div className="space-y-4">
               {lead.conversation_summary && <EnhancedAISummary lead={lead} />}
+              {battleCard && <BattleCardPanel card={battleCard} />}
               <ResearchSection lead={lead} />
             </div>
           )}
@@ -368,6 +471,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
           {activeTab === 'conversation' && (
             <ConversationIntel lead={lead} emails={emails} interactions={interactions} relatedLeads={relatedLeads} />
+          )}
+
+          {activeTab === 'company' && (
+            <CompanyTab
+              lead={lead}
+              relatedLeads={relatedLeads}
+              onEnrich={enrichOrgChart}
+              isEnriching={orgChartLoading}
+            />
           )}
 
           {activeTab === 'memory' && (
@@ -592,33 +704,70 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
 
 // --- Sidebar Cards ---
 function ContactCard({ lead }: { lead: Lead }) {
+  const initials = lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
-      <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Contact</h3>
-      {lead.contact_email && (
-        <div className="flex items-center gap-2">
-          <Mail className="h-3.5 w-3.5 text-zinc-400" />
-          <a href={`mailto:${lead.contact_email}`} className="text-sm text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+      {/* Profile header with photo */}
+      <div className="flex items-center gap-3">
+        {lead.contact_photo_url ? (
+          <img
+            src={lead.contact_photo_url}
+            alt={lead.contact_name}
+            className="h-12 w-12 rounded-full object-cover ring-2 ring-zinc-100 dark:ring-zinc-700"
+            onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; (e.target as HTMLImageElement).nextElementSibling?.classList.remove('hidden'); }}
+          />
+        ) : null}
+        <div className={`h-12 w-12 rounded-full bg-red-100 dark:bg-red-900/40 flex items-center justify-center text-sm font-bold text-red-600 dark:text-red-400 ring-2 ring-zinc-100 dark:ring-zinc-700 ${lead.contact_photo_url ? 'hidden' : ''}`}>
+          {initials}
         </div>
-      )}
-      {lead.contact_linkedin && (
-        <div className="flex items-center gap-2">
-          <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
-          <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-sm text-[#0A66C2] hover:underline truncate">LinkedIn</a>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 truncate">{lead.contact_name}</p>
+          {lead.contact_title && <p className="text-[11px] text-zinc-500 truncate">{lead.contact_title}</p>}
         </div>
-      )}
-      {lead.contact_twitter && (
-        <div className="flex items-center gap-2">
-          <Twitter className="h-3.5 w-3.5 text-zinc-400" />
-          <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-sm text-red-600 dark:text-red-400 hover:underline">{lead.contact_twitter}</a>
-        </div>
-      )}
-      {lead.contact_phone && (
-        <div className="flex items-center gap-2">
-          <Phone className="h-3.5 w-3.5 text-zinc-400" />
-          <a href={`tel:${lead.contact_phone}`} className="text-sm text-red-600 dark:text-red-400 hover:underline">{lead.contact_phone}</a>
-        </div>
-      )}
+      </div>
+
+      {/* Company row */}
+      <div className="flex items-center gap-2 p-2 rounded-lg bg-zinc-50 dark:bg-zinc-800/50">
+        {lead.company_logo_url ? (
+          <img src={lead.company_logo_url} alt="" className="h-5 w-5 rounded object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+        ) : (
+          <Building2 className="h-4 w-4 text-zinc-400" />
+        )}
+        <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">{lead.company_name}</span>
+        {lead.company_website && (
+          <a href={lead.company_website.startsWith('http') ? lead.company_website : `https://${lead.company_website}`} target="_blank" rel="noopener noreferrer" className="ml-auto">
+            <Globe className="h-3.5 w-3.5 text-zinc-400 hover:text-red-500 transition-colors" />
+          </a>
+        )}
+      </div>
+
+      {/* Contact links */}
+      <div className="space-y-2">
+        {lead.contact_email && (
+          <div className="flex items-center gap-2">
+            <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+            <a href={`mailto:${lead.contact_email}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+          </div>
+        )}
+        {lead.contact_linkedin && (
+          <div className="flex items-center gap-2">
+            <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] shrink-0" />
+            <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0A66C2] hover:underline truncate">LinkedIn Profile</a>
+          </div>
+        )}
+        {lead.contact_twitter && (
+          <div className="flex items-center gap-2">
+            <Twitter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+            <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_twitter}</a>
+          </div>
+        )}
+        {lead.contact_phone && (
+          <div className="flex items-center gap-2">
+            <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+            <a href={`tel:${lead.contact_phone}`} className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_phone}</a>
+          </div>
+        )}
+      </div>
     </div>
   );
 }
@@ -662,15 +811,23 @@ function RelatedLeadsCard({ leads, domain }: { leads: RelatedLead[]; domain: str
         <Users className="h-3.5 w-3.5 text-zinc-400" />
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Same Company ({domain})</h3>
       </div>
-      {leads.map(rl => (
-        <Link key={rl.id} href={`/leads/${rl.id}`} className="flex items-center justify-between p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
-          <div>
-            <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{rl.contact_name}</p>
-            <p className="text-[10px] text-zinc-400">{rl.contact_email}</p>
-          </div>
-          <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500">{STAGE_LABELS[rl.stage as PipelineStage] || rl.stage}</span>
-        </Link>
-      ))}
+      {leads.map(rl => {
+        const initials = rl.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+        return (
+          <Link key={rl.id} href={`/leads/${rl.id}`} className="flex items-center gap-2.5 p-2 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors">
+            {rl.contact_photo_url ? (
+              <img src={rl.contact_photo_url} alt="" className="h-7 w-7 rounded-full object-cover shrink-0" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            ) : (
+              <div className="h-7 w-7 rounded-full bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-[10px] font-bold text-zinc-500 shrink-0">{initials}</div>
+            )}
+            <div className="flex-1 min-w-0">
+              <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">{rl.contact_name}</p>
+              <p className="text-[10px] text-zinc-400 truncate">{rl.contact_title || rl.contact_email}</p>
+            </div>
+            <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 shrink-0">{STAGE_LABELS[rl.stage as PipelineStage] || rl.stage}</span>
+          </Link>
+        );
+      })}
     </div>
   );
 }
@@ -1010,6 +1167,344 @@ function ConversationIntel({ lead, emails, interactions, relatedLeads }: { lead:
               </div>
             ))}
           </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Company Tab ---
+function CompanyTab({ lead, relatedLeads, onEnrich, isEnriching }: { lead: Lead; relatedLeads: RelatedLead[]; onEnrich: () => void; isEnriching: boolean }) {
+  const orgChart = (lead.org_chart || []) as OrgChartMember[];
+  const hasOrgChart = orgChart.length > 0;
+
+  return (
+    <div className="space-y-4">
+      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-3">
+            {lead.company_logo_url ? (
+              <img src={lead.company_logo_url} alt="" className="h-10 w-10 rounded-lg object-contain bg-white p-1 border border-zinc-200 dark:border-zinc-700" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+            ) : (
+              <div className="h-10 w-10 rounded-lg bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center">
+                <Building2 className="h-5 w-5 text-zinc-400" />
+              </div>
+            )}
+            <div>
+              <h3 className="text-base font-bold text-zinc-900 dark:text-zinc-100">{lead.company_name}</h3>
+              {lead.company_website && (
+                <a href={lead.company_website.startsWith('http') ? lead.company_website : `https://${lead.company_website}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline flex items-center gap-1">
+                  <Globe className="h-3 w-3" />{lead.company_website}
+                </a>
+              )}
+            </div>
+          </div>
+          <button
+            onClick={onEnrich}
+            disabled={isEnriching}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+          >
+            {isEnriching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Network className="h-3.5 w-3.5" />}
+            {hasOrgChart ? 'Refresh Team' : 'Discover Team'}
+          </button>
+        </div>
+        {lead.company_description && (
+          <p className="text-sm text-zinc-600 dark:text-zinc-400 leading-relaxed">{lead.company_description}</p>
+        )}
+        {lead.icp_score != null && (
+          <div className="mt-3 flex items-center gap-3">
+            <div className="flex items-center gap-1.5">
+              <Target className="h-3.5 w-3.5 text-zinc-400" />
+              <span className="text-xs font-medium text-zinc-500">ICP Fit</span>
+            </div>
+            <div className="flex-1 h-2 bg-zinc-100 dark:bg-zinc-800 rounded-full overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${
+                  lead.icp_score >= 70 ? 'bg-emerald-500' : lead.icp_score >= 50 ? 'bg-blue-500' : lead.icp_score >= 30 ? 'bg-amber-500' : 'bg-zinc-400'
+                }`}
+                style={{ width: `${lead.icp_score}%` }}
+              />
+            </div>
+            <span className="text-xs font-bold tabular-nums text-zinc-700 dark:text-zinc-300">{lead.icp_score}/100</span>
+          </div>
+        )}
+        {lead.icp_reasons && lead.icp_reasons.length > 0 && (
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {lead.icp_reasons.map((r, i) => (
+              <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400">{r}</span>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {hasOrgChart && <OrgChartTree members={orgChart} companyName={lead.company_name} />}
+
+      {relatedLeads.length > 0 && (
+        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
+          <div className="flex items-center gap-2">
+            <Users className="h-4 w-4 text-red-500" />
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">People in Your CRM</h3>
+          </div>
+          <div className="space-y-2">
+            {relatedLeads.map(rl => {
+              const initials = rl.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
+              return (
+                <Link key={rl.id} href={`/leads/${rl.id}`} className="flex items-center gap-3 p-3 rounded-lg border border-zinc-100 dark:border-zinc-800 hover:border-red-200 dark:hover:border-red-800 transition-colors">
+                  {rl.contact_photo_url ? (
+                    <img src={rl.contact_photo_url} alt="" className="h-9 w-9 rounded-full object-cover" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
+                  ) : (
+                    <div className="h-9 w-9 rounded-full bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center text-xs font-bold text-zinc-500">{initials}</div>
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">{rl.contact_name}</p>
+                    <p className="text-[11px] text-zinc-500">{rl.contact_title || rl.contact_email}</p>
+                  </div>
+                  <span className={`text-[10px] px-2 py-0.5 rounded-full font-medium ${
+                    rl.stage === 'closed_won' ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                    rl.stage === 'replied' || rl.stage === 'meeting_booked' ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                    'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                  }`}>{STAGE_LABELS[rl.stage as PipelineStage] || rl.stage}</span>
+                </Link>
+              );
+            })}
+          </div>
+        </div>
+      )}
+
+      {!hasOrgChart && relatedLeads.length === 0 && (
+        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-600 p-8 text-center">
+          <Network className="h-10 w-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+          <p className="text-sm font-medium text-zinc-500">No team data yet</p>
+          <p className="text-xs text-zinc-400 mt-1">Click &quot;Discover Team&quot; to find team members and build an org chart.</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+// --- Org Chart Tree ---
+function OrgChartTree({ members, companyName }: { members: OrgChartMember[]; companyName: string }) {
+  const [expandedDepts, setExpandedDepts] = useState<Set<string>>(new Set(['Leadership']));
+
+  const departments = new Map<string, OrgChartMember[]>();
+  for (const m of members) {
+    const dept = m.department || 'Other';
+    if (!departments.has(dept)) departments.set(dept, []);
+    departments.get(dept)!.push(m);
+  }
+
+  const sortedDepts = [...departments.entries()].sort(([a], [b]) => {
+    if (a === 'Leadership') return -1;
+    if (b === 'Leadership') return 1;
+    return a.localeCompare(b);
+  });
+
+  const toggleDept = (dept: string) => {
+    setExpandedDepts(prev => {
+      const next = new Set(prev);
+      if (next.has(dept)) next.delete(dept); else next.add(dept);
+      return next;
+    });
+  };
+
+  const deptColors: Record<string, string> = {
+    Leadership: 'bg-red-100 dark:bg-red-900/40 text-red-600',
+    Engineering: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
+    Product: 'bg-purple-100 dark:bg-purple-900/40 text-purple-600',
+    Sales: 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600',
+    Marketing: 'bg-amber-100 dark:bg-amber-900/40 text-amber-600',
+    Operations: 'bg-cyan-100 dark:bg-cyan-900/40 text-cyan-600',
+    Finance: 'bg-green-100 dark:bg-green-900/40 text-green-600',
+    Legal: 'bg-orange-100 dark:bg-orange-900/40 text-orange-600',
+    Other: 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500',
+  };
+
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Network className="h-4 w-4 text-red-500" />
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Organization Map</h3>
+        </div>
+        <span className="text-[10px] text-zinc-400 tabular-nums">{members.length} people at {companyName}</span>
+      </div>
+
+      <div className="space-y-1">
+        {sortedDepts.map(([dept, people]) => {
+          const isExpanded = expandedDepts.has(dept);
+          return (
+            <div key={dept}>
+              <button
+                onClick={() => toggleDept(dept)}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+              >
+                {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
+                <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${deptColors[dept] || deptColors.Other}`}>{dept}</span>
+                <span className="text-[10px] text-zinc-400 tabular-nums">{people.length}</span>
+              </button>
+              {isExpanded && (
+                <div className="ml-6 space-y-0.5 mt-0.5">
+                  {people.map((person, i) => (
+                    <div key={i} className="flex items-center gap-2.5 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors group">
+                      {person.photo_url ? (
+                        <img src={person.photo_url} alt="" className="h-6 w-6 rounded-full object-cover shrink-0" />
+                      ) : (
+                        <div className="h-6 w-6 rounded-full bg-zinc-100 dark:bg-zinc-700 flex items-center justify-center shrink-0">
+                          <User className="h-3 w-3 text-zinc-400" />
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2">
+                          <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300 truncate">{person.name}</p>
+                          {person.lead_id && (
+                            <Link href={`/leads/${person.lead_id}`} className="text-[9px] px-1 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 font-medium hover:bg-red-100 dark:hover:bg-red-950/50">
+                              In CRM
+                            </Link>
+                          )}
+                        </div>
+                        <p className="text-[10px] text-zinc-400 truncate">{person.title}</p>
+                      </div>
+                      {person.linkedin_url && (
+                        <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                          <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
+                        </a>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// --- Battle Card Panel ---
+function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
+  const [expanded, setExpanded] = useState(false);
+  const bc = card as {
+    company_overview?: string; their_product?: string;
+    their_strengths?: string[]; their_weaknesses?: string[];
+    competitive_landscape?: string[]; our_angle?: string;
+    objection_handlers?: Array<{ objection: string; response: string }>;
+    discovery_questions?: string[]; trigger_events?: string[];
+    icp_score?: number; pricing_intel?: string; tech_stack?: string[];
+    decision_makers?: Array<{ role: string; concerns: string; pitch_angle: string }>;
+  };
+
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
+      <button onClick={() => setExpanded(!expanded)} className="w-full flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Swords className="h-4 w-4 text-red-500" />
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Battle Card</h3>
+        </div>
+        {expanded ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+      </button>
+
+      {bc.our_angle && (
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
+          <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Our Angle</p>
+          <p className="text-sm text-zinc-800 dark:text-zinc-200">{bc.our_angle}</p>
+        </div>
+      )}
+
+      {expanded && (
+        <div className="space-y-4">
+          {bc.their_product && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Their Product</p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-300">{bc.their_product}</p>
+            </div>
+          )}
+
+          {bc.tech_stack && bc.tech_stack.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Tech Stack</p>
+              <div className="flex flex-wrap gap-1.5">
+                {bc.tech_stack.map((t, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400">{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 gap-3">
+            {bc.their_strengths && bc.their_strengths.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-emerald-600 uppercase tracking-wider mb-1">Their Strengths</p>
+                <ul className="space-y-1">
+                  {bc.their_strengths.map((s, i) => <li key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400 flex items-start gap-1"><span className="text-emerald-500 mt-0.5">+</span>{s}</li>)}
+                </ul>
+              </div>
+            )}
+            {bc.their_weaknesses && bc.their_weaknesses.length > 0 && (
+              <div>
+                <p className="text-[10px] font-semibold text-red-600 uppercase tracking-wider mb-1">Their Weaknesses</p>
+                <ul className="space-y-1">
+                  {bc.their_weaknesses.map((w, i) => <li key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400 flex items-start gap-1"><span className="text-red-500 mt-0.5">-</span>{w}</li>)}
+                </ul>
+              </div>
+            )}
+          </div>
+
+          {bc.objection_handlers && bc.objection_handlers.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Objection Handlers</p>
+              <div className="space-y-2">
+                {bc.objection_handlers.map((oh, i) => (
+                  <div key={i} className="p-2.5 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 space-y-1">
+                    <p className="text-[11px] font-medium text-amber-700 dark:text-amber-400">&quot;{oh.objection}&quot;</p>
+                    <p className="text-[11px] text-zinc-600 dark:text-zinc-400">{oh.response}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bc.discovery_questions && bc.discovery_questions.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Discovery Questions</p>
+              <ul className="space-y-1">
+                {bc.discovery_questions.map((q, i) => <li key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400">{i + 1}. {q}</li>)}
+              </ul>
+            </div>
+          )}
+
+          {bc.trigger_events && bc.trigger_events.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Trigger Events</p>
+              <div className="flex flex-wrap gap-1.5">
+                {bc.trigger_events.map((t, i) => (
+                  <span key={i} className="text-[10px] px-2 py-0.5 rounded-full bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400">{t}</span>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bc.decision_makers && bc.decision_makers.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-2">Decision Makers</p>
+              <div className="space-y-2">
+                {bc.decision_makers.map((dm, i) => (
+                  <div key={i} className="p-2.5 rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100">{dm.role}</p>
+                    <p className="text-[10px] text-zinc-500 mt-0.5">Concerns: {dm.concerns}</p>
+                    <p className="text-[10px] text-red-600 dark:text-red-400 mt-0.5">Pitch: {dm.pitch_angle}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {bc.pricing_intel && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Pricing Intel</p>
+              <p className="text-[11px] text-zinc-600 dark:text-zinc-400">{bc.pricing_intel}</p>
+            </div>
+          )}
         </div>
       )}
     </div>

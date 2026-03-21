@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
 import { STAGE_LABELS, type PipelineStage } from '@/types/leads';
 
 interface LeadRisk {
@@ -27,22 +27,60 @@ interface PipelineHealthData {
 export default function PipelineHealthPage() {
   const [data, setData] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
-  const [refreshing, setRefreshing] = useState(false);
+  const [aiLoading, setAiLoading] = useState(false);
 
-  const fetchHealth = async (isRefresh = false) => {
-    if (isRefresh) setRefreshing(true);
+  const fetchHealth = useCallback(async () => {
     try {
       const res = await fetch('/api/ai/pipeline-health');
-      if (res.ok) setData(await res.json());
-    } catch {
-      // ignore
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
-  };
+      if (res.ok) {
+        const result = await res.json();
+        setData(result);
+        return result;
+      }
+    } catch { /* ignore */ }
+    return null;
+  }, []);
 
-  useEffect(() => { fetchHealth(); }, []);
+  const fetchAiRecommendations = useCallback(async (leads: LeadRisk[]) => {
+    const riskyIds = leads.filter(l => l.risk_score > 15).slice(0, 10).map(l => l.lead_id);
+    if (riskyIds.length === 0) return;
+
+    setAiLoading(true);
+    try {
+      const res = await fetch('/api/ai/pipeline-health', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadIds: riskyIds }),
+      });
+      if (res.ok) {
+        const { recommendations } = await res.json();
+        if (Array.isArray(recommendations) && recommendations.length > 0) {
+          setData(prev => {
+            if (!prev) return prev;
+            const updated = { ...prev, leads: prev.leads.map(l => {
+              const rec = recommendations.find((r: { lead_id: string; recommendation: string }) => r.lead_id === l.lead_id);
+              return rec ? { ...l, recommendation: rec.recommendation } : l;
+            })};
+            return updated;
+          });
+        }
+      }
+    } catch { /* ignore */ } finally {
+      setAiLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchHealth().then(result => {
+      setLoading(false);
+      if (result?.leads) fetchAiRecommendations(result.leads);
+    });
+  }, [fetchHealth, fetchAiRecommendations]);
+
+  const handleRefresh = async () => {
+    const result = await fetchHealth();
+    if (result?.leads) fetchAiRecommendations(result.leads);
+  };
 
   if (loading) {
     return (
@@ -68,20 +106,20 @@ export default function PipelineHealthPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Pipeline Health</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">AI-powered risk assessment across your active pipeline</p>
+          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Risk assessment across your active pipeline</p>
         </div>
         <button
-          onClick={() => fetchHealth(true)}
-          disabled={refreshing}
+          onClick={handleRefresh}
+          disabled={loading}
           className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors disabled:opacity-50"
         >
-          <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+          <RefreshCw className="h-3.5 w-3.5" />
           Refresh
         </button>
       </div>
 
       {/* Health Score Hero */}
-      <div className={`rounded-2xl bg-gradient-to-br ${scoreBg} border border-zinc-200/80 dark:border-zinc-700/80 p-6`}>
+      <div className={`rounded-2xl bg-linear-to-br ${scoreBg} border border-zinc-200/80 dark:border-zinc-700/80 p-6`}>
         <div className="flex items-start justify-between">
           <div>
             <div className="flex items-center gap-2 mb-2">
@@ -113,30 +151,23 @@ export default function PipelineHealthPage() {
         </div>
       </div>
 
+      {/* AI loading indicator */}
+      {aiLoading && (
+        <div className="flex items-center gap-2 px-4 py-2.5 rounded-lg bg-purple-50 dark:bg-purple-950/30 border border-purple-200 dark:border-purple-800">
+          <Sparkles className="h-3.5 w-3.5 text-purple-500 animate-pulse" />
+          <span className="text-xs font-medium text-purple-700 dark:text-purple-300">Generating AI recommendations...</span>
+        </div>
+      )}
+
       {/* Risk Buckets */}
       {riskBuckets.critical.length > 0 && (
-        <RiskSection
-          title="Critical"
-          subtitle="Immediate attention needed"
-          color="red"
-          leads={riskBuckets.critical}
-        />
+        <RiskSection title="Critical" subtitle="Immediate attention needed" color="red" leads={riskBuckets.critical} />
       )}
       {riskBuckets.warning.length > 0 && (
-        <RiskSection
-          title="Warning"
-          subtitle="Starting to go cold"
-          color="amber"
-          leads={riskBuckets.warning}
-        />
+        <RiskSection title="Warning" subtitle="Starting to go cold" color="amber" leads={riskBuckets.warning} />
       )}
       {riskBuckets.healthy.length > 0 && (
-        <RiskSection
-          title="Healthy"
-          subtitle="On track"
-          color="emerald"
-          leads={riskBuckets.healthy}
-        />
+        <RiskSection title="Healthy" subtitle="On track" color="emerald" leads={riskBuckets.healthy} />
       )}
     </div>
   );
@@ -146,15 +177,7 @@ function RiskSection({ title, subtitle, color, leads }: {
   title: string;
   subtitle: string;
   color: 'red' | 'amber' | 'emerald';
-  leads: Array<{
-    lead_id: string;
-    contact_name: string;
-    company_name: string;
-    stage: string;
-    risk_score: number;
-    risk_factors: string[];
-    recommendation: string;
-  }>;
+  leads: LeadRisk[];
 }) {
   const colorMap = {
     red: { dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', border: 'border-red-200 dark:border-red-900/50' },
