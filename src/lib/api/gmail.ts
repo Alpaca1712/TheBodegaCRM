@@ -163,6 +163,19 @@ function decodeBase64Url(str: string): string {
   }
 }
 
+function decodeHtmlEntities(text: string): string {
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ')
+}
+
 function extractPlainText(payload: Record<string, unknown>): string {
   if (!payload) return ''
 
@@ -218,11 +231,11 @@ export async function fetchRecentMessages(
     messages.push({
       id: detail.id,
       threadId: detail.threadId,
-      subject: getHeader(headers, 'Subject'),
+      subject: decodeHtmlEntities(getHeader(headers, 'Subject')),
       from: getHeader(headers, 'From'),
       to: getHeader(headers, 'To').split(',').map((t: string) => t.trim()),
       date: getHeader(headers, 'Date'),
-      snippet: detail.snippet || '',
+      snippet: decodeHtmlEntities(detail.snippet || ''),
     })
   }
 
@@ -266,16 +279,17 @@ export async function fetchFullThread(
 
     const isFromMe = fromEmail ? extractDomain(fromEmail) === myDomain : false
 
-    const bodyText = extractPlainText(msg.payload) || msg.snippet || ''
+    const rawBody = extractPlainText(msg.payload) || msg.snippet || ''
+    const bodyText = decodeHtmlEntities(rawBody)
 
     messages.push({
       id: msg.id,
       threadId: msg.threadId,
-      subject,
+      subject: decodeHtmlEntities(subject),
       from,
       to: to.split(',').map((t: string) => t.trim()),
       date,
-      snippet: msg.snippet || '',
+      snippet: decodeHtmlEntities(msg.snippet || ''),
       bodyPlainText: bodyText.slice(0, 3000),
       direction: isFromMe ? 'outbound' : 'inbound',
     })

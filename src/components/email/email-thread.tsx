@@ -10,6 +10,20 @@ interface EmailThreadProps {
   emails: LeadEmail[];
 }
 
+function decodeEntities(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 const typeLabels: Record<string, string> = {
   initial: 'Initial Email',
   follow_up_1: 'Follow-up #1 (Day 4)',
@@ -54,7 +68,10 @@ export default function EmailThread({ emails }: EmailThreadProps) {
   return (
     <div className="space-y-4">
       {emails.map((email) => {
-        const fullText = `Subject: ${email.subject || ''}\n\n${email.body || ''}`;
+        const subject = decodeEntities(email.subject);
+        const body = decodeEntities(email.body);
+        const replyContent = decodeEntities(email.reply_content);
+        const fullText = `Subject: ${subject}\n\n${body}`;
         return (
           <div
             key={email.id}
@@ -91,14 +108,14 @@ export default function EmailThread({ emails }: EmailThreadProps) {
 
             <div className="px-4 py-3 space-y-2">
               <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-                {email.subject}
+                {subject}
               </p>
               <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-                {email.body}
+                {body}
               </p>
             </div>
 
-            {email.reply_content && (
+            {replyContent && (
               <div className="border-t border-zinc-200 dark:border-zinc-700 px-4 py-3 bg-green-50/50 dark:bg-green-950/20">
                 <div className="flex items-center justify-between mb-1.5">
                   <div className="flex items-center gap-1.5">
@@ -107,10 +124,10 @@ export default function EmailThread({ emails }: EmailThreadProps) {
                       Reply {email.replied_at && `on ${format(new Date(email.replied_at), 'MMM d, yyyy')}`}
                     </span>
                   </div>
-                  <CopyButton text={email.reply_content} label="Reply" />
+                  <CopyButton text={replyContent} label="Reply" />
                 </div>
                 <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
-                  {email.reply_content}
+                  {replyContent}
                 </p>
               </div>
             )}

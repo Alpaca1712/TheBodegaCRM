@@ -280,12 +280,13 @@ async function processLead(
           results.newEmails++
         }
 
+        const emailBody = msg.bodyPlainText || msg.snippet
         const { error: leadEmailError } = await supabase.from('lead_emails').insert({
           lead_id: lead.id,
           user_id: userId,
           email_type: isFromMe ? 'initial' : 'reply_response',
           subject: msg.subject || '(no subject)',
-          body: msg.snippet,
+          body: emailBody,
           direction: isFromMe ? 'outbound' : 'inbound',
           gmail_message_id: msg.id,
           gmail_thread_id: msg.threadId,
@@ -293,7 +294,7 @@ async function processLead(
           to_address: msg.to?.[0] || undefined,
           ...(isFromMe
             ? { sent_at: new Date(msg.date).toISOString() }
-            : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.snippet }),
+            : { replied_at: new Date(msg.date).toISOString(), reply_content: emailBody }),
         })
 
         if (leadEmailError) {

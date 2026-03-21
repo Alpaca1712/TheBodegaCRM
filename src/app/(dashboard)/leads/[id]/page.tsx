@@ -1102,13 +1102,29 @@ interface TimelineEntry {
   interactionType: string | null;
 }
 
+function decodeEntities(text: string | null | undefined): string {
+  if (!text) return '';
+  return text
+    .replace(/&#(\d+);/g, (_, code) => String.fromCharCode(Number(code)))
+    .replace(/&#x([0-9a-fA-F]+);/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+    .replace(/&amp;/g, '&')
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&apos;/g, "'")
+    .replace(/&nbsp;/g, ' ');
+}
+
 function buildTimeline(emails: LeadEmail[], interactions: LeadInteraction[]): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
   for (const e of emails) {
+    const subj = decodeEntities(e.subject);
+    const body = decodeEntities(e.body);
     entries.push({
       id: e.id, date: e.sent_at || e.created_at, type: 'email', direction: e.direction,
       channel: 'email', label: e.direction === 'outbound' ? 'Email sent' : 'Email received',
-      snippet: e.subject || e.body?.slice(0, 120) || '', fullContent: e.body, subject: e.subject,
+      snippet: subj || body?.slice(0, 120) || '', fullContent: body || null, subject: subj || null,
       aiSummary: null, interactionType: null,
     });
   }

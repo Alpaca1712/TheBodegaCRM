@@ -186,7 +186,7 @@ export async function POST(request: NextRequest) {
             user_id: user.id,
             email_type: isFromMe ? 'initial' : 'reply_response',
             subject: msg.subject || '(no subject)',
-            body: msg.snippet,
+            body: msg.bodyPlainText || msg.snippet,
             direction: isFromMe ? 'outbound' : 'inbound',
             gmail_message_id: msg.id,
             gmail_thread_id: msg.threadId,
@@ -194,7 +194,7 @@ export async function POST(request: NextRequest) {
             to_address: msg.to?.[0] || undefined,
             ...(isFromMe
               ? { sent_at: new Date(msg.date).toISOString() }
-              : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.snippet }),
+              : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.bodyPlainText || msg.snippet }),
           }),
         ])
 
