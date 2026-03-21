@@ -75,17 +75,46 @@ export async function POST(request: NextRequest) {
       { maxTokens: 4096, temperature: 0.3, maxSearches: 8 }
     )
 
-    const strip = (s: string) => s.replace(/[\u2013\u2014]/g, ',')
-    result.company_overview = strip(result.company_overview)
-    result.their_product = strip(result.their_product)
-    result.our_angle = strip(result.our_angle)
+    const strip = (s: string | null | undefined) => s ? s.replace(/[\u2013\u2014]/g, ',') : s
+    const stripArr = (arr: string[] | undefined) => arr?.map(s => strip(s) as string)
 
-    await supabase.from('leads').update({
+    result.company_overview = strip(result.company_overview) as string
+    result.their_product = strip(result.their_product) as string
+    result.our_angle = strip(result.our_angle) as string
+    result.pricing_intel = strip(result.pricing_intel) as string | null
+    result.their_strengths = stripArr(result.their_strengths) || []
+    result.their_weaknesses = stripArr(result.their_weaknesses) || []
+    result.competitive_landscape = stripArr(result.competitive_landscape) || []
+    result.discovery_questions = stripArr(result.discovery_questions) || []
+    result.trigger_events = stripArr(result.trigger_events) || []
+    result.tech_stack = stripArr(result.tech_stack) || []
+    if (result.objection_handlers) {
+      result.objection_handlers = result.objection_handlers.map(oh => ({
+        objection: strip(oh.objection) as string,
+        response: strip(oh.response) as string,
+      }))
+    }
+    if (result.decision_makers) {
+      result.decision_makers = result.decision_makers.map(dm => ({
+        role: strip(dm.role) as string,
+        concerns: strip(dm.concerns) as string,
+        pitch_angle: strip(dm.pitch_angle) as string,
+      }))
+    }
+    if (result.icp_reasons) {
+      result.icp_reasons = stripArr(result.icp_reasons) || []
+    }
+
+    const { error: updateError } = await supabase.from('leads').update({
       battle_card: result as unknown as Record<string, unknown>,
       battle_card_generated_at: new Date().toISOString(),
       icp_score: result.icp_score,
       icp_reasons: result.icp_reasons,
     }).eq('id', leadId)
+
+    if (updateError) {
+      console.error('Battle card DB update error:', updateError)
+    }
 
     return NextResponse.json(result)
   } catch (error) {

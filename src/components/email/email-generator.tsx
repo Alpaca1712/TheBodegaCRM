@@ -86,6 +86,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   const [copiedSide, setCopiedSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [sendingSide, setSendingSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [customContext, setCustomContext] = useState('');
+  const [customPrompt, setCustomPrompt] = useState('');
   const [showContext, setShowContext] = useState(false);
   const [showModeSelector, setShowModeSelector] = useState(false);
 
@@ -122,11 +123,12 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           followUpNumber = 1;
         }
 
+        const mergedContext = [customContext.trim(), customPrompt.trim()].filter(Boolean).join('\n\n');
         const payload = {
           lead: { ...lead, stage: mode === 'reply_needed' ? 'replied' : mode === 'post_meeting' ? 'meeting_held' : lead.stage },
           emailThread,
           followUpNumber,
-          customContext: customContext.trim() || undefined,
+          customContext: mergedContext || undefined,
         };
 
         // Generate two distinct variants in parallel
@@ -153,12 +155,13 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           hormozi: { subject: resultB.subject, body: resultB.body, ctaType: 'hormozi', wordCount: wcB },
         };
       } else {
+        const mergedCtx = [customContext.trim(), customPrompt.trim()].filter(Boolean).join('\n\n');
         const res = await fetch('/api/ai/generate-email', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             lead,
-            customContext: customContext.trim() || undefined,
+            customContext: mergedCtx || undefined,
           }),
         });
 
@@ -323,21 +326,47 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           </div>
         </div>
 
-        {/* Custom context */}
-        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-          <label className="block text-xs font-medium text-zinc-600 dark:text-zinc-400 mb-1.5">
-            Custom context <span className="text-zinc-400 dark:text-zinc-500 font-normal">(optional)</span>
-          </label>
-          <textarea
-            value={customContext}
-            onChange={(e) => setCustomContext(e.target.value)}
-            placeholder="e.g. Mention our free pilot offer, reference their recent Series B, include a specific vulnerability we found..."
-            rows={3}
-            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
-          />
-          <p className="text-[11px] text-zinc-400 dark:text-zinc-500 mt-1">
-            The AI will build the entire email around this if provided.
-          </p>
+        {/* Custom prompt */}
+        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
+          <div>
+            <label className="block text-xs font-semibold text-zinc-700 dark:text-zinc-300 mb-1.5">
+              Custom prompt <span className="text-zinc-400 dark:text-zinc-500 font-normal">(optional, but powerful)</span>
+            </label>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="Tell the AI exactly what you want. e.g.&#10;- Write a cheeky email about how their chatbot leaks PII&#10;- Use a Hormozi-style 'free audit' angle&#10;- Reference their CEO's tweet about AI safety from last week&#10;- Make it sound like I already found a vulnerability"
+              rows={3}
+              className="w-full rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50/30 dark:bg-red-950/10 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 resize-y"
+            />
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+              Direct instructions to the AI. This overrides the default approach and becomes the primary directive.
+            </p>
+          </div>
+
+          <div>
+            <button
+              onClick={() => setShowContext(!showContext)}
+              className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300 transition-colors"
+            >
+              <ChevronDown className={`h-3 w-3 transition-transform ${showContext ? '' : '-rotate-90'}`} />
+              Extra context {customContext && <span className="text-red-500">*</span>}
+            </button>
+            {showContext && (
+              <div className="mt-2">
+                <textarea
+                  value={customContext}
+                  onChange={(e) => setCustomContext(e.target.value)}
+                  placeholder="Paste supporting info: special offers, links, competitor intel, example emails, raw notes..."
+                  rows={2}
+                  className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
+                />
+                <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
+                  Background material the AI can draw from. It won't copy this verbatim.
+                </p>
+              </div>
+            )}
+          </div>
         </div>
 
         {/* Generate button */}
@@ -367,12 +396,12 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           <button
             onClick={() => setShowContext(v => !v)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium rounded-lg transition-colors ${
-              showContext || customContext
+              showContext || customPrompt || customContext
                 ? 'text-red-700 bg-red-50 dark:text-red-400 dark:bg-red-950/30'
                 : 'text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700'
             }`}
           >
-            {customContext ? 'Context *' : 'Context'}
+            {(customPrompt || customContext) ? 'Prompt *' : 'Prompt'}
           </button>
           <button
             onClick={() => { setResult(null); setEditedMckenna(null); setEditedHormozi(null); }}
@@ -391,15 +420,28 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         </div>
       </div>
 
-      {(showContext || customContext) && (
-        <div>
-          <textarea
-            value={customContext}
-            onChange={(e) => setCustomContext(e.target.value)}
-            placeholder="Add context for regeneration: special offers, angles, recent news..."
-            rows={2}
-            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-900 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
-          />
+      {showContext && (
+        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-3 space-y-2">
+          <div>
+            <label className="block text-[11px] font-semibold text-zinc-600 dark:text-zinc-400 mb-1">Custom prompt</label>
+            <textarea
+              value={customPrompt}
+              onChange={(e) => setCustomPrompt(e.target.value)}
+              placeholder="Tell the AI what to do differently this time..."
+              rows={2}
+              className="w-full rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50/30 dark:bg-red-950/10 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 resize-y"
+            />
+          </div>
+          <div>
+            <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Extra context</label>
+            <textarea
+              value={customContext}
+              onChange={(e) => setCustomContext(e.target.value)}
+              placeholder="Supporting info, links, example emails..."
+              rows={2}
+              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
+            />
+          </div>
         </div>
       )}
 

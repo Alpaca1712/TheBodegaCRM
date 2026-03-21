@@ -58,15 +58,17 @@ export async function POST(request: NextRequest) {
 
     const { leadId, content, meetingType, occurredAt } = validation.data
 
-    const { data: lead } = await supabase
-      .from('leads')
-      .select('contact_name, company_name, type, stage')
-      .eq('id', leadId)
-      .single()
+    const [leadRes, profileRes] = await Promise.all([
+      supabase.from('leads').select('contact_name, company_name, type, stage').eq('id', leadId).single(),
+      supabase.from('profiles').select('active_org_id').eq('user_id', user.id).single(),
+    ])
 
+    const lead = leadRes.data
     if (!lead) {
       return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
     }
+
+    const orgId = profileRes.data?.active_org_id || null
 
     const summary = await generateJSON<MeetingSummary>(
       SYSTEM_PROMPT,
@@ -74,12 +76,12 @@ export async function POST(request: NextRequest) {
       { maxTokens: 4096, temperature: 0.3 }
     )
 
-    // Save as interaction with AI summary
     const { data: interaction, error: insertError } = await supabase
       .from('lead_interactions')
       .insert({
         lead_id: leadId,
         user_id: user.id,
+        org_id: orgId,
         channel: meetingType === 'call' ? 'phone' : 'in_person',
         interaction_type: meetingType === 'call' ? 'call' : 'meeting',
         content,
@@ -97,14 +99,6 @@ export async function POST(request: NextRequest) {
 
     // Auto-extract memories from the meeting
     try {
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('active_org_id')
-        .eq('user_id', user.id)
-        .single()
-
-      const orgId = profile?.active_org_id || null
-
       const memoryPrompt = `Extract memorable facts from this meeting summary:\n\nSummary: ${summary.summary}\nKey quotes: ${summary.key_quotes.join('; ')}\nObjections: ${summary.objections_raised.join('; ')}`
 
       const memories = await generateJSON<Array<{ memory_type: string; content: string; relevance_score: number }>>(

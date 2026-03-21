@@ -304,10 +304,12 @@ export interface LeadInteraction {
   id: string
   lead_id: string
   user_id: string
+  org_id: string | null
   channel: InteractionChannel
   interaction_type: InteractionType
   content: string | null
   summary: string | null
+  ai_summary: Record<string, unknown> | null
   occurred_at: string
   created_at: string
 }

@@ -184,12 +184,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId: id }),
       });
-      if (!res.ok) throw new Error('Failed');
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || `Failed (${res.status})`);
+      }
       const data = await res.json();
       setBattleCard(data);
+      setActiveTab('overview');
       await fetchLead();
       toast.success('Battle card generated');
-    } catch { toast.error('Failed to generate battle card'); } finally { setBattleCardLoading(false); }
+    } catch (err) {
+      console.error('Battle card error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to generate battle card');
+    } finally { setBattleCardLoading(false); }
   };
 
   const enrichOrgChart = async () => {
@@ -470,16 +477,19 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {activeTab === 'conversation' && (
-            <ConversationIntel lead={lead} emails={emails} interactions={interactions} relatedLeads={relatedLeads} />
+            <ConversationIntel lead={lead} emails={emails} interactions={interactions} onRefresh={fetchLead} />
           )}
 
           {activeTab === 'company' && (
-            <CompanyTab
-              lead={lead}
-              relatedLeads={relatedLeads}
-              onEnrich={enrichOrgChart}
-              isEnriching={orgChartLoading}
-            />
+            <div className="space-y-5">
+              <CompanyTab
+                lead={lead}
+                relatedLeads={relatedLeads}
+                onEnrich={enrichOrgChart}
+                isEnriching={orgChartLoading}
+              />
+              {battleCard && <BattleCardPanel card={battleCard} />}
+            </div>
           )}
 
           {activeTab === 'memory' && (
@@ -930,6 +940,7 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
   const [content, setContent] = useState('');
   const [summary, setSummary] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const [lastResult, setLastResult] = useState<{ analysis: Record<string, unknown> | null } | null>(null);
   const availableTypes = CHANNEL_INTERACTION_TYPES[channel];
 
   useEffect(() => {
@@ -939,17 +950,25 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
   const handleSubmit = async () => {
     if (!summary.trim() && !content.trim()) { toast.error('Add a summary or content'); return; }
     setSubmitting(true);
+    setLastResult(null);
     try {
       const res = await fetch('/api/lead-interactions', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ lead_id: leadId, channel, interaction_type: interactionType, content: content || null, summary: summary || null }) });
       if (!res.ok) throw new Error('Failed');
-      toast.success('Interaction logged');
-      setContent(''); setSummary(''); setOpen(false); onLogged();
+      const data = await res.json();
+      setLastResult({ analysis: data.analysis });
+      toast.success('Interaction logged and analyzed');
+      setContent(''); setSummary('');
+      onLogged();
     } catch { toast.error('Failed to log interaction'); } finally { setSubmitting(false); }
   };
 
+  const analysisData = lastResult?.analysis as {
+    conversation_summary?: string; next_step?: string; warmth?: string; framework_tag?: string;
+  } | null;
+
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left">
+      <button onClick={() => { setOpen(!open); if (open) setLastResult(null); }} className="flex items-center gap-2 w-full text-left">
         <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Interaction</h3>
       </button>
@@ -969,8 +988,35 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
           <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Paste DM, call notes..." className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
           <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-            {submitting ? 'Logging...' : 'Log & Analyze'}
+            {submitting ? 'Analyzing...' : 'Log & Analyze'}
           </button>
+        </div>
+      )}
+
+      {analysisData && (
+        <div className="mt-3 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2">
+          <div className="flex items-center gap-1.5">
+            <Brain className="h-3.5 w-3.5 text-green-600" />
+            <span className="text-[11px] font-semibold text-green-700 dark:text-green-300">AI Analysis Complete</span>
+            {analysisData.warmth && (
+              <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ml-auto ${
+                analysisData.warmth === 'hot' ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
+                analysisData.warmth === 'warm' ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
+                'bg-blue-100 dark:bg-blue-900/40 text-blue-600'
+              }`}>{analysisData.warmth}</span>
+            )}
+          </div>
+          {analysisData.conversation_summary && <p className="text-xs text-zinc-700 dark:text-zinc-300">{analysisData.conversation_summary}</p>}
+          {analysisData.next_step && (
+            <div className="flex items-start gap-1.5 pt-1 border-t border-green-200/50 dark:border-green-700/50">
+              <ArrowRight className="h-3 w-3 text-green-500 mt-0.5 shrink-0" />
+              <p className="text-[11px] text-green-700 dark:text-green-400">{analysisData.next_step}</p>
+            </div>
+          )}
+          {analysisData.framework_tag && (
+            <span className="inline-block text-[10px] px-1.5 py-0.5 rounded bg-purple-100 dark:bg-purple-900/40 text-purple-600 font-medium">{analysisData.framework_tag}</span>
+          )}
+          <p className="text-[10px] text-green-600 dark:text-green-500">View full details in the Conversation tab timeline.</p>
         </div>
       )}
     </div>
@@ -1042,28 +1088,204 @@ const signalColors: Record<string, string> = {
   upsell_opportunity: 'border-purple-200 bg-purple-50 dark:border-purple-800 dark:bg-purple-950/30',
 };
 
-interface TimelineEntry { id: string; date: string; type: 'email' | 'interaction'; direction: 'inbound' | 'outbound'; channel: string; label: string; snippet: string; }
+interface TimelineEntry {
+  id: string;
+  date: string;
+  type: 'email' | 'interaction';
+  direction: 'inbound' | 'outbound';
+  channel: string;
+  label: string;
+  snippet: string;
+  fullContent: string | null;
+  subject: string | null;
+  aiSummary: Record<string, unknown> | null;
+  interactionType: string | null;
+}
 
 function buildTimeline(emails: LeadEmail[], interactions: LeadInteraction[]): TimelineEntry[] {
   const entries: TimelineEntry[] = [];
-  for (const e of emails) entries.push({ id: e.id, date: e.sent_at || e.created_at, type: 'email', direction: e.direction, channel: 'email', label: e.direction === 'outbound' ? 'Email sent' : 'Email received', snippet: e.subject || e.body?.slice(0, 80) || '' });
+  for (const e of emails) {
+    entries.push({
+      id: e.id, date: e.sent_at || e.created_at, type: 'email', direction: e.direction,
+      channel: 'email', label: e.direction === 'outbound' ? 'Email sent' : 'Email received',
+      snippet: e.subject || e.body?.slice(0, 120) || '', fullContent: e.body, subject: e.subject,
+      aiSummary: null, interactionType: null,
+    });
+  }
   for (const ix of interactions) {
     const isOutbound = ['dm_sent', 'connection_request', 'comment', 'post_like', 'post_share', 'call', 'meeting'].includes(ix.interaction_type);
-    entries.push({ id: ix.id, date: ix.occurred_at, type: 'interaction', direction: isOutbound ? 'outbound' : 'inbound', channel: ix.channel, label: `${CHANNEL_LABELS[ix.channel]} - ${INTERACTION_TYPE_LABELS[ix.interaction_type]}`, snippet: ix.summary || ix.content?.slice(0, 80) || '' });
+    entries.push({
+      id: ix.id, date: ix.occurred_at, type: 'interaction', direction: isOutbound ? 'outbound' : 'inbound',
+      channel: ix.channel, label: `${CHANNEL_LABELS[ix.channel]} - ${INTERACTION_TYPE_LABELS[ix.interaction_type]}`,
+      snippet: ix.summary || ix.content?.slice(0, 120) || '', fullContent: ix.content, subject: ix.summary,
+      aiSummary: ix.ai_summary || null, interactionType: ix.interaction_type,
+    });
   }
-  entries.sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  entries.sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime());
   return entries;
 }
 
-function ConversationIntel({ lead, emails, interactions, relatedLeads }: { lead: Lead; emails: LeadEmail[]; interactions: LeadInteraction[]; relatedLeads: RelatedLead[] }) {
+function TimelineEntryCard({ entry, isLast }: { entry: TimelineEntry; isLast: boolean }) {
+  const [expanded, setExpanded] = useState(false);
+  const hasExpandableContent = entry.fullContent && entry.fullContent.length > 120;
+  const aiData = entry.aiSummary as {
+    summary?: string; action_items?: Array<{ owner: string; task: string; deadline: string | null }>;
+    key_quotes?: string[]; objections_raised?: string[]; sentiment?: string;
+    next_steps?: string[]; deal_signals?: Array<{ type: string; signal: string }>;
+  } | null;
+
+  const dotColor = entry.channel === 'email'
+    ? entry.direction === 'outbound' ? 'bg-red-500' : 'bg-blue-500'
+    : entry.channel === 'linkedin' ? 'bg-[#0A66C2]'
+    : entry.channel === 'twitter' ? 'bg-zinc-600'
+    : entry.channel === 'phone' ? 'bg-green-500' : 'bg-zinc-400';
+
+  const channelIcon = entry.channel === 'email' ? <Mail className="h-3 w-3" />
+    : entry.channel === 'linkedin' ? <Linkedin className="h-3 w-3" />
+    : entry.channel === 'twitter' ? <Twitter className="h-3 w-3" />
+    : entry.channel === 'phone' ? <Phone className="h-3 w-3" />
+    : <Hash className="h-3 w-3" />;
+
+  return (
+    <div className="flex gap-3 relative">
+      {!isLast && <div className="absolute left-[13px] top-8 bottom-0 w-px bg-zinc-200 dark:bg-zinc-700" />}
+      <div className={`mt-2 h-[11px] w-[11px] rounded-full shrink-0 ring-2 ring-white dark:ring-zinc-900 ${dotColor}`} />
+      <div className={`pb-4 min-w-0 flex-1 ${hasExpandableContent || aiData ? 'cursor-pointer' : ''}`} onClick={() => (hasExpandableContent || aiData) && setExpanded(!expanded)}>
+        <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-1.5 text-zinc-500">{channelIcon}</div>
+          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{entry.label}</span>
+          <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ${entry.direction === 'outbound' ? 'bg-red-50 dark:bg-red-950/30 text-red-600' : 'bg-blue-50 dark:bg-blue-950/30 text-blue-600'}`}>
+            {entry.direction === 'outbound' ? 'You' : 'Them'}
+          </span>
+          <span className="text-[10px] text-zinc-400 ml-auto tabular-nums">
+            {new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+          </span>
+          {(hasExpandableContent || aiData) && (
+            <ChevronDown className={`h-3 w-3 text-zinc-400 transition-transform ${expanded ? 'rotate-180' : ''}`} />
+          )}
+        </div>
+
+        {entry.subject && entry.type === 'email' && (
+          <p className="text-[11px] font-medium text-zinc-600 dark:text-zinc-400 mt-1">{entry.subject}</p>
+        )}
+
+        {entry.subject && entry.type === 'interaction' && (
+          <p className="text-xs text-zinc-700 dark:text-zinc-300 mt-1 leading-relaxed">{entry.subject}</p>
+        )}
+
+        {!expanded && !entry.subject && entry.snippet && (
+          <p className="text-[11px] text-zinc-500 mt-1 line-clamp-2">{entry.snippet}</p>
+        )}
+
+        {expanded && (
+          <div className="mt-2 space-y-3">
+            {entry.fullContent && (
+              <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200/80 dark:border-zinc-700/80">
+                <p className="text-xs text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed max-h-[400px] overflow-y-auto">
+                  {entry.fullContent}
+                </p>
+              </div>
+            )}
+
+            {aiData && (
+              <div className="p-3 rounded-lg bg-blue-50/80 dark:bg-blue-950/20 border border-blue-200/80 dark:border-blue-800/60 space-y-2.5">
+                <div className="flex items-center gap-1.5">
+                  <Brain className="h-3.5 w-3.5 text-blue-500" />
+                  <span className="text-[11px] font-semibold text-blue-700 dark:text-blue-300">AI Analysis</span>
+                  {aiData.sentiment && (
+                    <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium ml-auto ${
+                      aiData.sentiment.includes('positive') ? 'bg-green-100 dark:bg-green-900/40 text-green-600' :
+                      aiData.sentiment.includes('negative') ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
+                      'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                    }`}>{aiData.sentiment.replace('_', ' ')}</span>
+                  )}
+                </div>
+
+                {aiData.summary && <p className="text-xs text-zinc-700 dark:text-zinc-300 leading-relaxed">{aiData.summary}</p>}
+
+                {aiData.action_items && aiData.action_items.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-1">Action Items</p>
+                    {aiData.action_items.map((item, i) => (
+                      <div key={i} className="flex items-start gap-1.5 mb-1">
+                        <CheckCircle2 className="h-3 w-3 text-blue-400 mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400">
+                          <span className={`font-medium ${item.owner === 'us' ? 'text-red-600' : item.owner === 'them' ? 'text-blue-600' : 'text-purple-600'}`}>[{item.owner}]</span> {item.task}
+                          {item.deadline && <span className="text-zinc-400"> (by {item.deadline})</span>}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiData.key_quotes && aiData.key_quotes.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-blue-600 dark:text-blue-400 mb-1">Key Quotes</p>
+                    {aiData.key_quotes.map((q, i) => (
+                      <p key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400 italic border-l-2 border-blue-300 dark:border-blue-700 pl-2 mb-1">&ldquo;{q}&rdquo;</p>
+                    ))}
+                  </div>
+                )}
+
+                {aiData.objections_raised && aiData.objections_raised.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 mb-1">Objections</p>
+                    {aiData.objections_raised.map((o, i) => (
+                      <div key={i} className="flex items-start gap-1.5 mb-1">
+                        <AlertCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400">{o}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiData.next_steps && aiData.next_steps.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-green-600 dark:text-green-400 mb-1">Next Steps</p>
+                    {aiData.next_steps.map((s, i) => (
+                      <div key={i} className="flex items-start gap-1.5 mb-1">
+                        <ArrowRight className="h-3 w-3 text-green-400 mt-0.5 shrink-0" />
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400">{s}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {aiData.deal_signals && aiData.deal_signals.length > 0 && (
+                  <div>
+                    <p className="text-[10px] font-semibold text-purple-600 dark:text-purple-400 mb-1">Deal Signals</p>
+                    {aiData.deal_signals.map((ds, i) => (
+                      <div key={i} className="flex items-start gap-1.5 mb-1">
+                        {ds.type === 'positive' ? <TrendingUp className="h-3 w-3 text-green-400 mt-0.5 shrink-0" /> :
+                         ds.type === 'negative' ? <AlertCircle className="h-3 w-3 text-red-400 mt-0.5 shrink-0" /> :
+                         <MessageSquare className="h-3 w-3 text-zinc-400 mt-0.5 shrink-0" />}
+                        <p className="text-[11px] text-zinc-600 dark:text-zinc-400">{ds.signal}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function ConversationIntel({ lead, emails, interactions, onRefresh }: { lead: Lead; emails: LeadEmail[]; interactions: LeadInteraction[]; onRefresh: () => void }) {
   const [meetingOpen, setMeetingOpen] = useState(false);
   const [meetingNotes, setMeetingNotes] = useState('');
   const [meetingType, setMeetingType] = useState<'call' | 'meeting' | 'demo'>('meeting');
   const [meetingLoading, setMeetingLoading] = useState(false);
-  const [meetingSummary, setMeetingSummary] = useState<Record<string, unknown> | null>(null);
+  const [timelineFilter, setTimelineFilter] = useState<'all' | 'email' | 'interaction'>('all');
 
   const hasData = lead.conversation_summary || (lead.conversation_signals?.length ?? 0) > 0 || emails.length > 0 || interactions.length > 0;
   const timeline = buildTimeline(emails, interactions);
+  const filteredTimeline = timeline.filter(e => timelineFilter === 'all' || e.type === timelineFilter);
+
+  const emailCount = timeline.filter(e => e.type === 'email').length;
+  const interactionCount = timeline.filter(e => e.type === 'interaction').length;
 
   const handleMeetingSummary = async () => {
     if (!meetingNotes.trim()) return;
@@ -1075,18 +1297,27 @@ function ConversationIntel({ lead, emails, interactions, relatedLeads }: { lead:
         body: JSON.stringify({ leadId: lead.id, content: meetingNotes, meetingType }),
       });
       if (!res.ok) throw new Error('Failed');
-      const data = await res.json();
-      setMeetingSummary(data.summary);
-      toast.success('Meeting summarized');
+      toast.success('Meeting summarized and logged');
+      setMeetingNotes('');
+      setMeetingOpen(false);
+      onRefresh();
     } catch { toast.error('Failed to summarize'); } finally { setMeetingLoading(false); }
   };
 
   if (!hasData) {
     return (
-      <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-600 p-8 text-center">
-        <Brain className="h-10 w-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
-        <p className="text-sm font-medium text-zinc-500">No conversation data yet</p>
-        <p className="text-xs text-zinc-400 mt-1">Sync Gmail or log an interaction to start.</p>
+      <div className="space-y-4">
+        <LogMeetingCard
+          open={meetingOpen} setOpen={setMeetingOpen}
+          notes={meetingNotes} setNotes={setMeetingNotes}
+          type={meetingType} setType={setMeetingType}
+          loading={meetingLoading} onSubmit={handleMeetingSummary}
+        />
+        <div className="rounded-xl border border-dashed border-zinc-300 dark:border-zinc-600 p-8 text-center">
+          <Brain className="h-10 w-10 text-zinc-300 dark:text-zinc-600 mx-auto mb-3" />
+          <p className="text-sm font-medium text-zinc-500">No conversation data yet</p>
+          <p className="text-xs text-zinc-400 mt-1">Sync Gmail or log an interaction to start.</p>
+        </div>
       </div>
     );
   }
@@ -1094,35 +1325,12 @@ function ConversationIntel({ lead, emails, interactions, relatedLeads }: { lead:
   return (
     <div className="space-y-4">
       {/* Log Meeting */}
-      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-        <button onClick={() => setMeetingOpen(!meetingOpen)} className="flex items-center gap-2 w-full text-left">
-          <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${meetingOpen ? 'rotate-45' : ''}`} />
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Meeting / Call</h3>
-        </button>
-        {meetingOpen && (
-          <div className="mt-3 space-y-3">
-            <select value={meetingType} onChange={(e) => setMeetingType(e.target.value as 'call' | 'meeting' | 'demo')} className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs">
-              <option value="meeting">Meeting</option>
-              <option value="call">Call</option>
-              <option value="demo">Demo</option>
-            </select>
-            <textarea value={meetingNotes} onChange={(e) => setMeetingNotes(e.target.value)} placeholder="Paste transcript or type notes..." className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
-            <button onClick={handleMeetingSummary} disabled={meetingLoading || !meetingNotes.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
-              {meetingLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
-              {meetingLoading ? 'Summarizing...' : 'Summarize with AI'}
-            </button>
-          </div>
-        )}
-        {meetingSummary && (
-          <div className="mt-3 p-3 rounded-lg bg-blue-50 dark:bg-blue-950/30 border border-blue-200 dark:border-blue-800 space-y-2">
-            <p className="text-xs font-semibold text-blue-700 dark:text-blue-300">Meeting Summary</p>
-            <p className="text-sm text-zinc-700 dark:text-zinc-300">{(meetingSummary as { summary?: string }).summary}</p>
-            {(meetingSummary as { action_items?: Array<{ task: string }> }).action_items?.map((item, i) => (
-              <div key={i} className="flex items-start gap-1.5"><CheckCircle2 className="h-3 w-3 text-blue-500 mt-0.5" /><p className="text-xs text-zinc-600 dark:text-zinc-400">{item.task}</p></div>
-            ))}
-          </div>
-        )}
-      </div>
+      <LogMeetingCard
+        open={meetingOpen} setOpen={setMeetingOpen}
+        notes={meetingNotes} setNotes={setMeetingNotes}
+        type={meetingType} setType={setMeetingType}
+        loading={meetingLoading} onSubmit={handleMeetingSummary}
+      />
 
       {/* Signals */}
       {lead.conversation_signals && lead.conversation_signals.length > 0 && (
@@ -1142,31 +1350,69 @@ function ConversationIntel({ lead, emails, interactions, relatedLeads }: { lead:
         </div>
       )}
 
-      {/* Timeline */}
-      {timeline.length > 0 && (
-        <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
+      {/* Activity Timeline */}
+      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
+        <div className="flex items-center justify-between">
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Activity Timeline</h3>
-          <div className="space-y-0">
-            {timeline.map((entry, i) => (
-              <div key={entry.id} className="flex gap-3 relative">
-                {i < timeline.length - 1 && <div className="absolute left-[11px] top-6 bottom-0 w-px bg-zinc-200 dark:bg-zinc-700" />}
-                <div className={`mt-1.5 h-[9px] w-[9px] rounded-full shrink-0 ring-2 ring-white dark:ring-zinc-900 ${
-                  entry.channel === 'email' ? entry.direction === 'outbound' ? 'bg-red-500' : 'bg-blue-500'
-                  : entry.channel === 'linkedin' ? 'bg-[#0A66C2]' : entry.channel === 'phone' ? 'bg-green-500' : 'bg-zinc-400'
-                }`} />
-                <div className="pb-4 min-w-0 flex-1">
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-medium text-zinc-700 dark:text-zinc-300">{entry.label}</span>
-                    <span className={`text-[10px] px-1.5 py-0.5 rounded ${entry.direction === 'outbound' ? 'bg-red-50 dark:bg-red-950/30 text-red-600' : 'bg-blue-50 dark:bg-blue-950/30 text-blue-600'}`}>
-                      {entry.direction === 'outbound' ? 'You' : 'Them'}
-                    </span>
-                  </div>
-                  {entry.snippet && <p className="text-[11px] text-zinc-500 mt-0.5 truncate">{entry.snippet}</p>}
-                  <p className="text-[10px] text-zinc-400 mt-0.5">{new Date(entry.date).toLocaleDateString()} {new Date(entry.date).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                </div>
-              </div>
+          <div className="flex items-center gap-1">
+            {[
+              { id: 'all' as const, label: 'All', count: timeline.length },
+              { id: 'email' as const, label: 'Emails', count: emailCount },
+              { id: 'interaction' as const, label: 'Interactions', count: interactionCount },
+            ].map(f => (
+              <button
+                key={f.id}
+                onClick={() => setTimelineFilter(f.id)}
+                className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
+                  timelineFilter === f.id
+                    ? 'bg-red-600 text-white'
+                    : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'
+                }`}
+              >
+                {f.label} <span className={timelineFilter === f.id ? 'text-red-200' : 'text-zinc-400'}>{f.count}</span>
+              </button>
             ))}
           </div>
+        </div>
+
+        {filteredTimeline.length === 0 ? (
+          <p className="text-xs text-zinc-400 text-center py-4">No {timelineFilter === 'all' ? 'activity' : timelineFilter + 's'} yet.</p>
+        ) : (
+          <div className="space-y-0">
+            {filteredTimeline.map((entry, i) => (
+              <TimelineEntryCard key={entry.id} entry={entry} isLast={i === filteredTimeline.length - 1} />
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
+function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading, onSubmit }: {
+  open: boolean; setOpen: (v: boolean) => void;
+  notes: string; setNotes: (v: string) => void;
+  type: 'call' | 'meeting' | 'demo'; setType: (v: 'call' | 'meeting' | 'demo') => void;
+  loading: boolean; onSubmit: () => void;
+}) {
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
+      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left">
+        <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Meeting / Call</h3>
+      </button>
+      {open && (
+        <div className="mt-3 space-y-3">
+          <select value={type} onChange={(e) => setType(e.target.value as 'call' | 'meeting' | 'demo')} className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs">
+            <option value="meeting">Meeting</option>
+            <option value="call">Call</option>
+            <option value="demo">Demo</option>
+          </select>
+          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Paste transcript or type notes..." className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
+          <button onClick={onSubmit} disabled={loading || !notes.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
+            {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
+            {loading ? 'Summarizing...' : 'Summarize with AI'}
+          </button>
         </div>
       )}
     </div>
@@ -1382,17 +1628,20 @@ function OrgChartTree({ members, companyName }: { members: OrgChartMember[]; com
 }
 
 // --- Battle Card Panel ---
-function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
-  const [expanded, setExpanded] = useState(false);
+function BattleCardPanel({ card, defaultExpanded = true }: { card: Record<string, unknown>; defaultExpanded?: boolean }) {
+  const [expanded, setExpanded] = useState(defaultExpanded);
   const bc = card as {
     company_overview?: string; their_product?: string;
     their_strengths?: string[]; their_weaknesses?: string[];
     competitive_landscape?: string[]; our_angle?: string;
     objection_handlers?: Array<{ objection: string; response: string }>;
     discovery_questions?: string[]; trigger_events?: string[];
-    icp_score?: number; pricing_intel?: string; tech_stack?: string[];
+    icp_score?: number; icp_reasons?: string[]; pricing_intel?: string; tech_stack?: string[];
     decision_makers?: Array<{ role: string; concerns: string; pitch_angle: string }>;
   };
+
+  const hasContent = bc.our_angle || bc.their_product || bc.company_overview;
+  if (!hasContent) return null;
 
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
@@ -1400,8 +1649,16 @@ function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
         <div className="flex items-center gap-2">
           <Swords className="h-4 w-4 text-red-500" />
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Battle Card</h3>
+          {bc.icp_score != null && (
+            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tabular-nums ${
+              bc.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+              bc.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+              bc.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
+              'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+            }`}>ICP: {bc.icp_score}/100</span>
+          )}
         </div>
-        {expanded ? <ChevronDown className="h-4 w-4 text-zinc-400" /> : <ChevronRight className="h-4 w-4 text-zinc-400" />}
+        <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${expanded ? '' : '-rotate-90'}`} />
       </button>
 
       {bc.our_angle && (
@@ -1413,6 +1670,13 @@ function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
 
       {expanded && (
         <div className="space-y-4">
+          {bc.company_overview && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Company Overview</p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{bc.company_overview}</p>
+            </div>
+          )}
+
           {bc.their_product && (
             <div>
               <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Their Product</p>
@@ -1449,6 +1713,15 @@ function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
               </div>
             )}
           </div>
+
+          {bc.competitive_landscape && bc.competitive_landscape.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">Competitive Landscape</p>
+              <ul className="space-y-1">
+                {bc.competitive_landscape.map((c, i) => <li key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400 flex items-start gap-1.5"><span className="text-zinc-400 mt-0.5 shrink-0">&bull;</span>{c}</li>)}
+              </ul>
+            </div>
+          )}
 
           {bc.objection_handlers && bc.objection_handlers.length > 0 && (
             <div>
@@ -1496,6 +1769,15 @@ function BattleCardPanel({ card }: { card: Record<string, unknown> }) {
                   </div>
                 ))}
               </div>
+            </div>
+          )}
+
+          {bc.icp_reasons && bc.icp_reasons.length > 0 && (
+            <div>
+              <p className="text-[10px] font-semibold text-zinc-500 uppercase tracking-wider mb-1.5">ICP Fit Reasons</p>
+              <ul className="space-y-1">
+                {bc.icp_reasons.map((r, i) => <li key={i} className="text-[11px] text-zinc-600 dark:text-zinc-400 flex items-start gap-1.5"><Target className="h-3 w-3 text-zinc-400 mt-0.5 shrink-0" />{r}</li>)}
+              </ul>
             </div>
           )}
 
