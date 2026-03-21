@@ -22,23 +22,35 @@ export async function GET() {
 
     const emailDate = (e: Record<string, unknown>) => new Date((e.sent_at as string) || (e.created_at as string))
 
-    // Funnel: count leads that reached each stage (cumulative)
-    const stageOrder = ['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'closed_won']
-    const stageIndex: Record<string, number> = {}
-    stageOrder.forEach((s, i) => { stageIndex[s] = i })
-    // Also count no_response, follow_up, closed_lost
-    stageIndex['no_response'] = 2.5
-    stageIndex['follow_up'] = 2.5
-    stageIndex['closed_lost'] = 7
-
-    const funnelStages = ['researched', 'email_sent', 'replied', 'meeting_booked', 'closed_won'] as const
-    const funnel = funnelStages.map(targetStage => {
-      const targetIdx = stageOrder.indexOf(targetStage)
-      const count = leads.filter(l => {
-        const li = stageIndex[l.stage] ?? -1
-        return li >= targetIdx
-      }).length
-      return { stage: targetStage, count }
+    // Funnel: count leads that ACTUALLY reached each stage
+    // Each funnel stage has a set of current stages that prove the lead passed through it.
+    // closed_lost does NOT count as closed_won -- those are separate outcomes.
+    const funnelStages: Array<{ stage: string; qualifyingStages: string[] }> = [
+      {
+        stage: 'researched',
+        qualifyingStages: ['researched', 'email_drafted', 'email_sent', 'no_response', 'follow_up', 'replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'],
+      },
+      {
+        stage: 'email_sent',
+        qualifyingStages: ['email_sent', 'no_response', 'follow_up', 'replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'],
+      },
+      {
+        stage: 'replied',
+        qualifyingStages: ['replied', 'meeting_booked', 'meeting_held', 'closed_won'],
+      },
+      {
+        stage: 'meeting_booked',
+        qualifyingStages: ['meeting_booked', 'meeting_held', 'closed_won'],
+      },
+      {
+        stage: 'closed_won',
+        qualifyingStages: ['closed_won'],
+      },
+    ]
+    const funnel = funnelStages.map(({ stage, qualifyingStages }) => {
+      const qualSet = new Set(qualifyingStages)
+      const count = leads.filter(l => qualSet.has(l.stage)).length
+      return { stage, count }
     })
 
     // Reply rate by lead type (replied = contacted AND got an inbound reply)
