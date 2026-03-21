@@ -1,9 +1,11 @@
 import { generateJSON } from '@/lib/ai/anthropic'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
 const requestSchema = z.object({
   lead: z.object({
+    id: z.string().uuid().optional(),
     type: z.enum(['customer', 'investor', 'partnership']),
     company_name: z.string(),
     product_name: z.string().optional().nullable(),
@@ -148,7 +150,8 @@ Respond with ONLY valid JSON:
 function buildUserPrompt(
   lead: z.infer<typeof requestSchema>['lead'],
   ctaStyle: 'mckenna' | 'hormozi',
-  customContext?: string
+  customContext?: string,
+  memories?: Array<{ memory_type: string; content: string }>
 ): string {
   const research = [
     lead.company_description && `Company: ${lead.company_description}`,
@@ -183,12 +186,17 @@ DANIEL'S NOTES:
 ${customContext.trim()}`
     : ''
 
+  const memorySection = memories?.length
+    ? `\n\nAGENT MEMORIES (facts remembered from past interactions, use to deepen personalization):
+${memories.map(m => `- [${m.memory_type}] ${m.content}`).join('\n')}`
+    : ''
+
   return `Write a cold email to ${lead.contact_name}${lead.contact_title ? ` (${lead.contact_title})` : ''} at ${lead.company_name}.
 
 ${ctaInstruction}
 
 LEAD RESEARCH:
-${research}${customSection}`
+${research}${memorySection}${customSection}`
 }
 
 export async function POST(request: NextRequest) {
@@ -210,15 +218,32 @@ export async function POST(request: NextRequest) {
     }
     const systemPrompt = systemPromptMap[lead.type] || CUSTOMER_SYSTEM_PROMPT
 
+    // Fetch agent memories for progressive personalization
+    let memories: Array<{ memory_type: string; content: string }> = []
+    if (lead.id) {
+      try {
+        const supabase = await createClient()
+        const { data } = await supabase
+          .from('agent_memory')
+          .select('memory_type, content')
+          .eq('lead_id', lead.id)
+          .order('relevance_score', { ascending: false })
+          .limit(10)
+        memories = data || []
+      } catch {
+        // Non-critical, continue without memories
+      }
+    }
+
     const [mckennaResult, hormoziResult] = await Promise.all([
       generateJSON<{ subject: string; body: string }>(
         systemPrompt,
-        buildUserPrompt(lead, 'mckenna', customContext),
+        buildUserPrompt(lead, 'mckenna', customContext, memories),
         { temperature: 0.95, maxTokens: 4096 }
       ),
       generateJSON<{ subject: string; body: string }>(
         systemPrompt,
-        buildUserPrompt(lead, 'hormozi', customContext),
+        buildUserPrompt(lead, 'hormozi', customContext, memories),
         { temperature: 0.95, maxTokens: 4096 }
       ),
     ])

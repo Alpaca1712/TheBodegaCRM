@@ -133,6 +133,12 @@ export interface Lead {
   last_contacted_at: string | null
   created_at: string
   updated_at: string
+  // Dust features
+  account_snapshot: Record<string, unknown> | null
+  snapshot_generated_at: string | null
+  risk_score: number | null
+  risk_factors: string[]
+  risk_assessed_at: string | null
   // Conversation intelligence
   email_domain: string | null
   conversation_summary: string | null
@@ -147,7 +153,7 @@ export interface Lead {
 }
 
 export interface ConversationSignal {
-  type: 'positive' | 'negative' | 'neutral' | 'action_needed'
+  type: 'positive' | 'negative' | 'neutral' | 'action_needed' | 'upsell_opportunity'
   signal: string
   source: string
   detected_at: string
@@ -177,7 +183,8 @@ export type LeadInsert = Omit<Lead,
   'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' | 'research_sources' |
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
-  'last_inbound_at' | 'last_outbound_at'
+  'last_inbound_at' | 'last_outbound_at' |
+  'account_snapshot' | 'snapshot_generated_at' | 'risk_score' | 'risk_factors' | 'risk_assessed_at'
 > & {
   id?: string
   contact_phone?: string | null

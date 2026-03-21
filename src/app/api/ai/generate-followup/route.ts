@@ -1,4 +1,5 @@
 import { generateJSON } from '@/lib/ai/anthropic'
+import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 
@@ -13,6 +14,7 @@ const emailSchema = z.object({
 
 const requestSchema = z.object({
   lead: z.object({
+    id: z.string().uuid().optional(),
     type: z.enum(['customer', 'investor', 'partnership']),
     company_name: z.string(),
     product_name: z.string().optional().nullable(),
@@ -83,7 +85,7 @@ HARD RULES:
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "...", "channel": "email|linkedin|twitter"}`
 
-function buildFullContext(input: z.infer<typeof requestSchema>): string {
+function buildFullContext(input: z.infer<typeof requestSchema> & { memories?: Array<{ memory_type: string; content: string }> }): string {
   const { lead, emailThread, followUpNumber, customContext } = input
 
   const sections: string[] = []
@@ -125,6 +127,10 @@ Stage: ${lead.stage}`)
   }
   if (lead.notes) {
     sections.push(`=== MANUAL NOTES ===\n${lead.notes}`)
+  }
+
+  if (input.memories?.length) {
+    sections.push(`=== AGENT MEMORIES (facts from past interactions, use for deeper personalization) ===\n${input.memories.map(m => `- [${m.memory_type}] ${m.content}`).join('\n')}`)
   }
 
   if (emailThread.length > 0) {
@@ -242,7 +248,24 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const fullContext = buildFullContext(validation.data)
+    // Fetch agent memories for progressive personalization
+    let memories: Array<{ memory_type: string; content: string }> = []
+    if (validation.data.lead.id) {
+      try {
+        const supabase = await createClient()
+        const { data } = await supabase
+          .from('agent_memory')
+          .select('memory_type, content')
+          .eq('lead_id', validation.data.lead.id)
+          .order('relevance_score', { ascending: false })
+          .limit(10)
+        memories = data || []
+      } catch {
+        // Non-critical
+      }
+    }
+
+    const fullContext = buildFullContext({ ...validation.data, memories })
     const hasCustomContext = !!validation.data.customContext?.trim()
 
     console.log('[Follow-up] customContext present:', hasCustomContext, 'length:', validation.data.customContext?.length || 0)

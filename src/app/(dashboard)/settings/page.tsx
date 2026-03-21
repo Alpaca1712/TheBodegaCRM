@@ -115,7 +115,7 @@ export default function SettingsPage() {
   return (
     <div className="max-w-5xl mx-auto">
       <div className="mb-6">
-        <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Settings</h1>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-50 tracking-tight">Settings</h1>
         <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Manage your account preferences and profile</p>
       </div>
       

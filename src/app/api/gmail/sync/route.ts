@@ -28,7 +28,7 @@ interface ConversationAnalysis {
   conversation_summary: string
   next_step: string
   signals: Array<{
-    type: 'positive' | 'negative' | 'neutral' | 'action_needed'
+    type: 'positive' | 'negative' | 'neutral' | 'action_needed' | 'upsell_opportunity'
     signal: string
     source: string
   }>
@@ -420,6 +420,39 @@ async function processLead(
 
         await Promise.all([...classifyPromises, ...domainInsightPromises])
 
+        // Auto-extract memories from conversation for progressive personalization
+        if (analysis.conversation_summary) {
+          try {
+            const memoryText = [
+              analysis.conversation_summary,
+              ...analysis.signals.map(s => s.signal),
+              analysis.next_step,
+            ].filter(Boolean).join('\n')
+
+            const memoryResponse = await generateJSON<Array<{ memory_type: string; content: string; relevance_score: number }>>(
+              'Extract memorable facts useful for future outreach personalization. Return JSON array: [{"memory_type": "preference|objection|personal|strategic|context", "content": "...", "relevance_score": 1-10}]. Max 5 facts. Return [] if nothing worth remembering.',
+              `Extract memorable facts from this conversation analysis with ${lead.contact_name} at ${lead.company_name}:\n\n${memoryText}`,
+              { maxTokens: 1024, temperature: 0.2 }
+            )
+
+            if (Array.isArray(memoryResponse) && memoryResponse.length > 0) {
+              await supabase.from('agent_memory').insert(
+                memoryResponse.map(m => ({
+                  lead_id: lead.id,
+                  org_id: orgId,
+                  memory_type: m.memory_type,
+                  content: m.content,
+                  source: 'email' as const,
+                  relevance_score: m.relevance_score,
+                }))
+              )
+              console.log('[Sync] Extracted', memoryResponse.length, 'memories for', lead.contact_name)
+            }
+          } catch (memErr) {
+            console.error('[Sync] Memory extraction error for', lead.contact_name, ':', memErr)
+          }
+        }
+
       } else {
         console.log('[Sync] AI analysis returned null for', lead.contact_name)
         results.debugLog.push(`${lead.contact_name}: AI returned null (no direct messages in context)`)
@@ -512,6 +545,13 @@ RULES:
 - Messages on LinkedIn/Twitter or referencing channel switch are "follow_up_3"
 - For next_follow_up: figure out what has NOT been done yet in the sequence
 
+CLOSED DEAL RULES (CRITICAL):
+- If current stage is "closed_won": the deal is DONE. Do NOT suggest a different stage. Keep suggested_stage as "closed_won".
+  If the contact sends new emails showing interest in additional services/products, add a signal with type "upsell_opportunity" describing the opportunity. The stage stays closed_won.
+- If current stage is "closed_lost": only suggest "replied" if they genuinely re-engaged with clear interest. Routine auto-replies, out-of-office, or unrelated emails do NOT count as re-engagement.
+
+Signal types: "positive", "negative", "neutral", "action_needed", "upsell_opportunity"
+
 Respond with valid JSON only.`
 
   const userPrompt = `Analyze conversation with ${lead.contact_name}.
@@ -563,8 +603,12 @@ function shouldUpdateStage(
 ): boolean {
   if (current === suggested) return false
 
-  if (['closed_won', 'closed_lost'].includes(current)) {
-    return confidence === 'high'
+  // NEVER auto-move out of closed_won -- upsell/re-engagement is flagged as a signal instead
+  if (current === 'closed_won') return false
+
+  // closed_lost can only reopen to 'replied' with high confidence (they re-engaged)
+  if (current === 'closed_lost') {
+    return suggested === 'replied' && confidence === 'high'
   }
 
   if (suggested === 'closed_lost' && confidence !== 'high') return false

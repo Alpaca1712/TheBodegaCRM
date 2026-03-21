@@ -65,8 +65,8 @@ export default function AnalyticsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-100">Analytics</h1>
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">Hormozi outreach performance deep dive</p>
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Analytics</h1>
+        <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Hormozi outreach performance deep dive</p>
       </div>
 
       {/* Top-line KPIs */}
@@ -289,9 +289,9 @@ function TopMetric({
   value: number | string;
 }) {
   return (
-    <div className="p-4 rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50">
+    <div className="p-4 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50">
       <div className="mb-2">{icon}</div>
-      <p className="text-2xl font-semibold text-zinc-900 dark:text-zinc-100 tabular-nums">{value}</p>
+      <p className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tabular-nums">{value}</p>
       <p className="text-xs text-zinc-500 dark:text-zinc-400">{label}</p>
     </div>
   );

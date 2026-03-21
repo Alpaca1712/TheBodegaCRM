@@ -60,9 +60,9 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
   const inboundEmails = allEmails.filter(e => e.direction === 'inbound');
   const lastInbound = inboundEmails[0];
 
-  // Use outbound COUNT to determine sequence position — more reliable than email_type labels
   const outboundCount = outboundEmails.length;
 
+  // --- "replied" stage: they responded, we need to reply back ---
   if (lead.stage === 'replied') {
     const replyDate = lastInbound?.replied_at || lastInbound?.created_at || lead.last_inbound_at;
     if (!replyDate) return null;
@@ -71,6 +71,7 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       (Date.now() - new Date(replyDate).getTime()) / (1000 * 60 * 60 * 24)
     );
 
+    // If we already responded after their reply, no follow-up needed
     if (lastOutboundDate && replyDate && new Date(lastOutboundDate) > new Date(replyDate)) {
       return null;
     }
@@ -79,20 +80,26 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       lead,
       lastEmail,
       daysSinceLastContact: daysSinceReply,
-      suggestedAction: 'They replied — respond using ACA framework',
+      suggestedAction: 'They replied. Respond using ACA framework.',
       suggestedType: 'reply_needed',
       suggestedChannel: 'email',
-      urgency: daysSinceReply >= 2 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
+      urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
       sequenceDay: `${daysSinceReply}d since reply`,
     };
   }
 
+  // --- "meeting_held" stage: post-meeting follow-up ---
   if (lead.stage === 'meeting_held') {
     const meetingDate = lead.last_contacted_at || lead.updated_at;
     if (!meetingDate) return null;
     const daysSinceMeeting = Math.floor(
       (Date.now() - new Date(meetingDate).getTime()) / (1000 * 60 * 60 * 24)
     );
+
+    // If we already sent something after the meeting, no follow-up needed
+    if (lastOutboundDate && new Date(lastOutboundDate) > new Date(meetingDate)) {
+      return null;
+    }
 
     return {
       lead,
@@ -101,31 +108,30 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       suggestedAction: 'Send post-meeting follow-up with next steps',
       suggestedType: 'post_meeting',
       suggestedChannel: 'email',
-      urgency: daysSinceMeeting >= 2 ? 'overdue' : daysSinceMeeting >= 1 ? 'due_today' : 'upcoming',
+      urgency: daysSinceMeeting >= 3 ? 'overdue' : daysSinceMeeting >= 1 ? 'due_today' : 'upcoming',
       sequenceDay: `${daysSinceMeeting}d since meeting`,
     };
   }
 
-  // email_sent / follow_up / no_response — McKenna+Hormozi sequence
-  const referenceDate = lastOutboundDate || lead.created_at;
+  // --- email_sent / follow_up / no_response: McKenna+Hormozi cold outreach sequence ---
+  if (!lastOutboundDate) return null;
+
   const daysSinceLastOutbound = Math.floor(
-    (Date.now() - new Date(referenceDate).getTime()) / (1000 * 60 * 60 * 24)
+    (Date.now() - new Date(lastOutboundDate).getTime()) / (1000 * 60 * 60 * 24)
   );
 
-  // Sequence steps mapped to outbound count thresholds:
-  // 0 outbound = need initial (shouldn't be in these stages, but handle it)
-  // 1 outbound (initial sent) = next is follow_up_1
-  // 2 outbound (initial + bump) = next is follow_up_2
-  // 3 outbound = next is follow_up_3
-  // 4+ outbound = next is break_up
-  const sequence: Array<{ type: FollowUpItem['suggestedType']; channel: FollowUpItem['suggestedChannel']; afterOutboundCount: number; minDays: number; label: string; followUpNumber: number }> = [
-    { type: 'follow_up_1', channel: 'email', afterOutboundCount: 1, minDays: 3, label: 'Day 4', followUpNumber: 1 },
-    { type: 'follow_up_2', channel: 'email', afterOutboundCount: 2, minDays: 5, label: 'Day 9', followUpNumber: 2 },
-    { type: 'follow_up_3', channel: 'linkedin', afterOutboundCount: 3, minDays: 5, label: 'Day 14', followUpNumber: 3 },
-    { type: 'break_up', channel: 'email', afterOutboundCount: 4, minDays: 7, label: 'Day 21+', followUpNumber: 4 },
+  // Sequence: each step triggers AFTER the previous outbound + a waiting period
+  // outboundCount=1 (initial sent) -> next is follow_up_1 after 3 days
+  // outboundCount=2 (initial + bump) -> next is follow_up_2 after 5 days
+  // outboundCount=3 -> next is follow_up_3 after 5 days
+  // outboundCount=4+ -> next is break_up after 7 days
+  const sequence: Array<{ type: FollowUpItem['suggestedType']; channel: FollowUpItem['suggestedChannel']; afterOutboundCount: number; waitDays: number; label: string; overdueDays: number }> = [
+    { type: 'follow_up_1', channel: 'email', afterOutboundCount: 1, waitDays: 3, label: 'Day 4', overdueDays: 7 },
+    { type: 'follow_up_2', channel: 'email', afterOutboundCount: 2, waitDays: 5, label: 'Day 9', overdueDays: 9 },
+    { type: 'follow_up_3', channel: 'linkedin', afterOutboundCount: 3, waitDays: 5, label: 'Day 14', overdueDays: 9 },
+    { type: 'break_up', channel: 'email', afterOutboundCount: 4, waitDays: 7, label: 'Day 21+', overdueDays: 14 },
   ];
 
-  // Find the next step based on how many outbound emails have been sent
   let nextStep = null;
   for (const step of sequence) {
     if (outboundCount <= step.afterOutboundCount) {
@@ -134,13 +140,19 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
     }
   }
 
+  // If we've exhausted the sequence (5+ outbound), no more follow-ups
   if (!nextStep) return null;
 
-  const isOverdue = lead.stage === 'no_response' || daysSinceLastOutbound >= nextStep.minDays + 3;
-  const isDue = daysSinceLastOutbound >= nextStep.minDays;
+  // Urgency is based on days since the LAST outbound email vs the wait period for the next step.
+  // "upcoming" = still within the wait window (too early to follow up)
+  // "due_today" = wait period elapsed, time to send
+  // "overdue" = significantly past the wait period
+  const isDue = daysSinceLastOutbound >= nextStep.waitDays;
+  const isOverdue = daysSinceLastOutbound >= nextStep.overdueDays;
   const urgency: FollowUpItem['urgency'] = isOverdue ? 'overdue' : isDue ? 'due_today' : 'upcoming';
 
-  if (lead.stage !== 'no_response' && daysSinceLastOutbound < nextStep.minDays - 1) return null;
+  // Don't show upcoming follow-ups that are more than 1 day away (reduces noise)
+  if (!isDue && daysSinceLastOutbound < nextStep.waitDays - 1) return null;
 
   return {
     lead,
@@ -316,7 +328,7 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
                 {ACTION_LABELS[item.suggestedType].label}
               </span>
               <Link
-                href={`/leads/${item.lead.id}?tab=email&followup=${item.suggestedType}`}
+                href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
                 className="flex items-center gap-1 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
               >
                 <Send className="h-3 w-3" />
