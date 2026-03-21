@@ -1,8 +1,10 @@
 'use client';
 
+import { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
+import { toast } from 'sonner';
 import type { LeadEmail } from '@/types/leads';
-import { Mail, Reply, Clock } from 'lucide-react';
+import { Mail, Reply, Clock, Copy, Check } from 'lucide-react';
 
 interface EmailThreadProps {
   emails: LeadEmail[];
@@ -19,6 +21,26 @@ const typeLabels: Record<string, string> = {
   break_up: 'Break-up Email',
 };
 
+function CopyButton({ text, label }: { text: string; label?: string }) {
+  const [copied, setCopied] = useState(false);
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    await navigator.clipboard.writeText(text);
+    setCopied(true);
+    toast.success(label ? `${label} copied` : 'Copied to clipboard');
+    setTimeout(() => setCopied(false), 2000);
+  };
+  return (
+    <button
+      onClick={handleCopy}
+      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+      {copied ? 'Copied' : 'Copy'}
+    </button>
+  );
+}
+
 export default function EmailThread({ emails }: EmailThreadProps) {
   if (!emails.length) {
     return (
@@ -31,59 +53,70 @@ export default function EmailThread({ emails }: EmailThreadProps) {
 
   return (
     <div className="space-y-4">
-      {emails.map((email) => (
-        <div
-          key={email.id}
-          className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden"
-        >
-          <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
-            <div className="flex items-center gap-2">
-              <Mail className="h-3.5 w-3.5 text-zinc-400" />
-              <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
-                {typeLabels[email.email_type] || email.email_type}
-              </span>
-              {email.cta_type && (
-                <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
-                  {email.cta_type === 'mckenna' ? 'McKenna CTA' : 'Hormozi CTA'}
+      {emails.map((email) => {
+        const fullText = `Subject: ${email.subject || ''}\n\n${email.body || ''}`;
+        return (
+          <div
+            key={email.id}
+            className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 overflow-hidden group"
+          >
+            <div className="flex items-center justify-between px-4 py-3 bg-zinc-50 dark:bg-zinc-800 border-b border-zinc-200 dark:border-zinc-700">
+              <div className="flex items-center gap-2">
+                <Mail className="h-3.5 w-3.5 text-zinc-400" />
+                <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  {typeLabels[email.email_type] || email.email_type}
                 </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2 text-[11px] text-zinc-500 dark:text-zinc-400">
-              {email.sent_at ? (
-                <span className="flex items-center gap-1">
-                  <Clock className="h-3 w-3" />
-                  Sent {formatDistanceToNow(new Date(email.sent_at), { addSuffix: true })}
-                </span>
-              ) : (
-                <span className="text-amber-600 dark:text-amber-400">Draft</span>
-              )}
-            </div>
-          </div>
-
-          <div className="px-4 py-3 space-y-2">
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
-              {email.subject}
-            </p>
-            <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
-              {email.body}
-            </p>
-          </div>
-
-          {email.reply_content && (
-            <div className="border-t border-zinc-200 dark:border-zinc-700 px-4 py-3 bg-green-50/50 dark:bg-green-950/20">
-              <div className="flex items-center gap-1.5 mb-1.5">
-                <Reply className="h-3 w-3 text-green-600 dark:text-green-400" />
-                <span className="text-[11px] font-medium text-green-700 dark:text-green-300">
-                  Reply {email.replied_at && `on ${format(new Date(email.replied_at), 'MMM d, yyyy')}`}
-                </span>
+                {email.cta_type && (
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
+                    {email.cta_type === 'mckenna' ? 'McKenna CTA' : 'Hormozi CTA'}
+                  </span>
+                )}
               </div>
-              <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
-                {email.reply_content}
+              <div className="flex items-center gap-2">
+                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                  <CopyButton text={fullText} label="Email" />
+                </div>
+                <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  {email.sent_at ? (
+                    <span className="flex items-center gap-1">
+                      <Clock className="h-3 w-3" />
+                      Sent {formatDistanceToNow(new Date(email.sent_at), { addSuffix: true })}
+                    </span>
+                  ) : (
+                    <span className="text-amber-600 dark:text-amber-400">Draft</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="px-4 py-3 space-y-2">
+              <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">
+                {email.subject}
+              </p>
+              <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap leading-relaxed">
+                {email.body}
               </p>
             </div>
-          )}
-        </div>
-      ))}
+
+            {email.reply_content && (
+              <div className="border-t border-zinc-200 dark:border-zinc-700 px-4 py-3 bg-green-50/50 dark:bg-green-950/20">
+                <div className="flex items-center justify-between mb-1.5">
+                  <div className="flex items-center gap-1.5">
+                    <Reply className="h-3 w-3 text-green-600 dark:text-green-400" />
+                    <span className="text-[11px] font-medium text-green-700 dark:text-green-300">
+                      Reply {email.replied_at && `on ${format(new Date(email.replied_at), 'MMM d, yyyy')}`}
+                    </span>
+                  </div>
+                  <CopyButton text={email.reply_content} label="Reply" />
+                </div>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
+                  {email.reply_content}
+                </p>
+              </div>
+            )}
+          </div>
+        );
+      })}
     </div>
   );
 }
