@@ -20,6 +20,8 @@ export async function GET() {
     const outbound = emails.filter(e => e.direction === 'outbound')
     const inbound = emails.filter(e => e.direction === 'inbound')
 
+    const emailDate = (e: Record<string, unknown>) => new Date((e.sent_at as string) || (e.created_at as string))
+
     // Funnel: count leads that reached each stage (cumulative)
     const stageOrder = ['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'closed_won']
     const stageIndex: Record<string, number> = {}
@@ -39,12 +41,13 @@ export async function GET() {
       return { stage: targetStage, count }
     })
 
-    // Reply rate by lead type
+    // Reply rate by lead type (replied = contacted AND got an inbound reply)
+    const contactedLeadIds = new Set(outbound.map(e => e.lead_id))
     const replyRateByType: Record<string, { contacted: number; replied: number; rate: number }> = {}
     for (const type of ['customer', 'investor', 'partnership']) {
       const typeLeads = leads.filter(l => l.type === type)
-      const contacted = typeLeads.filter(l => outbound.some(e => e.lead_id === l.id)).length
-      const replied = typeLeads.filter(l => inbound.some(e => e.lead_id === l.id)).length
+      const contacted = typeLeads.filter(l => contactedLeadIds.has(l.id)).length
+      const replied = typeLeads.filter(l => contactedLeadIds.has(l.id) && inbound.some(e => e.lead_id === l.id)).length
       replyRateByType[type] = {
         contacted,
         replied,
@@ -52,24 +55,26 @@ export async function GET() {
       }
     }
 
-    // Reply rate by CTA type
-    const ctaPerformance: Record<string, { sent: number; replied: number; rate: number }> = {
-      mckenna: { sent: 0, replied: 0, rate: 0 },
-      hormozi: { sent: 0, replied: 0, rate: 0 },
-    }
-    const leadsWithReplySet = new Set(inbound.map(e => e.lead_id))
+    // Reply rate by CTA type (count unique leads per CTA, not individual emails)
+    const leadsWithReplySet = new Set(
+      inbound.filter(e => contactedLeadIds.has(e.lead_id)).map(e => e.lead_id)
+    )
+    const ctaLeadsSent: Record<string, Set<string>> = { mckenna: new Set(), hormozi: new Set() }
+    const ctaLeadsReplied: Record<string, Set<string>> = { mckenna: new Set(), hormozi: new Set() }
     for (const email of outbound) {
-      const cta = email.cta_type
-      if (cta && ctaPerformance[cta]) {
-        ctaPerformance[cta].sent++
+      const cta = email.cta_type as string
+      if (cta && ctaLeadsSent[cta]) {
+        ctaLeadsSent[cta].add(email.lead_id)
         if (leadsWithReplySet.has(email.lead_id)) {
-          ctaPerformance[cta].replied++
+          ctaLeadsReplied[cta].add(email.lead_id)
         }
       }
     }
-    for (const key of Object.keys(ctaPerformance)) {
-      const p = ctaPerformance[key]
-      p.rate = p.sent > 0 ? (p.replied / p.sent) * 100 : 0
+    const ctaPerformance: Record<string, { sent: number; replied: number; rate: number }> = {}
+    for (const key of ['mckenna', 'hormozi']) {
+      const sent = ctaLeadsSent[key].size
+      const replied = ctaLeadsReplied[key].size
+      ctaPerformance[key] = { sent, replied, rate: sent > 0 ? (replied / sent) * 100 : 0 }
     }
 
     // Avg touchpoints to convert (leads that replied)
@@ -114,7 +119,7 @@ export async function GET() {
       leadsReached: stats.leads.size,
     })).filter(c => c.touchpoints > 0)
 
-    // Time-to-reply distribution
+    // Time-to-reply distribution (use sent_at for accurate timing)
     const replyDayBuckets: Record<string, number> = {
       '0-1': 0, '2-3': 0, '4-7': 0, '8-14': 0, '15+': 0,
     }
@@ -122,7 +127,7 @@ export async function GET() {
       const firstOut = outbound.find(e => e.lead_id === leadId)
       const firstIn = inbound.find(e => e.lead_id === leadId)
       if (firstOut && firstIn) {
-        const days = Math.max(0, (new Date(firstIn.created_at).getTime() - new Date(firstOut.created_at).getTime()) / (1000 * 60 * 60 * 24))
+        const days = Math.max(0, (emailDate(firstIn).getTime() - emailDate(firstOut).getTime()) / 86400000)
         if (days <= 1) replyDayBuckets['0-1']++
         else if (days <= 3) replyDayBuckets['2-3']++
         else if (days <= 7) replyDayBuckets['4-7']++
@@ -131,25 +136,25 @@ export async function GET() {
       }
     }
 
-    // Weekly outreach trend (last 8 weeks)
+    // Weekly outreach trend (last 8 weeks, using sent_at for accurate dates)
     const weeklyTrend: { week: string; count: number }[] = []
     const now = new Date()
     for (let i = 7; i >= 0; i--) {
-      const weekStart = new Date(now.getTime() - (i + 1) * 7 * 24 * 60 * 60 * 1000)
-      const weekEnd = new Date(now.getTime() - i * 7 * 24 * 60 * 60 * 1000)
+      const weekStart = new Date(now.getTime() - (i + 1) * 7 * 86400000)
+      const weekEnd = new Date(now.getTime() - i * 7 * 86400000)
       const count = outbound.filter(e => {
-        const d = new Date(e.created_at)
+        const d = emailDate(e)
         return d >= weekStart && d < weekEnd
       }).length
       const label = weekStart.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
       weeklyTrend.push({ week: label, count })
     }
 
-    // By source
+    // By source (skip leads with no source set)
     const sourceCounts: Record<string, number> = {}
     for (const lead of leads) {
-      const src = lead.source || 'Unknown'
-      sourceCounts[src] = (sourceCounts[src] || 0) + 1
+      if (!lead.source) continue
+      sourceCounts[lead.source] = (sourceCounts[lead.source] || 0) + 1
     }
 
     return NextResponse.json({

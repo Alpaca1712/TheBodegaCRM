@@ -81,7 +81,7 @@ export async function GET() {
       .from('leads')
       .select('id, contact_name, company_name, stage, type, priority, last_contacted_at, last_inbound_at, last_outbound_at, total_emails_in, total_emails_out, risk_score, risk_factors, risk_assessed_at')
       .eq('user_id', user.id)
-      .not('stage', 'in', '("closed_won","closed_lost")')
+      .not('stage', 'in', '("closed_won","closed_lost","researched","email_drafted")')
 
     if (leadsError) {
       return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })

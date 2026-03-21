@@ -204,18 +204,21 @@ export default function AnalyticsPage() {
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-5">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Time to Reply (days)</h2>
           <div className="flex items-end gap-2 h-32">
-            {Object.entries(data.replyDayBuckets).map(([bucket, count]) => (
-              <div key={bucket} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{count}</span>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-t-md overflow-hidden" style={{ height: '100%' }}>
-                  <div
-                    className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-md transition-all duration-500"
-                    style={{ height: `${maxReplyBucket > 0 ? (count / maxReplyBucket) * 100 : 0}%`, marginTop: 'auto' }}
-                  />
+            {Object.entries(data.replyDayBuckets).map(([bucket, count]) => {
+              const pct = maxReplyBucket > 0 ? (count / maxReplyBucket) * 100 : 0;
+              return (
+                <div key={bucket} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{count}</span>
+                  <div className="w-full flex-1 flex flex-col justify-end bg-zinc-100 dark:bg-zinc-800 rounded-t-md overflow-hidden">
+                    <div
+                      className="w-full bg-gradient-to-t from-green-500 to-green-400 rounded-t-md transition-all duration-500"
+                      style={{ height: `${Math.max(pct, count > 0 ? 8 : 0)}%` }}
+                    />
+                  </div>
+                  <span className="text-[10px] text-zinc-500 dark:text-zinc-400">{bucket}d</span>
                 </div>
-                <span className="text-[10px] text-zinc-500 dark:text-zinc-400">{bucket}d</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
 
@@ -223,18 +226,21 @@ export default function AnalyticsPage() {
         <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800/50 p-5">
           <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 mb-4">Weekly Outreach Volume</h2>
           <div className="flex items-end gap-1.5 h-32">
-            {data.weeklyTrend.map((w, i) => (
-              <div key={i} className="flex-1 flex flex-col items-center gap-1">
-                <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{w.count}</span>
-                <div className="w-full bg-zinc-100 dark:bg-zinc-800 rounded-t-md overflow-hidden" style={{ height: '100%' }}>
-                  <div
-                    className="w-full bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-md transition-all duration-500"
-                    style={{ height: `${(w.count / maxWeekly) * 100}%`, marginTop: 'auto' }}
-                  />
+            {data.weeklyTrend.map((w, i) => {
+              const pct = (w.count / maxWeekly) * 100;
+              return (
+                <div key={i} className="flex-1 flex flex-col items-center gap-1 h-full">
+                  <span className="text-[10px] font-medium text-zinc-700 dark:text-zinc-300 tabular-nums">{w.count > 0 ? w.count : ''}</span>
+                  <div className="w-full flex-1 flex flex-col justify-end bg-zinc-100 dark:bg-zinc-800 rounded-t-md overflow-hidden">
+                    <div
+                      className="w-full bg-gradient-to-t from-amber-500 to-amber-400 rounded-t-md transition-all duration-500"
+                      style={{ height: `${Math.max(pct, w.count > 0 ? 8 : 0)}%` }}
+                    />
+                  </div>
+                  <span className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate w-full text-center">{w.week}</span>
                 </div>
-                <span className="text-[9px] text-zinc-500 dark:text-zinc-400 truncate w-full text-center">{w.week}</span>
-              </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </div>
