@@ -18,7 +18,7 @@ interface AccountSnapshot {
   recommended_actions: string[]
 }
 
-const SYSTEM_PROMPT = `You are a sales intelligence analyst for Rocoto (AI agent security company).
+const SYSTEM_PROMPT = `You are a sales intelligence analyst for Rocoto. Rocoto tries to break AI agents before bad actors do by talking to them the same way users do (email, text, voice, chat, Slack) and finding ways to take them over. Then they help fix everything. Only real client: Mason (AI agent for property managers).
 
 Generate a comprehensive account snapshot from all available data about a lead.
 

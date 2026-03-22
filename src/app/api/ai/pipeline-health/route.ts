@@ -181,7 +181,7 @@ Emails sent: ${l.total_emails_out || 0}, Replies: ${l.total_emails_in || 0}`
     }).join('\n\n')
 
     const recommendations = await generateJSON<Array<{ lead_id: string; recommendation: string }>>(
-      `You are a sales coach for Rocoto (AI agent security). For each at-risk lead, provide one specific, actionable recommendation to re-engage them. Be direct and practical. Max 2 sentences each. No em dashes. Return JSON array: [{"lead_id": "...", "recommendation": "..."}]`,
+      `You are a sales coach for Rocoto (we try to break AI agents before bad actors do, through the same channels their users use). For each at-risk lead, provide one specific, actionable recommendation to re-engage them. Be direct and practical. Max 2 sentences each. No em dashes. Return JSON array: [{"lead_id": "...", "recommendation": "..."}]`,
       `These leads are at risk. What should we do?\n\n${riskContext}`,
       { maxTokens: 1024, temperature: 0.4 }
     )

@@ -19,9 +19,11 @@ interface BattleCard {
   decision_makers: Array<{ role: string; concerns: string; pitch_angle: string }>
 }
 
-const SYSTEM_PROMPT = `You are a sales strategist for Rocoto, an AI agent security company that hacks other AI agents to find vulnerabilities. Generate a comprehensive battle card for a sales conversation.
+const SYSTEM_PROMPT = `You are a sales strategist for Rocoto. Generate a comprehensive battle card for a sales conversation.
 
-Rocoto's value prop: We autonomously test AI agents for prompt injection, jailbreaking, data exfiltration, and tool abuse. Think "penetration testing but for AI agents."
+Rocoto's value prop: We try to break AI agents before bad actors do. We talk to AI agents the same way their users do (email, text, voice, chat, Slack) and try to take them over, pull out private data, or make them misbehave. Then we help fix everything. Think "hiring a burglar to test your locks, but for AI."
+Real results: Worked with Mason (AI agent for property managers). Took over their agent through its customer channels. Helped them fix everything.
+Team: Daniel and David, both on Amazon's offensive security team.
 
 Search the web to find:
 1. What the target company's product does (especially their AI/agent capabilities)
@@ -71,7 +73,7 @@ export async function POST(request: NextRequest) {
 
     const result = await researchWithWebSearchJSON<BattleCard>(
       SYSTEM_PROMPT,
-      `Generate a battle card for selling Rocoto's AI agent security testing to this company:\n\n${context}\n\nReturn JSON: {"company_overview": "...", "their_product": "...", "their_strengths": ["..."], "their_weaknesses": ["..."], "competitive_landscape": ["competitor: how they differ"], "our_angle": "the specific pitch angle for this company", "objection_handlers": [{"objection": "...", "response": "..."}], "discovery_questions": ["..."], "trigger_events": ["recent events that create urgency"], "icp_score": 0-100, "icp_reasons": ["why this score"], "pricing_intel": "...", "tech_stack": ["..."], "decision_makers": [{"role": "CTO", "concerns": "...", "pitch_angle": "..."}]}`,
+      `Generate a battle card for selling Rocoto's agentic pentesting to this company:\n\n${context}\n\nReturn JSON: {"company_overview": "...", "their_product": "...", "their_strengths": ["..."], "their_weaknesses": ["..."], "competitive_landscape": ["competitor: how they differ"], "our_angle": "the specific pitch angle for this company based on their AI agent's communication channels", "objection_handlers": [{"objection": "...", "response": "..."}], "discovery_questions": ["..."], "trigger_events": ["recent events that create urgency"], "icp_score": 0-100, "icp_reasons": ["why this score"], "pricing_intel": "...", "tech_stack": ["..."], "decision_makers": [{"role": "CTO", "concerns": "...", "pitch_angle": "..."}]}`,
       { maxTokens: 4096, temperature: 0.3, maxSearches: 8 }
     )
 
