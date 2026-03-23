@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import {
   refreshAccessToken,
+  GmailTokenExpiredError,
   fetchThreadsByEmail,
   fetchThreadsByDomain,
   fetchFullThread,
@@ -399,6 +400,13 @@ JSON response:
 
     return NextResponse.json({ success: true, ...syncResult })
   } catch (error) {
+    if (error instanceof GmailTokenExpiredError) {
+      console.error('[SyncLead] Gmail token expired, user needs to reconnect')
+      return NextResponse.json(
+        { error: error.message, code: 'TOKEN_EXPIRED' },
+        { status: 401 }
+      )
+    }
     console.error('[SyncLead] Error:', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Internal server error' },

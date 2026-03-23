@@ -90,6 +90,13 @@ export async function exchangeCodeForTokens(code: string): Promise<{
   }
 }
 
+export class GmailTokenExpiredError extends Error {
+  constructor() {
+    super('Gmail connection expired. Please reconnect your Gmail account in Settings.')
+    this.name = 'GmailTokenExpiredError'
+  }
+}
+
 export async function refreshAccessToken(refreshToken: string): Promise<{
   access_token: string
   expires_in: number
@@ -104,7 +111,13 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
       grant_type: 'refresh_token',
     }),
   })
-  if (!res.ok) throw new Error(`Token refresh failed: ${await res.text()}`)
+  if (!res.ok) {
+    const body = await res.text()
+    if (body.includes('invalid_grant') || body.includes('Token has been expired or revoked')) {
+      throw new GmailTokenExpiredError()
+    }
+    throw new Error(`Token refresh failed: ${body}`)
+  }
   return await res.json()
 }
 

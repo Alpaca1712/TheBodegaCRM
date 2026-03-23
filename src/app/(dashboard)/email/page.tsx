@@ -69,7 +69,11 @@ export default function EmailPage() {
         }
       } else {
         console.error('[Email Sync] Failed:', body)
-        toast.error(body.error || body.message || 'Sync failed')
+        if (body.code === 'TOKEN_EXPIRED') {
+          toast.error('Gmail connection expired. Please reconnect in Settings > Email.')
+        } else {
+          toast.error(body.error || body.message || 'Sync failed')
+        }
       }
     } catch (err) {
       console.error('[Email Sync] Error:', err)

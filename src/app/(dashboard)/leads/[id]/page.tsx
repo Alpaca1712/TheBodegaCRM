@@ -224,6 +224,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       });
       if (!res.ok) {
         const err = await res.json();
+        if (err.code === 'TOKEN_EXPIRED') {
+          toast.error('Gmail connection expired. Please reconnect in Settings > Email.');
+          setIsSyncing(false);
+          return;
+        }
         throw new Error(err.error || 'Sync failed');
       }
       const data = await res.json();
