@@ -192,7 +192,11 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
-            <button onClick={handleClose} className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800">
+            <button
+              onClick={handleClose}
+              className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              aria-label="Close search"
+            >
               <X className="h-4 w-4 text-zinc-400" />
             </button>
           </div>
