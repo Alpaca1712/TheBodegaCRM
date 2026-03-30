@@ -376,7 +376,11 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
                 className="inline-flex items-center gap-1 px-2.5 py-1 bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 rounded-md text-xs"
               >
                 {hook}
-                <button type="button" onClick={() => removeHook(i)}>
+                <button
+                  type="button"
+                  onClick={() => removeHook(i)}
+                  aria-label={`Remove hook: ${hook}`}
+                >
                   <X className="h-3 w-3" />
                 </button>
               </span>

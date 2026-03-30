@@ -44,7 +44,11 @@ export default function KeyboardShortcutsDialog() {
       <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
           <h2 className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
-          <button onClick={() => setOpen(false)} className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400">
+          <button
+            onClick={() => setOpen(false)}
+            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
+            aria-label="Close shortcuts"
+          >
             <X size={16} />
           </button>
         </div>
