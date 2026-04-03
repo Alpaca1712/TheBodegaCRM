@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Upload, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
+import { toast } from 'sonner';
 import type { Lead, LeadType, PipelineStage } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS } from '@/types/leads';
 
@@ -14,14 +15,16 @@ export default function LeadsPage() {
   const [search, setSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | ''>('');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams();
     if (typeFilter) params.set('type', typeFilter);
     if (stageFilter) params.set('stage', stageFilter);
     if (search) params.set('search', search);
-    params.set('limit', '50');
+    params.set('limit', '500');
 
     try {
       const res = await fetch(`/api/leads?${params}`);
@@ -29,9 +32,13 @@ export default function LeadsPage() {
         const data = await res.json();
         setLeads(data.data || []);
         setCount(data.count || 0);
+      } else {
+        throw new Error(`Failed to fetch leads (${res.status})`);
       }
-    } catch {
-      // silently handle
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load leads';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -134,7 +141,17 @@ export default function LeadsPage() {
       </div>
 
       {/* Table */}
-      {loading ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-12 gap-3">
+          <p className="text-sm text-red-500">{error}</p>
+          <button
+            onClick={fetchLeads}
+            className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-12">
           <div className="h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
         </div>

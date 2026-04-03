@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
+import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
   type: z.enum(['customer', 'investor', 'partnership']),
@@ -162,6 +163,12 @@ interface ResearchResult {
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
     if (!validation.success) {

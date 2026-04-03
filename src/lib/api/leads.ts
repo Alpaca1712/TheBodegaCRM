@@ -209,6 +209,12 @@ export async function importLeadsFromCSV(
   const errors: string[] = []
   let imported = 0
 
+  // NOTE: Duplicate detection - CSV imports may contain leads that already exist
+  // in the database. Consider checking for duplicates by contact_email or
+  // company_name + contact_name before inserting. For now, duplicates will be
+  // created as separate records. A future improvement could query existing leads
+  // and skip/merge rows that match on (contact_email) or (company_name + contact_name).
+
   for (let i = 0; i < rows.length; i++) {
     const row = rows[i]
     try {

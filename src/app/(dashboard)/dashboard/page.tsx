@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Send,
@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
+import { toast } from 'sonner';
 
 interface DashboardData {
   totalLeads: number;
@@ -65,16 +66,30 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [health, setHealth] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    Promise.all([
-      fetch('/api/dashboard').then(r => r.json()),
-      fetch('/api/ai/pipeline-health').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([dashData, healthData]) => {
+  const loadDashboard = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const [dashRes, healthData] = await Promise.all([
+        fetch('/api/dashboard'),
+        fetch('/api/ai/pipeline-health').then(r => r.ok ? r.json() : null).catch(() => null),
+      ]);
+      if (!dashRes.ok) throw new Error(`Dashboard request failed (${dashRes.status})`);
+      const dashData = await dashRes.json();
       setData(dashData);
       setHealth(healthData);
-    }).catch(() => {}).finally(() => setLoading(false));
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load dashboard';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadDashboard(); }, [loadDashboard]);
 
   if (loading) {
     return (
@@ -84,7 +99,20 @@ export default function DashboardPage() {
     );
   }
 
-  if (!data) return null;
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <AlertTriangle className="h-8 w-8 text-red-400" />
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || 'Failed to load dashboard data'}</p>
+        <button
+          onClick={loadDashboard}
+          className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   const outreachTrend = data.outreachLastWeek > 0
     ? ((data.outreachThisWeek - data.outreachLastWeek) / data.outreachLastWeek) * 100

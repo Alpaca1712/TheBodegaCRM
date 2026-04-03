@@ -3,12 +3,14 @@
 import { useState, useEffect } from 'react';
 import { Loader2, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadPipelineBoard from '@/components/leads/lead-pipeline-board';
+import { toast } from 'sonner';
 import type { Lead, LeadType, PipelineStage } from '@/types/leads';
 
 export default function PipelinePage() {
   const [leads, setLeads] = useState<Lead[]>([]);
   const [loading, setLoading] = useState(true);
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchLeads();
@@ -16,6 +18,7 @@ export default function PipelinePage() {
 
   const fetchLeads = async () => {
     setLoading(true);
+    setError(null);
     const params = new URLSearchParams({ limit: '200' });
     if (typeFilter) params.set('type', typeFilter);
 
@@ -24,9 +27,13 @@ export default function PipelinePage() {
       if (res.ok) {
         const data = await res.json();
         setLeads(data.data || []);
+      } else {
+        throw new Error(`Failed to fetch pipeline data (${res.status})`);
       }
-    } catch {
-      // silently handle
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load pipeline';
+      setError(message);
+      toast.error(message);
     } finally {
       setLoading(false);
     }
@@ -87,7 +94,17 @@ export default function PipelinePage() {
         </div>
       </div>
 
-      {loading ? (
+      {error ? (
+        <div className="flex flex-col items-center justify-center py-20 gap-3">
+          <p className="text-sm text-red-500">{error}</p>
+          <button
+            onClick={fetchLeads}
+            className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+          >
+            Retry
+          </button>
+        </div>
+      ) : loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
         </div>

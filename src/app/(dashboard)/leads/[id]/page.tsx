@@ -127,7 +127,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         const data = await res.json();
         setMemories(data.memories || []);
       }
-    } catch { /* ignore */ }
+    } catch {
+      toast.error('Failed to load memories');
+    }
   }, [id]);
 
   useEffect(() => { fetchLead(); fetchMemories(); }, [fetchLead, fetchMemories]);
@@ -173,7 +175,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         setEmails(data.emails || []);
         setInteractions(data.interactions || []);
       }
-    } catch { /* silent */ }
+    } catch {
+      toast.error('Failed to refresh lead data');
+    }
   };
 
   const generateBattleCard = async () => {
@@ -906,7 +910,9 @@ function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string; initia
     try {
       const res = await fetch(`/api/leads/${leadId}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ notes: value }) });
       if (res.ok) onSaved(value);
-    } catch { /* silent */ } finally { setSaving(false); }
+    } catch {
+      toast.error('Failed to save notes');
+    } finally { setSaving(false); }
   }, [leadId, onSaved]);
 
   const handleChange = (value: string) => {

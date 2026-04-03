@@ -26,7 +26,7 @@ const requestSchema = z.object({
     investment_thesis_notes: z.string().optional().nullable(),
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
-    stage: z.string(),
+    stage: z.enum(['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'follow_up', 'closed_won', 'closed_lost', 'no_response']),
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
