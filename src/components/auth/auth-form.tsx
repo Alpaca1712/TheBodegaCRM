@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { signIn, signUp } from '@/lib/auth/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type AuthMode = 'login' | 'signup';
 
@@ -94,73 +96,70 @@ function AuthFormInner({ mode }: AuthFormProps) {
     <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-4 rounded-md shadow-sm">
         {!isLogin && (
-          <div>
-            <label htmlFor="name" className="sr-only">
+          <div className="space-y-1">
+            <label htmlFor="name" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
               Name
             </label>
-            <input
+            <Input
               id="name"
               type="text"
               autoComplete="name"
               placeholder="Full name"
-              className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               {...register('name')}
               disabled={isLoading}
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+              <p className="text-sm text-red-600">{errors.name.message}</p>
             )}
           </div>
         )}
         
-        <div>
-          <label htmlFor="email" className="sr-only">
+        <div className="space-y-1">
+          <label htmlFor="email" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Email address
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="Email address"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('email')}
             disabled={isLoading}
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-red-600">{errors.email.message}</p>
           )}
         </div>
         
-        <div>
-          <label htmlFor="password" className="sr-only">
+        <div className="space-y-1">
+          <label htmlFor="password" className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
             Password
           </label>
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete={isLogin ? 'current-password' : 'new-password'}
             placeholder="Password"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('password')}
             disabled={isLoading}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            <p className="text-sm text-red-600">{errors.password.message}</p>
           )}
         </div>
       </div>
       
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4 border border-red-200">
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
       
       <div>
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="group relative flex w-full justify-center rounded-md bg-indigo-600 py-3 px-4 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="w-full h-11"
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -169,7 +168,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
               {isLogin ? 'Sign in' : 'Create account'}
             </span>
           )}
-        </button>
+        </Button>
       </div>
       
       {isLogin && (
