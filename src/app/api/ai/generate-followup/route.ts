@@ -1,7 +1,7 @@
 import { generateJSON } from '@/lib/ai/anthropic'
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 
 const emailSchema = z.object({
   direction: z.enum(['inbound', 'outbound']),
@@ -293,6 +293,15 @@ ${hasStrategy ? '- Use the STRATEGIC DIRECTION as your final angle.' : `- Leave 
 
 export async function POST(request: NextRequest) {
   try {
+    const guard = await requireUser()
+    if (guard instanceof NextResponse) return guard
+    const limited = rateLimitResponse(guard.user.id, 'ai:generate-followup', {
+      limit: 20,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+    const supabase = guard.supabase
+
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
     if (!validation.success) {
@@ -306,7 +315,6 @@ export async function POST(request: NextRequest) {
     let memories: Array<{ memory_type: string; content: string }> = []
     if (validation.data.lead.id) {
       try {
-        const supabase = await createClient()
         const { data } = await supabase
           .from('agent_memory')
           .select('memory_type, content')
