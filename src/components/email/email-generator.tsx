@@ -362,7 +362,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
                   className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
                 />
                 <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">
-                  Background material the AI can draw from. It won't copy this verbatim.
+                  Background material the AI can draw from. It won&apos;t copy this verbatim.
                 </p>
               </div>
             )}

@@ -96,7 +96,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
         {!isLogin && (
           <div>
             <label htmlFor="name" className="sr-only">
-              Name
+              Full name
             </label>
             <input
               id="name"
@@ -106,9 +106,11 @@ function AuthFormInner({ mode }: AuthFormProps) {
               className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
               {...register('name')}
               disabled={isLoading}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'name-error' : undefined}
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+              <p id="name-error" className="mt-1 text-sm text-red-600">{errors.name.message}</p>
             )}
           </div>
         )}
@@ -125,9 +127,11 @@ function AuthFormInner({ mode }: AuthFormProps) {
             className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('email')}
             disabled={isLoading}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p id="email-error" className="mt-1 text-sm text-red-600">{errors.email.message}</p>
           )}
         </div>
         
@@ -143,15 +147,17 @@ function AuthFormInner({ mode }: AuthFormProps) {
             className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             {...register('password')}
             disabled={isLoading}
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? 'password-error' : undefined}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            <p id="password-error" className="mt-1 text-sm text-red-600">{errors.password.message}</p>
           )}
         </div>
       </div>
       
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4" role="alert">
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
