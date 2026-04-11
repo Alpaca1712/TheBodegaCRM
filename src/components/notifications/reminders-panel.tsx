@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Bell, X, CheckCircle, AlertTriangle, Calendar, TrendingDown, UserX } from 'lucide-react'
+import { Bell, X, CheckCircle, AlertTriangle, Calendar, TrendingDown, UserX, RefreshCw } from 'lucide-react'
 import { useReminders, useMarkAsRead, useMarkAsResolved } from '@/hooks/use-reminders'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -74,7 +74,11 @@ export function RemindersPanel() {
   return (
     <DropdownMenu open={isOpen} onOpenChange={setIsOpen}>
       <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-10 w-10 p-0">
+        <Button
+          variant="ghost"
+          className="relative h-10 w-10 p-0"
+          aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+        >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
             <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-600 text-xs text-white flex items-center justify-center">
@@ -102,11 +106,9 @@ export function RemindersPanel() {
               variant="ghost"
               onClick={() => refetch()}
               className="h-6 w-6 p-0"
+              aria-label="Refresh notifications"
             >
-              <span className="sr-only">Refresh</span>
-              <svg className="h-3 w-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" />
-              </svg>
+              <RefreshCw className={`h-3 w-3 ${isLoading ? 'animate-spin' : ''}`} />
             </Button>
           </div>
         </DropdownMenuLabel>
@@ -171,6 +173,7 @@ export function RemindersPanel() {
                         onClick={() => handleMarkAsRead(reminder.id)}
                         className="h-6 w-6 p-0"
                         title="Mark as read"
+                        aria-label="Mark as read"
                       >
                         <CheckCircle className="h-3 w-3" />
                       </Button>
@@ -180,6 +183,7 @@ export function RemindersPanel() {
                       onClick={() => handleMarkAsResolved(reminder.id)}
                       className="h-6 w-6 p-0"
                       title="Mark as resolved"
+                      aria-label="Mark as resolved"
                     >
                       <X className="h-3 w-3" />
                     </Button>
