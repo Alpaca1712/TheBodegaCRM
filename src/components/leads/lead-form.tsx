@@ -404,6 +404,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               type="button"
               onClick={addHook}
               className="flex items-center gap-1 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+              aria-label="Add SMYKM hook"
             >
               <Plus className="h-3.5 w-3.5" />
               Add
