@@ -223,19 +223,19 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Contact Name *</label>
-            <input {...form.register('contact_name')} className={inputClass} placeholder="Felix Schlegel" />
+            <label htmlFor="contact_name" className={labelClass}>Contact Name *</label>
+            <input id="contact_name" {...form.register('contact_name')} className={inputClass} placeholder="Felix Schlegel" />
             {form.formState.errors.contact_name && (
               <p className="text-xs text-red-500 mt-1">{form.formState.errors.contact_name.message}</p>
             )}
           </div>
           <div>
-            <label className={labelClass}>Contact Title</label>
-            <input {...form.register('contact_title')} className={inputClass} placeholder="CTO" />
+            <label htmlFor="contact_title" className={labelClass}>Contact Title</label>
+            <input id="contact_title" {...form.register('contact_title')} className={inputClass} placeholder="CTO" />
           </div>
           <div>
-            <label className={labelClass}>Company Name *</label>
-            <input {...form.register('company_name')} className={inputClass} placeholder="Parahelp" />
+            <label htmlFor="company_name" className={labelClass}>Company Name *</label>
+            <input id="company_name" {...form.register('company_name')} className={inputClass} placeholder="Parahelp" />
             {form.formState.errors.company_name && (
               <p className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
             )}
@@ -262,20 +262,20 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label className={labelClass}>Email</label>
-            <input {...form.register('contact_email')} className={inputClass} type="email" placeholder="name@company.com" />
+            <label htmlFor="contact_email" className={labelClass}>Email</label>
+            <input id="contact_email" {...form.register('contact_email')} className={inputClass} type="email" placeholder="name@company.com" />
           </div>
           <div>
-            <label className={labelClass}>Phone</label>
-            <input {...form.register('contact_phone')} className={inputClass} type="tel" placeholder="+1 (555) 123-4567" />
+            <label htmlFor="contact_phone" className={labelClass}>Phone</label>
+            <input id="contact_phone" {...form.register('contact_phone')} className={inputClass} type="tel" placeholder="+1 (555) 123-4567" />
           </div>
           <div>
-            <label className={labelClass}>Twitter</label>
-            <input {...form.register('contact_twitter')} className={inputClass} placeholder="@handle" />
+            <label htmlFor="contact_twitter" className={labelClass}>Twitter</label>
+            <input id="contact_twitter" {...form.register('contact_twitter')} className={inputClass} placeholder="@handle" />
           </div>
           <div>
-            <label className={labelClass}>LinkedIn</label>
-            <input {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+            <label htmlFor="contact_linkedin" className={labelClass}>LinkedIn</label>
+            <input id="contact_linkedin" {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
           </div>
         </div>
