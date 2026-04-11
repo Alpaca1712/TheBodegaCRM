@@ -335,7 +335,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
             <textarea
               value={customPrompt}
               onChange={(e) => setCustomPrompt(e.target.value)}
-              placeholder="Tell the AI exactly what you want. e.g.&#10;- Write a cheeky email about how their chatbot leaks PII&#10;- Use a Hormozi-style 'free audit' angle&#10;- Reference their CEO's tweet about AI safety from last week&#10;- Make it sound like I already found a vulnerability"
+              placeholder="Tell the AI exactly what you want. e.g.&#10;- Write a cheeky email about how their chatbot leaks PII&#10;- Use a Hormozi-style &apos;free audit&apos; angle&#10;- Reference their CEO&apos;s tweet about AI safety from last week&#10;- Make it sound like I already found a vulnerability"
               rows={3}
               className="w-full rounded-lg border border-red-200 dark:border-red-800/60 bg-red-50/30 dark:bg-red-950/10 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/30 focus:border-red-500 resize-y"
             />
@@ -533,6 +533,7 @@ function VariantCard({
       <div className="flex items-center gap-2">
         <button
           onClick={onCopy}
+          type="button"
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
         >
           {isCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -540,6 +541,7 @@ function VariantCard({
         </button>
         <button
           onClick={onSend}
+          type="button"
           disabled={isSending}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
         >
