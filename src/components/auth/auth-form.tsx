@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { signIn, signUp } from '@/lib/auth/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type AuthMode = 'login' | 'signup';
 
@@ -95,72 +97,72 @@ function AuthFormInner({ mode }: AuthFormProps) {
       <div className="space-y-4 rounded-md shadow-sm">
         {!isLogin && (
           <div>
-            <label htmlFor="name" className="sr-only">
+            <label htmlFor="name" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Name
             </label>
-            <input
+            <Input
               id="name"
               type="text"
               autoComplete="name"
               placeholder="Full name"
-              className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+              className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
               {...register('name')}
               disabled={isLoading}
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+              <p className="text-sm text-red-600">{errors.name.message}</p>
             )}
           </div>
         )}
         
         <div>
-          <label htmlFor="email" className="sr-only">
+          <label htmlFor="email" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Email address
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="Email address"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
             {...register('email')}
             disabled={isLoading}
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-red-600">{errors.email.message}</p>
           )}
         </div>
         
         <div>
-          <label htmlFor="password" className="sr-only">
+          <label htmlFor="password" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Password
           </label>
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete={isLogin ? 'current-password' : 'new-password'}
             placeholder="Password"
-            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 ring-1 ring-inset ring-zinc-300 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
             {...register('password')}
             disabled={isLoading}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            <p className="text-sm text-red-600">{errors.password.message}</p>
           )}
         </div>
       </div>
       
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4 border border-red-200">
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
       
       <div>
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
-          className="group relative flex w-full justify-center rounded-md bg-indigo-600 py-3 px-4 text-sm font-semibold text-white hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="group relative flex w-full justify-center rounded-md bg-red-600 py-3 px-4 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
         >
           {isLoading ? (
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -169,12 +171,12 @@ function AuthFormInner({ mode }: AuthFormProps) {
               {isLogin ? 'Sign in' : 'Create account'}
             </span>
           )}
-        </button>
+        </Button>
       </div>
       
       {isLogin && (
         <div className="text-center text-sm">
-          <a href="#" className="font-medium text-indigo-600 hover:text-indigo-500">
+          <a href="#" className="font-medium text-red-600 hover:text-red-500 transition-colors">
             Forgot your password?
           </a>
         </div>

@@ -30,7 +30,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
             Or{' '}
             <Link
               href="/signup"
-              className="font-medium text-indigo-600 hover:text-indigo-500"
+              className="font-medium text-red-600 hover:text-red-500 transition-colors"
             >
               create a new account
             </Link>

@@ -345,7 +345,41 @@ export async function POST(request: NextRequest) {
     result.subject = stripEmDashes(result.subject)
     result.body = stripEmDashes(result.body)
 
-    return NextResponse.json(result)
+    // Quality check for follow-up emails
+    const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length
+    const BANNED_PHRASES = [
+      'just checking in', 'circling back', 'wanted to follow up', 'bumping this',
+      'I hope this finds you well', 'in today\'s landscape', 'at the intersection of',
+      'game-changer', 'I noticed that', 'fascinating intersection', 'inspired by',
+    ]
+    const qualityIssues: string[] = []
+    let qualityScore = 100
+
+    const bodyWords = countWords(result.body)
+    // Follow-ups should be shorter (40-80 words typically)
+    if (bodyWords > 150) {
+      qualityIssues.push(`Body is ${bodyWords} words. Follow-ups should be tighter.`)
+      qualityScore -= 10
+    }
+
+    if (/[\u2013\u2014]/.test(result.body) || /[\u2013\u2014]/.test(result.subject)) {
+      qualityIssues.push('Contains em dashes.')
+      qualityScore -= 15
+    }
+
+    const bodyLower = result.body.toLowerCase()
+    for (const phrase of BANNED_PHRASES) {
+      if (bodyLower.includes(phrase.toLowerCase())) {
+        qualityIssues.push(`Contains banned phrase: "${phrase}".`)
+        qualityScore -= 10
+      }
+    }
+
+    return NextResponse.json({
+      ...result,
+      wordCount: bodyWords,
+      quality: { issues: qualityIssues, score: Math.max(0, qualityScore) },
+    })
   } catch (error) {
     console.error('Generate follow-up error:', error)
     return NextResponse.json(

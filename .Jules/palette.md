@@ -1,3 +1,3 @@
-## 2025-05-14 - [Dynamic ARIA labels for badge buttons]
-**Learning:** When adding an `aria-label` to a button that contains a visual badge (e.g., notification unread count), the label overrides the button's children in the accessibility tree. This means screen reader users lose the badge information unless it's explicitly included in the `aria-label`.
-**Action:** Use dynamic templates for `aria-label` on buttons with badges, e.g., `aria-label={count > 0 ? \`Notifications, ${count} unread\` : 'Notifications'}`.
+## 2025-05-14 - [A11y: Missing Label Associations]
+**Learning:** Many form components in the codebase (e.g., LeadForm, AuthForm) use labels but lack explicit 'id' and 'htmlFor' associations, which hinders screen reader accessibility and reduces clickable area.
+**Action:** When working on forms, always ensure every input has a unique 'id' and its corresponding label has a matching 'htmlFor'. Use 'aria-describedby' for associated helper text.
