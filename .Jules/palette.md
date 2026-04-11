@@ -1,3 +1,3 @@
-## 2025-10-10 - [Accessible Notification Badges]
-**Learning:** For notification buttons with visual badges, use a dynamic `aria-label` (e.g., `aria-label={count > 0 ? \`Notifications, ${count} unread\` : 'Notifications'}`) instead of just hiding the badge from screen readers. This provides the same context to screen reader users that visual users get from the badge.
-**Action:** Always implement dynamic `aria-label` attributes on components with notification badges or similar indicators.
+## 2025-05-14 - [A11y: Missing Label Associations]
+**Learning:** Many form components in the codebase (e.g., LeadForm, AuthForm) use labels but lack explicit 'id' and 'htmlFor' associations, which hinders screen reader accessibility and reduces clickable area.
+**Action:** When working on forms, always ensure every input has a unique 'id' and its corresponding label has a matching 'htmlFor'. Use 'aria-describedby' for associated helper text.
