@@ -1,12 +1,13 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair, Handshake } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
-import type { Lead, LeadType, PipelineStage } from '@/types/leads';
-import { PIPELINE_STAGES, STAGE_LABELS } from '@/types/leads';
+import type { Lead, LeadType, PipelineStage, Priority } from '@/types/leads';
+import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
+import { exportLeadsToCsv } from '@/lib/csv-export';
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -16,6 +17,9 @@ export default function LeadsPage() {
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | ''>('');
   const [error, setError] = useState<string | null>(null);
+  const [selectionMode, setSelectionMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [bulkBusy, setBulkBusy] = useState(false);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -49,6 +53,92 @@ export default function LeadsPage() {
     return () => clearTimeout(timer);
   }, [fetchLeads, search]);
 
+  // Drop stale selection IDs when the visible lead set changes
+  useEffect(() => {
+    if (selectedIds.size === 0) return;
+    const visible = new Set(leads.map((l) => l.id));
+    let changed = false;
+    const next = new Set<string>();
+    selectedIds.forEach((id) => {
+      if (visible.has(id)) next.add(id);
+      else changed = true;
+    });
+    if (changed) setSelectedIds(next);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [leads]);
+
+  const selectedLeads = useMemo(
+    () => leads.filter((l) => selectedIds.has(l.id)),
+    [leads, selectedIds],
+  );
+
+  const toggleOne = (id: string) => {
+    setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleAll = (checked: boolean) => {
+    setSelectedIds(checked ? new Set(leads.map((l) => l.id)) : new Set());
+  };
+
+  const clearSelection = () => setSelectedIds(new Set());
+
+  const handleExport = () => {
+    const rows = selectedIds.size > 0 ? selectedLeads : leads;
+    if (rows.length === 0) {
+      toast.error('No leads to export');
+      return;
+    }
+    exportLeadsToCsv(rows);
+    toast.success(`Exported ${rows.length} lead${rows.length !== 1 ? 's' : ''} to CSV`);
+  };
+
+  const bulkRequest = async (body: Record<string, unknown>, successMsg: (n: number) => string) => {
+    if (selectedIds.size === 0) return;
+    setBulkBusy(true);
+    try {
+      const res = await fetch('/api/leads/bulk', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ids: Array.from(selectedIds), ...body }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data?.error || 'Bulk operation failed');
+      const affected = Number(data?.affected ?? selectedIds.size);
+      toast.success(successMsg(affected));
+      clearSelection();
+      await fetchLeads();
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Bulk operation failed');
+    } finally {
+      setBulkBusy(false);
+    }
+  };
+
+  const handleBulkDelete = () => {
+    if (selectedIds.size === 0) return;
+    if (!confirm(`Delete ${selectedIds.size} lead${selectedIds.size !== 1 ? 's' : ''}? This cannot be undone.`)) return;
+    void bulkRequest({ action: 'delete' }, (n) => `Deleted ${n} lead${n !== 1 ? 's' : ''}`);
+  };
+
+  const handleBulkStage = (stage: PipelineStage) => {
+    void bulkRequest(
+      { action: 'update', updates: { stage } },
+      (n) => `Moved ${n} lead${n !== 1 ? 's' : ''} to ${STAGE_LABELS[stage]}`,
+    );
+  };
+
+  const handleBulkPriority = (priority: Priority) => {
+    void bulkRequest(
+      { action: 'update', updates: { priority } },
+      (n) => `Set ${n} lead${n !== 1 ? 's' : ''} to ${priority} priority`,
+    );
+  };
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -60,6 +150,27 @@ export default function LeadsPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
+          <button
+            onClick={() => {
+              setSelectionMode((v) => !v);
+              clearSelection();
+            }}
+            className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
+              selectionMode
+                ? 'bg-red-600 text-white border-red-600 hover:bg-red-500'
+                : 'text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700'
+            }`}
+          >
+            <CheckSquare className="h-3.5 w-3.5" />
+            {selectionMode ? 'Done' : 'Select'}
+          </button>
+          <button
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+          >
+            <Download className="h-3.5 w-3.5" />
+            Export CSV
+          </button>
           <Link
             href="/leads/import"
             className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors"
@@ -140,6 +251,67 @@ export default function LeadsPage() {
         </select>
       </div>
 
+      {/* Bulk action bar */}
+      {selectionMode && selectedIds.size > 0 && (
+        <div className="flex flex-wrap items-center gap-2 px-4 py-3 rounded-lg border border-red-200 dark:border-red-900/40 bg-red-50/60 dark:bg-red-950/20">
+          <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+            {selectedIds.size} selected
+          </span>
+          <div className="h-4 w-px bg-zinc-300 dark:bg-zinc-700" />
+          <select
+            disabled={bulkBusy}
+            value=""
+            onChange={(e) => {
+              const v = e.target.value as PipelineStage | '';
+              if (v) handleBulkStage(v);
+            }}
+            className="px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
+          >
+            <option value="">Change stage…</option>
+            {PIPELINE_STAGES.map((s) => (
+              <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+            ))}
+          </select>
+          <select
+            disabled={bulkBusy}
+            value=""
+            onChange={(e) => {
+              const v = e.target.value as Priority | '';
+              if (v) handleBulkPriority(v);
+            }}
+            className="px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
+          >
+            <option value="">Change priority…</option>
+            {PRIORITIES.map((p) => (
+              <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+            ))}
+          </select>
+          <button
+            disabled={bulkBusy}
+            onClick={handleExport}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-md hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:opacity-50"
+          >
+            <Download className="h-3 w-3" />
+            Export selected
+          </button>
+          <button
+            disabled={bulkBusy}
+            onClick={handleBulkDelete}
+            className="flex items-center gap-1.5 px-2.5 py-1 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-md disabled:opacity-50"
+          >
+            <Trash2 className="h-3 w-3" />
+            Delete
+          </button>
+          <button
+            onClick={clearSelection}
+            className="ml-auto flex items-center gap-1 px-2 py-1 text-xs text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
+          >
+            <X className="h-3 w-3" />
+            Clear
+          </button>
+        </div>
+      )}
+
       {/* Table */}
       {error ? (
         <div className="flex flex-col items-center justify-center py-12 gap-3">
@@ -156,7 +328,13 @@ export default function LeadsPage() {
           <div className="h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
         </div>
       ) : (
-        <LeadsTable leads={leads} />
+        <LeadsTable
+          leads={leads}
+          selectable={selectionMode}
+          selectedIds={selectedIds}
+          onToggleOne={toggleOne}
+          onToggleAll={toggleAll}
+        />
       )}
     </div>
   );

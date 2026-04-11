@@ -275,14 +275,8 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
           <div>
             <label htmlFor="contact_linkedin" className={labelClass}>LinkedIn</label>
-            <input
-              id="contact_linkedin"
-              {...form.register('contact_linkedin')}
-              className={inputClass}
-              placeholder="linkedin.com/in/..."
-              aria-describedby="linkedin-helper"
-            />
-            <p id="linkedin-helper" className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
+            <input id="contact_linkedin" {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
           </div>
         </div>
 
@@ -375,7 +369,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         </div>
 
         <div>
-          <label htmlFor="smykm_hook_input" className={labelClass}>SMYKM Hooks</label>
+          <label htmlFor="new-hook" className={labelClass}>SMYKM Hooks</label>
           <p id="smykm-helper" className="text-[11px] text-zinc-500 dark:text-zinc-400 mb-2">
             Specific details that only this person would recognize in a subject line
           </p>
@@ -398,7 +392,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
           <div className="flex gap-2">
             <input
-              id="smykm_hook_input"
+              id="new-hook"
               value={newHook}
               onChange={(e) => setNewHook(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addHook(); } }}

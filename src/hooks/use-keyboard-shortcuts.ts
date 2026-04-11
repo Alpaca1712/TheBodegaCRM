@@ -23,15 +23,13 @@ export function useGlobalShortcuts() {
 
     const shortcuts: ShortcutMap = {
       'g+d': () => router.push('/dashboard'),
-      'g+c': () => router.push('/contacts'),
-      'g+o': () => router.push('/companies'),
-      'g+p': () => router.push('/deals'),
-      'g+a': () => router.push('/activities'),
-      'g+s': () => router.push('/sequences'),
+      'g+l': () => router.push('/leads'),
+      'g+p': () => router.push('/pipeline'),
+      'g+f': () => router.push('/follow-ups'),
       'g+e': () => router.push('/email'),
-      'g+n': () => router.push('/analytics'),
-      'g+i': () => router.push('/investors'),
-      'g+t': () => router.push('/settings'),
+      'g+a': () => router.push('/analytics'),
+      'g+h': () => router.push('/pipeline-health'),
+      'g+s': () => router.push('/settings'),
     }
 
     if (key === 'g' && !meta && !e.shiftKey) {
