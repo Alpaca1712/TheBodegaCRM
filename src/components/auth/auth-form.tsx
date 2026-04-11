@@ -108,6 +108,8 @@ function AuthFormInner({ mode }: AuthFormProps) {
               className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
               {...register('name')}
               disabled={isLoading}
+              aria-invalid={!!errors.name}
+              aria-describedby={errors.name ? 'name-error' : undefined}
             />
             {errors.name && (
               <p className="text-sm text-red-600">{errors.name.message}</p>
@@ -127,6 +129,8 @@ function AuthFormInner({ mode }: AuthFormProps) {
             className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
             {...register('email')}
             disabled={isLoading}
+            aria-invalid={!!errors.email}
+            aria-describedby={errors.email ? 'email-error' : undefined}
           />
           {errors.email && (
             <p className="text-sm text-red-600">{errors.email.message}</p>
@@ -145,6 +149,8 @@ function AuthFormInner({ mode }: AuthFormProps) {
             className="relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors"
             {...register('password')}
             disabled={isLoading}
+            aria-invalid={!!errors.password}
+            aria-describedby={errors.password ? 'password-error' : undefined}
           />
           {errors.password && (
             <p className="text-sm text-red-600">{errors.password.message}</p>
