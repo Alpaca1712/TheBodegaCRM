@@ -71,7 +71,6 @@ export default function Header({ userEmail, userName }: HeaderProps) {
             onClick={() => setIsSearchOpen(true)}
             aria-label="Search"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors md:hidden"
-            aria-label="Search"
           >
             <Search className="h-4 w-4" />
           </button>
