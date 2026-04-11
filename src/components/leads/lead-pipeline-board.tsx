@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
@@ -29,13 +29,13 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<PipelineStage | null>(null);
 
-  const leadsByStage = PIPELINE_STAGES.reduce(
+  const leadsByStage = useMemo(() => PIPELINE_STAGES.reduce(
     (acc, stage) => {
       acc[stage] = leads.filter((l) => l.stage === stage);
       return acc;
     },
     {} as Record<PipelineStage, Lead[]>
-  );
+  ), [leads]);
 
   const handleDragStart = (leadId: string) => {
     setDraggedLeadId(leadId);

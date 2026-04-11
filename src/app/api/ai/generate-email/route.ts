@@ -236,6 +236,12 @@ ${research}${memorySection}${customSection}`
 
 export async function POST(request: NextRequest) {
   try {
+    const supabase = await createClient()
+    const { data: { user }, error: authError } = await supabase.auth.getUser()
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
     if (!validation.success) {
@@ -286,18 +292,88 @@ export async function POST(request: NextRequest) {
     const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length
     const stripEmDashes = (text: string) => text.replace(/[\u2013\u2014]/g, ',')
 
+    // Quality checks
+    const BANNED_PHRASES = [
+      'the question nobody\'s asking', 'in today\'s landscape', 'at the intersection of',
+      'game-changer', 'revolutionize', 'I hope this finds you well', 'I came across your',
+      'I was impressed by', 'I noticed that', 'I wanted to reach out', 'I\'d love to connect',
+      'fascinating intersection', 'fascinating attack surface', 'fun contrast',
+      'which creates a fascinating', 'perfect storm', 'creates a perfect',
+      'massive attack surface', 'across all', 'across your',
+    ]
+
+    function checkEmailQuality(subject: string, body: string): { issues: string[]; score: number } {
+      const issues: string[] = []
+      let score = 100
+
+      // Word count check
+      const words = countWords(body)
+      if (words < 60) {
+        issues.push(`Body is only ${words} words. Target: 80-150.`)
+        score -= 10
+      } else if (words > 160) {
+        issues.push(`Body is ${words} words. Target: 80-150.`)
+        score -= 10
+      }
+
+      // Em dash check
+      if (/[\u2013\u2014]/.test(body) || /[\u2013\u2014]/.test(subject)) {
+        issues.push('Contains em dashes. Replace with commas or periods.')
+        score -= 15
+      }
+
+      // Banned phrases check
+      const bodyLower = body.toLowerCase()
+      for (const phrase of BANNED_PHRASES) {
+        if (bodyLower.includes(phrase.toLowerCase())) {
+          issues.push(`Contains banned phrase: "${phrase}".`)
+          score -= 10
+        }
+      }
+
+      // Opening line check
+      if (!body.startsWith("We've yet to be properly introduced")) {
+        issues.push('Doesn\'t start with the standard SMYKM opener.')
+        score -= 10
+      }
+
+      // Long sentence check (>25 words)
+      const sentences = body.split(/[.!?]+/).filter(Boolean)
+      for (const sentence of sentences) {
+        const sentenceWords = sentence.trim().split(/\s+/).length
+        if (sentenceWords > 28) {
+          issues.push(`Has a ${sentenceWords}-word sentence. Keep under 25.`)
+          score -= 5
+          break
+        }
+      }
+
+      // Sign-off check
+      if (!body.includes('Best,\nDaniel Chalco') && !body.includes('Best, Daniel Chalco')) {
+        issues.push('Missing standard sign-off (Best, Daniel Chalco).')
+        score -= 5
+      }
+
+      return { issues, score: Math.max(0, score) }
+    }
+
+    const mckennaQuality = checkEmailQuality(mckennaResult.subject, mckennaResult.body)
+    const hormoziQuality = checkEmailQuality(hormoziResult.subject, hormoziResult.body)
+
     return NextResponse.json({
       mckenna: {
         subject: stripEmDashes(mckennaResult.subject),
         body: stripEmDashes(mckennaResult.body),
         ctaType: 'mckenna' as const,
         wordCount: countWords(mckennaResult.body),
+        quality: mckennaQuality,
       },
       hormozi: {
         subject: stripEmDashes(hormoziResult.subject),
         body: stripEmDashes(hormoziResult.body),
         ctaType: 'hormozi' as const,
         wordCount: countWords(hormoziResult.body),
+        quality: hormoziQuality,
       },
     })
   } catch (error) {

@@ -7,6 +7,10 @@ import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads'
 
 interface LeadsTableProps {
   leads: Lead[];
+  selectable?: boolean;
+  selectedIds?: Set<string>;
+  onToggleOne?: (id: string) => void;
+  onToggleAll?: (checked: boolean) => void;
 }
 
 const stageColors: Record<string, string> = {
@@ -28,7 +32,13 @@ const priorityDots: Record<string, string> = {
   low: 'bg-zinc-400',
 };
 
-export default function LeadsTable({ leads }: LeadsTableProps) {
+export default function LeadsTable({
+  leads,
+  selectable = false,
+  selectedIds,
+  onToggleOne,
+  onToggleAll,
+}: LeadsTableProps) {
   if (!leads.length) {
     return (
       <div className="text-center py-12">
@@ -37,12 +47,29 @@ export default function LeadsTable({ leads }: LeadsTableProps) {
     );
   }
 
+  const allSelected = selectable && selectedIds ? leads.length > 0 && leads.every((l) => selectedIds.has(l.id)) : false;
+  const someSelected = selectable && selectedIds ? leads.some((l) => selectedIds.has(l.id)) : false;
+
   return (
     <div className="overflow-x-auto">
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-800">
-            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3 pl-4">Contact</th>
+            {selectable && (
+              <th className="w-10 pb-3 pl-4">
+                <input
+                  type="checkbox"
+                  aria-label="Select all leads"
+                  checked={allSelected}
+                  ref={(el) => {
+                    if (el) el.indeterminate = !allSelected && someSelected;
+                  }}
+                  onChange={(e) => onToggleAll?.(e.target.checked)}
+                  className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 text-red-600 focus:ring-red-500/30 cursor-pointer"
+                />
+              </th>
+            )}
+            <th className={`text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3 ${selectable ? '' : 'pl-4'}`}>Contact</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Company</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Type</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Stage</th>
@@ -51,53 +78,68 @@ export default function LeadsTable({ leads }: LeadsTableProps) {
           </tr>
         </thead>
         <tbody>
-          {leads.map((lead) => (
-            <tr
-              key={lead.id}
-              className="border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors"
-            >
-              <td className="py-3 pl-4">
-                <Link href={`/leads/${lead.id}`} className="block">
-                  <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                    {lead.contact_name}
-                  </p>
-                  {lead.contact_email && (
-                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.contact_email}</p>
+          {leads.map((lead) => {
+            const checked = selectable && selectedIds ? selectedIds.has(lead.id) : false;
+            return (
+              <tr
+                key={lead.id}
+                className={`border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${checked ? 'bg-red-50/40 dark:bg-red-950/10' : ''}`}
+              >
+                {selectable && (
+                  <td className="py-3 pl-4 w-10">
+                    <input
+                      type="checkbox"
+                      aria-label={`Select ${lead.contact_name}`}
+                      checked={checked}
+                      onChange={() => onToggleOne?.(lead.id)}
+                      onClick={(e) => e.stopPropagation()}
+                      className="h-4 w-4 rounded border-zinc-300 dark:border-zinc-700 text-red-600 focus:ring-red-500/30 cursor-pointer"
+                    />
+                  </td>
+                )}
+                <td className={`py-3 ${selectable ? '' : 'pl-4'}`}>
+                  <Link href={`/leads/${lead.id}`} className="block">
+                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                      {lead.contact_name}
+                    </p>
+                    {lead.contact_email && (
+                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.contact_email}</p>
+                    )}
+                  </Link>
+                </td>
+                <td className="py-3">
+                  <p className="text-sm text-zinc-700 dark:text-zinc-300">{lead.company_name}</p>
+                  {lead.product_name && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.product_name}</p>
                   )}
-                </Link>
-              </td>
-              <td className="py-3">
-                <p className="text-sm text-zinc-700 dark:text-zinc-300">{lead.company_name}</p>
-                {lead.product_name && (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.product_name}</p>
-                )}
-                {lead.fund_name && (
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.fund_name}</p>
-                )}
-              </td>
-              <td className="py-3">
-                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
-                  {LEAD_TYPE_LABELS[lead.type]}
-                </span>
-              </td>
-              <td className="py-3">
-                <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
-                  {STAGE_LABELS[lead.stage]}
-                </span>
-              </td>
-              <td className="py-3">
-                <div className="flex items-center gap-1.5">
-                  <div className={`h-2 w-2 rounded-full ${priorityDots[lead.priority]}`} />
-                  <span className="text-xs text-zinc-600 dark:text-zinc-400 capitalize">{lead.priority}</span>
-                </div>
-              </td>
-              <td className="py-3">
-                <span className="text-xs text-zinc-500 dark:text-zinc-400">
-                  {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}
-                </span>
-              </td>
-            </tr>
-          ))}
+                  {lead.fund_name && (
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.fund_name}</p>
+                  )}
+                </td>
+                <td className="py-3">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                    {LEAD_TYPE_LABELS[lead.type]}
+                  </span>
+                </td>
+                <td className="py-3">
+                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
+                    {STAGE_LABELS[lead.stage]}
+                  </span>
+                </td>
+                <td className="py-3">
+                  <div className="flex items-center gap-1.5">
+                    <div className={`h-2 w-2 rounded-full ${priorityDots[lead.priority]}`} />
+                    <span className="text-xs text-zinc-600 dark:text-zinc-400 capitalize">{lead.priority}</span>
+                  </div>
+                </td>
+                <td className="py-3">
+                  <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                    {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}
+                  </span>
+                </td>
+              </tr>
+            );
+          })}
         </tbody>
       </table>
     </div>

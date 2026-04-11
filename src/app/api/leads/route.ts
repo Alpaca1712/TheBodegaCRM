@@ -10,7 +10,7 @@ const createSchema = z.object({
   fund_name: z.string().optional().nullable(),
   contact_name: z.string().min(1),
   contact_title: z.string().optional().nullable(),
-  contact_email: z.string().optional().nullable(),
+  contact_email: z.string().email().optional().nullable().or(z.literal('')),
   contact_twitter: z.string().optional().nullable(),
   contact_linkedin: z.string().optional().nullable(),
   company_description: z.string().optional().nullable(),
@@ -48,7 +48,8 @@ export async function GET(request: NextRequest) {
     const stage = url.searchParams.get('stage')
     const priority = url.searchParams.get('priority')
     const search = url.searchParams.get('search')
-    const limit = parseInt(url.searchParams.get('limit') || '50')
+    const parsedLimit = parseInt(url.searchParams.get('limit') || '50')
+    const limit = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 200)
     const offset = parseInt(url.searchParams.get('offset') || '0')
 
     let query = supabase
@@ -60,8 +61,9 @@ export async function GET(request: NextRequest) {
     if (stage) query = query.eq('stage', stage)
     if (priority) query = query.eq('priority', priority)
     if (search) {
+      const sanitized = search.replace(/[.,]/g, '')
       query = query.or(
-        `contact_name.ilike.%${search}%,company_name.ilike.%${search}%,contact_email.ilike.%${search}%`
+        `contact_name.ilike.%${sanitized}%,company_name.ilike.%${sanitized}%,contact_email.ilike.%${sanitized}%`
       )
     }
     query = query.range(offset, offset + limit - 1)
@@ -100,6 +102,24 @@ export async function POST(request: NextRequest) {
     const orgId = profile?.active_org_id
     if (!orgId) {
       return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+    }
+
+    // Duplicate lead detection by contact_email
+    const contactEmail = validation.data.contact_email
+    if (contactEmail && contactEmail !== '') {
+      const { data: existing } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('contact_email', contactEmail)
+        .limit(1)
+        .single()
+      if (existing) {
+        return NextResponse.json(
+          { error: 'A lead with this email already exists', existing_id: existing.id },
+          { status: 409 }
+        )
+      }
     }
 
     const insertData = { ...validation.data, user_id: user.id, org_id: orgId } as Record<string, unknown>

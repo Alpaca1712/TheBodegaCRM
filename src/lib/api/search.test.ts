@@ -1,94 +1,101 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { searchAll } from './search';
 
-// Mock the modules with vi.hoisted
-const { mockGetContacts, mockGetCompanies, mockGetDeals } = vi.hoisted(() => ({
-  mockGetContacts: vi.fn(),
-  mockGetCompanies: vi.fn(),
-  mockGetDeals: vi.fn(),
-}));
+// Mock Supabase client
+const mockOr = vi.fn();
+const mockLimit = vi.fn();
+const mockSelect = vi.fn();
+const mockFrom = vi.fn();
 
-vi.mock('./contacts', () => ({
-  getContacts: mockGetContacts,
-}));
-
-vi.mock('./companies', () => ({
-  getCompanies: mockGetCompanies,
-}));
-
-vi.mock('./deals', () => ({
-  getDeals: mockGetDeals,
+vi.mock('@/lib/supabase/client', () => ({
+  createClient: () => ({
+    from: mockFrom,
+  }),
 }));
 
 describe('search API', () => {
   beforeEach(() => {
     vi.clearAllMocks();
-  });
-
-  it('searchAll should return results from all tables', async () => {
-    const mockContacts = [
-      { id: 'contact-1', first_name: 'John', last_name: 'Doe', email: 'john@example.com', phone: null, avatar_url: null },
-    ];
-    const mockCompanies = [
-      { id: 'company-1', name: 'Acme Corp', industry: 'Tech', size: 'Medium', logo_url: null },
-    ];
-    const mockDeals = [
-      { id: 'deal-1', title: 'Enterprise Deal', value: 50000, stage: 'proposal' as const },
-    ];
-
-    mockGetContacts.mockResolvedValue({ data: mockContacts, error: null });
-    mockGetCompanies.mockResolvedValue({ data: mockCompanies, error: null });
-    mockGetDeals.mockResolvedValue({ data: mockDeals, error: null });
-
-    const result = await searchAll('John');
-
-    expect(mockGetContacts).toHaveBeenCalledWith({ search: 'John' }, { page: 1, limit: 10 });
-    expect(mockGetCompanies).toHaveBeenCalledWith({ search: 'John' }, { page: 1, limit: 10 });
-    expect(mockGetDeals).toHaveBeenCalledWith({ search: 'John' }, { page: 1, limit: 10 });
-
-    expect(result).toHaveLength(3);
-    expect(result[0].type).toBe('contact');
-    expect(result[0].results).toHaveLength(1);
-    expect(result[0].results[0].title).toBe('John Doe');
-    
-    expect(result[1].type).toBe('company');
-    expect(result[1].results).toHaveLength(1);
-    expect(result[1].results[0].title).toBe('Acme Corp');
-    
-    expect(result[2].type).toBe('deal');
-    expect(result[2].results).toHaveLength(1);
-    expect(result[2].results[0].title).toBe('Enterprise Deal');
+    // Set up the chain: from() -> select() -> or() -> limit()
+    mockFrom.mockReturnValue({ select: mockSelect });
+    mockSelect.mockReturnValue({ or: mockOr });
+    mockOr.mockReturnValue({ limit: mockLimit });
   });
 
   it('searchAll should return empty array for empty query', async () => {
     const result = await searchAll('');
     expect(result).toEqual([]);
-    expect(mockGetContacts).not.toHaveBeenCalled();
-    expect(mockGetCompanies).not.toHaveBeenCalled();
-    expect(mockGetDeals).not.toHaveBeenCalled();
+    expect(mockFrom).not.toHaveBeenCalled();
   });
 
-  it('searchAll should return empty array when API errors', async () => {
-    mockGetContacts.mockResolvedValue({ data: null, error: new Error('API error') });
-    mockGetCompanies.mockResolvedValue({ data: null, error: new Error('API error') });
-    mockGetDeals.mockResolvedValue({ data: null, error: new Error('API error') });
+  it('searchAll should return empty array for whitespace-only query', async () => {
+    const result = await searchAll('   ');
+    expect(result).toEqual([]);
+    expect(mockFrom).not.toHaveBeenCalled();
+  });
+
+  it('searchAll should return customer results grouped by type', async () => {
+    const mockLeads = [
+      { id: 'lead-1', type: 'customer', contact_name: 'John Doe', company_name: 'Acme AI', contact_email: 'john@acme.ai', stage: 'researched' },
+      { id: 'lead-2', type: 'customer', contact_name: 'Jane Smith', company_name: 'BotCo', contact_email: 'jane@botco.com', stage: 'email_sent' },
+    ];
+
+    mockLimit.mockResolvedValue({ data: mockLeads, error: null });
+
+    const result = await searchAll('John');
+
+    expect(mockFrom).toHaveBeenCalledWith('leads');
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('customer');
+    expect(result[0].title).toBe('Customers');
+    expect(result[0].results).toHaveLength(2);
+    expect(result[0].results[0].title).toBe('John Doe');
+    expect(result[0].results[0].subtitle).toBe('Acme AI · researched');
+    expect(result[0].results[0].route).toBe('/leads/lead-1');
+  });
+
+  it('searchAll should return both customer and investor categories', async () => {
+    const mockLeads = [
+      { id: 'lead-1', type: 'customer', contact_name: 'John Doe', company_name: 'Acme AI', contact_email: 'john@acme.ai', stage: 'researched' },
+      { id: 'lead-2', type: 'investor', contact_name: 'Nick VC', company_name: 'Seed Fund', contact_email: 'nick@seed.vc', stage: 'email_drafted' },
+    ];
+
+    mockLimit.mockResolvedValue({ data: mockLeads, error: null });
+
+    const result = await searchAll('test');
+
+    expect(result).toHaveLength(2);
+    expect(result[0].type).toBe('customer');
+    expect(result[0].results).toHaveLength(1);
+    expect(result[1].type).toBe('investor');
+    expect(result[1].results).toHaveLength(1);
+    expect(result[1].results[0].title).toBe('Nick VC');
+  });
+
+  it('searchAll should filter out empty categories', async () => {
+    const mockLeads = [
+      { id: 'lead-1', type: 'investor', contact_name: 'Nick VC', company_name: 'Seed Fund', contact_email: 'nick@seed.vc', stage: 'replied' },
+    ];
+
+    mockLimit.mockResolvedValue({ data: mockLeads, error: null });
+
+    const result = await searchAll('Nick');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('investor');
+  });
+
+  it('searchAll should return empty array on Supabase error', async () => {
+    mockLimit.mockResolvedValue({ data: null, error: new Error('DB error') });
 
     const result = await searchAll('test');
     expect(result).toEqual([]);
   });
 
-  it('searchAll should filter out categories with no results', async () => {
-    const mockContacts = [
-      { id: 'contact-1', first_name: 'John', last_name: 'Doe', email: 'john@example.com', phone: null, avatar_url: null },
-    ];
+  it('searchAll should return empty array when exception is thrown', async () => {
+    mockLimit.mockRejectedValue(new Error('Network error'));
 
-    mockGetContacts.mockResolvedValue({ data: mockContacts, error: null });
-    mockGetCompanies.mockResolvedValue({ data: [], error: null });
-    mockGetDeals.mockResolvedValue({ data: [], error: null });
-
-    const result = await searchAll('John');
-    expect(result).toHaveLength(1);
-    expect(result[0].type).toBe('contact');
-    expect(result[0].results).toHaveLength(1);
+    const result = await searchAll('test');
+    expect(result).toEqual([]);
   });
 });

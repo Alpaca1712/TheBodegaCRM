@@ -27,10 +27,6 @@ export async function GET() {
     // closed_lost does NOT count as closed_won -- those are separate outcomes.
     const funnelStages: Array<{ stage: string; qualifyingStages: string[] }> = [
       {
-        stage: 'researched',
-        qualifyingStages: ['researched', 'email_drafted', 'email_sent', 'no_response', 'follow_up', 'replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'],
-      },
-      {
         stage: 'email_sent',
         qualifyingStages: ['email_sent', 'no_response', 'follow_up', 'replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'],
       },

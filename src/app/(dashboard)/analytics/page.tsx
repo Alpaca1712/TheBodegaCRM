@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import {
   Loader2,
   TrendingUp,
@@ -12,6 +12,7 @@ import {
   ArrowDown,
 } from 'lucide-react';
 import { STAGE_LABELS } from '@/types/leads';
+import { toast } from 'sonner';
 
 interface FunnelStep { stage: string; count: number }
 interface TypeRate { contacted: number; replied: number; rate: number }
@@ -40,14 +41,26 @@ interface AnalyticsData {
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetch('/api/analytics')
-      .then(r => r.json())
-      .then(setData)
-      .catch(() => {})
-      .finally(() => setLoading(false));
+  const loadAnalytics = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/analytics');
+      if (!res.ok) throw new Error(`Failed to load analytics (${res.status})`);
+      const json = await res.json();
+      setData(json);
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Failed to load analytics';
+      setError(message);
+      toast.error(message);
+    } finally {
+      setLoading(false);
+    }
   }, []);
+
+  useEffect(() => { loadAnalytics(); }, [loadAnalytics]);
 
   if (loading) {
     return (
@@ -57,7 +70,19 @@ export default function AnalyticsPage() {
     );
   }
 
-  if (!data) return null;
+  if (error || !data) {
+    return (
+      <div className="flex flex-col items-center justify-center py-20 gap-4">
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || 'Failed to load analytics data'}</p>
+        <button
+          onClick={loadAnalytics}
+          className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  }
 
   const maxWeekly = Math.max(...data.weeklyTrend.map(w => w.count), 1);
   const maxReplyBucket = Math.max(...Object.values(data.replyDayBuckets), 1);
@@ -85,10 +110,11 @@ export default function AnalyticsPage() {
           {data.funnel.length > 0 && data.funnel[0].count > 0 ? (
             <div className="space-y-1">
               {data.funnel.map((step, i) => {
-                const maxFunnel = data.funnel[0].count || 1;
-                const pct = (step.count / maxFunnel) * 100;
-                const dropOff = i > 0 && data.funnel[i - 1].count > 0
-                  ? Math.round(((data.funnel[i - 1].count - step.count) / data.funnel[i - 1].count) * 100)
+                const topOfFunnel = data.funnel[0].count || 1;
+                const pct = (step.count / topOfFunnel) * 100;
+                const prevCount = i > 0 ? data.funnel[i - 1].count : 0;
+                const conversionFromPrev = i > 0 && prevCount > 0
+                  ? Math.round((step.count / prevCount) * 100)
                   : null;
                 return (
                   <div key={step.stage}>
@@ -108,10 +134,12 @@ export default function AnalyticsPage() {
                         {pct.toFixed(0)}%
                       </span>
                     </div>
-                    {dropOff !== null && dropOff > 0 && (
+                    {conversionFromPrev !== null && conversionFromPrev < 100 && (
                       <div className="flex items-center gap-1 ml-32 my-0.5">
                         <ArrowDown className="h-3 w-3 text-red-400" />
-                        <span className="text-[10px] text-red-400 font-medium">{dropOff}% drop-off</span>
+                        <span className="text-[10px] text-red-400 font-medium">
+                          {conversionFromPrev}% of {prevCount} converted
+                        </span>
                       </div>
                     )}
                   </div>
