@@ -15,6 +15,7 @@ import {
   PRIORITIES,
 } from '@/types/leads';
 import { Loader2, Sparkles, Plus, X } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 interface LeadFormProps {
   defaultValues?: Partial<LeadFormValues>;
@@ -420,21 +421,22 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
       {/* Submit */}
       <div className="flex items-center gap-3 pt-4 border-t border-zinc-200 dark:border-zinc-800">
-        <button
+        <Button
           type="submit"
-          disabled={isSubmitting}
-          className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
+          isLoading={isSubmitting}
+          variant="destructive"
+          className="rounded-lg"
         >
-          {isSubmitting && <Loader2 className="h-4 w-4 animate-spin" />}
           {mode === 'create' ? 'Create Lead' : 'Save Changes'}
-        </button>
-        <button
+        </Button>
+        <Button
           type="button"
           onClick={() => router.back()}
-          className="px-4 py-2 text-sm font-medium text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+          variant="ghost"
+          className="text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200"
         >
           Cancel
-        </button>
+        </Button>
       </div>
     </form>
   );

@@ -533,6 +533,7 @@ function VariantCard({
       <div className="flex items-center gap-2">
         <button
           onClick={onCopy}
+          type="button"
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
         >
           {isCopied ? <Check className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
@@ -540,6 +541,7 @@ function VariantCard({
         </button>
         <button
           onClick={onSend}
+          type="button"
           disabled={isSending}
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
         >
