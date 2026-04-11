@@ -7,6 +7,8 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
 import { Loader2 } from 'lucide-react';
 import { signIn, signUp } from '@/lib/auth/actions';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 
 type AuthMode = 'login' | 'signup';
 
@@ -98,7 +100,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
             <label htmlFor="name" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
               Name
             </label>
-            <input
+            <Input
               id="name"
               type="text"
               autoComplete="name"
@@ -108,7 +110,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
               disabled={isLoading}
             />
             {errors.name && (
-              <p className="mt-1 text-sm text-red-600">{errors.name.message}</p>
+              <p className="text-sm text-red-600">{errors.name.message}</p>
             )}
           </div>
         )}
@@ -117,7 +119,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
           <label htmlFor="email" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Email address
           </label>
-          <input
+          <Input
             id="email"
             type="email"
             autoComplete="email"
@@ -127,7 +129,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
             disabled={isLoading}
           />
           {errors.email && (
-            <p className="mt-1 text-sm text-red-600">{errors.email.message}</p>
+            <p className="text-sm text-red-600">{errors.email.message}</p>
           )}
         </div>
         
@@ -135,7 +137,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
           <label htmlFor="password" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">
             Password
           </label>
-          <input
+          <Input
             id="password"
             type="password"
             autoComplete={isLogin ? 'current-password' : 'new-password'}
@@ -145,19 +147,19 @@ function AuthFormInner({ mode }: AuthFormProps) {
             disabled={isLoading}
           />
           {errors.password && (
-            <p className="mt-1 text-sm text-red-600">{errors.password.message}</p>
+            <p className="text-sm text-red-600">{errors.password.message}</p>
           )}
         </div>
       </div>
       
       {error && (
-        <div className="rounded-md bg-red-50 p-4">
+        <div className="rounded-md bg-red-50 p-4 border border-red-200">
           <p className="text-sm text-red-800">{error}</p>
         </div>
       )}
       
       <div>
-        <button
+        <Button
           type="submit"
           disabled={isLoading}
           className="group relative flex w-full justify-center rounded-md bg-red-600 py-3 px-4 text-sm font-semibold text-white hover:bg-red-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-red-600 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
@@ -169,7 +171,7 @@ function AuthFormInner({ mode }: AuthFormProps) {
               {isLogin ? 'Sign in' : 'Create account'}
             </span>
           )}
-        </button>
+        </Button>
       </div>
       
       {isLogin && (
