@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { z } from 'zod'
 import type { PipelineStage } from '@/types/leads'
+import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 
 const requestSchema = z.object({
   lead: z.object({
@@ -48,6 +49,14 @@ export interface ConversationAnalysis {
 
 export async function POST(req: NextRequest) {
   try {
+    const guard = await requireUser()
+    if (guard instanceof NextResponse) return guard
+    const limited = rateLimitResponse(guard.user.id, 'ai:analyze-conversation', {
+      limit: 30,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+
     const body = await req.json()
     const parsed = requestSchema.parse(body)
 

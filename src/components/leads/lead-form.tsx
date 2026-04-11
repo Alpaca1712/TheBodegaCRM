@@ -275,14 +275,8 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
           <div>
             <label htmlFor="contact_linkedin" className={labelClass}>LinkedIn</label>
-            <input
-              id="contact_linkedin"
-              {...form.register('contact_linkedin')}
-              className={inputClass}
-              placeholder="linkedin.com/in/..."
-              aria-describedby="linkedin-helper"
-            />
-            <p id="linkedin-helper" className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
+            <input id="contact_linkedin" {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+            <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
           </div>
         </div>
 
