@@ -340,6 +340,10 @@ export interface EmailVariant {
   body: string
   ctaType: CtaType
   wordCount: number
+  quality?: {
+    issues: string[]
+    score: number
+  }
 }
 
 export interface GeneratedEmail {

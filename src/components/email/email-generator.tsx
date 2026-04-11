@@ -2,8 +2,9 @@
 
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown } from 'lucide-react';
+import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCircle, Info } from 'lucide-react';
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';
+import { checkEmailQuality, countWords } from '@/lib/ai/quality';
 
 type EmailMode = 'initial' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
 
@@ -147,12 +148,10 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
 
         if (!resA.ok || !resB.ok) throw new Error('Failed to generate follow-up');
         const [resultA, resultB] = await Promise.all([resA.json(), resB.json()]);
-        const wcA = resultA.body.split(/\s+/).filter(Boolean).length;
-        const wcB = resultB.body.split(/\s+/).filter(Boolean).length;
 
         data = {
-          mckenna: { subject: resultA.subject, body: resultA.body, ctaType: 'mckenna', wordCount: wcA },
-          hormozi: { subject: resultB.subject, body: resultB.body, ctaType: 'hormozi', wordCount: wcB },
+          mckenna: { ...resultA, ctaType: 'mckenna' },
+          hormozi: { ...resultB, ctaType: 'hormozi' },
         };
       } else {
         const mergedCtx = [customContext.trim(), customPrompt.trim()].filter(Boolean).join('\n\n');
@@ -186,6 +185,13 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
     setCopiedSide(side);
     setTimeout(() => setCopiedSide(null), 2000);
     toast.success('Copied to clipboard');
+  };
+
+  const applyStrategy = () => {
+    if (!lead.conversation_next_step) return;
+    setCustomPrompt(lead.conversation_next_step);
+    setShowContext(true);
+    toast.success('Strategy applied to prompt');
   };
 
   const handleSend = async (side: 'mckenna' | 'hormozi') => {
@@ -241,8 +247,6 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
     setShowModeSelector(false);
   };
 
-  const countWords = (text: string) => text.split(/\s+/).filter(Boolean).length;
-
   const hasResearch = lead.company_description || lead.attack_surface_notes || lead.investment_thesis_notes || lead.personal_details || (lead.smykm_hooks?.length > 0);
 
   if (!hasResearch) {
@@ -260,6 +264,28 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   if (!result) {
     return (
       <div className="space-y-4">
+        {/* Tactical Advice from AI */}
+        {lead.conversation_next_step && (
+          <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4">
+            <div className="flex items-center justify-between mb-2">
+              <div className="flex items-center gap-2">
+                <Brain className="h-4 w-4 text-red-500" />
+                <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">AI Strategy</h4>
+              </div>
+              <button
+                onClick={applyStrategy}
+                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-md transition-colors uppercase tracking-tight"
+              >
+                <Zap className="h-3 w-3" />
+                Apply Strategy
+              </button>
+            </div>
+            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed italic">
+              {lead.conversation_next_step}
+            </p>
+          </div>
+        )}
+
         {/* Mode selector */}
         <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
           <div className="flex items-center justify-between mb-3">
@@ -450,8 +476,9 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           title={config.isFollowUp ? 'Variant A' : 'McKenna CTA'}
           subtitle={config.isFollowUp ? 'Edit and send' : 'Sell the conversation'}
           variant={editedMckenna!}
-          onSubjectChange={(s) => setEditedMckenna((v) => v ? { ...v, subject: s } : v)}
-          onBodyChange={(b) => setEditedMckenna((v) => v ? { ...v, body: b, wordCount: countWords(b) } : v)}
+          mode={mode}
+          onSubjectChange={(s) => setEditedMckenna((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
+          onBodyChange={(b) => setEditedMckenna((v) => v ? { ...v, body: b, wordCount: countWords(b), quality: checkEmailQuality(v.subject, b, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
           onCopy={() => handleCopy('mckenna')}
           onSend={() => handleSend('mckenna')}
           isCopied={copiedSide === 'mckenna'}
@@ -462,8 +489,9 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           title={config.isFollowUp ? 'Variant B' : 'Hormozi CTA'}
           subtitle={config.isFollowUp ? 'Alternative version' : 'Lead with value'}
           variant={editedHormozi!}
-          onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s } : v)}
-          onBodyChange={(b) => setEditedHormozi((v) => v ? { ...v, body: b, wordCount: countWords(b) } : v)}
+          mode={mode}
+          onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
+          onBodyChange={(b) => setEditedHormozi((v) => v ? { ...v, body: b, wordCount: countWords(b), quality: checkEmailQuality(v.subject, b, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
           onCopy={() => handleCopy('hormozi')}
           onSend={() => handleSend('hormozi')}
           isCopied={copiedSide === 'hormozi'}
@@ -478,6 +506,7 @@ function VariantCard({
   title,
   subtitle,
   variant,
+  mode,
   onSubjectChange,
   onBodyChange,
   onCopy,
@@ -488,6 +517,7 @@ function VariantCard({
   title: string;
   subtitle: string;
   variant: EmailVariant;
+  mode: EmailMode;
   onSubjectChange: (s: string) => void;
   onBodyChange: (b: string) => void;
   onCopy: () => void;
@@ -495,21 +525,57 @@ function VariantCard({
   isCopied: boolean;
   isSending: boolean;
 }) {
+  const [showIssues, setShowIssues] = useState(false);
+  const q = variant.quality || checkEmailQuality(variant.subject, variant.body, mode === 'initial' ? 'initial' : 'follow_up');
+
   return (
-    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
-      <div className="flex items-center justify-between">
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3 relative overflow-hidden">
+      {/* Quality Indicator Bar */}
+      <div className={`absolute top-0 left-0 w-1 h-full ${
+        q.score >= 90 ? 'bg-emerald-500' : q.score >= 70 ? 'bg-amber-500' : 'bg-red-500'
+      }`} />
+
+      <div className="flex items-start justify-between">
         <div>
           <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{title}</p>
           <p className="text-[11px] text-zinc-500 dark:text-zinc-400">{subtitle}</p>
         </div>
-        <span className={`text-[11px] font-mono tabular-nums px-2 py-0.5 rounded ${
-          variant.wordCount > 200
-            ? 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-400'
-            : 'bg-green-50 text-green-600 dark:bg-green-950/40 dark:text-green-400'
-        }`}>
-          {variant.wordCount}w
-        </span>
+        <div className="flex items-center gap-1.5">
+          <button
+            onClick={() => setShowIssues(!showIssues)}
+            className={`flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold tabular-nums transition-colors ${
+              q.score >= 90 ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40' :
+              q.score >= 70 ? 'bg-amber-50 text-amber-600 dark:bg-amber-950/40' :
+              'bg-red-50 text-red-600 dark:bg-red-950/40'
+            }`}
+          >
+            {q.score}% Score
+            <ChevronDown className={`h-3 w-3 transition-transform ${showIssues ? 'rotate-180' : ''}`} />
+          </button>
+          <span className={`text-[10px] font-mono tabular-nums px-2 py-0.5 rounded ${
+            variant.wordCount > 200
+              ? 'bg-red-50 text-red-600 dark:bg-red-950/40'
+              : 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400'
+          }`}>
+            {variant.wordCount}w
+          </span>
+        </div>
       </div>
+
+      {showIssues && q.issues.length > 0 && (
+        <div className="p-3 rounded-lg bg-zinc-50 dark:bg-zinc-800/50 border border-zinc-200 dark:border-zinc-700 space-y-1.5">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-zinc-500 uppercase tracking-tight">
+            <Info className="h-3 w-3" />
+            Quality Issues
+          </div>
+          {q.issues.map((issue, i) => (
+            <div key={i} className="flex items-start gap-1.5 text-[11px] text-zinc-600 dark:text-zinc-400">
+              <AlertCircle className="h-3 w-3 text-red-500 mt-0.5 shrink-0" />
+              {issue}
+            </div>
+          ))}
+        </div>
+      )}
 
       <div>
         <label className="block text-[11px] font-medium text-zinc-500 dark:text-zinc-400 mb-1">Subject</label>
