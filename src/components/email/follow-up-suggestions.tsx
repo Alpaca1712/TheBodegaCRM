@@ -13,6 +13,7 @@ import type { Lead, LeadEmail } from '@/types/leads';
 
 interface FollowUpSuggestionsProps {
   compact?: boolean;
+  typeFilter?: string;
 }
 
 interface FollowUpItem {
@@ -120,13 +121,13 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
   };
 }
 
-export default function FollowUpSuggestions({ compact = false }: FollowUpSuggestionsProps) {
+export default function FollowUpSuggestions({ compact = false, typeFilter }: FollowUpSuggestionsProps) {
   const [items, setItems] = useState<FollowUpItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => { loadFollowUps(); }, []);
+  useEffect(() => { loadFollowUps(); }, [typeFilter]);
 
   const loadFollowUps = async () => {
     try {
@@ -134,12 +135,17 @@ export default function FollowUpSuggestions({ compact = false }: FollowUpSuggest
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      const { data: leads } = await supabase
+      let query = supabase
         .from('leads')
         .select('*')
         .eq('user_id', user.id)
-        .in('stage', FOLLOW_UP_STAGES)
-        .order('last_contacted_at', { ascending: true });
+        .in('stage', FOLLOW_UP_STAGES);
+
+      if (typeFilter && typeFilter !== 'all') {
+        query = query.eq('type', typeFilter);
+      }
+
+      const { data: leads } = await query.order('last_contacted_at', { ascending: true });
 
       if (!leads?.length) { setLoading(false); return; }
 

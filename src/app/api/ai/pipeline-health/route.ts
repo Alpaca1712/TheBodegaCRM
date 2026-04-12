@@ -69,19 +69,28 @@ function computeRuleBasedRisk(lead: Record<string, unknown>): { score: number; f
 }
 
 // GET: Fast rule-based scoring only, no AI calls
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
+    const { searchParams } = new URL(req.url)
+    const type = searchParams.get('type')
+
     const supabase = await createClient()
     const { data: { user }, error: authError } = await supabase.auth.getUser()
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
-    const { data: leads, error: leadsError } = await supabase
+    let query = supabase
       .from('leads')
       .select('id, contact_name, company_name, stage, type, priority, last_contacted_at, last_inbound_at, last_outbound_at, total_emails_in, total_emails_out, risk_score, risk_factors, risk_assessed_at')
       .eq('user_id', user.id)
       .not('stage', 'in', '("closed_won","closed_lost","researched","email_drafted")')
+
+    if (type) {
+      query = query.eq('type', type)
+    }
+
+    const { data: leads, error: leadsError } = await query
 
     if (leadsError) {
       return NextResponse.json({ error: 'Failed to fetch leads' }, { status: 500 })

@@ -20,8 +20,11 @@ import {
   HeartPulse,
   AlertTriangle,
   Shield,
+  Users,
+  Crosshair,
+  Handshake,
 } from 'lucide-react';
-import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
+import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 import { toast } from 'sonner';
 
@@ -67,14 +70,16 @@ export default function DashboardPage() {
   const [health, setHealth] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [activeType, setActiveType] = useState<string>('all');
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
+      const query = activeType !== 'all' ? `?type=${activeType}` : '';
       const [dashRes, healthData] = await Promise.all([
-        fetch('/api/dashboard'),
-        fetch('/api/ai/pipeline-health').then(r => r.ok ? r.json() : null).catch(() => null),
+        fetch(`/api/dashboard${query}`),
+        fetch(`/api/ai/pipeline-health${query}`).then(r => r.ok ? r.json() : null).catch(() => null),
       ]);
       if (!dashRes.ok) throw new Error(`Dashboard request failed (${dashRes.status})`);
       const dashData = await dashRes.json();
@@ -87,9 +92,9 @@ export default function DashboardPage() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeType]);
 
-  useEffect(() => { loadDashboard(); }, [loadDashboard]);
+  useEffect(() => { loadDashboard(); }, [loadDashboard, activeType]);
 
   if (loading) {
     return (
@@ -141,21 +146,52 @@ export default function DashboardPage() {
     ? health.overall_score >= 70 ? 'bg-emerald-50 dark:bg-emerald-950/30' : health.overall_score >= 40 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-red-50 dark:bg-red-950/30'
     : 'bg-zinc-50 dark:bg-zinc-800';
 
+  const leadTypeConfig: Record<string, { label: string; icon: React.ReactNode; color: string; subtext: string }> = {
+    all: { label: 'Overall Funnel', icon: <Target className="h-5 w-5" />, color: 'text-zinc-500', subtext: 'Total pipeline metrics' },
+    customer: { label: 'Customer Motion', icon: <Users className="h-5 w-5" />, color: 'text-blue-500', subtext: 'Reaching teams shipping AI' },
+    investor: { label: 'Investor Motion', icon: <Crosshair className="h-5 w-5" />, color: 'text-purple-500', subtext: 'VC and angel outreach' },
+    partnership: { label: 'Partnerships', icon: <Handshake className="h-5 w-5" />, color: 'text-emerald-500', subtext: 'Strategic alliances' },
+  };
+
+  const currentConfig = leadTypeConfig[activeType] || leadTypeConfig.all;
+
   return (
     <div className="space-y-6">
       {/* Hero Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Command Center</h1>
-          <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">Hormozi metrics that move the needle</p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <div className={`h-12 w-12 rounded-2xl bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center shadow-sm ${currentConfig.color}`}>
+            {currentConfig.icon}
+          </div>
+          <div>
+            <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">{currentConfig.label}</h1>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">{currentConfig.subtext}</p>
+          </div>
         </div>
-        <Link
-          href="/leads/new?type=customer"
-          className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg transition-all shadow-sm shadow-red-600/20"
-        >
-          <Plus className="h-3.5 w-3.5" />
-          New Lead
-        </Link>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700">
+            {Object.keys(leadTypeConfig).map((type) => (
+              <button
+                key={type}
+                onClick={() => setActiveType(type)}
+                className={`px-3 py-1.5 text-xs font-semibold rounded-lg transition-all ${
+                  activeType === type
+                    ? 'bg-white dark:bg-zinc-700 text-zinc-900 dark:text-zinc-100 shadow-sm'
+                    : 'text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200'
+                }`}
+              >
+                {type.charAt(0).toUpperCase() + type.slice(1)}
+              </button>
+            ))}
+          </div>
+          <Link
+            href={`/leads/new?type=${activeType === 'all' ? 'customer' : activeType}`}
+            className="flex items-center gap-1.5 px-4 py-2 text-xs font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg transition-all shadow-sm shadow-red-600/20"
+          >
+            <Plus className="h-3.5 w-3.5" />
+            New Lead
+          </Link>
+        </div>
       </div>
 
       {/* Primary KPIs */}
@@ -338,7 +374,7 @@ export default function DashboardPage() {
 
       {/* Follow-up Suggestions */}
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
-        <FollowUpSuggestions compact />
+        <FollowUpSuggestions compact typeFilter={activeType} />
       </div>
     </div>
   );
