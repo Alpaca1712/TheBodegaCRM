@@ -2,11 +2,14 @@
 
 import { useState, useEffect } from 'react';
 import { toast } from 'sonner';
-import { Loader2, Plus, Send, Brain, ArrowRight, Zap, Linkedin, Twitter, Phone, MapPin, Hash } from 'lucide-react';
+import { Plus, Send, Brain, ArrowRight, Linkedin, Twitter, Phone, MapPin, Hash } from 'lucide-react';
 import {
   type InteractionChannel, type InteractionType,
   CHANNEL_INTERACTION_TYPES, INTERACTION_CHANNELS, CHANNEL_LABELS, INTERACTION_TYPE_LABELS,
 } from '@/types/leads';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 const channelIcons: Record<string, React.ReactNode> = {
   linkedin: <Linkedin className="h-3.5 w-3.5" />, twitter: <Twitter className="h-3.5 w-3.5" />,
@@ -48,28 +51,60 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
 
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-      <button onClick={() => { setOpen(!open); if (open) setLastResult(null); }} className="flex items-center gap-2 w-full text-left">
+      <button
+        onClick={() => { setOpen(!open); if (open) setLastResult(null); }}
+        className="flex items-center gap-2 w-full text-left"
+        aria-expanded={open}
+      >
         <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Interaction</h3>
       </button>
       {open && (
         <div className="mt-3 space-y-3">
-          <div className="flex flex-wrap gap-1.5">
+          <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Select interaction channel">
             {INTERACTION_CHANNELS.map((ch) => (
-              <button key={ch} onClick={() => setChannel(ch)} className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${channel === ch ? 'bg-red-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}>
+              <button
+                key={ch}
+                onClick={() => setChannel(ch)}
+                className={`flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-medium transition-colors ${channel === ch ? 'bg-red-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500 hover:bg-zinc-200 dark:hover:bg-zinc-700'}`}
+                aria-pressed={channel === ch}
+                aria-label={CHANNEL_LABELS[ch]}
+              >
                 {channelIcons[ch]}{CHANNEL_LABELS[ch]}
               </button>
             ))}
           </div>
-          <select value={interactionType} onChange={(e) => setInteractionType(e.target.value as InteractionType)} className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300">
+          <select
+            value={interactionType}
+            onChange={(e) => setInteractionType(e.target.value as InteractionType)}
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors"
+            aria-label="Interaction type"
+          >
             {availableTypes.map((t) => <option key={t} value={t}>{INTERACTION_TYPE_LABELS[t]}</option>)}
           </select>
-          <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Quick summary..." className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400" />
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Paste DM, call notes..." className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
-          <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
-            {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+          <Input
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="Quick summary..."
+            className="h-8 bg-zinc-50 dark:bg-zinc-800 text-xs"
+            aria-label="Interaction summary"
+          />
+          <Textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Paste DM, call notes..."
+            className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
+            aria-label="Interaction content"
+          />
+          <Button
+            onClick={handleSubmit}
+            disabled={submitting}
+            isLoading={submitting}
+            className="w-full h-8 text-xs"
+          >
+            <Send className="h-3.5 w-3.5 mr-1.5" />
             {submitting ? 'Analyzing...' : 'Log & Analyze'}
-          </button>
+          </Button>
         </div>
       )}
 
