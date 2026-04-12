@@ -1,8 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
-export async function GET() {
+export async function GET(req: Request) {
   try {
+    const { searchParams } = new URL(req.url)
+    const type = searchParams.get('type')
+
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -11,15 +14,22 @@ export async function GET() {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
+    let leadsQuery = supabase.from('leads').select('*').eq('user_id', user.id)
+    if (type) {
+      leadsQuery = leadsQuery.eq('type', type)
+    }
+
     const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
-      supabase.from('leads').select('*'),
-      supabase.from('lead_emails').select('*').order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('id, lead_id, channel, interaction_type, occurred_at'),
+      leadsQuery,
+      supabase.from('lead_emails').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('id, lead_id, channel, interaction_type, occurred_at').eq('user_id', user.id),
     ])
 
     const leads = leadsRes.data || []
-    const emails = emailsRes.data || []
-    const interactions = interactionsRes.data || []
+    const leadIds = new Set(leads.map(l => l.id))
+
+    const emails = (emailsRes.data || []).filter(e => leadIds.has(e.lead_id))
+    const interactions = (interactionsRes.data || []).filter(ix => leadIds.has(ix.lead_id))
 
     const outboundEmails = emails.filter(e => e.direction === 'outbound')
     const inboundEmails = emails.filter(e => e.direction === 'inbound')
