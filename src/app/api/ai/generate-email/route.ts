@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkEmailQuality, countWords } from '@/lib/ai/quality'
+import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 
 const requestSchema = z.object({
   lead: z.object({
@@ -237,11 +238,14 @@ ${research}${memorySection}${customSection}`
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const guard = await requireUser()
+    if (guard instanceof NextResponse) return guard
+    const limited = rateLimitResponse(guard.user.id, 'ai:generate-email', {
+      limit: 20,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+    const { user, supabase } = guard
 
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
@@ -261,17 +265,25 @@ export async function POST(request: NextRequest) {
     const systemPrompt = systemPromptMap[lead.type] || CUSTOMER_SYSTEM_PROMPT
 
     // Fetch agent memories for progressive personalization
+    // Only fetch if lead.id exists (verifies user owns the lead for memory access)
     let memories: Array<{ memory_type: string; content: string }> = []
     if (lead.id) {
       try {
-        const supabase = await createClient()
-        const { data } = await supabase
-          .from('agent_memory')
-          .select('memory_type, content')
-          .eq('lead_id', lead.id)
-          .order('relevance_score', { ascending: false })
-          .limit(10)
-        memories = data || []
+        const { data: ownedLead } = await supabase
+          .from('leads')
+          .select('id')
+          .eq('id', lead.id)
+          .eq('user_id', user.id)
+          .single()
+        if (ownedLead) {
+          const { data } = await supabase
+            .from('agent_memory')
+            .select('memory_type, content')
+            .eq('lead_id', lead.id)
+            .order('relevance_score', { ascending: false })
+            .limit(10)
+          memories = data || []
+        }
       } catch {
         // Non-critical, continue without memories
       }

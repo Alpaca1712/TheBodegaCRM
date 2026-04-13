@@ -23,6 +23,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
+    // Verify lead ownership before saving email
+    const { data: leadOwnership } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', validation.data.lead_id)
+      .eq('user_id', user.id)
+      .single()
+    if (!leadOwnership) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+
     const { data: profile } = await supabase
       .from('profiles')
       .select('active_org_id')

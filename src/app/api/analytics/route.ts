@@ -8,9 +8,9 @@ export async function GET() {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
-      supabase.from('leads').select('*'),
-      supabase.from('lead_emails').select('*').order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('*').order('occurred_at', { ascending: true }),
+      supabase.from('leads').select('*').eq('user_id', user.id),
+      supabase.from('lead_emails').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('*').eq('user_id', user.id).order('occurred_at', { ascending: true }),
     ])
 
     const leads = leadsRes.data || []

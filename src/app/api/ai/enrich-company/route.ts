@@ -61,6 +61,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .select('company_name, company_website, company_description, contact_name')
       .eq('id', leadId)
+      .eq('user_id', user.id)
       .single()
 
     if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
@@ -98,7 +99,7 @@ export async function POST(request: NextRequest) {
     })
 
     // Save to lead
-    await supabase.from('leads').update({ org_chart: orgChart }).eq('id', leadId)
+    await supabase.from('leads').update({ org_chart: orgChart }).eq('id', leadId).eq('user_id', user.id)
 
     return NextResponse.json({
       org_chart: orgChart,

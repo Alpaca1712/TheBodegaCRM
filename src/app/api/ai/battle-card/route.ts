@@ -57,6 +57,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .select('id, company_name, product_name, company_description, attack_surface_notes, type, contact_name, contact_title, company_website')
       .eq('id', leadId)
+      .eq('user_id', user.id)
       .single()
 
     if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
@@ -112,7 +113,7 @@ export async function POST(request: NextRequest) {
       battle_card_generated_at: new Date().toISOString(),
       icp_score: result.icp_score,
       icp_reasons: result.icp_reasons,
-    }).eq('id', leadId)
+    }).eq('id', leadId).eq('user_id', user.id)
 
     if (updateError) {
       console.error('Battle card DB update error:', updateError)

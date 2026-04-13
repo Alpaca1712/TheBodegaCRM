@@ -73,6 +73,7 @@ export async function GET(
       .from('leads')
       .select('*')
       .eq('id', id)
+      .eq('user_id', user.id)
       .single()
 
     if (error) throw error
@@ -98,6 +99,7 @@ export async function GET(
         .from('leads')
         .select('id, contact_name, contact_email, contact_title, contact_photo_url, stage, type')
         .eq('email_domain', domain)
+        .eq('user_id', user.id)
         .neq('id', id)
         .limit(10)
       relatedLeads = related || []
@@ -138,6 +140,7 @@ export async function PATCH(
       .from('leads')
       .update(updateData)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single()
 
@@ -162,12 +165,14 @@ export async function DELETE(
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const { error } = await supabase
+    const { error, count } = await supabase
       .from('leads')
-      .delete()
+      .delete({ count: 'exact' })
       .eq('id', id)
+      .eq('user_id', user.id)
 
     if (error) throw error
+    if (count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })
     return NextResponse.json({ success: true })
   } catch (error) {
     console.error('DELETE /api/leads/[id] error:', error)

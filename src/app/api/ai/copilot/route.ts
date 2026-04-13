@@ -137,8 +137,20 @@ export async function POST(request: NextRequest) {
     let context = ''
 
     if (leadId) {
+      // Verify lead ownership first
+      const { data: leadCheck } = await supabase
+        .from('leads')
+        .select('id')
+        .eq('id', leadId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!leadCheck) {
+        return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+      }
+
       const [leadResult, emailsResult, interactionsResult, memoriesResult] = await Promise.all([
-        supabase.from('leads').select('*').eq('id', leadId).single(),
+        supabase.from('leads').select('*').eq('id', leadId).eq('user_id', user.id).single(),
         supabase.from('lead_emails').select('subject, body, direction, email_type, created_at, sent_at, replied_at').eq('lead_id', leadId).order('created_at', { ascending: false }).limit(15),
         supabase.from('lead_interactions').select('channel, interaction_type, content, summary, occurred_at').eq('lead_id', leadId).order('occurred_at', { ascending: false }).limit(10),
         supabase.from('agent_memory').select('memory_type, content, relevance_score').eq('lead_id', leadId).order('relevance_score', { ascending: false }).limit(15),

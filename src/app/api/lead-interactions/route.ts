@@ -148,6 +148,15 @@ export async function GET(request: NextRequest) {
     const leadId = request.nextUrl.searchParams.get('lead_id')
     if (!leadId) return NextResponse.json({ error: 'lead_id required' }, { status: 400 })
 
+    // Verify lead ownership before returning interactions
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', leadId)
+      .eq('user_id', user.id)
+      .single()
+    if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+
     const { data, error } = await supabase
       .from('lead_interactions')
       .select('*')
@@ -176,6 +185,15 @@ export async function POST(request: NextRequest) {
     if (!validation.success) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
+
+    // Verify lead ownership before creating interaction
+    const { data: leadOwnership } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', validation.data.lead_id)
+      .eq('user_id', user.id)
+      .single()
+    if (!leadOwnership) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -247,7 +265,7 @@ export async function POST(request: NextRequest) {
         updatePayload.auto_stage_reason = analysis.stage_reason
       }
 
-      await supabase.from('leads').update(updatePayload).eq('id', lead.id)
+      await supabase.from('leads').update(updatePayload).eq('id', lead.id).eq('user_id', user.id)
     }
 
     // Re-fetch the updated lead
