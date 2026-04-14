@@ -30,6 +30,14 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
     if (!availableTypes.includes(interactionType)) setInteractionType(availableTypes[0]);
   }, [channel, availableTypes, interactionType]);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (!submitting && (summary.trim() || content.trim())) {
+        handleSubmit();
+      }
+    }
+  };
+
   const handleSubmit = async () => {
     if (!summary.trim() && !content.trim()) { toast.error('Add a summary or content'); return; }
     setSubmitting(true);
@@ -85,6 +93,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
           <Input
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Quick summary..."
             className="h-8 bg-zinc-50 dark:bg-zinc-800 text-xs"
             aria-label="Interaction summary"
@@ -92,6 +101,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
           <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Paste DM, call notes..."
             className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
             aria-label="Interaction content"
@@ -102,7 +112,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
             isLoading={submitting}
             className="w-full h-8 text-xs"
           >
-            <Send className="h-3.5 w-3.5 mr-1.5" />
+            {!submitting && <Send className="h-3.5 w-3.5 mr-1.5" />}
             {submitting ? 'Analyzing...' : 'Log & Analyze'}
           </Button>
         </div>
