@@ -31,6 +31,19 @@ export async function GET(req: Request) {
     const emails = (emailsRes.data || []).filter(e => leadIds.has(e.lead_id))
     const interactions = (interactionsRes.data || []).filter(ix => leadIds.has(ix.lead_id))
 
+    // Build per-lead email index maps for O(1) lookups (was O(N) .filter() per lead)
+    const outboundByLead = new Map<string, typeof emails>()
+    const inboundByLead = new Map<string, typeof emails>()
+    for (const e of emails) {
+      if (e.direction === 'outbound') {
+        const arr = outboundByLead.get(e.lead_id)
+        if (arr) arr.push(e); else outboundByLead.set(e.lead_id, [e])
+      } else {
+        const arr = inboundByLead.get(e.lead_id)
+        if (arr) arr.push(e); else inboundByLead.set(e.lead_id, [e])
+      }
+    }
+
     const outboundEmails = emails.filter(e => e.direction === 'outbound')
     const inboundEmails = emails.filter(e => e.direction === 'inbound')
 
@@ -48,13 +61,13 @@ export async function GET(req: Request) {
       ['meeting_booked', 'meeting_held', 'closed_won'].includes(l.stage)
     )
 
-    // Avg days to reply: for leads that got a reply, time from first outbound to first inbound
+    // Avg days to reply: use pre-built maps instead of .find()
     const replyTimes: number[] = []
     for (const leadId of leadsWithReplies) {
-      const firstOut = outboundEmails.find(e => e.lead_id === leadId)
-      const firstIn = inboundEmails.find(e => e.lead_id === leadId)
-      if (firstOut && firstIn) {
-        const days = (new Date(firstIn.created_at).getTime() - new Date(firstOut.created_at).getTime()) / (1000 * 60 * 60 * 24)
+      const outArr = outboundByLead.get(leadId)
+      const inArr = inboundByLead.get(leadId)
+      if (outArr && outArr.length > 0 && inArr && inArr.length > 0) {
+        const days = (new Date(inArr[0].created_at).getTime() - new Date(outArr[0].created_at).getTime()) / (1000 * 60 * 60 * 24)
         if (days >= 0) replyTimes.push(days)
       }
     }
@@ -62,16 +75,16 @@ export async function GET(req: Request) {
       ? replyTimes.reduce((a, b) => a + b, 0) / replyTimes.length
       : 0
 
-    // Follow-up compliance: leads in email_sent/follow_up/no_response that have been contacted
+    // Follow-up compliance: use map for O(1) email count per lead
     const followUpLeads = leads.filter(l =>
       ['email_sent', 'follow_up', 'no_response'].includes(l.stage)
     )
-    const leadsWithMultipleOutbound = followUpLeads.filter(l => {
-      const count = outboundEmails.filter(e => e.lead_id === l.id).length
-      return count >= 2
-    })
+    let leadsWithMultipleOutbound = 0
+    for (const l of followUpLeads) {
+      if ((outboundByLead.get(l.id)?.length ?? 0) >= 2) leadsWithMultipleOutbound++
+    }
     const followUpCompliance = followUpLeads.length > 0
-      ? (leadsWithMultipleOutbound.length / followUpLeads.length) * 100
+      ? (leadsWithMultipleOutbound / followUpLeads.length) * 100
       : 100
 
     // Hot leads: replied or meeting_booked in last 7 days
@@ -81,11 +94,17 @@ export async function GET(req: Request) {
       return new Date(lastIn) >= weekAgo
     }).slice(0, 8)
 
-    // Touchpoints per lead (for avg calculation)
+    // Build per-lead interaction count map
+    const interactionsByLead = new Map<string, number>()
+    for (const ix of interactions) {
+      interactionsByLead.set(ix.lead_id, (interactionsByLead.get(ix.lead_id) ?? 0) + 1)
+    }
+
+    // Touchpoints per lead — single pass using maps
     const touchpointCounts: number[] = []
     for (const lead of leads) {
-      const emailCount = outboundEmails.filter(e => e.lead_id === lead.id).length
-      const interactionCount = interactions.filter(ix => ix.lead_id === lead.id).length
+      const emailCount = outboundByLead.get(lead.id)?.length ?? 0
+      const interactionCount = interactionsByLead.get(lead.id) ?? 0
       if (emailCount + interactionCount > 0) {
         touchpointCounts.push(emailCount + interactionCount)
       }
@@ -94,13 +113,20 @@ export async function GET(req: Request) {
       ? touchpointCounts.reduce((a, b) => a + b, 0) / touchpointCounts.length
       : 0
 
-    // Pipeline counts
+    // Pipeline counts + byType — single pass
     const pipelineCounts: Record<string, number> = {}
+    let customerCount = 0, investorCount = 0, partnershipCount = 0
+    let closedWon = 0, activePipeline = 0
     for (const lead of leads) {
       pipelineCounts[lead.stage] = (pipelineCounts[lead.stage] || 0) + 1
+      if (lead.type === 'customer') customerCount++
+      else if (lead.type === 'investor') investorCount++
+      else if (lead.type === 'partnership') partnershipCount++
+      if (lead.stage === 'closed_won') closedWon++
+      if (!['researched', 'email_drafted', 'closed_won', 'closed_lost'].includes(lead.stage)) activePipeline++
     }
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       totalLeads: leads.length,
       outreachThisWeek: thisWeekOutbound.length,
       outreachLastWeek: lastWeekOutbound.length,
@@ -117,15 +143,15 @@ export async function GET(req: Request) {
       hotLeads,
       pipelineCounts,
       byType: {
-        customers: leads.filter(l => l.type === 'customer').length,
-        investors: leads.filter(l => l.type === 'investor').length,
-        partnerships: leads.filter(l => l.type === 'partnership').length,
+        customers: customerCount,
+        investors: investorCount,
+        partnerships: partnershipCount,
       },
-      closedWon: leads.filter(l => l.stage === 'closed_won').length,
-      activePipeline: leads.filter(l =>
-        !['researched', 'email_drafted', 'closed_won', 'closed_lost'].includes(l.stage)
-      ).length,
+      closedWon,
+      activePipeline,
     })
+    response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
+    return response
   } catch (error) {
     console.error('GET /api/dashboard error:', error)
     return NextResponse.json(

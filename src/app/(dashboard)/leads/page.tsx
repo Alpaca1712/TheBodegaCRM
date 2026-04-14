@@ -2,12 +2,14 @@
 
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
 import type { Lead, LeadType, PipelineStage, Priority } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
 import { exportLeadsToCsv } from '@/lib/csv-export';
+
+const PAGE_SIZE = 50;
 
 export default function LeadsPage() {
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -20,6 +22,9 @@ export default function LeadsPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [page, setPage] = useState(0);
+
+  const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -28,7 +33,8 @@ export default function LeadsPage() {
     if (typeFilter) params.set('type', typeFilter);
     if (stageFilter) params.set('stage', stageFilter);
     if (search) params.set('search', search);
-    params.set('limit', '500');
+    params.set('limit', String(PAGE_SIZE));
+    params.set('offset', String(page * PAGE_SIZE));
 
     try {
       const res = await fetch(`/api/leads?${params}`);
@@ -46,6 +52,11 @@ export default function LeadsPage() {
     } finally {
       setLoading(false);
     }
+  }, [typeFilter, stageFilter, search, page]);
+
+  // Reset to page 0 when filters change
+  useEffect(() => {
+    setPage(0);
   }, [typeFilter, stageFilter, search]);
 
   useEffect(() => {
@@ -335,6 +346,55 @@ export default function LeadsPage() {
           onToggleOne={toggleOne}
           onToggleAll={toggleAll}
         />
+      )}
+
+      {/* Pagination */}
+      {!loading && !error && totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-zinc-500 dark:text-zinc-400">
+            Showing {page * PAGE_SIZE + 1}–{Math.min((page + 1) * PAGE_SIZE, count)} of {count} leads
+          </p>
+          <div className="flex items-center gap-1">
+            <button
+              onClick={() => setPage((p) => Math.max(0, p - 1))}
+              disabled={page === 0}
+              className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronLeft className="h-3.5 w-3.5" />
+            </button>
+            {Array.from({ length: totalPages }, (_, i) => i)
+              .filter((i) => i === 0 || i === totalPages - 1 || Math.abs(i - page) <= 1)
+              .reduce<number[]>((acc, i, idx, arr) => {
+                if (idx > 0 && i - arr[idx - 1] > 1) acc.push(-1);
+                acc.push(i);
+                return acc;
+              }, [])
+              .map((i, idx) =>
+                i === -1 ? (
+                  <span key={`ellipsis-${idx}`} className="px-1 text-xs text-zinc-400">…</span>
+                ) : (
+                  <button
+                    key={i}
+                    onClick={() => setPage(i)}
+                    className={`min-w-[28px] h-7 text-xs font-medium rounded-md transition-colors ${
+                      page === i
+                        ? 'bg-red-600 text-white'
+                        : 'text-zinc-600 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800'
+                    }`}
+                  >
+                    {i + 1}
+                  </button>
+                ),
+              )}
+            <button
+              onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
+              disabled={page >= totalPages - 1}
+              className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
+            >
+              <ChevronRight className="h-3.5 w-3.5" />
+            </button>
+          </div>
+        </div>
       )}
     </div>
   );

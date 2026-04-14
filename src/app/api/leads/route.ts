@@ -71,7 +71,9 @@ export async function GET(request: NextRequest) {
     const { data, error, count } = await query
     if (error) throw error
 
-    return NextResponse.json({ data, count })
+    const response = NextResponse.json({ data, count })
+    response.headers.set('Cache-Control', 'private, max-age=15, stale-while-revalidate=30')
+    return response
   } catch (error) {
     console.error('GET /api/leads error:', error)
     return NextResponse.json(
