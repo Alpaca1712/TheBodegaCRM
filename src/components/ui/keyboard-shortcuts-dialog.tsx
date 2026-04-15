@@ -15,6 +15,7 @@ const shortcutGroups = [
       { keys: ['G', 'A'], description: 'Go to Analytics' },
       { keys: ['G', 'H'], description: 'Go to Pipeline Health' },
       { keys: ['G', 'S'], description: 'Go to Settings' },
+      { keys: ['G', 'C'], description: 'Toggle AI Co-pilot' },
     ],
   },
   {
