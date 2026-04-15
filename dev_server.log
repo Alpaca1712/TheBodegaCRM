@@ -7,8 +7,13 @@
 - Network:       http://192.168.0.2:3000
 
 ✓ Starting...
+Attention: Next.js now collects completely anonymous telemetry regarding usage.
+This information is used to shape Next.js' roadmap and prioritize features.
+You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+https://nextjs.org/telemetry
+
 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-✓ Ready in 1829ms
+✓ Ready in 2s
 ⨯ Error: Your project's URL and Key are required to create a Supabase client!
 
 Check your Supabase project's API settings to find these values
@@ -17,7 +22,7 @@ https://supabase.com/dashboard/project/_/settings/api
     at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
     at <unknown> (https://supabase.com/dashboard/project/_/settings/api)
     at createMiddlewareClient (src/lib/supabase/middleware.ts:13:38)
-    at middleware (src/middleware.ts:5:56)
+    at middleware (src/middleware.ts:20:56)
   11 |   })
   12 |
 > 13 |   const supabase = createServerClient(
@@ -25,5 +30,5 @@ https://supabase.com/dashboard/project/_/settings/api
   14 |     process.env.NEXT_PUBLIC_SUPABASE_URL!,
   15 |     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
   16 |     {
- GET /login 404 in 3.8s (compile: -430810µs, proxy.ts: 3.8s, render: 454ms)
+ GET /login 404 in 2.6s (compile: -342406µs, proxy.ts: 2.6s, render: 362ms)
 ○ Compiling /_not-found/page ...

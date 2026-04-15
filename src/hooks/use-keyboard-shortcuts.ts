@@ -30,6 +30,7 @@ export function useGlobalShortcuts() {
       'g+a': () => router.push('/analytics'),
       'g+h': () => router.push('/pipeline-health'),
       'g+s': () => router.push('/settings'),
+      'g+c': () => document.dispatchEvent(new CustomEvent('toggle-copilot')),
     }
 
     if (key === 'g' && !meta && !e.shiftKey) {
