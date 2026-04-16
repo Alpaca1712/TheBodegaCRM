@@ -27,6 +27,9 @@ const requestSchema = z.object({
     investment_thesis_notes: z.string().optional().nullable(),
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
+    icp_score: z.number().optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().default([]),
+    battle_card: z.record(z.unknown()).optional().nullable(),
     stage: z.enum(['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'follow_up', 'closed_won', 'closed_lost', 'no_response']),
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
@@ -148,6 +151,21 @@ Stage: ${lead.stage}`)
 
   if (lead.smykm_hooks?.length) {
     sections.push(`=== SMYKM HOOKS (use these, they're details only this person would recognize) ===\n${lead.smykm_hooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}`)
+  }
+
+  const bc = lead.battle_card as Record<string, unknown> | null;
+  if (bc || lead.icp_score != null) {
+    const techStack = bc?.tech_stack as string[] | undefined;
+    const competitiveLandscape = bc?.competitive_landscape as string[] | undefined;
+    const strategy = [
+      lead.icp_score != null && `ICP Score: ${lead.icp_score}/100`,
+      lead.icp_reasons?.length && `ICP Fit Reasons: ${lead.icp_reasons.join(', ')}`,
+      bc?.our_angle && `STRATEGIC ANGLE: ${bc.our_angle}`,
+      bc?.their_product && `PRODUCT INTEL: ${bc.their_product}`,
+      techStack?.length && `TECH STACK: ${techStack.join(', ')}`,
+      competitiveLandscape?.length && `COMPETITIVE LANDSCAPE: ${competitiveLandscape.join('; ')}`,
+    ].filter(Boolean).join('\n');
+    if (strategy) sections.push(`=== GTM STRATEGY & INTEL ===\n${strategy}`);
   }
 
   if (lead.conversation_summary) {
