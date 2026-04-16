@@ -315,11 +315,22 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   );
 }
 
+function parseNextStep(nextStep: string): { channel: string | null; framework: string | null; text: string; tactical: string | null } {
+  const channelMatch = nextStep.match(/^\[([^\]]+)\]\s*/);
+  let rest = channelMatch ? nextStep.slice(channelMatch[0].length) : nextStep;
+  const frameworkMatch = rest.match(/^\[([^\]]+)\]\s*/);
+  rest = frameworkMatch ? rest.slice(frameworkMatch[0].length) : rest;
+  const tacticalSplit = rest.split('\n\nTactical: ');
+  return { channel: channelMatch?.[1] || null, framework: frameworkMatch?.[1] || null, text: tacticalSplit[0], tactical: tacticalSplit[1] || null };
+}
+
 function FollowUpCard({ item }: { item: FollowUpItem }) {
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
+
+  const aiStrategy = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step) : null;
 
   return (
     <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm`}>
@@ -342,6 +353,24 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${urg.bg} ${urg.color} border ${urg.border}`}>
               {urg.label}
             </span>
+            {item.lead.icp_score != null && (
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+                item.lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                item.lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+              }`}>
+                ICP: {item.lead.icp_score}
+              </span>
+            )}
+            {item.lead.risk_score != null && (
+              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+                item.lead.risk_score > 50 ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
+                item.lead.risk_score > 15 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
+                'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
+              }`}>
+                Risk: {item.lead.risk_score}
+              </span>
+            )}
           </div>
 
           <div className="flex items-center gap-2 text-[11px] text-zinc-500 mb-2">
@@ -376,7 +405,25 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
           </div>
 
           {/* Action description */}
-          <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{item.suggestedAction}</p>
+          {aiStrategy ? (
+            <div className="space-y-1">
+              <div className="flex items-center gap-1.5">
+                <ArrowRight className="h-3 w-3 text-red-500" />
+                <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">AI Strategy</p>
+                {aiStrategy.framework && (
+                  <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-600 font-medium border border-purple-100 dark:border-purple-800">
+                    {aiStrategy.framework}
+                  </span>
+                )}
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{aiStrategy.text}</p>
+              {aiStrategy.tactical && (
+                <p className="text-[10px] text-red-600 dark:text-red-400 italic">Tactical: {aiStrategy.tactical}</p>
+              )}
+            </div>
+          ) : (
+            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{item.suggestedAction}</p>
+          )}
 
           {/* Email stats */}
           <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-400">
