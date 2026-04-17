@@ -211,6 +211,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               key={t}
               type="button"
               onClick={() => form.setValue('type', t as LeadType)}
+              aria-pressed={watchType === t}
               className={`px-4 py-2 rounded-lg text-sm font-medium transition-colors ${
                 watchType === t
                   ? 'bg-red-600 text-white'
