@@ -1,5 +1,4 @@
 import { generateJSON } from '@/lib/ai/anthropic'
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { checkEmailQuality, countWords } from '@/lib/ai/quality'
@@ -19,6 +18,9 @@ const requestSchema = z.object({
     investment_thesis_notes: z.string().optional().nullable(),
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
+    icp_score: z.number().optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().nullable(),
+    battle_card: z.record(z.unknown()).optional().nullable(),
   }),
   customContext: z.string().optional().default(''),
 })
@@ -190,6 +192,11 @@ function buildUserPrompt(
   customContext?: string,
   memories?: Array<{ memory_type: string; content: string }>
 ): string {
+  const bc = lead.battle_card as {
+    our_angle?: string; their_product?: string; competitive_landscape?: string[];
+    tech_stack?: string[]; discovery_questions?: string[];
+  } | null;
+
   const research = [
     lead.company_description && `Company: ${lead.company_description}`,
     lead.product_name && `Product: ${lead.product_name}`,
@@ -198,6 +205,11 @@ function buildUserPrompt(
     lead.investment_thesis_notes && `Investment Thesis: ${lead.investment_thesis_notes}`,
     lead.personal_details && `Personal Details: ${lead.personal_details}`,
     lead.smykm_hooks?.length && `SMYKM Hooks: ${lead.smykm_hooks.join('; ')}`,
+    lead.icp_score && `ICP Score: ${lead.icp_score}/100`,
+    lead.icp_reasons?.length && `ICP Reasons: ${lead.icp_reasons.join(', ')}`,
+    bc?.our_angle && `SALES STRATEGY (Our Angle): ${bc.our_angle}`,
+    bc?.their_product && `PRODUCT INTEL: ${bc.their_product}`,
+    bc?.competitive_landscape?.length && `COMPETITIVE LANDSCAPE: ${bc.competitive_landscape.join(', ')}`,
   ]
     .filter(Boolean)
     .join('\n')
