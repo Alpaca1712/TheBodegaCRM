@@ -264,6 +264,7 @@ export default function CopilotChat() {
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
+                aria-label="Send message"
                 className="h-9 w-9 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 flex items-center justify-center transition-all flex-shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />

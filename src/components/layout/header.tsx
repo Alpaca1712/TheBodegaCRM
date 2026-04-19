@@ -80,6 +80,8 @@ export default function Header({ userEmail, userName }: HeaderProps) {
           <div className="relative" ref={dropdownRef}>
             <button
               onClick={() => setIsDropdownOpen(!isDropdownOpen)}
+              aria-expanded={isDropdownOpen}
+              aria-haspopup="true"
               className="flex items-center gap-2 rounded-lg p-1.5 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             >
               <div className="flex h-7 w-7 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/50 text-xs font-semibold text-red-700 dark:text-red-300">
