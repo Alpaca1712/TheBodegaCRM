@@ -78,12 +78,16 @@ export default function MobileBottomNav({
                   ? 'text-red-600 dark:text-red-400' 
                   : 'text-zinc-500 dark:text-zinc-400'
               }`}
+              aria-label={!loading && badges && badges.followUpsDue > 0 ? `Follow-ups, ${badges.followUpsDue} due` : 'Follow-ups'}
             >
               <Send className="h-5 w-5" />
-              <span className="text-[10px] mt-0.5">Follow-ups</span>
+              <span className="text-[10px] mt-0.5" aria-hidden="true">Follow-ups</span>
             </Link>
             {!loading && badges && badges.followUpsDue > 0 && (
-              <span className="absolute -top-0.5 right-0 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold">
+              <span
+                className="absolute -top-0.5 right-0 bg-red-500 text-white text-[9px] rounded-full w-4 h-4 flex items-center justify-center font-bold"
+                aria-hidden="true"
+              >
                 {badges.followUpsDue}
               </span>
             )}
@@ -103,6 +107,7 @@ export default function MobileBottomNav({
           
           <button
             onClick={onToggleSidebar}
+            aria-expanded={isSidebarOpen}
             className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
               isSidebarOpen
                 ? 'text-red-600 dark:text-red-400' 
