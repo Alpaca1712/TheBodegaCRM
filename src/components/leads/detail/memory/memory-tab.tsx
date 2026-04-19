@@ -21,6 +21,14 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
   const [addType, setAddType] = useState('context');
   const [adding, setAdding] = useState(false);
 
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (!adding && addContent.trim()) {
+        handleAdd();
+      }
+    }
+  };
+
   const handleAdd = async () => {
     if (!addContent.trim()) return;
     setAdding(true);
@@ -50,6 +58,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
             id="memory-content"
             value={addContent}
             onChange={(e) => setAddContent(e.target.value)}
+            onKeyDown={handleKeyDown}
             placeholder="Type a fact, preference, or context to remember about this lead..."
             className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
           />
@@ -59,7 +68,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
             aria-label="Memory type"
             value={addType}
             onChange={(e) => setAddType(e.target.value)}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors"
           >
             <option value="context">Context</option>
             <option value="preference">Preference</option>
