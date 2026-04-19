@@ -208,6 +208,7 @@ export default function LeadsPage() {
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads..."
+            aria-label="Search leads"
             className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
           />
         </div>
@@ -281,6 +282,7 @@ export default function LeadsPage() {
               const v = e.target.value as PipelineStage | '';
               if (v) handleBulkStage(v);
             }}
+            aria-label="Change stage"
             className="px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
           >
             <option value="">Change stage…</option>
@@ -295,6 +297,7 @@ export default function LeadsPage() {
               const v = e.target.value as Priority | '';
               if (v) handleBulkPriority(v);
             }}
+            aria-label="Change priority"
             className="px-2 py-1 rounded-md border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 disabled:opacity-50"
           >
             <option value="">Change priority…</option>
@@ -363,6 +366,7 @@ export default function LeadsPage() {
             <button
               onClick={() => setPage((p) => Math.max(0, p - 1))}
               disabled={page === 0}
+              aria-label="Previous page"
               className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronLeft className="h-3.5 w-3.5" />
@@ -381,6 +385,7 @@ export default function LeadsPage() {
                   <button
                     key={i}
                     onClick={() => setPage(i)}
+                    aria-current={page === i ? 'page' : undefined}
                     className={`min-w-[28px] h-7 text-xs font-medium rounded-md transition-colors ${
                       page === i
                         ? 'bg-red-600 text-white'
@@ -394,6 +399,7 @@ export default function LeadsPage() {
             <button
               onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
               disabled={page >= totalPages - 1}
+              aria-label="Next page"
               className="p-1.5 rounded-md border border-zinc-200 dark:border-zinc-700 text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-800 disabled:opacity-30 disabled:cursor-not-allowed transition-colors"
             >
               <ChevronRight className="h-3.5 w-3.5" />
