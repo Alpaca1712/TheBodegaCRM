@@ -10,6 +10,7 @@ import {
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
+import { FollowUpSheet } from './follow-up-sheet';
 
 interface FollowUpSuggestionsProps {
   compact?: boolean;
@@ -126,10 +127,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FollowUpItem | null>(null);
 
-  useEffect(() => { loadFollowUps(); }, [typeFilter]);
-
-  const loadFollowUps = async () => {
+  const loadFollowUps = useCallback(async () => {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -184,7 +184,11 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter]);
+
+  useEffect(() => {
+    loadFollowUps();
+  }, [loadFollowUps]);
 
   const filtered = items.filter(item => {
     if (filter === 'all') return true;
@@ -222,7 +226,11 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
           </span>
         </div>
         {topItems.map(item => (
-          <CompactCard key={item.lead.id} item={item} />
+          <CompactCard
+            key={item.lead.id}
+            item={item}
+            onGenerate={() => setSelectedItem(item)}
+          />
         ))}
         {items.length > 5 && (
           <Link href="/follow-ups" className="block text-center text-xs text-red-600 dark:text-red-400 hover:text-red-500 py-2 font-medium">
@@ -290,10 +298,22 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
       ) : (
         <div className="space-y-2">
           {filtered.map(item => (
-            <FollowUpCard key={item.lead.id} item={item} />
+            <FollowUpCard
+              key={item.lead.id}
+              item={item}
+              onGenerate={() => setSelectedItem(item)}
+            />
           ))}
         </div>
       )}
+
+      <FollowUpSheet
+        lead={selectedItem?.lead || null}
+        initialFollowUpType={selectedItem?.suggestedType || null}
+        isOpen={!!selectedItem}
+        onOpenChange={(open) => !open && setSelectedItem(null)}
+        onEmailSaved={loadFollowUps}
+      />
     </div>
   );
 }
@@ -327,7 +347,7 @@ function parseActionBadges(action: string): { badges: string[]; text: string } {
   return { badges, text };
 }
 
-function FollowUpCard({ item }: { item: FollowUpItem }) {
+function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
@@ -442,27 +462,27 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <Link
-            href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
+          <button
+            onClick={onGenerate}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
           >
             <Send className="h-3 w-3" />
             Generate
             <ArrowRight className="h-3 w-3" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function CompactCard({ item }: { item: FollowUpItem }) {
+function CompactCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   return (
-    <Link
-      href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
-      className={`flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm`}
+    <button
+      onClick={onGenerate}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm text-left`}
     >
       <div className={`h-2 w-2 rounded-full shrink-0 ${urg.dot}`} />
       <div className="flex-1 min-w-0">
@@ -473,6 +493,6 @@ function CompactCard({ item }: { item: FollowUpItem }) {
         {CHANNEL_ICONS[item.suggestedChannel]}
         <ArrowRight className="h-3 w-3" />
       </div>
-    </Link>
+    </button>
   );
 }
