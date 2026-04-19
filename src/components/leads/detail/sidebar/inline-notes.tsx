@@ -3,6 +3,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { toast } from 'sonner';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 export function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string; initialNotes: string | null; onSaved: (notes: string) => void }) {
   const [notes, setNotes] = useState(initialNotes || '');
@@ -31,12 +32,14 @@ export function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string;
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notes</h3>
         {saving && <span className="text-[10px] text-zinc-400 animate-pulse">Saving...</span>}
       </div>
+      <Label htmlFor={`notes-${leadId}`} className="sr-only">Lead Notes</Label>
       <Textarea
+        id={`notes-${leadId}`}
         value={notes}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={() => { if (timeoutRef.current) { clearTimeout(timeoutRef.current); save(notes); } }}
         placeholder="Paste LinkedIn DMs, call notes, or any context..."
-        className="min-h-[80px] bg-zinc-50 dark:bg-zinc-800"
+        className="min-h-[80px] bg-zinc-50 dark:bg-zinc-800 text-xs"
       />
     </div>
   );
