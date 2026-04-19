@@ -6,6 +6,7 @@ import { Plus, BookOpen, Trash } from 'lucide-react';
 import type { AgentMemory } from '@/types/leads-detail';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const typeColors: Record<string, string> = {
   preference: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
@@ -43,14 +44,23 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
     <div className="space-y-4">
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Add Memory</h3>
-        <Textarea
-          value={addContent}
-          onChange={(e) => setAddContent(e.target.value)}
-          placeholder="Type a fact, preference, or context to remember about this lead..."
-          className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800"
-        />
+        <div>
+          <Label htmlFor="memory-content" className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Memory Content</Label>
+          <Textarea
+            id="memory-content"
+            value={addContent}
+            onChange={(e) => setAddContent(e.target.value)}
+            placeholder="Type a fact, preference, or context to remember about this lead..."
+            className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
+          />
+        </div>
         <div className="flex items-center gap-2">
-          <select value={addType} onChange={(e) => setAddType(e.target.value)} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors">
+          <select
+            aria-label="Memory type"
+            value={addType}
+            onChange={(e) => setAddType(e.target.value)}
+            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors"
+          >
             <option value="context">Context</option>
             <option value="preference">Preference</option>
             <option value="objection">Objection</option>
@@ -64,7 +74,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
             size="sm"
             className="rounded-lg h-auto py-1.5"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {!adding && <Plus className="h-3.5 w-3.5 mr-1.5" />}
             Add
           </Button>
         </div>

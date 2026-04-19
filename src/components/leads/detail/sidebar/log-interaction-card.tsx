@@ -102,7 +102,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
             isLoading={submitting}
             className="w-full h-8 text-xs"
           >
-            <Send className="h-3.5 w-3.5 mr-1.5" />
+            {!submitting && <Send className="h-3.5 w-3.5 mr-1.5" />}
             {submitting ? 'Analyzing...' : 'Log & Analyze'}
           </Button>
         </div>
