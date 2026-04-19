@@ -166,6 +166,7 @@ export default function LeadsPage() {
               setSelectionMode((v) => !v);
               clearSelection();
             }}
+            aria-pressed={selectionMode}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg border transition-colors ${
               selectionMode
                 ? 'bg-red-600 text-white border-red-600 hover:bg-red-500'
@@ -213,7 +214,8 @@ export default function LeadsPage() {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => setTypeFilter(typeFilter === '' ? '' : '')}
+            onClick={() => setTypeFilter('')}
+            aria-pressed={!typeFilter}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
               !typeFilter ? 'bg-zinc-900 dark:bg-zinc-100 text-white dark:text-zinc-900' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
             }`}
@@ -223,6 +225,7 @@ export default function LeadsPage() {
           </button>
           <button
             onClick={() => setTypeFilter(typeFilter === 'customer' ? '' : 'customer')}
+            aria-pressed={typeFilter === 'customer'}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
               typeFilter === 'customer' ? 'bg-blue-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
             }`}
@@ -232,6 +235,7 @@ export default function LeadsPage() {
           </button>
           <button
             onClick={() => setTypeFilter(typeFilter === 'investor' ? '' : 'investor')}
+            aria-pressed={typeFilter === 'investor'}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
               typeFilter === 'investor' ? 'bg-purple-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
             }`}
@@ -241,6 +245,7 @@ export default function LeadsPage() {
           </button>
           <button
             onClick={() => setTypeFilter(typeFilter === 'partnership' ? '' : 'partnership')}
+            aria-pressed={typeFilter === 'partnership'}
             className={`flex items-center gap-1.5 px-3 py-2 text-xs font-medium rounded-lg transition-colors ${
               typeFilter === 'partnership' ? 'bg-emerald-600 text-white' : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400'
             }`}
