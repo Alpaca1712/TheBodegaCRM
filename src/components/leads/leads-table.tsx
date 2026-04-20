@@ -132,6 +132,7 @@ export default function LeadsTable({
                     <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
                       lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
                       lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                      lead.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
                       'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
                     }`}>
                       {lead.icp_score}
