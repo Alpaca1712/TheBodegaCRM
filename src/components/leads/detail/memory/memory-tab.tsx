@@ -6,6 +6,7 @@ import { Plus, BookOpen, Trash } from 'lucide-react';
 import type { AgentMemory } from '@/types/leads-detail';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const typeColors: Record<string, string> = {
   preference: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
@@ -79,7 +80,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
             size="sm"
             className="rounded-lg h-auto py-1.5"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {!adding && <Plus className="h-3.5 w-3.5 mr-1.5" />}
             Add
           </Button>
         </div>

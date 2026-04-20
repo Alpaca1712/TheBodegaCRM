@@ -338,6 +338,10 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
   const rawAction = item.lead.conversation_next_step || item.suggestedAction;
   const { badges, text: actionText } = parseActionBadges(rawAction);
 
+  // Prioritize AI Strategy
+  const rawAction = item.lead.conversation_next_step || item.suggestedAction;
+  const { badges, text: actionText } = parseActionBadges(rawAction);
+
   return (
     <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm`}>
       <div className="flex items-start gap-3">
