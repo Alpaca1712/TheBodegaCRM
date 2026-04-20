@@ -43,6 +43,12 @@ export default function CopilotChat() {
   }, [messages, scrollToBottom]);
 
   useEffect(() => {
+    const handler = () => setIsOpen(prev => !prev);
+    document.addEventListener('toggle-copilot', handler);
+    return () => document.removeEventListener('toggle-copilot', handler);
+  }, []);
+
+  useEffect(() => {
     if (isOpen && inputRef.current) {
       inputRef.current.focus();
     }
@@ -83,7 +89,8 @@ export default function CopilotChat() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    const meta = e.metaKey || e.ctrlKey;
+    if (e.key === 'Enter' && (meta || !e.shiftKey)) {
       e.preventDefault();
       sendMessage();
     }
@@ -134,7 +141,8 @@ export default function CopilotChat() {
         <button
           onClick={() => setIsOpen(true)}
           className="fixed bottom-6 right-6 z-50 h-12 w-12 rounded-full bg-gradient-to-br from-red-500 to-red-700 text-white shadow-lg shadow-red-600/25 hover:shadow-red-600/40 hover:scale-105 transition-all flex items-center justify-center"
-          title="Open Co-pilot"
+          title="Open Co-pilot (G then C)"
+          aria-label="Open Co-pilot"
         >
           <MessageCircle className="h-5 w-5" />
         </button>
@@ -249,12 +257,14 @@ export default function CopilotChat() {
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
                 placeholder="Ask the co-pilot..."
+                aria-label="Ask the co-pilot"
                 rows={1}
                 className="flex-1 resize-none rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all"
               />
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
+                aria-label="Send message"
                 className="h-9 w-9 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 flex items-center justify-center transition-all flex-shrink-0"
               >
                 <Send className="h-3.5 w-3.5" />

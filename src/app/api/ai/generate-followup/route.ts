@@ -27,6 +27,9 @@ const requestSchema = z.object({
     investment_thesis_notes: z.string().optional().nullable(),
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
+    icp_score: z.number().optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().nullable(),
+    battle_card: z.record(z.unknown()).optional().nullable(),
     stage: z.enum(['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'follow_up', 'closed_won', 'closed_lost', 'no_response']),
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
@@ -121,7 +124,9 @@ Respond with ONLY valid JSON:
 
 function buildFullContext(input: z.infer<typeof requestSchema> & { memories?: Array<{ memory_type: string; content: string }> }): string {
   const { lead, emailThread, followUpNumber, customContext } = input
-  const bc = (lead.battle_card as Record<string, unknown> | null) || {}
+  const bc = lead.battle_card as {
+    our_angle?: string; their_product?: string; competitive_landscape?: string[];
+  } | null;
 
   const sections: string[] = []
 
@@ -130,7 +135,7 @@ Name: ${lead.contact_name}
 Title: ${lead.contact_title || 'Unknown'}
 Company: ${lead.company_name}
 Type: ${lead.type}
-Stage: ${lead.stage}`)
+Stage: ${lead.stage}${lead.icp_score ? `\nICP Score: ${lead.icp_score}/100` : ''}${lead.icp_reasons?.length ? `\nICP Reasons: ${lead.icp_reasons.join(', ')}` : ''}`)
 
   if (lead.icp_score != null) {
     sections.push(`=== GTM FIT ===
@@ -144,6 +149,11 @@ Reasons: ${lead.icp_reasons.join('; ')}`)
 
   if (lead.company_description) {
     sections.push(`=== COMPANY ===\n${lead.company_description}`)
+  }
+
+  if (bc?.our_angle || bc?.their_product) {
+    sections.push(`=== BATTLE CARD / STRATEGY ===
+${bc.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc.their_product ? `PRODUCT INTEL: ${bc.their_product}` : ''}`)
   }
 
   if (lead.type === 'customer' && lead.attack_surface_notes) {

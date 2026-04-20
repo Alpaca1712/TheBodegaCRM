@@ -87,8 +87,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   const [copiedSide, setCopiedSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [sendingSide, setSendingSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [customContext, setCustomContext] = useState('');
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [showContext, setShowContext] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState(lead.conversation_next_step || '');
+  const [showContext, setShowContext] = useState(!!lead.conversation_next_step);
   const [showModeSelector, setShowModeSelector] = useState(false);
 
   const config = MODE_CONFIG[mode];

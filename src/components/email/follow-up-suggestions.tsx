@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown,
+  User, Building2, ChevronDown, Zap,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
@@ -315,13 +315,16 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   );
 }
 
-function parseNextStep(nextStep: string): { text: string } {
-  const channelMatch = nextStep.match(/^\[([^\]]+)\]\s*/);
-  let rest = channelMatch ? nextStep.slice(channelMatch[0].length) : nextStep;
-  const frameworkMatch = rest.match(/^\[([^\]]+)\]\s*/);
-  rest = frameworkMatch ? rest.slice(frameworkMatch[0].length) : rest;
-  const tacticalSplit = rest.split('\n\nTactical: ');
-  return { text: tacticalSplit[0] };
+function parseActionBadges(action: string): { badges: string[]; text: string } {
+  const badges: string[] = [];
+  let text = action;
+  const badgeRegex = /^\[([^\]]+)\]\s*/;
+  let match;
+  while ((match = text.match(badgeRegex))) {
+    badges.push(match[1]);
+    text = text.slice(match[0].length);
+  }
+  return { badges, text };
 }
 
 function FollowUpCard({ item }: { item: FollowUpItem }) {
@@ -330,6 +333,10 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
   const aiNextStep = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step).text : null;
+
+  // Prioritize AI Strategy
+  const rawAction = item.lead.conversation_next_step || item.suggestedAction;
+  const { badges, text: actionText } = parseActionBadges(rawAction);
 
   return (
     <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm`}>
@@ -353,7 +360,7 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
               {urg.label}
             </span>
             {item.lead.icp_score != null && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tabular-nums ${
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                 item.lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
                 item.lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
                 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
@@ -362,7 +369,7 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
               </span>
             )}
             {item.lead.risk_score != null && (
-              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded tabular-nums ${
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                 item.lead.risk_score > 50 ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
                 item.lead.risk_score > 15 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
                 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
@@ -404,14 +411,23 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
           </div>
 
           {/* Action description */}
+          <div className="flex flex-wrap gap-1 mb-1">
+            {badges.map((b, i) => (
+              <span key={i} className="px-1.5 py-0.5 rounded bg-white/40 dark:bg-black/20 text-[9px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
+                {b}
+              </span>
+            ))}
+          </div>
           <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">
-            {aiNextStep || item.suggestedAction}
+            {item.lead.conversation_next_step ? (
+              <span className="flex items-center gap-1">
+                <Zap className="h-3 w-3 text-amber-500" />
+                {actionText}
+              </span>
+            ) : (
+              actionText
+            )}
           </p>
-          {aiNextStep && (
-            <p className="text-[10px] text-zinc-400 mt-1 italic">
-              Auto-generated from conversation history
-            </p>
-          )}
 
           {/* Email stats */}
           <div className="flex items-center gap-3 mt-2 text-[10px] text-zinc-400">
