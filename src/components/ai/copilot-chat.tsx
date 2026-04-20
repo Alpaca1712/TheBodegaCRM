@@ -89,7 +89,8 @@ export default function CopilotChat() {
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
+    const meta = e.metaKey || e.ctrlKey;
+    if (e.key === 'Enter' && (meta || !e.shiftKey)) {
       e.preventDefault();
       sendMessage();
     }
