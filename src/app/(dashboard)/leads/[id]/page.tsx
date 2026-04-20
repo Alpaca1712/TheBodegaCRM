@@ -335,6 +335,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
                   lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
                   lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                  lead.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
                   'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
                 }`}>
                   ICP: {lead.icp_score}
@@ -400,6 +401,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             onClick={handleDelete}
             disabled={isDeleting}
             className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-950/30 hover:bg-red-100 dark:hover:bg-red-950/50 rounded-lg transition-colors disabled:opacity-50"
+            aria-label="Delete lead"
           >
             <Trash2 className="h-3.5 w-3.5" />
           </button>
@@ -670,6 +672,7 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
           value={addContent}
           onChange={(e) => setAddContent(e.target.value)}
           placeholder="Type a fact, preference, or context to remember about this lead..."
+          aria-label="New memory content"
           className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-y"
         />
         <div className="flex items-center gap-2">
@@ -710,7 +713,11 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
                   {new Date(m.created_at).toLocaleDateString()}
                 </p>
               </div>
-              <button onClick={() => onDelete(m.id)} className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all">
+              <button
+                onClick={() => onDelete(m.id)}
+                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                aria-label="Delete memory"
+              >
                 <Trash className="h-3 w-3 text-red-400" />
               </button>
             </div>
@@ -979,7 +986,11 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
 
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-      <button onClick={() => { setOpen(!open); if (open) setLastResult(null); }} className="flex items-center gap-2 w-full text-left">
+      <button
+        onClick={() => { setOpen(!open); if (open) setLastResult(null); }}
+        aria-expanded={open}
+        className="flex items-center gap-2 w-full text-left"
+      >
         <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Interaction</h3>
       </button>
@@ -995,8 +1006,20 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
           <select value={interactionType} onChange={(e) => setInteractionType(e.target.value as InteractionType)} className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300">
             {availableTypes.map((t) => <option key={t} value={t}>{INTERACTION_TYPE_LABELS[t]}</option>)}
           </select>
-          <input value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Quick summary..." className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400" />
-          <textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Paste DM, call notes..." className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
+          <input
+            value={summary}
+            onChange={(e) => setSummary(e.target.value)}
+            placeholder="Quick summary..."
+            aria-label="Interaction summary"
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400"
+          />
+          <textarea
+            value={content}
+            onChange={(e) => setContent(e.target.value)}
+            placeholder="Paste DM, call notes..."
+            aria-label="Interaction content"
+            className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
+          />
           <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             {submitting ? 'Analyzing...' : 'Log & Analyze'}
@@ -1177,7 +1200,19 @@ function TimelineEntryCard({ entry, isLast }: { entry: TimelineEntry; isLast: bo
     <div className="flex gap-3 relative">
       {!isLast && <div className="absolute left-[13px] top-8 bottom-0 w-px bg-zinc-200 dark:bg-zinc-700" />}
       <div className={`mt-2 h-[11px] w-[11px] rounded-full shrink-0 ring-2 ring-white dark:ring-zinc-900 ${dotColor}`} />
-      <div className={`pb-4 min-w-0 flex-1 ${hasExpandableContent || aiData ? 'cursor-pointer' : ''}`} onClick={() => (hasExpandableContent || aiData) && setExpanded(!expanded)}>
+      <div
+        className={`pb-4 min-w-0 flex-1 ${(hasExpandableContent || aiData) ? 'cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg' : ''}`}
+        onClick={() => (hasExpandableContent || aiData) && setExpanded(!expanded)}
+        onKeyDown={(e) => {
+          if ((hasExpandableContent || aiData) && (e.key === 'Enter' || e.key === ' ')) {
+            e.preventDefault();
+            setExpanded(!expanded);
+          }
+        }}
+        role={(hasExpandableContent || aiData) ? 'button' : undefined}
+        tabIndex={(hasExpandableContent || aiData) ? 0 : undefined}
+        aria-expanded={(hasExpandableContent || aiData) ? expanded : undefined}
+      >
         <div className="flex items-center gap-2 flex-wrap">
           <div className="flex items-center gap-1.5 text-zinc-500">{channelIcon}</div>
           <span className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">{entry.label}</span>
@@ -1424,7 +1459,11 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
 }) {
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
-      <button onClick={() => setOpen(!open)} className="flex items-center gap-2 w-full text-left">
+      <button
+        onClick={() => setOpen(!open)}
+        aria-expanded={open}
+        className="flex items-center gap-2 w-full text-left"
+      >
         <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Meeting / Call</h3>
       </button>
@@ -1435,7 +1474,13 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
             <option value="call">Call</option>
             <option value="demo">Demo</option>
           </select>
-          <textarea value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Paste transcript or type notes..." className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y" />
+          <textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            placeholder="Paste transcript or type notes..."
+            aria-label="Meeting notes"
+            className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
+          />
           <button onClick={onSubmit} disabled={loading || !notes.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
             {loading ? 'Summarizing...' : 'Summarize with AI'}
