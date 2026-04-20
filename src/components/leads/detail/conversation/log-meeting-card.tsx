@@ -1,7 +1,6 @@
 import { Plus, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 
 export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading, onSubmit }: {
   open: boolean; setOpen: (v: boolean) => void;
@@ -21,7 +20,7 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
       <button
         onClick={() => setOpen(!open)}
-        className="flex items-center gap-2 w-full text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-lg"
+        className="flex items-center gap-2 w-full text-left"
         aria-expanded={open}
       >
         <Plus className={`h-3.5 w-3.5 text-red-500 transition-transform ${open ? 'rotate-45' : ''}`} />
@@ -29,30 +28,24 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
       </button>
       {open && (
         <div className="mt-3 space-y-3">
-          <div>
-            <Label htmlFor="meeting-type" className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Meeting Type</Label>
-            <select
-              id="meeting-type"
-              value={type}
-              onChange={(e) => setType(e.target.value as 'call' | 'meeting' | 'demo')}
-              className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors"
-            >
-              <option value="meeting">Meeting</option>
-              <option value="call">Call</option>
-              <option value="demo">Demo</option>
-            </select>
-          </div>
-          <div>
-            <Label htmlFor="meeting-notes" className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Notes</Label>
-            <Textarea
-              id="meeting-notes"
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              onKeyDown={handleKeyDown}
-              placeholder="Paste transcript or type notes..."
-              className="w-full min-h-[100px] bg-zinc-50 dark:bg-zinc-800 text-xs"
-            />
-          </div>
+          <select
+            value={type}
+            onChange={(e) => setType(e.target.value as 'call' | 'meeting' | 'demo')}
+            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors"
+            aria-label="Meeting type"
+          >
+            <option value="meeting">Meeting</option>
+            <option value="call">Call</option>
+            <option value="demo">Demo</option>
+          </select>
+          <Textarea
+            value={notes}
+            onChange={(e) => setNotes(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Paste transcript or type notes..."
+            className="min-h-[100px] bg-zinc-50 dark:bg-zinc-800"
+            aria-label="Meeting notes"
+          />
           <Button
             onClick={onSubmit}
             disabled={loading || !notes.trim()}

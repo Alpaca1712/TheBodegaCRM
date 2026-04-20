@@ -52,23 +52,20 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
     <div className="space-y-4">
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Add Memory</h3>
-        <div>
-          <Label htmlFor="memory-content" className="text-[11px] font-semibold text-zinc-600 dark:text-zinc-400">Memory Content</Label>
-          <Textarea
-            id="memory-content"
-            value={addContent}
-            onChange={(e) => setAddContent(e.target.value)}
-            onKeyDown={handleKeyDown}
-            placeholder="Type a fact, preference, or context to remember about this lead..."
-            className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
-          />
-        </div>
+        <Textarea
+          value={addContent}
+          onChange={(e) => setAddContent(e.target.value)}
+          onKeyDown={handleKeyDown}
+          placeholder="Type a fact, preference, or context to remember about this lead..."
+          className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800"
+          aria-label="New memory content"
+        />
         <div className="flex items-center gap-2">
           <select
-            aria-label="Memory type"
             value={addType}
             onChange={(e) => setAddType(e.target.value)}
-            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors"
+            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors"
+            aria-label="Memory type"
           >
             <option value="context">Context</option>
             <option value="preference">Preference</option>

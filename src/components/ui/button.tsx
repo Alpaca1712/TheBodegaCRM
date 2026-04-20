@@ -40,7 +40,7 @@ export function Button({
       disabled={isLoading || disabled}
       {...props}
     >
-      {isLoading && <Loader2 className={`h-4 w-4 animate-spin text-current ${children ? 'mr-2' : ''}`} />}
+      {isLoading && <Loader2 className={`${children ? 'mr-2' : ''} h-4 w-4 animate-spin text-current`} />}
       {children}
     </button>
   )
