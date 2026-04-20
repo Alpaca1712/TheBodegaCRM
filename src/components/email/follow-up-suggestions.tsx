@@ -332,6 +332,7 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
   const action = ACTION_LABELS[item.suggestedType];
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
+  const aiNextStep = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step).text : null;
 
   // Prioritize AI Strategy
   const rawAction = item.lead.conversation_next_step || item.suggestedAction;

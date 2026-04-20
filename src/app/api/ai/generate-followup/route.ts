@@ -34,6 +34,9 @@ const requestSchema = z.object({
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
+    icp_score: z.number().optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().default([]),
+    battle_card: z.record(z.unknown()).optional().nullable(),
   }),
   emailThread: z.array(emailSchema).optional().default([]),
   followUpNumber: z.number().int().min(1).max(4),
@@ -133,6 +136,16 @@ Title: ${lead.contact_title || 'Unknown'}
 Company: ${lead.company_name}
 Type: ${lead.type}
 Stage: ${lead.stage}${lead.icp_score ? `\nICP Score: ${lead.icp_score}/100` : ''}${lead.icp_reasons?.length ? `\nICP Reasons: ${lead.icp_reasons.join(', ')}` : ''}`)
+
+  if (lead.icp_score != null) {
+    sections.push(`=== GTM FIT ===
+ICP Score: ${lead.icp_score}/100
+Reasons: ${lead.icp_reasons.join('; ')}`)
+  }
+
+  if (bc.our_angle) {
+    sections.push(`=== STRATEGIC GTM ANGLE (Use this to shape the pitch) ===\n${bc.our_angle}`)
+  }
 
   if (lead.company_description) {
     sections.push(`=== COMPANY ===\n${lead.company_description}`)
