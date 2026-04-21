@@ -55,6 +55,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('leads')
       .select('*', { count: 'exact' })
+      .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
 
     if (type) query = query.eq('type', type)
