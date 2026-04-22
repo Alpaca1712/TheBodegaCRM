@@ -28,15 +28,27 @@ const requestSchema = z.object({
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
     icp_score: z.number().optional().nullable(),
-    icp_reasons: z.array(z.string()).optional().nullable(),
-    battle_card: z.record(z.unknown()).optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().default([]),
+    battle_card: z.object({
+      company_overview: z.string().optional(),
+      their_product: z.string().optional(),
+      their_strengths: z.array(z.string()).optional(),
+      their_weaknesses: z.array(z.string()).optional(),
+      competitive_landscape: z.array(z.string()).optional(),
+      our_angle: z.string().optional(),
+      objection_handlers: z.array(z.object({ objection: z.string(), response: z.string() })).optional(),
+      discovery_questions: z.array(z.string()).optional(),
+      trigger_events: z.array(z.string()).optional(),
+      icp_score: z.number().optional(),
+      icp_reasons: z.array(z.string()).optional(),
+      pricing_intel: z.string().optional().nullable(),
+      tech_stack: z.array(z.string()).optional(),
+      decision_makers: z.array(z.object({ role: z.string(), concerns: z.string(), pitch_angle: z.string() })).optional(),
+    }).optional().nullable(),
     stage: z.enum(['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'follow_up', 'closed_won', 'closed_lost', 'no_response']),
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
-    icp_score: z.number().optional().nullable(),
-    icp_reasons: z.array(z.string()).optional().default([]),
-    battle_card: z.record(z.unknown()).optional().nullable(),
   }),
   emailThread: z.array(emailSchema).optional().default([]),
   followUpNumber: z.number().int().min(1).max(4),
@@ -124,9 +136,7 @@ Respond with ONLY valid JSON:
 
 function buildFullContext(input: z.infer<typeof requestSchema> & { memories?: Array<{ memory_type: string; content: string }> }): string {
   const { lead, emailThread, followUpNumber, customContext } = input
-  const bc = lead.battle_card as {
-    our_angle?: string; their_product?: string; competitive_landscape?: string[];
-  } | null;
+  const bc = lead.battle_card;
 
   const sections: string[] = []
 
@@ -151,9 +161,9 @@ Reasons: ${lead.icp_reasons.join('; ')}`)
     sections.push(`=== COMPANY ===\n${lead.company_description}`)
   }
 
-  if (bc?.our_angle || bc?.their_product) {
+  if (bc?.our_angle || bc?.their_product || bc?.their_weaknesses?.length || bc?.trigger_events?.length) {
     sections.push(`=== BATTLE CARD / STRATEGY ===
-${bc.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc.their_product ? `PRODUCT INTEL: ${bc.their_product}` : ''}`)
+${bc.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc.their_product ? `PRODUCT INTEL: ${bc.their_product}\n` : ''}${bc.their_weaknesses?.length ? `TARGET WEAKNESSES: ${bc.their_weaknesses.join(', ')}\n` : ''}${bc.trigger_events?.length ? `TRIGGER EVENTS (use for urgency): ${bc.trigger_events.join(', ')}\n` : ''}${bc.decision_makers?.length ? `DECISION MAKERS: ${bc.decision_makers.map(dm => `${dm.role}: ${dm.concerns}`).join('; ')}` : ''}`)
   }
 
   if (lead.type === 'customer' && lead.attack_surface_notes) {

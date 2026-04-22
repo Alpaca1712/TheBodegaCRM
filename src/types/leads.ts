@@ -117,6 +117,23 @@ export interface OrgChartMember {
   lead_id: string | null
 }
 
+export interface BattleCard {
+  company_overview: string
+  their_product: string
+  their_strengths: string[]
+  their_weaknesses: string[]
+  competitive_landscape: string[]
+  our_angle: string
+  objection_handlers: Array<{ objection: string; response: string }>
+  discovery_questions: string[]
+  trigger_events: string[]
+  icp_score: number
+  icp_reasons: string[]
+  pricing_intel: string | null
+  tech_stack: string[]
+  decision_makers: Array<{ role: string; concerns: string; pitch_angle: string }>
+}
+
 export interface Lead {
   id: string
   user_id: string
@@ -157,7 +174,7 @@ export interface Lead {
   // GTM features
   icp_score: number | null
   icp_reasons: string[]
-  battle_card: Record<string, unknown> | null
+  battle_card: BattleCard | null
   battle_card_generated_at: string | null
   // Conversation intelligence
   email_domain: string | null

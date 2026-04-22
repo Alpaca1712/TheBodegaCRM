@@ -20,7 +20,22 @@ const requestSchema = z.object({
     smykm_hooks: z.array(z.string()).optional().default([]),
     icp_score: z.number().optional().nullable(),
     icp_reasons: z.array(z.string()).optional().nullable(),
-    battle_card: z.record(z.unknown()).optional().nullable(),
+    battle_card: z.object({
+      company_overview: z.string().optional(),
+      their_product: z.string().optional(),
+      their_strengths: z.array(z.string()).optional(),
+      their_weaknesses: z.array(z.string()).optional(),
+      competitive_landscape: z.array(z.string()).optional(),
+      our_angle: z.string().optional(),
+      objection_handlers: z.array(z.object({ objection: z.string(), response: z.string() })).optional(),
+      discovery_questions: z.array(z.string()).optional(),
+      trigger_events: z.array(z.string()).optional(),
+      icp_score: z.number().optional(),
+      icp_reasons: z.array(z.string()).optional(),
+      pricing_intel: z.string().optional().nullable(),
+      tech_stack: z.array(z.string()).optional(),
+      decision_makers: z.array(z.object({ role: z.string(), concerns: z.string(), pitch_angle: z.string() })).optional(),
+    }).optional().nullable(),
   }),
   customContext: z.string().optional().default(''),
 })
@@ -192,10 +207,7 @@ function buildUserPrompt(
   customContext?: string,
   memories?: Array<{ memory_type: string; content: string }>
 ): string {
-  const bc = lead.battle_card as {
-    our_angle?: string; their_product?: string; competitive_landscape?: string[];
-    tech_stack?: string[]; discovery_questions?: string[];
-  } | null;
+  const bc = lead.battle_card;
 
   const research = [
     lead.company_description && `Company: ${lead.company_description}`,
@@ -209,7 +221,10 @@ function buildUserPrompt(
     lead.icp_reasons?.length && `ICP Reasons: ${lead.icp_reasons.join(', ')}`,
     bc?.our_angle && `SALES STRATEGY (Our Angle): ${bc.our_angle}`,
     bc?.their_product && `PRODUCT INTEL: ${bc.their_product}`,
+    bc?.their_weaknesses?.length && `TARGET WEAKNESSES: ${bc.their_weaknesses.join(', ')}`,
     bc?.competitive_landscape?.length && `COMPETITIVE LANDSCAPE: ${bc.competitive_landscape.join(', ')}`,
+    bc?.trigger_events?.length && `TRIGGER EVENTS (use for urgency): ${bc.trigger_events.join(', ')}`,
+    bc?.decision_makers?.length && `DECISION MAKERS & CONCERNS: ${bc.decision_makers.map(dm => `${dm.role}: ${dm.concerns}`).join('; ')}`,
   ]
     .filter(Boolean)
     .join('\n')
