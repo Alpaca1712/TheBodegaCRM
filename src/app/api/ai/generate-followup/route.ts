@@ -28,15 +28,12 @@ const requestSchema = z.object({
     personal_details: z.string().optional().nullable(),
     smykm_hooks: z.array(z.string()).optional().default([]),
     icp_score: z.number().optional().nullable(),
-    icp_reasons: z.array(z.string()).optional().nullable(),
+    icp_reasons: z.array(z.string()).optional().default([]),
     battle_card: z.record(z.unknown()).optional().nullable(),
     stage: z.enum(['researched', 'email_drafted', 'email_sent', 'replied', 'meeting_booked', 'meeting_held', 'follow_up', 'closed_won', 'closed_lost', 'no_response']),
     conversation_summary: z.string().optional().nullable(),
     conversation_next_step: z.string().optional().nullable(),
     notes: z.string().optional().nullable(),
-    icp_score: z.number().optional().nullable(),
-    icp_reasons: z.array(z.string()).optional().default([]),
-    battle_card: z.record(z.unknown()).optional().nullable(),
   }),
   emailThread: z.array(emailSchema).optional().default([]),
   followUpNumber: z.number().int().min(1).max(4),
@@ -143,7 +140,7 @@ ICP Score: ${lead.icp_score}/100
 Reasons: ${lead.icp_reasons.join('; ')}`)
   }
 
-  if (bc.our_angle) {
+  if (bc?.our_angle) {
     sections.push(`=== STRATEGIC GTM ANGLE (Use this to shape the pitch) ===\n${bc.our_angle}`)
   }
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
@@ -352,11 +352,6 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
   const action = ACTION_LABELS[item.suggestedType];
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
-  const aiNextStep = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step).text : null;
-
-  // Prioritize AI Strategy
-  const rawAction = item.lead.conversation_next_step || item.suggestedAction;
-  const { badges, text: actionText } = parseActionBadges(rawAction);
 
   // Prioritize AI Strategy
   const rawAction = item.lead.conversation_next_step || item.suggestedAction;
