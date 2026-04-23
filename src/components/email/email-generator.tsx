@@ -6,10 +6,11 @@ import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCi
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';
 import { checkEmailQuality, countWords } from '@/lib/ai/quality';
 
-type EmailMode = 'initial' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
+type EmailMode = 'initial' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
 
 const MODE_CONFIG: Record<EmailMode, { label: string; description: string; followUpNumber: number; isFollowUp: boolean }> = {
   initial: { label: 'Initial SMYKM Email', description: 'First cold outreach with McKenna + Hormozi CTAs', followUpNumber: 0, isFollowUp: false },
+  review_draft: { label: 'Review Drafted Email', description: 'Check and refine the already drafted email before sending', followUpNumber: 0, isFollowUp: false },
   follow_up_1: { label: 'Follow-up #1 (Day 4 Bump)', description: 'Short bump with a new SMYKM hook, no reference to the original', followUpNumber: 1, isFollowUp: true },
   follow_up_2: { label: 'Follow-up #2 (Day 9 Value Drop)', description: 'Hormozi-style lead magnet or free resource offer', followUpNumber: 2, isFollowUp: true },
   follow_up_3: { label: 'Follow-up #3 (Day 14 Channel Switch)', description: 'LinkedIn or Twitter DM, short and casual', followUpNumber: 3, isFollowUp: true },
@@ -22,6 +23,8 @@ function detectBestMode(emails: LeadEmail[], lead: Lead): EmailMode {
   const hasInbound = emails.some(e => e.direction === 'inbound');
   const outbound = emails.filter(e => e.direction === 'outbound');
   const outboundCount = outbound.length;
+
+  if (lead.stage === 'email_drafted') return 'review_draft';
 
   // If they replied and we haven't responded yet, reply takes priority
   if (hasInbound) {
@@ -53,6 +56,8 @@ function getAvailableModes(emails: LeadEmail[], lead: Lead): EmailMode[] {
 
   // Always allow initial (user might want to restart)
   modes.push('initial');
+
+  if (lead.stage === 'email_drafted') modes.push('review_draft');
 
   if (outboundCount >= 1) modes.push('follow_up_1');
   if (outboundCount >= 1) modes.push('follow_up_2');
