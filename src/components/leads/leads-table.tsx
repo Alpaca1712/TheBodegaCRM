@@ -1,9 +1,12 @@
 'use client';
 
+import { useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
+import { Copy, Check } from 'lucide-react';
+import { toast } from 'sonner';
 import type { Lead } from '@/types/leads';
-import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads';
+import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } from '@/types/leads';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -31,6 +34,34 @@ const priorityDots: Record<string, string> = {
   medium: 'bg-amber-500',
   low: 'bg-zinc-400',
 };
+
+function CopyEmailButton({ email }: { email: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(email);
+      setCopied(true);
+      toast.success('Email copied to clipboard');
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      toast.error('Failed to copy email');
+    }
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="ml-1.5 p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/20"
+      aria-label="Copy email"
+      title="Copy email"
+    >
+      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+    </button>
+  );
+}
 
 export default function LeadsTable({
   leads,
@@ -84,7 +115,7 @@ export default function LeadsTable({
             return (
               <tr
                 key={lead.id}
-                className={`border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${checked ? 'bg-red-50/40 dark:bg-red-950/10' : ''}`}
+                className={`group border-b border-zinc-100 dark:border-zinc-800/50 hover:bg-zinc-50 dark:hover:bg-zinc-900/50 transition-colors ${checked ? 'bg-red-50/40 dark:bg-red-950/10' : ''}`}
               >
                 {selectable && (
                   <td className="py-3 pl-4 w-10">
@@ -99,14 +130,19 @@ export default function LeadsTable({
                   </td>
                 )}
                 <td className={`py-3 ${selectable ? '' : 'pl-4'}`}>
-                  <Link href={`/leads/${lead.id}`} className="block">
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 transition-colors">
-                      {lead.contact_name}
-                    </p>
+                  <div className="flex flex-col">
+                    <Link href={`/leads/${lead.id}`} className="block w-fit">
+                      <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 transition-colors">
+                        {lead.contact_name}
+                      </p>
+                    </Link>
                     {lead.contact_email && (
-                      <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.contact_email}</p>
+                      <div className="flex items-center">
+                        <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.contact_email}</p>
+                        <CopyEmailButton email={lead.contact_email} />
+                      </div>
                     )}
-                  </Link>
+                  </div>
                 </td>
                 <td className="py-3">
                   <p className="text-sm text-zinc-700 dark:text-zinc-300">{lead.company_name}</p>
@@ -123,18 +159,24 @@ export default function LeadsTable({
                   </span>
                 </td>
                 <td className="py-3">
-                  <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
+                  <span
+                    className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${stageColors[lead.stage] || ''}`}
+                    title={STAGE_DESCRIPTIONS[lead.stage]}
+                  >
                     {STAGE_LABELS[lead.stage]}
                   </span>
                 </td>
                 <td className="py-3">
                   {lead.icp_score != null ? (
-                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
-                      lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
-                      lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
-                      lead.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
-                      'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
-                    }`}>
+                    <span
+                      className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+                        lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                        lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                        lead.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
+                        'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                      }`}
+                      title={lead.icp_reasons?.join('\n')}
+                    >
                       {lead.icp_score}
                     </span>
                   ) : (

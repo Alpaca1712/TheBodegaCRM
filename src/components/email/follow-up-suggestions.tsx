@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
@@ -335,6 +335,15 @@ function StatCard({ label, value, icon, color }: { label: string; value: number;
   );
 }
 
+function parseNextStep(nextStep: string): { channel: string | null; framework: string | null; text: string; tactical: string | null } {
+  const channelMatch = nextStep.match(/^\[([^\]]+)\]\s*/);
+  let rest = channelMatch ? nextStep.slice(channelMatch[0].length) : nextStep;
+  const frameworkMatch = rest.match(/^\[([^\]]+)\]\s*/);
+  rest = frameworkMatch ? rest.slice(frameworkMatch[0].length) : rest;
+  const tacticalSplit = rest.split('\n\nTactical: ');
+  return { channel: channelMatch?.[1] || null, framework: frameworkMatch?.[1] || null, text: tacticalSplit[0], tactical: tacticalSplit[1] || null };
+}
+
 function parseActionBadges(action: string): { badges: string[]; text: string } {
   const badges: string[] = [];
   let text = action;
@@ -353,10 +362,6 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
   const aiNextStep = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step).text : null;
-
-  // Prioritize AI Strategy
-  const rawAction = item.lead.conversation_next_step || item.suggestedAction;
-  const { badges, text: actionText } = parseActionBadges(rawAction);
 
   // Prioritize AI Strategy
   const rawAction = item.lead.conversation_next_step || item.suggestedAction;
