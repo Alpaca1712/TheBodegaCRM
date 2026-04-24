@@ -192,9 +192,10 @@ function buildUserPrompt(
   customContext?: string,
   memories?: Array<{ memory_type: string; content: string }>
 ): string {
-  const bc = lead.battle_card as Record<string, unknown> | null;
-  const techStack = bc?.tech_stack as string[] | undefined;
-  const competitiveLandscape = bc?.competitive_landscape as string[] | undefined;
+  const bc = lead.battle_card as {
+    our_angle?: string; their_product?: string; competitive_landscape?: string[];
+    tech_stack?: string[]; discovery_questions?: string[];
+  } | null;
 
   const research = [
     lead.company_description && `Company: ${lead.company_description}`,
@@ -208,8 +209,8 @@ function buildUserPrompt(
     lead.icp_reasons?.length && `ICP Fit Reasons: ${lead.icp_reasons.join(', ')}`,
     bc?.our_angle && `STRATEGIC ANGLE: ${bc.our_angle}`,
     bc?.their_product && `PRODUCT INTEL: ${bc.their_product}`,
-    techStack?.length && `TECH STACK: ${techStack.join(', ')}`,
-    competitiveLandscape?.length && `COMPETITIVE LANDSCAPE: ${competitiveLandscape.join('; ')}`,
+    bc?.tech_stack?.length && `TECH STACK: ${bc.tech_stack.join(', ')}`,
+    bc?.competitive_landscape?.length && `COMPETITIVE LANDSCAPE: ${bc.competitive_landscape.join('; ')}`,
   ]
     .filter(Boolean)
     .join('\n')

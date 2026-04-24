@@ -6,6 +6,7 @@ import { Plus, BookOpen, Trash } from 'lucide-react';
 import type { AgentMemory } from '@/types/leads-detail';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 
 const typeColors: Record<string, string> = {
   preference: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
@@ -19,6 +20,14 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
   const [addContent, setAddContent] = useState('');
   const [addType, setAddType] = useState('context');
   const [adding, setAdding] = useState(false);
+
+  const handleKeyDown = (e: React.KeyboardEvent) => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
+      if (!adding && addContent.trim()) {
+        handleAdd();
+      }
+    }
+  };
 
   const handleAdd = async () => {
     if (!addContent.trim()) return;
@@ -46,11 +55,18 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
         <Textarea
           value={addContent}
           onChange={(e) => setAddContent(e.target.value)}
+          onKeyDown={handleKeyDown}
           placeholder="Type a fact, preference, or context to remember about this lead..."
           className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800"
+          aria-label="New memory content"
         />
         <div className="flex items-center gap-2">
-          <select value={addType} onChange={(e) => setAddType(e.target.value)} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors">
+          <select
+            value={addType}
+            onChange={(e) => setAddType(e.target.value)}
+            className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20 transition-colors"
+            aria-label="Memory type"
+          >
             <option value="context">Context</option>
             <option value="preference">Preference</option>
             <option value="objection">Objection</option>
@@ -64,7 +80,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
             size="sm"
             className="rounded-lg h-auto py-1.5"
           >
-            <Plus className="h-3.5 w-3.5 mr-1.5" />
+            {!adding && <Plus className="h-3.5 w-3.5 mr-1.5" />}
             Add
           </Button>
         </div>

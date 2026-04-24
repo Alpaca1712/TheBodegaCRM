@@ -121,6 +121,9 @@ Respond with ONLY valid JSON:
 
 function buildFullContext(input: z.infer<typeof requestSchema> & { memories?: Array<{ memory_type: string; content: string }> }): string {
   const { lead, emailThread, followUpNumber, customContext } = input
+  const bc = lead.battle_card as {
+    our_angle?: string; their_product?: string; competitive_landscape?: string[];
+  } | null;
 
   const sections: string[] = []
 
@@ -129,10 +132,25 @@ Name: ${lead.contact_name}
 Title: ${lead.contact_title || 'Unknown'}
 Company: ${lead.company_name}
 Type: ${lead.type}
-Stage: ${lead.stage}`)
+Stage: ${lead.stage}${lead.icp_score ? `\nICP Score: ${lead.icp_score}/100` : ''}${lead.icp_reasons?.length ? `\nICP Reasons: ${lead.icp_reasons.join(', ')}` : ''}`)
+
+  if (lead.icp_score != null) {
+    sections.push(`=== GTM FIT ===
+ICP Score: ${lead.icp_score}/100
+Reasons: ${lead.icp_reasons.join('; ')}`)
+  }
+
+  if (bc.our_angle) {
+    sections.push(`=== STRATEGIC GTM ANGLE (Use this to shape the pitch) ===\n${bc.our_angle}`)
+  }
 
   if (lead.company_description) {
     sections.push(`=== COMPANY ===\n${lead.company_description}`)
+  }
+
+  if (bc?.our_angle || bc?.their_product) {
+    sections.push(`=== BATTLE CARD / STRATEGY ===
+${bc.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc.their_product ? `PRODUCT INTEL: ${bc.their_product}` : ''}`)
   }
 
   if (lead.type === 'customer' && lead.attack_surface_notes) {

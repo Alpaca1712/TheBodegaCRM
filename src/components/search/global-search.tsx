@@ -189,6 +189,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Search leads or type a command..."
+              aria-label="Search leads or commands"
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />

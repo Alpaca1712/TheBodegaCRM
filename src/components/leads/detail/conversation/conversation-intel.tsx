@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { toast } from 'sonner';
 import {
-  Brain, Loader2, TrendingUp, AlertCircle, MessageSquare, Clock, Sparkles,
+  Brain, TrendingUp, AlertCircle, MessageSquare, Clock, Sparkles,
 } from 'lucide-react';
 import type { Lead, LeadEmail, LeadInteraction, ConversationSignal } from '@/types/leads';
 import { buildTimeline } from './timeline-utils';

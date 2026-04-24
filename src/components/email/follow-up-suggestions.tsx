@@ -5,11 +5,12 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown,
+  User, Building2, ChevronDown, Zap,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
+import { FollowUpSheet } from './follow-up-sheet';
 
 interface FollowUpSuggestionsProps {
   compact?: boolean;
@@ -126,10 +127,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
+  const [selectedItem, setSelectedItem] = useState<FollowUpItem | null>(null);
 
-  useEffect(() => { loadFollowUps(); }, [typeFilter]);
-
-  const loadFollowUps = async () => {
+  const loadFollowUps = useCallback(async () => {
     try {
       const supabase = createClient();
       const { data: { user } } = await supabase.auth.getUser();
@@ -184,7 +184,11 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter]);
+
+  useEffect(() => {
+    loadFollowUps();
+  }, [loadFollowUps]);
 
   const filtered = items.filter(item => {
     if (filter === 'all') return true;
@@ -222,7 +226,11 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
           </span>
         </div>
         {topItems.map(item => (
-          <CompactCard key={item.lead.id} item={item} />
+          <CompactCard
+            key={item.lead.id}
+            item={item}
+            onGenerate={() => setSelectedItem(item)}
+          />
         ))}
         {items.length > 5 && (
           <Link href="/follow-ups" className="block text-center text-xs text-red-600 dark:text-red-400 hover:text-red-500 py-2 font-medium">
@@ -290,10 +298,22 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
       ) : (
         <div className="space-y-2">
           {filtered.map(item => (
-            <FollowUpCard key={item.lead.id} item={item} />
+            <FollowUpCard
+              key={item.lead.id}
+              item={item}
+              onGenerate={() => setSelectedItem(item)}
+            />
           ))}
         </div>
       )}
+
+      <FollowUpSheet
+        lead={selectedItem?.lead || null}
+        initialFollowUpType={selectedItem?.suggestedType || null}
+        isOpen={!!selectedItem}
+        onOpenChange={(open) => !open && setSelectedItem(null)}
+        onEmailSaved={loadFollowUps}
+      />
     </div>
   );
 }
@@ -324,12 +344,27 @@ function parseNextStep(nextStep: string): { channel: string | null; framework: s
   return { channel: channelMatch?.[1] || null, framework: frameworkMatch?.[1] || null, text: tacticalSplit[0], tactical: tacticalSplit[1] || null };
 }
 
-function FollowUpCard({ item }: { item: FollowUpItem }) {
+function parseActionBadges(action: string): { badges: string[]; text: string } {
+  const badges: string[] = [];
+  let text = action;
+  const badgeRegex = /^\[([^\]]+)\]\s*/;
+  let match;
+  while ((match = text.match(badgeRegex))) {
+    badges.push(match[1]);
+    text = text.slice(match[0].length);
+  }
+  return { badges, text };
+}
+
+function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
+
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = item.suggestedType === 'reply_needed' || item.suggestedType === 'post_meeting';
-
+  // Prioritize AI Strategy
+  const rawAction = item.lead.conversation_next_step || item.suggestedAction;
+  const { badges, text: actionText } = parseActionBadges(rawAction);
   const aiStrategy = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step) : null;
 
   return (
@@ -354,7 +389,7 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
               {urg.label}
             </span>
             {item.lead.icp_score != null && (
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                 item.lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
                 item.lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
                 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
@@ -363,7 +398,7 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
               </span>
             )}
             {item.lead.risk_score != null && (
-              <span className={`px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+              <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
                 item.lead.risk_score > 50 ? 'bg-red-100 dark:bg-red-900/40 text-red-600' :
                 item.lead.risk_score > 15 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
                 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600'
@@ -422,7 +457,16 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
               )}
             </div>
           ) : (
-            <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{item.suggestedAction}</p>
+            <>
+              <div className="flex flex-wrap gap-1 mb-1">
+                {badges.map((b, i) => (
+                  <span key={i} className="px-1.5 py-0.5 rounded bg-white/40 dark:bg-black/20 text-[9px] font-bold uppercase tracking-wider text-zinc-600 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
+                    {b}
+                  </span>
+                ))}
+              </div>
+              <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed font-medium">{actionText}</p>
+            </>
           )}
 
           {/* Email stats */}
@@ -439,27 +483,27 @@ function FollowUpCard({ item }: { item: FollowUpItem }) {
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <Link
-            href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
+          <button
+            onClick={onGenerate}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
           >
             <Send className="h-3 w-3" />
             Generate
             <ArrowRight className="h-3 w-3" />
-          </Link>
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-function CompactCard({ item }: { item: FollowUpItem }) {
+function CompactCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   return (
-    <Link
-      href={`/leads/${item.lead.id}?tab=emails&followup=${item.suggestedType}`}
-      className={`flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm`}
+    <button
+      onClick={onGenerate}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm text-left`}
     >
       <div className={`h-2 w-2 rounded-full shrink-0 ${urg.dot}`} />
       <div className="flex-1 min-w-0">
@@ -470,6 +514,6 @@ function CompactCard({ item }: { item: FollowUpItem }) {
         {CHANNEL_ICONS[item.suggestedChannel]}
         <ArrowRight className="h-3 w-3" />
       </div>
-    </Link>
+    </button>
   );
 }

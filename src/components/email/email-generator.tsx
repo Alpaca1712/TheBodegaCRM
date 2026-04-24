@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import { toast } from 'sonner';
-import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCircle, Info } from 'lucide-react';
+import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCircle, Info, Target } from 'lucide-react';
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';
 import { checkEmailQuality, countWords } from '@/lib/ai/quality';
 
@@ -87,8 +87,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   const [copiedSide, setCopiedSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [sendingSide, setSendingSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [customContext, setCustomContext] = useState('');
-  const [customPrompt, setCustomPrompt] = useState('');
-  const [showContext, setShowContext] = useState(false);
+  const [customPrompt, setCustomPrompt] = useState(lead.conversation_next_step || '');
+  const [showContext, setShowContext] = useState(!!lead.conversation_next_step);
   const [showModeSelector, setShowModeSelector] = useState(false);
 
   const config = MODE_CONFIG[mode];
@@ -248,6 +248,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   };
 
   const hasResearch = lead.company_description || lead.attack_surface_notes || lead.investment_thesis_notes || lead.personal_details || (lead.smykm_hooks?.length > 0);
+  const battleCard = lead.battle_card as Record<string, unknown> | null;
+  const ourAngle = battleCard?.our_angle as string | undefined;
 
   if (!hasResearch) {
     return (
@@ -264,25 +266,41 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   if (!result) {
     return (
       <div className="space-y-4">
-        {/* Tactical Advice from AI */}
-        {lead.conversation_next_step && (
-          <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4">
-            <div className="flex items-center justify-between mb-2">
-              <div className="flex items-center gap-2">
-                <Brain className="h-4 w-4 text-red-500" />
-                <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">AI Strategy</h4>
+        {/* Tactical Advice & GTM Angle */}
+        {(lead.conversation_next_step || ourAngle) && (
+          <div className="space-y-3">
+            {lead.conversation_next_step && (
+              <div className="rounded-xl border border-red-200 dark:border-red-900/40 bg-red-50/50 dark:bg-red-950/20 p-4">
+                <div className="flex items-center justify-between mb-2">
+                  <div className="flex items-center gap-2">
+                    <Brain className="h-4 w-4 text-red-500" />
+                    <h4 className="text-xs font-bold text-red-700 dark:text-red-400 uppercase tracking-wider">AI Strategy</h4>
+                  </div>
+                  <button
+                    onClick={applyStrategy}
+                    className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-md transition-colors uppercase tracking-tight"
+                  >
+                    <Zap className="h-3 w-3" />
+                    Apply Strategy
+                  </button>
+                </div>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed italic">
+                  {lead.conversation_next_step}
+                </p>
               </div>
-              <button
-                onClick={applyStrategy}
-                className="inline-flex items-center gap-1 px-2 py-1 text-[10px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-md transition-colors uppercase tracking-tight"
-              >
-                <Zap className="h-3 w-3" />
-                Apply Strategy
-              </button>
-            </div>
-            <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed italic">
-              {lead.conversation_next_step}
-            </p>
+            )}
+
+            {ourAngle && (
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <Target className="h-4 w-4 text-blue-500" />
+                  <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Our GTM Angle</h4>
+                </div>
+                <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
+                  {ourAngle}
+                </p>
+              </div>
+            )}
           </div>
         )}
 

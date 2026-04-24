@@ -73,6 +73,7 @@ export default function LeadsTable({
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Company</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Type</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Stage</th>
+            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">ICP</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Priority</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Updated</th>
           </tr>
@@ -125,6 +126,20 @@ export default function LeadsTable({
                   <span className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
                     {STAGE_LABELS[lead.stage]}
                   </span>
+                </td>
+                <td className="py-3">
+                  {lead.icp_score != null ? (
+                    <span className={`inline-block px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums ${
+                      lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
+                      lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
+                      lead.icp_score >= 30 ? 'bg-amber-100 dark:bg-amber-900/40 text-amber-600' :
+                      'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
+                    }`}>
+                      {lead.icp_score}
+                    </span>
+                  ) : (
+                    <span className="text-[10px] text-zinc-400">--</span>
+                  )}
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-1.5">
