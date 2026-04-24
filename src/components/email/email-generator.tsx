@@ -49,7 +49,7 @@ function detectBestMode(emails: LeadEmail[], lead: Lead): EmailMode {
   return 'break_up';
 }
 
-function getAvailableModes(emails: LeadEmail[]): EmailMode[] {
+function getAvailableModes(emails: LeadEmail[], lead: Lead): EmailMode[] {
   const hasInbound = emails.some(e => e.direction === 'inbound');
   const outboundCount = emails.filter(e => e.direction === 'outbound').length;
   const modes: EmailMode[] = [];
@@ -78,7 +78,7 @@ interface EmailGeneratorProps {
 
 export default function EmailGenerator({ lead, emails = [], followUpType, onEmailSaved }: EmailGeneratorProps) {
   const detectedMode = useMemo(() => detectBestMode(emails, lead), [emails, lead]);
-  const availableModes = useMemo(() => getAvailableModes(emails), [emails]);
+  const availableModes = useMemo(() => getAvailableModes(emails, lead), [emails, lead]);
 
   const initialMode = (followUpType && followUpType in MODE_CONFIG)
     ? followUpType as EmailMode
