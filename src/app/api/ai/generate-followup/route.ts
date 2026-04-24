@@ -150,7 +150,7 @@ Reasons: ${lead.icp_reasons.join('; ')}`)
 
   if (bc?.our_angle || bc?.their_product) {
     sections.push(`=== BATTLE CARD / STRATEGY ===
-${bc.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc.their_product ? `PRODUCT INTEL: ${bc.their_product}` : ''}`)
+${bc?.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc?.their_product ? `PRODUCT INTEL: ${bc.their_product}` : ''}`)
   }
 
   if (lead.type === 'customer' && lead.attack_surface_notes) {
