@@ -22,7 +22,7 @@ interface FollowUpItem {
   lastEmail: LeadEmail | null;
   daysSinceLastContact: number;
   suggestedAction: string;
-  suggestedType: 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting' | 'initial_outreach' | 'review_draft';
+  suggestedType: 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
   suggestedChannel: 'email' | 'linkedin' | 'twitter';
   urgency: 'overdue' | 'due_today' | 'upcoming';
   sequenceDay: string;
@@ -33,8 +33,8 @@ interface FollowUpItem {
 const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held'] as const;
 
 const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
-  initial_outreach: { label: 'Initial SMYKM', short: 'First Send', description: 'Deep research complete. Draft the first SMYKM email.' },
-  review_draft: { label: 'Review & Send', short: 'Send Draft', description: 'Draft is ready in CRM. Move it to Gmail and send.' },
+  initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
+  review_draft: { label: 'Review Drafted Email', short: 'Review', description: 'An email is drafted and ready for human review before sending.' },
   follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
   follow_up_2: { label: 'Lead Magnet (Day 9)', short: 'Value Drop', description: 'Hormozi approach: deliver value, offer a free breakdown or resource.' },
   follow_up_3: { label: 'Channel Switch (Day 14)', short: 'Channel Switch', description: 'Move to LinkedIn or Twitter DM. Short, casual, acknowledge the emails.' },
@@ -68,15 +68,15 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
   const inboundCount = inboundEmails.length;
 
   if (lead.stage === 'researched') {
-    const hasResearch = lead.company_description || (lead.smykm_hooks && lead.smykm_hooks.length > 0);
+    const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description;
     if (!hasResearch || outboundCount > 0) return null;
     const daysSinceCreated = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 86400000);
     return {
       lead, lastEmail, daysSinceLastContact: daysSinceCreated,
       suggestedAction: ACTION_LABELS.initial_outreach.description,
       suggestedType: 'initial_outreach', suggestedChannel: 'email',
-      urgency: daysSinceCreated >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: 'Day 0', outboundCount, inboundCount,
+      urgency: daysSinceCreated >= 3 ? 'overdue' : daysSinceCreated >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: 'Day 0 (Initial)', outboundCount, inboundCount,
     };
   }
 
@@ -86,8 +86,8 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       lead, lastEmail, daysSinceLastContact: daysSinceUpdated,
       suggestedAction: ACTION_LABELS.review_draft.description,
       suggestedType: 'review_draft', suggestedChannel: 'email',
-      urgency: 'due_today',
-      sequenceDay: 'Draft', outboundCount, inboundCount,
+      urgency: daysSinceUpdated >= 2 ? 'overdue' : daysSinceUpdated >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: 'Draft Ready', outboundCount, inboundCount,
     };
   }
 
@@ -534,8 +534,17 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
             onClick={onGenerate}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
           >
-            <Send className="h-3 w-3" />
-            Generate
+            {item.suggestedType === 'review_draft' ? (
+              <>
+                <Zap className="h-3 w-3" />
+                Review
+              </>
+            ) : (
+              <>
+                <Send className="h-3 w-3" />
+                Generate
+              </>
+            )}
             <ArrowRight className="h-3 w-3" />
           </button>
         </div>
