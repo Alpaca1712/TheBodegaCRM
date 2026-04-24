@@ -49,7 +49,7 @@ function detectBestMode(emails: LeadEmail[], lead: Lead): EmailMode {
   return 'break_up';
 }
 
-function getAvailableModes(emails: LeadEmail[], lead: Lead): EmailMode[] {
+function getAvailableModes(emails: LeadEmail[]): EmailMode[] {
   const hasInbound = emails.some(e => e.direction === 'inbound');
   const outboundCount = emails.filter(e => e.direction === 'outbound').length;
   const modes: EmailMode[] = [];
@@ -78,7 +78,7 @@ interface EmailGeneratorProps {
 
 export default function EmailGenerator({ lead, emails = [], followUpType, onEmailSaved }: EmailGeneratorProps) {
   const detectedMode = useMemo(() => detectBestMode(emails, lead), [emails, lead]);
-  const availableModes = useMemo(() => getAvailableModes(emails, lead), [emails, lead]);
+  const availableModes = useMemo(() => getAvailableModes(emails), [emails]);
 
   const initialMode = (followUpType && followUpType in MODE_CONFIG)
     ? followUpType as EmailMode
@@ -253,8 +253,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   };
 
   const hasResearch = lead.company_description || lead.attack_surface_notes || lead.investment_thesis_notes || lead.personal_details || (lead.smykm_hooks?.length > 0);
-  const battleCard = lead.battle_card as Record<string, unknown> | null;
-  const ourAngle = battleCard?.our_angle as string | undefined;
+  const bc = lead.battle_card;
+  const ourAngle = bc?.our_angle;
 
   if (!hasResearch) {
     return (
@@ -304,6 +304,54 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
                 <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed font-medium">
                   {ourAngle}
                 </p>
+              </div>
+            )}
+
+            {bc?.trigger_events && bc.trigger_events.length > 0 && (
+              <div className="rounded-xl border border-amber-200 dark:border-amber-900/40 bg-amber-50/50 dark:bg-amber-950/20 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <Zap className="h-4 w-4 text-amber-500" />
+                  <h4 className="text-xs font-bold text-amber-700 dark:text-amber-400 uppercase tracking-wider">Trigger Events</h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {bc.trigger_events.map((trigger, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setCustomPrompt(`Focus on this trigger: ${trigger}`);
+                        setShowContext(true);
+                        toast.success('Trigger applied');
+                      }}
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-white dark:bg-zinc-800 border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-700 transition-colors text-left"
+                    >
+                      {trigger}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {bc?.their_weaknesses && bc.their_weaknesses.length > 0 && (
+              <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900/50 p-4">
+                <div className="flex items-center gap-2 mb-3">
+                  <AlertCircle className="h-4 w-4 text-red-500" />
+                  <h4 className="text-xs font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider">Target Weaknesses</h4>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  {bc.their_weaknesses.map((weakness, i) => (
+                    <button
+                      key={i}
+                      onClick={() => {
+                        setCustomPrompt(`Highlight their weakness: ${weakness}`);
+                        setShowContext(true);
+                        toast.success('Weakness angle applied');
+                      }}
+                      className="text-[11px] font-medium px-2.5 py-1 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 hover:bg-zinc-200 dark:hover:bg-zinc-700 transition-colors text-left"
+                    >
+                      {weakness}
+                    </button>
+                  ))}
+                </div>
               </div>
             )}
           </div>
