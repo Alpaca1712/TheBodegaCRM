@@ -46,7 +46,7 @@ import {
   User,
 } from 'lucide-react';
 import {
-  STAGE_LABELS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS,
+  STAGE_LABELS, STAGE_DESCRIPTIONS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS,
   CHANNEL_LABELS, INTERACTION_TYPE_LABELS, CHANNEL_INTERACTION_TYPES,
   INTERACTION_CHANNELS,
   type Lead, type LeadEmail, type LeadInteraction, type PipelineStage, type InteractionChannel, type InteractionType,
@@ -421,6 +421,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             <button
               key={stage}
               onClick={() => handleStageChange(stage)}
+              title={STAGE_DESCRIPTIONS[stage]}
               className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                 lead.stage === stage
                   ? 'bg-red-600 text-white shadow-sm shadow-red-600/20'

@@ -140,7 +140,7 @@ ICP Score: ${lead.icp_score}/100
 Reasons: ${lead.icp_reasons.join('; ')}`)
   }
 
-  if (bc.our_angle) {
+  if (bc?.our_angle) {
     sections.push(`=== STRATEGIC GTM ANGLE (Use this to shape the pitch) ===\n${bc.our_angle}`)
   }
 
