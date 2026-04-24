@@ -5,3 +5,7 @@
 ## 2025-05-15 - [Reusable Pattern: Sequential Sequential Shortcuts]
 **Learning:** Sequential keyboard shortcuts (e.g., 'G' then 'C') provide a powerful way to add many shortcuts without conflicting with standard browser or OS keys. Decoupling the shortcut logic (in a hook) from the action (in a component) using CustomEvents keeps components clean and focused.
 **Action:** Use `dispatch(new CustomEvent('toggle-feature'))` in `useGlobalShortcuts` and listen for it in the target component to implement global shortcuts for specific UI elements.
+
+## 2025-05-16 - [UX: Contextual Tooltips for Condensed Tables]
+**Learning:** In condensed data tables (like LeadsTable), native 'title' attributes provide a zero-dependency, highly accessible way to surface detailed metadata (e.g., full timestamps, stage descriptions, field definitions) without cluttering the UI or requiring complex popover logic.
+**Action:** Use 'title' attributes on status badges and truncated text fields in tables to provide "glanceable" details on hover. Always combine with 'cursor-help' for visual affordance.
