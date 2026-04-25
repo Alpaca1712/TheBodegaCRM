@@ -23,6 +23,7 @@ import {
   Users,
   Crosshair,
   Handshake,
+  Sparkles,
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
@@ -333,21 +334,36 @@ export default function DashboardPage() {
             <p className="text-xs text-zinc-500 dark:text-zinc-400 text-center py-6">No hot leads this week</p>
           ) : (
             <div className="space-y-1">
-              {data.hotLeads.map((lead) => (
-                <Link
-                  key={lead.id}
-                  href={`/leads/${lead.id}`}
-                  className="flex items-center justify-between py-2 px-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors"
-                >
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{lead.contact_name}</p>
-                    <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{lead.company_name}</p>
-                  </div>
-                  <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
-                    {STAGE_LABELS[lead.stage]}
-                  </span>
-                </Link>
-              ))}
+              {data.hotLeads.map((lead) => {
+                const hasPositiveSignal = lead.conversation_signals?.some(s =>
+                  s.type === 'positive' && s.detected_at &&
+                  new Date(s.detected_at) >= new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)
+                );
+                const isHighIcp = (lead.icp_score ?? 0) >= 80;
+
+                return (
+                  <Link
+                    key={lead.id}
+                    href={`/leads/${lead.id}`}
+                    className="flex items-center justify-between py-2 px-2.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800/60 transition-colors group"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center gap-1.5">
+                        <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{lead.contact_name}</p>
+                        {hasPositiveSignal && <Sparkles className="h-3 w-3 text-red-500 fill-red-500/20" title="Recent positive interest" />}
+                        {isHighIcp && <div className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" title="High ICP target" />}
+                      </div>
+                      <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{lead.company_name}</p>
+                    </div>
+                    <div className="flex flex-col items-end gap-1">
+                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                        {STAGE_LABELS[lead.stage]}
+                      </span>
+                      {isHighIcp && <span className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase tracking-tight">High ICP</span>}
+                    </div>
+                  </Link>
+                );
+              })}
             </div>
           )}
         </div>

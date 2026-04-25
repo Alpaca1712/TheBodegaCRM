@@ -11,6 +11,7 @@ export async function GET(req: Request) {
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
     const now = new Date()
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
@@ -87,12 +88,33 @@ export async function GET(req: Request) {
       ? (leadsWithMultipleOutbound / followUpLeads.length) * 100
       : 100
 
-    // Hot leads: replied or meeting_booked in last 7 days
+    // Hot leads: high-signal activity (replies, high ICP research, positive signals)
     const hotLeads = leads.filter(l => {
-      if (!['replied', 'meeting_booked'].includes(l.stage)) return false
-      const lastIn = l.last_inbound_at || l.updated_at
-      return new Date(lastIn) >= weekAgo
-    }).slice(0, 8)
+      const lastUpdate = new Date(l.updated_at)
+
+      // 1. Replied or meeting_booked in last 7 days
+      if (['replied', 'meeting_booked'].includes(l.stage)) {
+        const lastIn = l.last_inbound_at || l.updated_at
+        if (new Date(lastIn) >= weekAgo) return true
+      }
+
+      // 2. Researched with high ICP in last 48h (new high-value prospects)
+      if (l.stage === 'researched' && (l.icp_score ?? 0) >= 80 && lastUpdate >= fortyEightHoursAgo) {
+        return true
+      }
+
+      // 3. Positive signals in last 7 days (AI detected interest)
+      if (l.conversation_signals && Array.isArray(l.conversation_signals)) {
+        const hasRecentPositive = l.conversation_signals.some(s =>
+          s.type === 'positive' && s.detected_at && new Date(s.detected_at) >= weekAgo
+        )
+        if (hasRecentPositive) return true
+      }
+
+      return false
+    })
+    .sort((a, b) => (b.icp_score ?? 0) - (a.icp_score ?? 0))
+    .slice(0, 8)
 
     // Build per-lead interaction count map
     const interactionsByLead = new Map<string, number>()
