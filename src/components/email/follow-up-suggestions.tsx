@@ -5,12 +5,13 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown, Zap,
+  Building2, ChevronDown, Zap, Search, Swords,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
 import { FollowUpSheet } from './follow-up-sheet';
+import { toast } from 'sonner';
 
 interface FollowUpSuggestionsProps {
   compact?: boolean;
@@ -22,7 +23,7 @@ interface FollowUpItem {
   lastEmail: LeadEmail | null;
   daysSinceLastContact: number;
   suggestedAction: string;
-  suggestedType: 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
+  suggestedType: 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting' | 'run_research' | 'prep_meeting';
   suggestedChannel: 'email' | 'linkedin' | 'twitter';
   urgency: 'overdue' | 'due_today' | 'upcoming';
   sequenceDay: string;
@@ -30,7 +31,7 @@ interface FollowUpItem {
   inboundCount: number;
 }
 
-const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held'] as const;
+const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held', 'meeting_booked'] as const;
 
 const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
   initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
@@ -41,6 +42,8 @@ const ACTION_LABELS: Record<string, { label: string; short: string; description:
   break_up: { label: 'Break-up (Day 21+)', short: 'Break-up', description: 'Last email. Give them an easy out. Leave the door open.' },
   reply_needed: { label: 'Reply to Response', short: 'Reply', description: 'They replied! Use ACA framework: Acknowledge, Compliment, Ask.' },
   post_meeting: { label: 'Post-Meeting Follow-up', short: 'Post-Meeting', description: 'Send follow-up within 24 hours with next steps.' },
+  run_research: { label: 'Run Lead Research', short: 'Research', description: 'Automated deep-dive into the contact and company for SMYKM hooks.' },
+  prep_meeting: { label: 'Prep for Meeting', short: 'Prep', description: 'Generate a sales battle card and technical briefing for the upcoming meeting.' },
 };
 
 const URGENCY_CONFIG = {
@@ -69,8 +72,20 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
 
   if (lead.stage === 'researched') {
     const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description;
-    if (!hasResearch || outboundCount > 0) return null;
     const daysSinceCreated = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 86400000);
+
+    if (!hasResearch) {
+      return {
+        lead, lastEmail, daysSinceLastContact: daysSinceCreated,
+        suggestedAction: ACTION_LABELS.run_research.description,
+        suggestedType: 'run_research', suggestedChannel: 'email',
+        urgency: daysSinceCreated >= 1 ? 'overdue' : 'due_today',
+        sequenceDay: 'Needs Research', outboundCount, inboundCount,
+      };
+    }
+
+    if (outboundCount > 0) return null;
+
     return {
       lead, lastEmail, daysSinceLastContact: daysSinceCreated,
       suggestedAction: ACTION_LABELS.initial_outreach.description,
@@ -102,6 +117,20 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       suggestedType: 'reply_needed', suggestedChannel: 'email',
       urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
       sequenceDay: `${daysSinceReply}d since reply`, outboundCount, inboundCount,
+    };
+  }
+
+  if (lead.stage === 'meeting_booked') {
+    const hasBattleCard = !!lead.battle_card;
+    if (hasBattleCard) return null;
+
+    const daysSinceUpdate = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
+    return {
+      lead, lastEmail, daysSinceLastContact: daysSinceUpdate,
+      suggestedAction: ACTION_LABELS.prep_meeting.description,
+      suggestedType: 'prep_meeting', suggestedChannel: 'email',
+      urgency: 'due_today',
+      sequenceDay: 'Meeting Booked', outboundCount, inboundCount,
     };
   }
 
@@ -154,6 +183,75 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FollowUpItem | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
+
+  const handleResearch = async (leadId: string) => {
+    setProcessingIds(prev => new Set(prev).add(leadId));
+    const promise = fetch('/api/ai/research-lead', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadId }),
+    }).then(async res => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Research failed' }));
+        throw new Error(err.error || 'Research failed');
+      }
+      return res.json();
+    });
+
+    toast.promise(promise, {
+      loading: 'Running deep research...',
+      success: () => {
+        loadFollowUps();
+        return 'Research complete! Hooks and company profile updated.';
+      },
+      error: (err) => err.message,
+    });
+
+    try {
+      await promise;
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+    }
+  };
+
+  const handlePrep = async (leadId: string) => {
+    setProcessingIds(prev => new Set(prev).add(leadId));
+    const promise = fetch('/api/ai/battle-card', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ leadId }),
+    }).then(async res => {
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Meeting prep failed' }));
+        throw new Error(err.error || 'Meeting prep failed');
+      }
+      return res.json();
+    });
+
+    toast.promise(promise, {
+      loading: 'Generating battle card...',
+      success: () => {
+        loadFollowUps();
+        return 'Battle card generated! Ready for your meeting.';
+      },
+      error: (err) => err.message,
+    });
+
+    try {
+      await promise;
+    } finally {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+    }
+  };
 
   const loadFollowUps = useCallback(async () => {
     try {
@@ -197,16 +295,16 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
       const urgencyOrder = { overdue: 0, due_today: 1, upcoming: 2 };
       computed.sort((a, b) => {
-        const isUrgentA = ['reply_needed', 'post_meeting'].includes(a.suggestedType);
-        const isUrgentB = ['reply_needed', 'post_meeting'].includes(b.suggestedType);
+        const isUrgentA = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(a.suggestedType);
+        const isUrgentB = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(b.suggestedType);
         if (isUrgentA && !isUrgentB) return -1;
         if (!isUrgentA && isUrgentB) return 1;
 
         const urgDiff = urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
         if (urgDiff !== 0) return urgDiff;
 
-        const isNewA = ['initial_outreach', 'review_draft'].includes(a.suggestedType);
-        const isNewB = ['initial_outreach', 'review_draft'].includes(b.suggestedType);
+        const isNewA = ['initial_outreach', 'review_draft', 'run_research'].includes(a.suggestedType);
+        const isNewB = ['initial_outreach', 'review_draft', 'run_research'].includes(b.suggestedType);
         if (isNewA && !isNewB && a.lead.priority === 'high') return -1;
         if (!isNewA && isNewB && b.lead.priority === 'high') return 1;
 
@@ -279,7 +377,6 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
   // Full page mode
   const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueCount = items.filter(i => i.urgency === 'due_today').length;
   const replyCount = items.filter(i => ['reply_needed', 'post_meeting'].includes(i.suggestedType)).length;
   const newCount = items.filter(i => ['initial_outreach', 'review_draft'].includes(i.suggestedType)).length;
   const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'initial_outreach', 'review_draft'].includes(i.suggestedType)).length;
@@ -339,6 +436,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               key={item.lead.id}
               item={item}
               onGenerate={() => setSelectedItem(item)}
+              onResearch={() => handleResearch(item.lead.id)}
+              onPrep={() => handlePrep(item.lead.id)}
+              isProcessing={processingIds.has(item.lead.id)}
             />
           ))}
         </div>
@@ -393,7 +493,19 @@ function parseActionBadges(action: string): { badges: string[]; text: string } {
   return { badges, text };
 }
 
-function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
+function FollowUpCard({
+  item,
+  onGenerate,
+  onResearch,
+  onPrep,
+  isProcessing
+}: {
+  item: FollowUpItem;
+  onGenerate: () => void;
+  onResearch: () => void;
+  onPrep: () => void;
+  isProcessing?: boolean;
+}) {
 
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
@@ -530,23 +642,45 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <button
-            onClick={onGenerate}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
-          >
-            {item.suggestedType === 'review_draft' ? (
-              <>
-                <Zap className="h-3 w-3" />
-                Review
-              </>
-            ) : (
-              <>
-                <Send className="h-3 w-3" />
-                Generate
-              </>
-            )}
-            <ArrowRight className="h-3 w-3" />
-          </button>
+
+          {item.suggestedType === 'run_research' ? (
+            <button
+              onClick={onResearch}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            >
+              {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Search className="h-3 w-3" />}
+              Run Research
+            </button>
+          ) : item.suggestedType === 'prep_meeting' ? (
+            <button
+              onClick={onPrep}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-purple-600 hover:bg-purple-500 rounded-lg transition-colors shadow-sm disabled:opacity-50"
+            >
+              {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Swords className="h-3 w-3" />}
+              Prep Meeting
+            </button>
+          ) : (
+            <button
+              onClick={onGenerate}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
+            >
+              {item.suggestedType === 'review_draft' ? (
+                <>
+                  <Zap className="h-3 w-3" />
+                  Review
+                </>
+              ) : (
+                <>
+                  <Send className="h-3 w-3" />
+                  Generate
+                </>
+              )}
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
     </div>
