@@ -4,7 +4,8 @@ import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
-  type: z.enum(['customer', 'investor', 'partnership']),
+  leadId: z.string().uuid().optional(),
+  type: z.enum(['customer', 'investor', 'partnership']).optional(),
   contact_name: z.string().optional().nullable(),
   company_name: z.string().optional().nullable(),
   product_name: z.string().optional().nullable(),
@@ -13,8 +14,8 @@ const requestSchema = z.object({
   linkedin_url: z.string().optional().nullable(),
   twitter_url: z.string().optional().nullable(),
 }).refine(
-  (data) => (data.contact_name && data.company_name) || data.linkedin_url,
-  { message: 'Provide either (contact_name + company_name) or a linkedin_url' }
+  (data) => data.leadId || (data.contact_name && data.company_name) || data.linkedin_url,
+  { message: 'Provide either leadId, (contact_name + company_name), or a linkedin_url' }
 )
 
 const RESEARCH_SYSTEM_PROMPT = `You are a research assistant for Rocoto. Rocoto tries to break AI agents before bad actors do by talking to them the same way users do (email, text, voice, chat, Slack) and finding ways to take them over. Then they help fix everything. Your job is to find deep, specific details about a person and their company using web search for Sam McKenna's "Show Me You Know Me" cold email methodology.
@@ -178,6 +179,35 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const input = validation.data
+    let leadContext: Record<string, unknown> | null = null
+
+    if (input.leadId) {
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', input.leadId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (lead) {
+        leadContext = lead
+        // Merge lead data into input for research
+        input.type = input.type || lead.type
+        input.contact_name = input.contact_name || lead.contact_name
+        input.company_name = input.company_name || lead.company_name
+        input.product_name = input.product_name || lead.product_name
+        input.fund_name = input.fund_name || lead.fund_name
+        input.website = input.website || lead.company_website
+        input.linkedin_url = input.linkedin_url || lead.contact_linkedin
+        input.twitter_url = input.twitter_url || lead.contact_twitter
+      }
+    }
+
+    if (!input.type) {
+      return NextResponse.json({ error: 'Lead type is required' }, { status: 400 })
+    }
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'ANTHROPIC_API_KEY not configured.' },
@@ -187,7 +217,7 @@ export async function POST(request: NextRequest) {
 
     const result = await researchWithWebSearchJSON<ResearchResult>(
       RESEARCH_SYSTEM_PROMPT,
-      buildResearchPrompt(validation.data),
+      buildResearchPrompt(input as z.infer<typeof requestSchema>),
       { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
     )
 
@@ -207,6 +237,44 @@ export async function POST(request: NextRequest) {
     }
 
     if (!result.team_members) result.team_members = []
+
+    // If leadId was provided, auto-update the lead
+    if (input.leadId) {
+      const updatePayload: Record<string, unknown> = {
+        company_description: result.company_description,
+        attack_surface_notes: result.attack_surface_notes,
+        investment_thesis_notes: result.investment_thesis_notes,
+        personal_details: result.personal_details,
+        smykm_hooks: result.smykm_hooks,
+        research_sources: result.research_sources,
+        contact_email: leadContext?.contact_email || result.contact_email,
+        contact_linkedin: leadContext?.contact_linkedin || result.contact_linkedin,
+        contact_twitter: leadContext?.contact_twitter || result.contact_twitter,
+        contact_title: leadContext?.contact_title || result.contact_title,
+        contact_phone: leadContext?.contact_phone || result.contact_phone,
+        company_website: leadContext?.company_website || result.company_website,
+        contact_photo_url: leadContext?.contact_photo_url || result.contact_photo_url,
+        company_logo_url: leadContext?.company_logo_url || result.company_logo_url,
+      }
+
+      if (result.team_members?.length) {
+        updatePayload.org_chart = result.team_members.map(m => ({
+          name: m.name,
+          title: m.title,
+          department: m.department || null,
+          linkedin_url: m.linkedin_url || null,
+          photo_url: null,
+          reports_to: null,
+          lead_id: null,
+        }))
+      }
+
+      await supabase
+        .from('leads')
+        .update(updatePayload)
+        .eq('id', input.leadId)
+        .eq('user_id', user.id)
+    }
 
     return NextResponse.json(result)
   } catch (error) {

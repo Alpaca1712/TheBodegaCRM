@@ -5,8 +5,9 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown, Zap,
+  User, Building2, ChevronDown, Zap, Search, Swords,
 } from 'lucide-react';
+import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
@@ -22,7 +23,7 @@ interface FollowUpItem {
   lastEmail: LeadEmail | null;
   daysSinceLastContact: number;
   suggestedAction: string;
-  suggestedType: 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
+  suggestedType: 'run_research' | 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'prep_meeting' | 'post_meeting';
   suggestedChannel: 'email' | 'linkedin' | 'twitter';
   urgency: 'overdue' | 'due_today' | 'upcoming';
   sequenceDay: string;
@@ -30,9 +31,10 @@ interface FollowUpItem {
   inboundCount: number;
 }
 
-const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held'] as const;
+const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'meeting_held'] as const;
 
 const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
+  run_research: { label: 'Deep Research Needed', short: 'Research', description: 'Lead found but no SMYKM hooks or description yet. Run AI research.' },
   initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
   review_draft: { label: 'Review Drafted Email', short: 'Review', description: 'An email is drafted and ready for human review before sending.' },
   follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
@@ -40,6 +42,7 @@ const ACTION_LABELS: Record<string, { label: string; short: string; description:
   follow_up_3: { label: 'Channel Switch (Day 14)', short: 'Channel Switch', description: 'Move to LinkedIn or Twitter DM. Short, casual, acknowledge the emails.' },
   break_up: { label: 'Break-up (Day 21+)', short: 'Break-up', description: 'Last email. Give them an easy out. Leave the door open.' },
   reply_needed: { label: 'Reply to Response', short: 'Reply', description: 'They replied! Use ACA framework: Acknowledge, Compliment, Ask.' },
+  prep_meeting: { label: 'Prep for Meeting', short: 'Prep', description: 'Meeting booked! Generate a battle card with company intel and pitch angles.' },
   post_meeting: { label: 'Post-Meeting Follow-up', short: 'Post-Meeting', description: 'Send follow-up within 24 hours with next steps.' },
 };
 
@@ -69,8 +72,19 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
 
   if (lead.stage === 'researched') {
     const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description;
-    if (!hasResearch || outboundCount > 0) return null;
     const daysSinceCreated = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 86400000);
+
+    if (!hasResearch) {
+      return {
+        lead, lastEmail, daysSinceLastContact: daysSinceCreated,
+        suggestedAction: ACTION_LABELS.run_research.description,
+        suggestedType: 'run_research', suggestedChannel: 'email',
+        urgency: daysSinceCreated >= 1 ? 'overdue' : 'upcoming',
+        sequenceDay: 'New Lead', outboundCount, inboundCount,
+      };
+    }
+
+    if (outboundCount > 0) return null;
     return {
       lead, lastEmail, daysSinceLastContact: daysSinceCreated,
       suggestedAction: ACTION_LABELS.initial_outreach.description,
@@ -102,6 +116,20 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       suggestedType: 'reply_needed', suggestedChannel: 'email',
       urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
       sequenceDay: `${daysSinceReply}d since reply`, outboundCount, inboundCount,
+    };
+  }
+
+  if (lead.stage === 'meeting_booked') {
+    const hasBattleCard = lead.battle_card != null;
+    const daysSinceUpdated = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
+    if (hasBattleCard) return null;
+
+    return {
+      lead, lastEmail, daysSinceLastContact: daysSinceUpdated,
+      suggestedAction: ACTION_LABELS.prep_meeting.description,
+      suggestedType: 'prep_meeting', suggestedChannel: 'email',
+      urgency: daysSinceUpdated >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: 'Prep Needed', outboundCount, inboundCount,
     };
   }
 
@@ -154,6 +182,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FollowUpItem | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   const loadFollowUps = useCallback(async () => {
     try {
@@ -197,16 +226,16 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
       const urgencyOrder = { overdue: 0, due_today: 1, upcoming: 2 };
       computed.sort((a, b) => {
-        const isUrgentA = ['reply_needed', 'post_meeting'].includes(a.suggestedType);
-        const isUrgentB = ['reply_needed', 'post_meeting'].includes(b.suggestedType);
+        const isUrgentA = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(a.suggestedType);
+        const isUrgentB = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(b.suggestedType);
         if (isUrgentA && !isUrgentB) return -1;
         if (!isUrgentA && isUrgentB) return 1;
 
         const urgDiff = urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
         if (urgDiff !== 0) return urgDiff;
 
-        const isNewA = ['initial_outreach', 'review_draft'].includes(a.suggestedType);
-        const isNewB = ['initial_outreach', 'review_draft'].includes(b.suggestedType);
+        const isNewA = ['run_research', 'initial_outreach', 'review_draft'].includes(a.suggestedType);
+        const isNewB = ['run_research', 'initial_outreach', 'review_draft'].includes(b.suggestedType);
         if (isNewA && !isNewB && a.lead.priority === 'high') return -1;
         if (!isNewA && isNewB && b.lead.priority === 'high') return 1;
 
@@ -225,14 +254,70 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     loadFollowUps();
   }, [loadFollowUps]);
 
+  const handleResearch = async (lead: Lead) => {
+    setProcessingIds(prev => new Set(prev).add(lead.id));
+    toast.promise(
+      fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id, type: lead.type }),
+      }).then(res => {
+        if (!res.ok) throw new Error('Research failed');
+        return res.json();
+      }),
+      {
+        loading: `Researching ${lead.company_name}...`,
+        success: () => {
+          loadFollowUps();
+          return `Research complete for ${lead.contact_name}`;
+        },
+        error: 'Failed to research lead',
+      }
+    ).finally(() => {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(lead.id);
+        return next;
+      });
+    });
+  };
+
+  const handlePrep = async (lead: Lead) => {
+    setProcessingIds(prev => new Set(prev).add(lead.id));
+    toast.promise(
+      fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      }).then(res => {
+        if (!res.ok) throw new Error('Prep failed');
+        return res.json();
+      }),
+      {
+        loading: `Prepping meeting for ${lead.company_name}...`,
+        success: () => {
+          loadFollowUps();
+          return `Battle card generated for ${lead.contact_name}`;
+        },
+        error: 'Failed to generate battle card',
+      }
+    ).finally(() => {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(lead.id);
+        return next;
+      });
+    });
+  };
+
   const filtered = items.filter(item => {
     if (filter === 'all') return true;
     if (filter === 'overdue') return item.urgency === 'overdue';
     if (filter === 'due_today') return item.urgency === 'due_today';
     if (filter === 'upcoming') return item.urgency === 'upcoming';
-    if (filter === 'urgent') return ['reply_needed', 'post_meeting'].includes(item.suggestedType);
-    if (filter === 'new_leads') return ['initial_outreach', 'review_draft'].includes(item.suggestedType);
-    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting', 'initial_outreach', 'review_draft'].includes(item.suggestedType);
+    if (filter === 'urgent') return ['reply_needed', 'post_meeting', 'prep_meeting'].includes(item.suggestedType);
+    if (filter === 'new_leads') return ['run_research', 'initial_outreach', 'review_draft'].includes(item.suggestedType);
+    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting', 'prep_meeting', 'run_research', 'initial_outreach', 'review_draft'].includes(item.suggestedType);
     return true;
   });
 
@@ -338,7 +423,10 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
             <FollowUpCard
               key={item.lead.id}
               item={item}
+              isProcessing={processingIds.has(item.lead.id)}
               onGenerate={() => setSelectedItem(item)}
+              onResearch={() => handleResearch(item.lead)}
+              onPrep={() => handlePrep(item.lead)}
             />
           ))}
         </div>
@@ -393,7 +481,19 @@ function parseActionBadges(action: string): { badges: string[]; text: string } {
   return { badges, text };
 }
 
-function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
+function FollowUpCard({
+  item,
+  isProcessing,
+  onGenerate,
+  onResearch,
+  onPrep
+}: {
+  item: FollowUpItem;
+  isProcessing: boolean;
+  onGenerate: () => void;
+  onResearch: () => void;
+  onPrep: () => void;
+}) {
 
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
@@ -530,23 +630,54 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <button
-            onClick={onGenerate}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
-          >
-            {item.suggestedType === 'review_draft' ? (
-              <>
-                <Zap className="h-3 w-3" />
-                Review
-              </>
-            ) : (
-              <>
-                <Send className="h-3 w-3" />
-                Generate
-              </>
-            )}
-            <ArrowRight className="h-3 w-3" />
-          </button>
+
+          {item.suggestedType === 'run_research' ? (
+            <button
+              onClick={onResearch}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-emerald-600 hover:bg-emerald-500 rounded-lg transition-colors shadow-sm shadow-emerald-600/20 disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Search className="h-3 w-3" />
+              )}
+              Research
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          ) : item.suggestedType === 'prep_meeting' ? (
+            <button
+              onClick={onPrep}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-blue-600 hover:bg-blue-500 rounded-lg transition-colors shadow-sm shadow-blue-600/20 disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : (
+                <Swords className="h-3 w-3" />
+              )}
+              Prep Meeting
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          ) : (
+            <button
+              onClick={onGenerate}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+            >
+              {item.suggestedType === 'review_draft' ? (
+                <>
+                  <Zap className="h-3 w-3" />
+                  Review
+                </>
+              ) : (
+                <>
+                  <Send className="h-3 w-3" />
+                  Generate
+                </>
+              )}
+              <ArrowRight className="h-3 w-3" />
+            </button>
+          )}
         </div>
       </div>
     </div>

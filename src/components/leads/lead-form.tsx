@@ -16,6 +16,8 @@ import {
 } from '@/types/leads';
 import { Loader2, Sparkles, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface LeadFormProps {
   defaultValues?: Partial<LeadFormValues>;
@@ -197,7 +199,6 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
   const inputClass = 'w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-colors';
   const labelClass = 'block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1';
-  const textareaClass = `${inputClass} min-h-[80px] resize-y`;
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
@@ -226,18 +227,18 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="contact_name" className={labelClass}>Contact Name *</label>
-            <input id="contact_name" {...form.register('contact_name')} className={inputClass} placeholder="Felix Schlegel" />
+            <Input id="contact_name" {...form.register('contact_name')} placeholder="Felix Schlegel" />
             {form.formState.errors.contact_name && (
               <p className="text-xs text-red-500 mt-1">{form.formState.errors.contact_name.message}</p>
             )}
           </div>
           <div>
             <label htmlFor="contact_title" className={labelClass}>Contact Title</label>
-            <input id="contact_title" {...form.register('contact_title')} className={inputClass} placeholder="CTO" />
+            <Input id="contact_title" {...form.register('contact_title')} placeholder="CTO" />
           </div>
           <div>
             <label htmlFor="company_name" className={labelClass}>Company Name *</label>
-            <input id="company_name" {...form.register('company_name')} className={inputClass} placeholder="Parahelp" />
+            <Input id="company_name" {...form.register('company_name')} placeholder="Parahelp" />
             {form.formState.errors.company_name && (
               <p className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
             )}
@@ -245,19 +246,19 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           {watchType === 'customer' && (
             <div>
               <label htmlFor="product_name" className={labelClass}>Product Name</label>
-              <input id="product_name" {...form.register('product_name')} className={inputClass} placeholder="Mason" />
+              <Input id="product_name" {...form.register('product_name')} placeholder="Mason" />
             </div>
           )}
           {watchType === 'investor' && (
             <div>
               <label htmlFor="fund_name" className={labelClass}>Fund Name</label>
-              <input id="fund_name" {...form.register('fund_name')} className={inputClass} placeholder="Notation Capital" />
+              <Input id="fund_name" {...form.register('fund_name')} placeholder="Notation Capital" />
             </div>
           )}
           {watchType === 'partnership' && (
             <div>
               <label htmlFor="partnership_type" className={labelClass}>Partnership Type</label>
-              <input id="partnership_type" {...form.register('product_name')} className={inputClass} placeholder="Agency, cyber insurance, reseller..." />
+              <Input id="partnership_type" {...form.register('product_name')} placeholder="Agency, cyber insurance, reseller..." />
             </div>
           )}
         </div>
@@ -265,19 +266,19 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="contact_email" className={labelClass}>Email</label>
-            <input id="contact_email" {...form.register('contact_email')} className={inputClass} type="email" placeholder="name@company.com" />
+            <Input id="contact_email" {...form.register('contact_email')} type="email" placeholder="name@company.com" />
           </div>
           <div>
             <label htmlFor="contact_phone" className={labelClass}>Phone</label>
-            <input id="contact_phone" {...form.register('contact_phone')} className={inputClass} type="tel" placeholder="+1 (555) 123-4567" />
+            <Input id="contact_phone" {...form.register('contact_phone')} type="tel" placeholder="+1 (555) 123-4567" />
           </div>
           <div>
             <label htmlFor="contact_twitter" className={labelClass}>Twitter</label>
-            <input id="contact_twitter" {...form.register('contact_twitter')} className={inputClass} placeholder="@handle" />
+            <Input id="contact_twitter" {...form.register('contact_twitter')} placeholder="@handle" />
           </div>
           <div>
             <label htmlFor="contact_linkedin" className={labelClass}>LinkedIn</label>
-            <input id="contact_linkedin" {...form.register('contact_linkedin')} className={inputClass} placeholder="linkedin.com/in/..." />
+            <Input id="contact_linkedin" {...form.register('contact_linkedin')} placeholder="linkedin.com/in/..." />
             <p className="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">Paste a URL and hit Auto-Research to fill everything</p>
           </div>
         </div>
@@ -301,7 +302,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
           <div>
             <label htmlFor="source" className={labelClass}>Source</label>
-            <input id="source" {...form.register('source')} className={inputClass} placeholder="LinkedIn, referral, etc." />
+            <Input id="source" {...form.register('source')} placeholder="LinkedIn, referral, etc." />
           </div>
         </div>
       </div>
@@ -323,16 +324,15 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div>
           <label htmlFor="company_description" className={labelClass}>Company Description</label>
-          <textarea id="company_description" {...form.register('company_description')} className={textareaClass} placeholder="What does this company do? What's their product?" />
+          <Textarea id="company_description" {...form.register('company_description')} placeholder="What does this company do? What's their product?" />
         </div>
 
         {watchType === 'customer' && (
           <div>
             <label htmlFor="attack_surface_notes" className={labelClass}>Attack Surface Notes</label>
-            <textarea
+            <Textarea
               id="attack_surface_notes"
               {...form.register('attack_surface_notes')}
-              className={textareaClass}
               placeholder="How is their AI agent vulnerable? What channels does it use? What tools does it connect to? What data can it access?"
             />
           </div>
@@ -340,10 +340,9 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         {watchType === 'investor' && (
           <div>
             <label htmlFor="investment_thesis_notes" className={labelClass}>Investment Thesis Notes</label>
-            <textarea
+            <Textarea
               id="investment_thesis_notes"
               {...form.register('investment_thesis_notes')}
-              className={textareaClass}
               placeholder="What do they invest in? What's their thesis? What blog posts have they written?"
             />
           </div>
@@ -351,10 +350,9 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         {watchType === 'partnership' && (
           <div>
             <label htmlFor="partnership_notes" className={labelClass}>Partnership Opportunity Notes</label>
-            <textarea
+            <Textarea
               id="partnership_notes"
               {...form.register('investment_thesis_notes')}
-              className={textareaClass}
               placeholder="What kind of partnership? Lead gen agency, cyber insurance, reseller, integration partner? What's the mutual value prop?"
             />
           </div>
@@ -362,10 +360,9 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div>
           <label htmlFor="personal_details" className={labelClass}>Personal Details</label>
-          <textarea
+          <Textarea
             id="personal_details"
             {...form.register('personal_details')}
-            className={textareaClass}
             placeholder="Blog posts, podcast quotes, GitHub activity, personal story, career arc, side projects..."
           />
         </div>
@@ -393,12 +390,11 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
             ))}
           </div>
           <div className="flex gap-2">
-            <input
+            <Input
               id="new-hook"
               value={newHook}
               onChange={(e) => setNewHook(e.target.value)}
               onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addHook(); } }}
-              className={inputClass}
               placeholder="e.g. Jugend Hackt → boring machines → AI"
               aria-describedby="smykm-helper"
             />
@@ -416,7 +412,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div>
           <label htmlFor="notes" className={labelClass}>Notes</label>
-          <textarea id="notes" {...form.register('notes')} className={textareaClass} placeholder="Any other notes about this lead..." />
+          <Textarea id="notes" {...form.register('notes')} placeholder="Any other notes about this lead..." />
         </div>
       </div>
 
