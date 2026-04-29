@@ -12,6 +12,7 @@ export async function GET(req: Request) {
 
     const now = new Date()
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
     let leadsQuery = supabase.from('leads').select('*').eq('user_id', user.id)
@@ -87,12 +88,32 @@ export async function GET(req: Request) {
       ? (leadsWithMultipleOutbound / followUpLeads.length) * 100
       : 100
 
-    // Hot leads: replied or meeting_booked in last 7 days
-    const hotLeads = leads.filter(l => {
-      if (!['replied', 'meeting_booked'].includes(l.stage)) return false
-      const lastIn = l.last_inbound_at || l.updated_at
-      return new Date(lastIn) >= weekAgo
-    }).slice(0, 8)
+    // Hot leads: replied/meeting_booked (7d), high ICP researched (48h), or positive signals (7d)
+    const hotLeads = leads
+      .filter(l => {
+        // 1. Recently active in late stages
+        if (['replied', 'meeting_booked'].includes(l.stage)) {
+          const lastUpdate = l.last_inbound_at || l.updated_at
+          if (new Date(lastUpdate) >= weekAgo) return true
+        }
+
+        // 2. High ICP leads recently researched
+        if (l.stage === 'researched' && (l.icp_score ?? 0) >= 80) {
+          if (new Date(l.updated_at) >= fortyEightHoursAgo) return true
+        }
+
+        // 3. Positive conversation signals detected recently
+        if (l.conversation_signals && Array.isArray(l.conversation_signals)) {
+          const hasRecentPositive = l.conversation_signals.some(s =>
+            s.type === 'positive' && new Date(s.detected_at) >= weekAgo
+          )
+          if (hasRecentPositive) return true
+        }
+
+        return false
+      })
+      .sort((a, b) => (b.icp_score ?? 0) - (a.icp_score ?? 0))
+      .slice(0, 8)
 
     // Build per-lead interaction count map
     const interactionsByLead = new Map<string, number>()

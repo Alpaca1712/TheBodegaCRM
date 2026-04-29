@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown, Zap,
+  User, Building2, ChevronDown, Zap, Sparkles, Swords,
 } from 'lucide-react';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
@@ -22,7 +22,7 @@ interface FollowUpItem {
   lastEmail: LeadEmail | null;
   daysSinceLastContact: number;
   suggestedAction: string;
-  suggestedType: 'initial_outreach' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
+  suggestedType: 'initial_outreach' | 'review_draft' | 'run_research' | 'prep_meeting' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
   suggestedChannel: 'email' | 'linkedin' | 'twitter';
   urgency: 'overdue' | 'due_today' | 'upcoming';
   sequenceDay: string;
@@ -30,11 +30,13 @@ interface FollowUpItem {
   inboundCount: number;
 }
 
-const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held'] as const;
+const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'meeting_held'] as const;
 
 const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
   initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
   review_draft: { label: 'Review Drafted Email', short: 'Review', description: 'An email is drafted and ready for human review before sending.' },
+  run_research: { label: 'Run AI Research', short: 'Research', description: 'Deep research required. Run AI to find hooks and company intel.' },
+  prep_meeting: { label: 'Prep for Meeting', short: 'Prep', description: 'Meeting booked. Run AI to generate a tactical battle card.' },
   follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
   follow_up_2: { label: 'Lead Magnet (Day 9)', short: 'Value Drop', description: 'Hormozi approach: deliver value, offer a free breakdown or resource.' },
   follow_up_3: { label: 'Channel Switch (Day 14)', short: 'Channel Switch', description: 'Move to LinkedIn or Twitter DM. Short, casual, acknowledge the emails.' },
@@ -69,8 +71,19 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
 
   if (lead.stage === 'researched') {
     const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description;
-    if (!hasResearch || outboundCount > 0) return null;
     const daysSinceCreated = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 86400000);
+
+    if (!hasResearch) {
+      return {
+        lead, lastEmail, daysSinceLastContact: daysSinceCreated,
+        suggestedAction: ACTION_LABELS.run_research.description,
+        suggestedType: 'run_research', suggestedChannel: 'email',
+        urgency: daysSinceCreated >= 2 ? 'overdue' : daysSinceCreated >= 1 ? 'due_today' : 'upcoming',
+        sequenceDay: 'Need Research', outboundCount, inboundCount,
+      };
+    }
+
+    if (outboundCount > 0) return null;
     return {
       lead, lastEmail, daysSinceLastContact: daysSinceCreated,
       suggestedAction: ACTION_LABELS.initial_outreach.description,
@@ -102,6 +115,17 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
       suggestedType: 'reply_needed', suggestedChannel: 'email',
       urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
       sequenceDay: `${daysSinceReply}d since reply`, outboundCount, inboundCount,
+    };
+  }
+
+  if (lead.stage === 'meeting_booked') {
+    const daysSinceUpdated = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
+    return {
+      lead, lastEmail, daysSinceLastContact: daysSinceUpdated,
+      suggestedAction: ACTION_LABELS.prep_meeting.description,
+      suggestedType: 'prep_meeting', suggestedChannel: 'email',
+      urgency: daysSinceUpdated >= 2 ? 'overdue' : daysSinceUpdated >= 1 ? 'due_today' : 'upcoming',
+      sequenceDay: 'Prep Call', outboundCount, inboundCount,
     };
   }
 
@@ -154,6 +178,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   const [filter, setFilter] = useState<FilterType>('all');
   const [showFilters, setShowFilters] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FollowUpItem | null>(null);
+  const [processingIds, setProcessingIds] = useState<Set<string>>(new Set());
 
   const loadFollowUps = useCallback(async () => {
     try {
@@ -171,7 +196,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
         query = query.eq('type', typeFilter);
       }
 
-      const { data: leads } = await query.order('last_contacted_at', { ascending: true });
+      const { data: leads } = await query.order('updated_at', { ascending: false });
 
       if (!leads?.length) { setLoading(false); return; }
 
@@ -197,8 +222,8 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
       const urgencyOrder = { overdue: 0, due_today: 1, upcoming: 2 };
       computed.sort((a, b) => {
-        const isUrgentA = ['reply_needed', 'post_meeting'].includes(a.suggestedType);
-        const isUrgentB = ['reply_needed', 'post_meeting'].includes(b.suggestedType);
+        const isUrgentA = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(a.suggestedType);
+        const isUrgentB = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(b.suggestedType);
         if (isUrgentA && !isUrgentB) return -1;
         if (!isUrgentA && isUrgentB) return 1;
 
@@ -230,9 +255,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     if (filter === 'overdue') return item.urgency === 'overdue';
     if (filter === 'due_today') return item.urgency === 'due_today';
     if (filter === 'upcoming') return item.urgency === 'upcoming';
-    if (filter === 'urgent') return ['reply_needed', 'post_meeting'].includes(item.suggestedType);
-    if (filter === 'new_leads') return ['initial_outreach', 'review_draft'].includes(item.suggestedType);
-    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting', 'initial_outreach', 'review_draft'].includes(item.suggestedType);
+    if (filter === 'urgent') return ['reply_needed', 'post_meeting', 'prep_meeting'].includes(item.suggestedType);
+    if (filter === 'new_leads') return ['initial_outreach', 'review_draft', 'run_research'].includes(item.suggestedType);
+    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'review_draft', 'run_research'].includes(item.suggestedType);
     return true;
   });
 
@@ -250,6 +275,62 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     );
   }
 
+  const handleResearch = async (leadId: string, leadType: string) => {
+    setProcessingIds(prev => new Set(prev).add(leadId));
+    toast.promise(
+      fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, type: leadType }),
+      }).then(res => {
+        if (!res.ok) throw new Error('Research failed');
+        return res.json();
+      }),
+      {
+        loading: 'Running AI research...',
+        success: () => {
+          loadFollowUps();
+          return 'Research complete';
+        },
+        error: 'Failed to research lead',
+      }
+    ).finally(() => {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+    });
+  };
+
+  const handlePrep = async (leadId: string) => {
+    setProcessingIds(prev => new Set(prev).add(leadId));
+    toast.promise(
+      fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      }).then(res => {
+        if (!res.ok) throw new Error('Battle card failed');
+        return res.json();
+      }),
+      {
+        loading: 'Generating battle card...',
+        success: () => {
+          loadFollowUps();
+          return 'Meeting prep complete';
+        },
+        error: 'Failed to prep meeting',
+      }
+    ).finally(() => {
+      setProcessingIds(prev => {
+        const next = new Set(prev);
+        next.delete(leadId);
+        return next;
+      });
+    });
+  };
+
   // Compact mode for dashboard widget
   if (compact) {
     const topItems = items.slice(0, 5);
@@ -265,7 +346,12 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
           <CompactCard
             key={item.lead.id}
             item={item}
-            onGenerate={() => setSelectedItem(item)}
+            isProcessing={processingIds.has(item.lead.id)}
+            onGenerate={() => {
+              if (item.suggestedType === 'run_research') handleResearch(item.lead.id, item.lead.type);
+              else if (item.suggestedType === 'prep_meeting') handlePrep(item.lead.id);
+              else setSelectedItem(item);
+            }}
           />
         ))}
         {items.length > 5 && (
@@ -279,10 +365,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
   // Full page mode
   const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueCount = items.filter(i => i.urgency === 'due_today').length;
-  const replyCount = items.filter(i => ['reply_needed', 'post_meeting'].includes(i.suggestedType)).length;
-  const newCount = items.filter(i => ['initial_outreach', 'review_draft'].includes(i.suggestedType)).length;
-  const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'initial_outreach', 'review_draft'].includes(i.suggestedType)).length;
+  const replyCount = items.filter(i => ['reply_needed', 'post_meeting', 'prep_meeting'].includes(i.suggestedType)).length;
+  const newCount = items.filter(i => ['initial_outreach', 'review_draft', 'run_research'].includes(i.suggestedType)).length;
+  const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'review_draft', 'run_research'].includes(i.suggestedType)).length;
 
   const filters: Array<{ id: FilterType; label: string; count: number; color?: string }> = [
     { id: 'all', label: 'All', count: items.length },
@@ -338,7 +423,12 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
             <FollowUpCard
               key={item.lead.id}
               item={item}
-              onGenerate={() => setSelectedItem(item)}
+              isProcessing={processingIds.has(item.lead.id)}
+              onGenerate={() => {
+                if (item.suggestedType === 'run_research') handleResearch(item.lead.id, item.lead.type);
+                else if (item.suggestedType === 'prep_meeting') handlePrep(item.lead.id);
+                else setSelectedItem(item);
+              }}
             />
           ))}
         </div>
@@ -393,7 +483,7 @@ function parseActionBadges(action: string): { badges: string[]; text: string } {
   return { badges, text };
 }
 
-function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
+function FollowUpCard({ item, isProcessing, onGenerate }: { item: FollowUpItem; isProcessing: boolean; onGenerate: () => void }) {
 
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
@@ -532,20 +622,22 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
           </div>
           <button
             onClick={onGenerate}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+            disabled={isProcessing}
+            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
           >
-            {item.suggestedType === 'review_draft' ? (
-              <>
-                <Zap className="h-3 w-3" />
-                Review
-              </>
+            {isProcessing ? (
+              <Loader2 className="h-3 w-3 animate-spin" />
+            ) : item.suggestedType === 'review_draft' ? (
+              <Zap className="h-3 w-3" />
+            ) : item.suggestedType === 'run_research' ? (
+              <Sparkles className="h-3 w-3" />
+            ) : item.suggestedType === 'prep_meeting' ? (
+              <Swords className="h-3 w-3" />
             ) : (
-              <>
-                <Send className="h-3 w-3" />
-                Generate
-              </>
+              <Send className="h-3 w-3" />
             )}
-            <ArrowRight className="h-3 w-3" />
+            {isProcessing ? 'Working...' : item.suggestedType === 'review_draft' ? 'Review' : item.suggestedType === 'run_research' ? 'Research' : item.suggestedType === 'prep_meeting' ? 'Prep' : 'Generate'}
+            {!isProcessing && <ArrowRight className="h-3 w-3" />}
           </button>
         </div>
       </div>
@@ -553,22 +645,23 @@ function FollowUpCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: ()
   );
 }
 
-function CompactCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () => void }) {
+function CompactCard({ item, isProcessing, onGenerate }: { item: FollowUpItem; isProcessing: boolean; onGenerate: () => void }) {
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
   return (
     <button
       onClick={onGenerate}
-      className={`w-full flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm text-left`}
+      disabled={isProcessing}
+      className={`w-full flex items-center gap-3 p-3 rounded-xl border ${urg.border} ${urg.bg} transition-all hover:shadow-sm text-left disabled:opacity-50`}
     >
       <div className={`h-2 w-2 rounded-full shrink-0 ${urg.dot}`} />
       <div className="flex-1 min-w-0">
         <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100 truncate">{item.lead.contact_name}</p>
-        <p className="text-[10px] text-zinc-500 truncate">{action.short} · {item.daysSinceLastContact}d</p>
+        <p className="text-[10px] text-zinc-500 truncate">{isProcessing ? 'Working...' : `${action.short} · ${item.daysSinceLastContact}d`}</p>
       </div>
       <div className="flex items-center gap-1.5 text-[10px] text-zinc-400">
-        {CHANNEL_ICONS[item.suggestedChannel]}
-        <ArrowRight className="h-3 w-3" />
+        {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : CHANNEL_ICONS[item.suggestedChannel]}
+        {!isProcessing && <ArrowRight className="h-3 w-3" />}
       </div>
     </button>
   );
