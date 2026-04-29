@@ -14,6 +14,8 @@ interface LeadsTableProps {
   selectedIds?: Set<string>;
   onToggleOne?: (id: string) => void;
   onToggleAll?: (checked: boolean) => void;
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
 }
 
 const stageColors: Record<string, string> = {
@@ -69,12 +71,28 @@ export default function LeadsTable({
   selectedIds,
   onToggleOne,
   onToggleAll,
+  isFiltered,
+  onClearFilters,
 }: LeadsTableProps) {
 
   if (!leads.length) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads yet. Add your first lead to get started.</p>
+      <div className="text-center py-12 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+        {isFiltered ? (
+          <div className="space-y-3">
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads match your search or filters.</p>
+            {onClearFilters && (
+              <button
+                onClick={onClearFilters}
+                className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+              >
+                Clear all filters
+              </button>
+            )}
+          </div>
+        ) : (
+          <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads yet. Add your first lead to get started.</p>
+        )}
       </div>
     );
   }
