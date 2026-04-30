@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, Target } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Lead } from '@/types/leads';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } from '@/types/leads';
@@ -14,6 +14,8 @@ interface LeadsTableProps {
   selectedIds?: Set<string>;
   onToggleOne?: (id: string) => void;
   onToggleAll?: (checked: boolean) => void;
+  isFiltered?: boolean;
+  onClearFilters?: () => void;
 }
 
 const stageColors: Record<string, string> = {
@@ -69,12 +71,40 @@ export default function LeadsTable({
   selectedIds,
   onToggleOne,
   onToggleAll,
+  isFiltered = false,
+  onClearFilters,
 }: LeadsTableProps) {
-
   if (!leads.length) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads yet. Add your first lead to get started.</p>
+      <div className="text-center py-16 px-4">
+        <div className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-full bg-zinc-100 dark:bg-zinc-800">
+          <Target className="h-6 w-6 text-zinc-400" />
+        </div>
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+          {isFiltered ? 'No results found' : 'No leads yet'}
+        </h3>
+        <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400 max-w-xs mx-auto">
+          {isFiltered
+            ? "We couldn't find any leads matching your current filters. Try adjusting your search or filters."
+            : 'Add your first lead to start tracking your pipeline and outreach.'}
+        </p>
+        <div className="mt-6 flex justify-center gap-3">
+          {isFiltered ? (
+            <button
+              onClick={() => onClearFilters?.()}
+              className="px-4 py-2 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-700 transition-colors"
+            >
+              Clear all filters
+            </button>
+          ) : (
+            <Link
+              href="/leads/new?type=customer"
+              className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
+            >
+              Add your first lead
+            </Link>
+          )}
+        </div>
       </div>
     );
   }
