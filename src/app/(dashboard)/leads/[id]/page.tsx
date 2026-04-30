@@ -51,6 +51,8 @@ import {
 } from '@/types/leads';
 import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 
 interface RelatedLead {
   id: string;
@@ -671,7 +673,7 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
     <div className="space-y-4">
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Add Memory</h3>
-        <textarea
+        <Textarea
           value={addContent}
           onChange={(e) => setAddContent(e.target.value)}
           onKeyDown={(e) => {
@@ -682,7 +684,7 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
           }}
           placeholder="Type a fact, preference, or context to remember about this lead..."
           aria-label="New memory content"
-          className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-y"
+          className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 min-h-[60px]"
         />
         <div className="flex items-center gap-2">
           <select value={addType} onChange={(e) => setAddType(e.target.value)} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300">
@@ -948,12 +950,12 @@ function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string; initia
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notes</h3>
         {saving && <span className="text-[10px] text-zinc-400 animate-pulse">Saving...</span>}
       </div>
-      <textarea
+      <Textarea
         value={notes}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={() => { if (timeoutRef.current) { clearTimeout(timeoutRef.current); save(notes); } }}
         placeholder="Paste LinkedIn DMs, call notes, or any context..."
-        className="w-full min-h-[80px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-y"
+        className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
       />
     </div>
   );
@@ -1020,7 +1022,7 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
           <select value={interactionType} onChange={(e) => setInteractionType(e.target.value as InteractionType)} className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300">
             {availableTypes.map((t) => <option key={t} value={t}>{INTERACTION_TYPE_LABELS[t]}</option>)}
           </select>
-          <input
+          <Input
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             onKeyDown={(e) => {
@@ -1031,9 +1033,9 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
             }}
             placeholder="Quick summary..."
             aria-label="Interaction summary"
-            className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-xs h-8"
           />
-          <textarea
+          <Textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
             onKeyDown={(e) => {
@@ -1044,7 +1046,7 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
             }}
             placeholder="Paste DM, call notes..."
             aria-label="Interaction content"
-            className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-xs min-h-[60px]"
           />
           <button
             onClick={handleSubmit}
@@ -1506,7 +1508,7 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
             <option value="call">Call</option>
             <option value="demo">Demo</option>
           </select>
-          <textarea
+          <Textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             onKeyDown={(e) => {
@@ -1517,7 +1519,7 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
             }}
             placeholder="Paste transcript or type notes..."
             aria-label="Meeting notes"
-            className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
+            className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 min-h-[100px]"
           />
           <button
             onClick={onSubmit}
