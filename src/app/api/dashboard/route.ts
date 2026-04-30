@@ -1,6 +1,11 @@
 import { createClient } from '@/lib/supabase/server'
 import { NextResponse } from 'next/server'
 
+type ConversationSignal = {
+  type?: string
+  detected_at?: string | null
+}
+
 export async function GET(req: Request) {
   try {
     const { searchParams } = new URL(req.url)
@@ -13,7 +18,6 @@ export async function GET(req: Request) {
     const now = new Date()
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
-    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
     let leadsQuery = supabase.from('leads').select('*').eq('user_id', user.id)
@@ -106,7 +110,7 @@ export async function GET(req: Request) {
 
       // 3. Positive signals in last 7 days (AI detected interest)
       if (l.conversation_signals && Array.isArray(l.conversation_signals)) {
-        const hasRecentPositive = l.conversation_signals.some(s =>
+        const hasRecentPositive = (l.conversation_signals as ConversationSignal[]).some(s =>
           s.type === 'positive' && s.detected_at && new Date(s.detected_at) >= weekAgo
         )
         if (hasRecentPositive) return true

@@ -350,7 +350,11 @@ export default function DashboardPage() {
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center gap-1.5">
                         <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100 truncate">{lead.contact_name}</p>
-                        {hasPositiveSignal && <Sparkles className="h-3 w-3 text-red-500 fill-red-500/20" title="Recent positive interest" />}
+                        {hasPositiveSignal && (
+                          <span title="Recent positive interest">
+                            <Sparkles className="h-3 w-3 text-red-500 fill-red-500/20" />
+                          </span>
+                        )}
                         {isHighIcp && <div className="h-1.5 w-1.5 rounded-full bg-red-600 animate-pulse" title="High ICP target" />}
                       </div>
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{lead.company_name}</p>
