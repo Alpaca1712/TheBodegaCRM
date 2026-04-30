@@ -243,6 +243,12 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
         // 4. Higher ICP within same urgency
         if (icpA !== icpB) return icpB - icpA;
 
+        // 5. High-priority new leads before lower-priority new leads
+        const isNewA = ['initial_outreach', 'review_draft'].includes(a.suggestedType);
+        const isNewB = ['initial_outreach', 'review_draft'].includes(b.suggestedType);
+        if (isNewA && !isNewB && a.lead.priority === 'high') return -1;
+        if (!isNewA && isNewB && b.lead.priority === 'high') return 1;
+
         return b.daysSinceLastContact - a.daysSinceLastContact;
       });
 
@@ -527,11 +533,12 @@ function FollowUpCard({
             </span>
             {item.lead.icp_score != null && (
               <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded ${
+                item.lead.icp_score >= 80 ? 'bg-red-600 text-white shadow-sm shadow-red-600/20' :
                 item.lead.icp_score >= 70 ? 'bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600' :
                 item.lead.icp_score >= 50 ? 'bg-blue-100 dark:bg-blue-900/40 text-blue-600' :
                 'bg-zinc-100 dark:bg-zinc-800 text-zinc-500'
               }`}>
-                ICP: {item.lead.icp_score}
+                {item.lead.icp_score >= 80 ? 'High ICP: ' : 'ICP: '}{item.lead.icp_score}
               </span>
             )}
             {item.lead.risk_score != null && (
