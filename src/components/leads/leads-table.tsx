@@ -10,6 +10,7 @@ import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } 
 
 interface LeadsTableProps {
   leads: Lead[];
+  isFiltered?: boolean;
   selectable?: boolean;
   selectedIds?: Set<string>;
   onToggleOne?: (id: string) => void;
@@ -65,6 +66,7 @@ function CopyEmailButton({ email }: { email: string }) {
 
 export default function LeadsTable({
   leads,
+  isFiltered = false,
   selectable = false,
   selectedIds,
   onToggleOne,
@@ -73,8 +75,12 @@ export default function LeadsTable({
 
   if (!leads.length) {
     return (
-      <div className="text-center py-12">
-        <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads yet. Add your first lead to get started.</p>
+      <div className="text-center py-12 px-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+        <p className="text-sm text-zinc-500 dark:text-zinc-400">
+          {isFiltered
+            ? "No leads found matching your filters. Try clearing some filters or search terms."
+            : "No leads yet. Add your first lead to get started."}
+        </p>
       </div>
     );
   }

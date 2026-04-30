@@ -9,3 +9,11 @@
 ## 2025-05-16 - [UX: Contextual Tooltips for Condensed Tables]
 **Learning:** In condensed data tables (like LeadsTable), native 'title' attributes provide a zero-dependency, highly accessible way to surface detailed metadata (e.g., full timestamps, stage descriptions, field definitions) without cluttering the UI or requiring complex popover logic.
 **Action:** Use 'title' attributes on status badges and truncated text fields in tables to provide "glanceable" details on hover. Always combine with 'cursor-help' for visual affordance.
+
+## 2025-05-17 - [UX: Context-Aware Empty States]
+**Learning:** Generic empty states ("No results") can be frustrating if a user has active filters. Differentiating between "database is empty" and "filters are too restrictive" helps users understand why they see no data and how to fix it.
+**Action:** Always pass filter/search state to table components to provide tailored empty state messages.
+
+## 2025-05-18 - [Reusable Pattern: Search Experience]
+**Learning:** A great search experience includes a quick focus shortcut (`/`), a visual hint for that shortcut, and an immediate clear button. This reduces friction for the most common navigation and filtering tasks.
+**Action:** Implement search inputs with `useRef` for programmatic focus, a `kbd` hint, and a conditional `X` button for rapid reset.

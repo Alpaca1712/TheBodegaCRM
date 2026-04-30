@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
 import type { Lead, LeadType, PipelineStage, Priority } from '@/types/leads';
@@ -23,8 +23,10 @@ export default function LeadsPage() {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [page, setPage] = useState(0);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
+  const isFiltered = !!(search || typeFilter || stageFilter);
 
   const fetchLeads = useCallback(async () => {
     setLoading(true);
@@ -63,6 +65,19 @@ export default function LeadsPage() {
     const timer = setTimeout(fetchLeads, search ? 300 : 0);
     return () => clearTimeout(timer);
   }, [fetchLeads, search]);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === '/' &&
+          document.activeElement?.tagName !== 'INPUT' &&
+          document.activeElement?.tagName !== 'TEXTAREA') {
+        e.preventDefault();
+        searchInputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, []);
 
   // Drop stale selection IDs when the visible lead set changes
   useEffect(() => {
@@ -202,18 +217,33 @@ export default function LeadsPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative flex-1 min-w-[200px] max-w-sm">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400" />
+        <div className="relative flex-1 min-w-[200px] max-w-sm group">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-zinc-400 group-focus-within:text-red-500 transition-colors" />
           <input
+            ref={searchInputRef}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads..."
             aria-label="Search leads"
-            className="w-full pl-9 pr-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500"
+            className="w-full pl-9 pr-10 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
           />
+          {search ? (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
+              title="Clear search"
+              aria-label="Clear search"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          ) : (
+            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] font-medium text-zinc-500 opacity-100 pointer-events-none">
+              /
+            </kbd>
+          )}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" role="group" aria-label="Filter by type">
           <button
             onClick={() => setTypeFilter('')}
             aria-pressed={!typeFilter}
@@ -259,6 +289,7 @@ export default function LeadsPage() {
         <select
           value={stageFilter}
           onChange={(e) => setStageFilter(e.target.value as PipelineStage | '')}
+          aria-label="Filter by stage"
           className="px-3 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-xs text-zinc-700 dark:text-zinc-300 focus:outline-none focus:ring-2 focus:ring-red-500/20"
         >
           <option value="">All stages</option>
@@ -349,6 +380,7 @@ export default function LeadsPage() {
       ) : (
         <LeadsTable
           leads={leads}
+          isFiltered={isFiltered}
           selectable={selectionMode}
           selectedIds={selectedIds}
           onToggleOne={toggleOne}
