@@ -4,6 +4,7 @@ import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
+  leadId: z.string().uuid().optional(),
   type: z.enum(['customer', 'investor', 'partnership']),
   contact_name: z.string().optional().nullable(),
   company_name: z.string().optional().nullable(),
@@ -197,6 +198,47 @@ export async function POST(request: NextRequest) {
     result.investment_thesis_notes = strip(result.investment_thesis_notes)
     result.personal_details = strip(result.personal_details) ?? result.personal_details
     result.smykm_hooks = result.smykm_hooks.map(h => h.replace(/[\u2013\u2014]/g, ','))
+
+    if (validation.data.leadId) {
+      const updateData: Record<string, unknown> = {
+        company_description: result.company_description,
+        attack_surface_notes: result.attack_surface_notes,
+        investment_thesis_notes: result.investment_thesis_notes,
+        personal_details: result.personal_details,
+        smykm_hooks: result.smykm_hooks,
+        research_sources: result.research_sources,
+        contact_email: result.contact_email,
+        contact_linkedin: result.contact_linkedin,
+        contact_twitter: result.contact_twitter,
+        contact_title: result.contact_title,
+        contact_phone: result.contact_phone,
+        company_website: result.company_website,
+        contact_photo_url: result.contact_photo_url,
+        company_logo_url: result.company_logo_url,
+      }
+
+      if (result.team_members?.length) {
+        updateData.org_chart = result.team_members.map(m => ({
+          name: m.name,
+          title: m.title,
+          department: m.department || null,
+          linkedin_url: m.linkedin_url || null,
+          photo_url: null,
+          reports_to: null,
+          lead_id: null,
+        }))
+      }
+
+      const { error: updateError } = await supabase
+        .from('leads')
+        .update(updateData)
+        .eq('id', validation.data.leadId)
+        .eq('user_id', user.id)
+
+      if (updateError) {
+        console.error('Failed to update lead with research:', updateError)
+      }
+    }
 
     // Fallback: generate company logo from Clearbit if we have a website domain
     if (!result.company_logo_url && result.company_website) {
