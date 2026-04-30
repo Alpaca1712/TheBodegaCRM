@@ -672,6 +672,12 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
         <textarea
           value={addContent}
           onChange={(e) => setAddContent(e.target.value)}
+          onKeyDown={(e) => {
+            if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !adding && addContent.trim()) {
+              e.preventDefault();
+              handleAdd();
+            }
+          }}
           placeholder="Type a fact, preference, or context to remember about this lead..."
           aria-label="New memory content"
           className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 resize-y"
@@ -684,7 +690,12 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
             <option value="personal">Personal</option>
             <option value="strategic">Strategic</option>
           </select>
-          <button onClick={handleAdd} disabled={adding || !addContent.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50">
+          <button
+            onClick={handleAdd}
+            disabled={adding || !addContent.trim()}
+            title="Add (Cmd+Enter)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
+          >
             {adding ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
             Add
           </button>
@@ -1010,6 +1021,12 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
           <input
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !submitting && (summary.trim() || content.trim())) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
             placeholder="Quick summary..."
             aria-label="Interaction summary"
             className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400"
@@ -1017,11 +1034,22 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
           <textarea
             value={content}
             onChange={(e) => setContent(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !submitting && (summary.trim() || content.trim())) {
+                e.preventDefault();
+                handleSubmit();
+              }
+            }}
             placeholder="Paste DM, call notes..."
             aria-label="Interaction content"
             className="w-full min-h-[60px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2.5 py-1.5 text-xs text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
           />
-          <button onClick={handleSubmit} disabled={submitting} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
+          <button
+            onClick={handleSubmit}
+            disabled={submitting}
+            title="Log & Analyze (Cmd+Enter)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center"
+          >
             {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
             {submitting ? 'Analyzing...' : 'Log & Analyze'}
           </button>
@@ -1478,11 +1506,22 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
           <textarea
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
+            onKeyDown={(e) => {
+              if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && !loading && notes.trim()) {
+                e.preventDefault();
+                onSubmit();
+              }
+            }}
             placeholder="Paste transcript or type notes..."
             aria-label="Meeting notes"
             className="w-full min-h-[100px] rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-700 dark:text-zinc-300 placeholder:text-zinc-400 resize-y"
           />
-          <button onClick={onSubmit} disabled={loading || !notes.trim()} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center">
+          <button
+            onClick={onSubmit}
+            disabled={loading || !notes.trim()}
+            title="Summarize with AI (Cmd+Enter)"
+            className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50 w-full justify-center"
+          >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Brain className="h-3.5 w-3.5" />}
             {loading ? 'Summarizing...' : 'Summarize with AI'}
           </button>
