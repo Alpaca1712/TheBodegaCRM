@@ -245,7 +245,7 @@ export default function LeadsPage() {
           </div>
         </div>
 
-        <div className="flex items-center gap-2" role="group" aria-label="Filter by type">
+        <div className="flex items-center gap-2" role="group" aria-label="Filter by lead type">
           <button
             onClick={() => setTypeFilter('')}
             aria-pressed={!typeFilter}
@@ -382,11 +382,16 @@ export default function LeadsPage() {
       ) : (
         <LeadsTable
           leads={leads}
-          isFiltered={isFiltered}
           selectable={selectionMode}
           selectedIds={selectedIds}
           onToggleOne={toggleOne}
           onToggleAll={toggleAll}
+          isFiltered={isFiltered}
+          onClearFilters={() => {
+            setSearch('');
+            setTypeFilter('');
+            setStageFilter('');
+          }}
         />
       )}
 
