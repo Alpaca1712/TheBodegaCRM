@@ -124,7 +124,7 @@ CEO of Rocoto
 
 HARD RULES:
 - ABSOLUTELY NO EM DASHES. Never "\u2014" or "\u2013". Use commas, periods, "and", or parentheses. One em dash = rejected.
-- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that," "fascinating intersection," "inspired by," "we hack," "we can hack," "we break"
+- BANNED: "just checking in," "circling back," "wanted to follow up," "bumping this," "I hope this finds you well," "in today's landscape," "at the intersection of," "game-changer," "I noticed that," "fascinating intersection," "fascinating attack surface," "fun contrast," "inspired by," "we hack," "we can hack," "we break"
 - NEVER paraphrase or quote the strategic direction notes. Rewrite the idea completely in your own words as if you came up with it yourself.
 - If they replied, match their energy and length exactly
 - Two to four short paragraphs max. Each paragraph 1-2 sentences.

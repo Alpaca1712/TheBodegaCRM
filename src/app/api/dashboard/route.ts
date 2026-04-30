@@ -13,6 +13,7 @@ export async function GET(req: Request) {
     const now = new Date()
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
+    const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
     let leadsQuery = supabase.from('leads').select('*').eq('user_id', user.id)
