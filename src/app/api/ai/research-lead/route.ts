@@ -5,7 +5,7 @@ import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
   leadId: z.string().uuid().optional(),
-  type: z.enum(['customer', 'investor', 'partnership']),
+  type: z.enum(['customer', 'investor', 'partnership']).optional(),
   contact_name: z.string().optional().nullable(),
   company_name: z.string().optional().nullable(),
   product_name: z.string().optional().nullable(),
@@ -14,8 +14,8 @@ const requestSchema = z.object({
   linkedin_url: z.string().optional().nullable(),
   twitter_url: z.string().optional().nullable(),
 }).refine(
-  (data) => (data.contact_name && data.company_name) || data.linkedin_url,
-  { message: 'Provide either (contact_name + company_name) or a linkedin_url' }
+  (data) => (data.contact_name && data.company_name) || data.linkedin_url || data.leadId,
+  { message: 'Provide leadId, (contact_name + company_name), or a linkedin_url' }
 )
 
 const RESEARCH_SYSTEM_PROMPT = `You are a research assistant for Rocoto. Rocoto tries to break AI agents before bad actors do by talking to them the same way users do (email, text, voice, chat, Slack) and finding ways to take them over. Then they help fix everything. Your job is to find deep, specific details about a person and their company using web search for Sam McKenna's "Show Me You Know Me" cold email methodology.
@@ -92,6 +92,7 @@ After searching, return ONLY valid JSON with this structure:
 
 function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
   const linkedInOnly = !input.contact_name && !input.company_name && input.linkedin_url
+  const leadType = input.type ?? 'customer'
 
   const clues = [
     input.contact_name && `Name: ${input.contact_name}`,
@@ -101,12 +102,12 @@ function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
     input.website && `Website: ${input.website}`,
     input.linkedin_url && `LinkedIn: ${input.linkedin_url}`,
     input.twitter_url && `Twitter/X: ${input.twitter_url}`,
-    `Type: ${input.type}`,
+    `Type: ${leadType}`,
   ]
     .filter(Boolean)
     .join('\n')
 
-  const typeLabel = input.type === 'customer' ? 'potential customer' : input.type === 'investor' ? 'potential investor' : 'potential partner'
+  const typeLabel = leadType === 'customer' ? 'potential customer' : leadType === 'investor' ? 'potential investor' : 'potential partner'
 
   const focusMap: Record<string, string> = {
     customer: 'Focus on: how their AI agent/product works, what channels it uses, what data it accesses, what tools it connects to, and specifically how it could be vulnerable to prompt injection, jailbreaking, data exfiltration, or tool abuse. Search their product docs, blog, and any technical content.',
@@ -126,7 +127,7 @@ Search the web for deep, specific details for a "Show Me You Know Me" cold email
 
 IMPORTANT: Always return "contact_name" and "company_name" in your JSON response, even if they were provided in the input.
 
-${focusMap[input.type]}`
+${focusMap[leadType]}`
 }
 
 interface ResearchSource {
@@ -179,6 +180,38 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { leadId } = validation.data
+    let researchInput = { ...validation.data }
+
+    if (leadId) {
+      const { data: lead } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', leadId)
+        .eq('user_id', user.id)
+        .single()
+
+      if (!lead) {
+        return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+      }
+
+      researchInput = {
+        ...researchInput,
+        contact_name: validation.data.contact_name || lead.contact_name,
+        company_name: validation.data.company_name || lead.company_name,
+        product_name: validation.data.product_name || lead.product_name,
+        fund_name: validation.data.fund_name || lead.fund_name,
+        website: validation.data.website || lead.company_website,
+        linkedin_url: validation.data.linkedin_url || lead.contact_linkedin,
+        twitter_url: validation.data.twitter_url || lead.contact_twitter,
+        type: validation.data.type || lead.type,
+      }
+    }
+
+    if (!researchInput.type) {
+      return NextResponse.json({ error: 'Lead type is required' }, { status: 400 })
+    }
+
     if (!process.env.ANTHROPIC_API_KEY) {
       return NextResponse.json(
         { error: 'ANTHROPIC_API_KEY not configured.' },
@@ -188,7 +221,7 @@ export async function POST(request: NextRequest) {
 
     const result = await researchWithWebSearchJSON<ResearchResult>(
       RESEARCH_SYSTEM_PROMPT,
-      buildResearchPrompt(validation.data),
+      buildResearchPrompt(researchInput),
       { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
     )
 
@@ -199,8 +232,19 @@ export async function POST(request: NextRequest) {
     result.personal_details = strip(result.personal_details) ?? result.personal_details
     result.smykm_hooks = result.smykm_hooks.map(h => h.replace(/[\u2013\u2014]/g, ','))
 
-    if (validation.data.leadId) {
+    if (!result.company_logo_url && result.company_website) {
+      try {
+        const domain = new URL(result.company_website.startsWith('http') ? result.company_website : `https://${result.company_website}`).hostname.replace('www.', '')
+        result.company_logo_url = `https://logo.clearbit.com/${domain}`
+      } catch { /* ignore */ }
+    }
+
+    if (!result.team_members) result.team_members = []
+
+    if (leadId) {
       const updateData: Record<string, unknown> = {
+        contact_name: result.contact_name || researchInput.contact_name,
+        company_name: result.company_name || researchInput.company_name,
         company_description: result.company_description,
         attack_surface_notes: result.attack_surface_notes,
         investment_thesis_notes: result.investment_thesis_notes,
@@ -208,11 +252,11 @@ export async function POST(request: NextRequest) {
         smykm_hooks: result.smykm_hooks,
         research_sources: result.research_sources,
         contact_email: result.contact_email,
-        contact_linkedin: result.contact_linkedin,
-        contact_twitter: result.contact_twitter,
+        contact_linkedin: result.contact_linkedin || researchInput.linkedin_url,
+        contact_twitter: result.contact_twitter || researchInput.twitter_url,
         contact_title: result.contact_title,
         contact_phone: result.contact_phone,
-        company_website: result.company_website,
+        company_website: result.company_website || researchInput.website,
         contact_photo_url: result.contact_photo_url,
         company_logo_url: result.company_logo_url,
       }
@@ -232,23 +276,13 @@ export async function POST(request: NextRequest) {
       const { error: updateError } = await supabase
         .from('leads')
         .update(updateData)
-        .eq('id', validation.data.leadId)
+        .eq('id', leadId)
         .eq('user_id', user.id)
 
       if (updateError) {
         console.error('Failed to update lead with research:', updateError)
       }
     }
-
-    // Fallback: generate company logo from Clearbit if we have a website domain
-    if (!result.company_logo_url && result.company_website) {
-      try {
-        const domain = new URL(result.company_website.startsWith('http') ? result.company_website : `https://${result.company_website}`).hostname.replace('www.', '')
-        result.company_logo_url = `https://logo.clearbit.com/${domain}`
-      } catch { /* ignore */ }
-    }
-
-    if (!result.team_members) result.team_members = []
 
     return NextResponse.json(result)
   } catch (error) {

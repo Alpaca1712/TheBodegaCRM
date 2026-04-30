@@ -134,6 +134,7 @@ function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | nul
   }
 
   if (lead.stage === 'meeting_booked') {
+    if (lead.battle_card) return null;
     const meetingDate = lead.updated_at;
     const daysSinceBooked = Math.floor((Date.now() - new Date(meetingDate).getTime()) / 86400000);
     return {
