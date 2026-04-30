@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight, XCircle } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
 import type { Lead, LeadType, PipelineStage, Priority } from '@/types/leads';
@@ -68,9 +68,7 @@ export default function LeadsPage() {
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === '/' &&
-          document.activeElement?.tagName !== 'INPUT' &&
-          document.activeElement?.tagName !== 'TEXTAREA') {
+      if (e.key === '/' && !['input', 'textarea'].includes((document.activeElement?.tagName || '').toLowerCase())) {
         e.preventDefault();
         searchInputRef.current?.focus();
       }
@@ -225,22 +223,26 @@ export default function LeadsPage() {
             onChange={(e) => setSearch(e.target.value)}
             placeholder="Search leads..."
             aria-label="Search leads"
-            className="w-full pl-9 pr-10 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
+            className="w-full pl-9 pr-12 py-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 text-sm text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 transition-all"
           />
-          {search ? (
-            <button
-              onClick={() => setSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200"
-              title="Clear search"
-              aria-label="Clear search"
-            >
-              <XCircle className="h-4 w-4" />
-            </button>
-          ) : (
-            <kbd className="absolute right-3 top-1/2 -translate-y-1/2 hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] font-medium text-zinc-500 opacity-100 pointer-events-none">
-              /
-            </kbd>
-          )}
+          <div className="absolute right-3 top-1/2 -translate-y-1/2 flex items-center gap-1.5">
+            {search ? (
+              <button
+                onClick={() => {
+                  setSearch('');
+                  searchInputRef.current?.focus();
+                }}
+                className="p-0.5 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            ) : (
+              <kbd className="hidden sm:inline-flex h-5 select-none items-center gap-1 rounded border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-1.5 font-mono text-[10px] font-medium text-zinc-400 dark:text-zinc-500 opacity-100 transition-opacity group-focus-within:opacity-0">
+                /
+              </kbd>
+            )}
+          </div>
         </div>
 
         <div className="flex items-center gap-2" role="group" aria-label="Filter by type">

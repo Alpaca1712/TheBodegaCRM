@@ -322,7 +322,11 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       {/* Header */}
       <div className="flex items-start justify-between">
         <div className="flex items-start gap-3">
-          <Link href="/leads" className="mt-1.5 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors">
+          <Link
+            href="/leads"
+            className="mt-1.5 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
+            aria-label="Back to leads"
+          >
             <ArrowLeft className="h-4 w-4 text-zinc-500" />
           </Link>
           <div>
