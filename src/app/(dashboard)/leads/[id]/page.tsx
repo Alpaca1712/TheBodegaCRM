@@ -26,9 +26,6 @@ import {
   MapPin,
   Hash,
   Send,
-  ThermometerSun,
-  Flame,
-  Snowflake,
   Zap,
   Camera,
   GraduationCap,
@@ -324,8 +321,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <div className="flex items-start gap-3">
           <Link
             href="/leads"
-            className="mt-1.5 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
             aria-label="Back to leads"
+            className="mt-1.5 p-1.5 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors"
           >
             <ArrowLeft className="h-4 w-4 text-zinc-500" />
           </Link>
@@ -426,6 +423,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               key={stage}
               onClick={() => handleStageChange(stage)}
               title={STAGE_DESCRIPTIONS[stage]}
+              aria-pressed={lead.stage === stage}
               className={`px-2.5 py-1 rounded-md text-[11px] font-medium transition-all ${
                 lead.stage === stage
                   ? 'bg-red-600 text-white shadow-sm shadow-red-600/20'
@@ -1458,6 +1456,7 @@ function ConversationIntel({ lead, emails, interactions, onRefresh }: { lead: Le
               <button
                 key={f.id}
                 onClick={() => setTimelineFilter(f.id)}
+                aria-pressed={timelineFilter === f.id}
                 className={`px-2 py-0.5 rounded text-[10px] font-medium transition-colors ${
                   timelineFilter === f.id
                     ? 'bg-red-600 text-white'
