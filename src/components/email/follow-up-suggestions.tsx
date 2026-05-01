@@ -313,6 +313,30 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     promise.finally(() => setIsProcessing(null));
   };
 
+  const handleDraft = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Drafting failed');
+      }
+      await loadFollowUps();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: (err) => err.message || 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
   const filtered = items.filter(item => {
     if (filter === 'all') return true;
     if (filter === 'overdue') return item.urgency === 'overdue';
@@ -367,7 +391,6 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
   // Full page mode
   const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueCount = items.filter(i => i.urgency === 'due_today').length;
   const replyCount = items.filter(i => ['reply_needed', 'post_meeting', 'prep_meeting'].includes(i.suggestedType)).length;
   const newCount = items.filter(i => ['initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
   const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
@@ -429,6 +452,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               onGenerate={() => setSelectedItem(item)}
               onResearch={() => handleResearch(item.lead)}
               onPrep={() => handlePrep(item.lead)}
+              onDraft={() => handleDraft(item.lead)}
               isProcessing={isProcessing === item.lead.id}
             />
           ))}
@@ -489,12 +513,14 @@ function FollowUpCard({
   onGenerate,
   onResearch,
   onPrep,
+  onDraft,
   isProcessing
 }: {
   item: FollowUpItem;
   onGenerate: () => void;
   onResearch: () => void;
   onPrep: () => void;
+  onDraft: () => void;
   isProcessing: boolean;
 }) {
 
@@ -634,40 +660,16 @@ function FollowUpCard({
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <button
-            onClick={() => {
-              if (item.suggestedType === 'run_research') onResearch();
-              else if (item.suggestedType === 'prep_meeting') onPrep();
-              else onGenerate();
-            }}
-            disabled={isProcessing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : item.suggestedType === 'run_research' ? (
-              <Sparkles className="h-3 w-3" />
-            ) : item.suggestedType === 'prep_meeting' ? (
-              <Swords className="h-3 w-3" />
-            ) : item.suggestedType === 'review_draft' ? (
-              <Zap className="h-3 w-3" />
-            ) : (
-              <Send className="h-3 w-3" />
-            )}
-
-            {isProcessing ? (
-              'Processing...'
-            ) : item.suggestedType === 'run_research' ? (
-              'Research'
-            ) : item.suggestedType === 'prep_meeting' ? (
-              'Prep'
-            ) : item.suggestedType === 'review_draft' ? (
-              'Review'
-            ) : (
-              'Generate'
-            )}
-            {!isProcessing && <ArrowRight className="h-3 w-3" />}
-          </button>
+          <div className="flex items-center gap-1.5">
+            <ActionButtons
+              item={item}
+              isProcessing={isProcessing}
+              onDraft={onDraft}
+              onResearch={onResearch}
+              onPrep={onPrep}
+              onGenerate={onGenerate}
+            />
+          </div>
         </div>
       </div>
     </div>
@@ -693,4 +695,74 @@ function CompactCard({ item, onGenerate }: { item: FollowUpItem; onGenerate: () 
       </div>
     </button>
   );
+}
+
+function ActionButtons({
+  item,
+  isProcessing,
+  onDraft,
+  onResearch,
+  onPrep,
+  onGenerate
+}: {
+  item: FollowUpItem;
+  isProcessing: boolean;
+  onDraft: () => void;
+  onResearch: () => void;
+  onPrep: () => void;
+  onGenerate: () => void;
+}) {
+  const isDraftable = ['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up', 'reply_needed', 'post_meeting'].includes(item.suggestedType);
+
+  return (
+    <>
+      {isDraftable && (
+        <button
+          onClick={onDraft}
+          disabled={isProcessing}
+          title="Magic Draft (AI background drafting)"
+          className="flex items-center justify-center w-8 h-8 text-red-600 bg-white hover:bg-red-50 dark:bg-zinc-900 dark:hover:bg-red-950/30 rounded-lg transition-all border border-red-200 dark:border-red-900/50 shadow-sm disabled:opacity-50"
+        >
+          {isProcessing ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Zap className="h-3.5 w-3.5 fill-red-600/10" />
+          )}
+        </button>
+      )}
+      <button
+        onClick={() => {
+          if (item.suggestedType === 'run_research') onResearch();
+          else if (item.suggestedType === 'prep_meeting') onPrep();
+          else onGenerate();
+        }}
+        disabled={isProcessing}
+        className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
+      >
+        <ActionButtonIcon item={item} isProcessing={isProcessing} />
+        <ActionButtonText item={item} isProcessing={isProcessing} />
+        {!isProcessing && <ArrowRight className="h-3 w-3" />}
+      </button>
+    </>
+  );
+}
+
+function ActionButtonIcon({ item, isProcessing }: { item: FollowUpItem; isProcessing: boolean }) {
+  const isDraftable = ['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up', 'reply_needed', 'post_meeting'].includes(item.suggestedType);
+
+  if (isProcessing && !isDraftable) return <Loader2 className="h-3.5 w-3.5 animate-spin" />;
+  if (item.suggestedType === 'run_research') return <Sparkles className="h-3 w-3" />;
+  if (item.suggestedType === 'prep_meeting') return <Swords className="h-3 w-3" />;
+  if (item.suggestedType === 'review_draft') return <Zap className="h-3 w-3" />;
+  return <Send className="h-3 w-3" />;
+}
+
+function ActionButtonText({ item, isProcessing }: { item: FollowUpItem; isProcessing: boolean }) {
+  const isDraftable = ['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up', 'reply_needed', 'post_meeting'].includes(item.suggestedType);
+
+  if (isProcessing && !isDraftable) return 'Processing...';
+  if (item.suggestedType === 'run_research') return 'Research';
+  if (item.suggestedType === 'prep_meeting') return 'Prep';
+  if (item.suggestedType === 'review_draft') return 'Review';
+  return 'Generate';
 }
