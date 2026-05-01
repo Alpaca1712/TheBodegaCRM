@@ -1,12 +1,10 @@
 'use client';
 
-import { useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check } from 'lucide-react';
-import { toast } from 'sonner';
 import type { Lead } from '@/types/leads';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } from '@/types/leads';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -36,34 +34,6 @@ const priorityDots: Record<string, string> = {
   medium: 'bg-amber-500',
   low: 'bg-zinc-400',
 };
-
-function CopyEmailButton({ email }: { email: string }) {
-  const [copied, setCopied] = useState(false);
-
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      await navigator.clipboard.writeText(email);
-      setCopied(true);
-      toast.success('Email copied to clipboard');
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      toast.error('Failed to copy email');
-    }
-  };
-
-  return (
-    <button
-      onClick={handleCopy}
-      className="ml-1.5 p-1 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-all opacity-0 group-hover:opacity-100 focus:opacity-100 focus:outline-none focus:ring-2 focus:ring-red-500/20"
-      aria-label="Copy email"
-      title="Copy email"
-    >
-      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-    </button>
-  );
-}
 
 export default function LeadsTable({
   leads,
@@ -158,7 +128,11 @@ export default function LeadsTable({
                     {lead.contact_email && (
                       <div className="flex items-center">
                         <p className="text-xs text-zinc-500 dark:text-zinc-400">{lead.contact_email}</p>
-                        <CopyEmailButton email={lead.contact_email} />
+                        <CopyButton
+                          value={lead.contact_email}
+                          label="Email"
+                          className="ml-1 opacity-0 group-hover:opacity-100 focus:opacity-100"
+                        />
                       </div>
                     )}
                   </div>
