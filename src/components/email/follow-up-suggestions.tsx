@@ -5,7 +5,7 @@ import Link from 'next/link';
 import {
   Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown, Zap, Sparkles, Swords,
+  Building2, ChevronDown, Zap, Sparkles, Swords,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -265,6 +265,30 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     loadFollowUps();
   }, [loadFollowUps]);
 
+  const handleMagicDraft = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'Magic Draft failed');
+      }
+      await loadFollowUps();
+    })();
+
+    toast.promise(promise, {
+      loading: `Drafting next step for ${lead.contact_name}...`,
+      success: `Draft ready for review for ${lead.contact_name}`,
+      error: (err) => err.message,
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
   const handleResearch = async (lead: Lead) => {
     setIsProcessing(lead.id);
     const promise = (async () => {
@@ -367,7 +391,6 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
   // Full page mode
   const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueCount = items.filter(i => i.urgency === 'due_today').length;
   const replyCount = items.filter(i => ['reply_needed', 'post_meeting', 'prep_meeting'].includes(i.suggestedType)).length;
   const newCount = items.filter(i => ['initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
   const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
@@ -429,6 +452,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               onGenerate={() => setSelectedItem(item)}
               onResearch={() => handleResearch(item.lead)}
               onPrep={() => handlePrep(item.lead)}
+              onMagicDraft={() => handleMagicDraft(item.lead)}
               isProcessing={isProcessing === item.lead.id}
             />
           ))}
@@ -489,12 +513,14 @@ function FollowUpCard({
   onGenerate,
   onResearch,
   onPrep,
+  onMagicDraft,
   isProcessing
 }: {
   item: FollowUpItem;
   onGenerate: () => void;
   onResearch: () => void;
   onPrep: () => void;
+  onMagicDraft: () => void;
   isProcessing: boolean;
 }) {
 
@@ -634,40 +660,54 @@ function FollowUpCard({
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <button
-            onClick={() => {
-              if (item.suggestedType === 'run_research') onResearch();
-              else if (item.suggestedType === 'prep_meeting') onPrep();
-              else onGenerate();
-            }}
-            disabled={isProcessing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : item.suggestedType === 'run_research' ? (
-              <Sparkles className="h-3 w-3" />
-            ) : item.suggestedType === 'prep_meeting' ? (
-              <Swords className="h-3 w-3" />
-            ) : item.suggestedType === 'review_draft' ? (
-              <Zap className="h-3 w-3" />
-            ) : (
-              <Send className="h-3 w-3" />
+          <div className="flex items-center gap-1.5">
+            {/* Magic Draft Button for outreach stages that aren't already drafted */}
+            {['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up', 'reply_needed', 'post_meeting'].includes(item.suggestedType) && (
+              <button
+                onClick={onMagicDraft}
+                disabled={isProcessing}
+                className="flex items-center justify-center p-2 rounded-lg border border-zinc-200 dark:border-zinc-700 bg-white dark:bg-zinc-800 hover:bg-zinc-100 dark:hover:bg-zinc-700 transition-colors shadow-sm disabled:opacity-50"
+                title="Magic Draft (Background AI)"
+              >
+                <Zap className="h-3.5 w-3.5 fill-amber-500 text-amber-500" />
+              </button>
             )}
 
-            {isProcessing ? (
-              'Processing...'
-            ) : item.suggestedType === 'run_research' ? (
-              'Research'
-            ) : item.suggestedType === 'prep_meeting' ? (
-              'Prep'
-            ) : item.suggestedType === 'review_draft' ? (
-              'Review'
-            ) : (
-              'Generate'
-            )}
-            {!isProcessing && <ArrowRight className="h-3 w-3" />}
-          </button>
+            <button
+              onClick={() => {
+                if (item.suggestedType === 'run_research') onResearch();
+                else if (item.suggestedType === 'prep_meeting') onPrep();
+                else onGenerate();
+              }}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : item.suggestedType === 'run_research' ? (
+                <Sparkles className="h-3 w-3" />
+              ) : item.suggestedType === 'prep_meeting' ? (
+                <Swords className="h-3 w-3" />
+              ) : item.suggestedType === 'review_draft' ? (
+                <Zap className="h-3 w-3" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
+
+              {isProcessing ? (
+                'Processing...'
+              ) : item.suggestedType === 'run_research' ? (
+                'Research'
+              ) : item.suggestedType === 'prep_meeting' ? (
+                'Prep'
+              ) : item.suggestedType === 'review_draft' ? (
+                'Review'
+              ) : (
+                'Generate'
+              )}
+              {!isProcessing && <ArrowRight className="h-3 w-3" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
