@@ -127,6 +127,27 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     promise.finally(() => setIsProcessing(null));
   };
 
+  const handleMagicDraft = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Magic Draft failed');
+      await loadFollowUps();
+    })();
+
+    toast.promise(promise, {
+      loading: `Drafting next step for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: 'Magic Draft failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
   const handlePrep = async (lead: Lead) => {
     setIsProcessing(lead.id);
     const promise = (async () => {
@@ -251,6 +272,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               onGenerate={() => setSelectedItem(item)}
               onResearch={() => handleResearch(item.lead)}
               onPrep={() => handlePrep(item.lead)}
+              onMagicDraft={() => handleMagicDraft(item.lead)}
               isProcessing={isProcessing === item.lead.id}
             />
           ))}
@@ -314,12 +336,14 @@ function FollowUpCard({
   onGenerate,
   onResearch,
   onPrep,
+  onMagicDraft,
   isProcessing
 }: {
   item: FollowUpItem;
   onGenerate: () => void;
   onResearch: () => void;
   onPrep: () => void;
+  onMagicDraft: () => void;
   isProcessing: boolean;
 }) {
 
@@ -328,6 +352,7 @@ function FollowUpCard({
   const initials = item.lead.contact_name.split(' ').map(n => n[0]).join('').slice(0, 2).toUpperCase();
   const isReply = ['reply_needed', 'post_meeting'].includes(item.suggestedType);
   const isInitial = item.suggestedType === 'initial_outreach';
+  const canMagicDraft = ['initial_outreach', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'break_up', 'reply_needed'].includes(item.suggestedType);
 
   // Prioritize AI Strategy, then Our Angle (for cold leads), then suggested action
   const battleCard = item.lead.battle_card as Record<string, unknown> | null;
@@ -459,40 +484,54 @@ function FollowUpCard({
             {CHANNEL_ICONS[item.suggestedChannel]}
             <span>{action.short}</span>
           </div>
-          <button
-            onClick={() => {
-              if (item.suggestedType === 'run_research') onResearch();
-              else if (item.suggestedType === 'prep_meeting') onPrep();
-              else onGenerate();
-            }}
-            disabled={isProcessing}
-            className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
-          >
-            {isProcessing ? (
-              <Loader2 className="h-3 w-3 animate-spin" />
-            ) : item.suggestedType === 'run_research' ? (
-              <Sparkles className="h-3 w-3" />
-            ) : item.suggestedType === 'prep_meeting' ? (
-              <Swords className="h-3 w-3" />
-            ) : item.suggestedType === 'review_draft' ? (
-              <Zap className="h-3 w-3" />
-            ) : (
-              <Send className="h-3 w-3" />
+
+          <div className="flex items-center gap-2">
+            {canMagicDraft && (
+              <button
+                onClick={onMagicDraft}
+                disabled={isProcessing}
+                title="Magic Draft (Background)"
+                className="p-1.5 text-zinc-500 hover:text-red-600 dark:text-zinc-400 dark:hover:text-red-400 bg-white/60 dark:bg-black/20 rounded-lg transition-colors border border-zinc-200 dark:border-zinc-800 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+              </button>
             )}
 
-            {isProcessing ? (
-              'Processing...'
-            ) : item.suggestedType === 'run_research' ? (
-              'Research'
-            ) : item.suggestedType === 'prep_meeting' ? (
-              'Prep'
-            ) : item.suggestedType === 'review_draft' ? (
-              'Review'
-            ) : (
-              'Generate'
-            )}
-            {!isProcessing && <ArrowRight className="h-3 w-3" />}
-          </button>
+            <button
+              onClick={() => {
+                if (item.suggestedType === 'run_research') onResearch();
+                else if (item.suggestedType === 'prep_meeting') onPrep();
+                else onGenerate();
+              }}
+              disabled={isProcessing}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
+            >
+              {isProcessing ? (
+                <Loader2 className="h-3 w-3 animate-spin" />
+              ) : item.suggestedType === 'run_research' ? (
+                <Sparkles className="h-3 w-3" />
+              ) : item.suggestedType === 'prep_meeting' ? (
+                <Swords className="h-3 w-3" />
+              ) : item.suggestedType === 'review_draft' ? (
+                <CheckCircle2 className="h-3 w-3" />
+              ) : (
+                <Send className="h-3 w-3" />
+              )}
+
+              {isProcessing ? (
+                'Processing...'
+              ) : item.suggestedType === 'run_research' ? (
+                'Research'
+              ) : item.suggestedType === 'prep_meeting' ? (
+                'Prep'
+              ) : item.suggestedType === 'review_draft' ? (
+                'Review'
+              ) : (
+                'Generate'
+              )}
+              {!isProcessing && <ArrowRight className="h-3 w-3" />}
+            </button>
+          </div>
         </div>
       </div>
     </div>
