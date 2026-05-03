@@ -11,40 +11,22 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
+import {
+  ACTION_LABELS,
+  FOLLOW_UP_STAGES,
+  computeFollowUp,
+  filterFollowUps,
+  getFollowUpCounts,
+  sortFollowUps,
+  type FilterType,
+  type FollowUpItem,
+} from '@/lib/follow-ups/follow-up-engine';
 import { FollowUpSheet } from './follow-up-sheet';
 
 interface FollowUpSuggestionsProps {
   compact?: boolean;
   typeFilter?: string;
 }
-
-interface FollowUpItem {
-  lead: Lead;
-  lastEmail: LeadEmail | null;
-  daysSinceLastContact: number;
-  suggestedAction: string;
-  suggestedType: 'initial_outreach' | 'run_research' | 'prep_meeting' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
-  suggestedChannel: 'email' | 'linkedin' | 'twitter';
-  urgency: 'overdue' | 'due_today' | 'upcoming';
-  sequenceDay: string;
-  outboundCount: number;
-  inboundCount: number;
-}
-
-const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'replied', 'follow_up', 'no_response', 'meeting_held', 'meeting_booked'] as const;
-
-const ACTION_LABELS: Record<string, { label: string; short: string; description: string }> = {
-  run_research: { label: 'Run AI Research', short: 'Research', description: 'Perform deep research to find SMYKM hooks and personal details.' },
-  prep_meeting: { label: 'Prep for Meeting', short: 'Prep', description: 'Generate a battle card and prep research for the upcoming call.' },
-  initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
-  review_draft: { label: 'Review Drafted Email', short: 'Review', description: 'An email is drafted and ready for human review before sending.' },
-  follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
-  follow_up_2: { label: 'Lead Magnet (Day 9)', short: 'Value Drop', description: 'Hormozi approach: deliver value, offer a free breakdown or resource.' },
-  follow_up_3: { label: 'Channel Switch (Day 14)', short: 'Channel Switch', description: 'Move to LinkedIn or Twitter DM. Short, casual, acknowledge the emails.' },
-  break_up: { label: 'Break-up (Day 21+)', short: 'Break-up', description: 'Last email. Give them an easy out. Leave the door open.' },
-  reply_needed: { label: 'Reply to Response', short: 'Reply', description: 'They replied! Use ACA framework: Acknowledge, Compliment, Ask.' },
-  post_meeting: { label: 'Post-Meeting Follow-up', short: 'Post-Meeting', description: 'Send follow-up within 24 hours with next steps.' },
-};
 
 const URGENCY_CONFIG = {
   overdue: { label: 'Overdue', color: 'text-red-600 dark:text-red-400', bg: 'bg-red-50 dark:bg-red-950/40', border: 'border-red-200 dark:border-red-800', dot: 'bg-red-500' },
@@ -57,123 +39,6 @@ const CHANNEL_ICONS: Record<string, React.ReactNode> = {
   linkedin: <Linkedin className="h-3.5 w-3.5" />,
   twitter: <Twitter className="h-3.5 w-3.5" />,
 };
-
-type FilterType = 'all' | 'overdue' | 'due_today' | 'upcoming' | 'urgent' | 'new_leads' | 'cold_sequence';
-
-function computeFollowUp(lead: Lead, allEmails: LeadEmail[]): FollowUpItem | null {
-  const lastEmail = allEmails.length > 0 ? allEmails[0] : null;
-  const outboundEmails = allEmails.filter(e => e.direction === 'outbound');
-  const lastOutbound = outboundEmails[0];
-  const lastOutboundDate = lastOutbound?.sent_at || lastOutbound?.created_at;
-  const inboundEmails = allEmails.filter(e => e.direction === 'inbound');
-  const lastInbound = inboundEmails[0];
-  const outboundCount = outboundEmails.length;
-  const inboundCount = inboundEmails.length;
-
-  if (lead.stage === 'researched') {
-    const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description;
-    const daysSinceCreated = Math.floor((Date.now() - new Date(lead.created_at).getTime()) / 86400000);
-
-    if (!hasResearch) {
-      return {
-        lead, lastEmail, daysSinceLastContact: daysSinceCreated,
-        suggestedAction: ACTION_LABELS.run_research.description,
-        suggestedType: 'run_research', suggestedChannel: 'email',
-        urgency: daysSinceCreated >= 2 ? 'overdue' : daysSinceCreated >= 1 ? 'due_today' : 'upcoming',
-        sequenceDay: 'New Lead', outboundCount, inboundCount,
-      };
-    }
-
-    if (outboundCount > 0) return null;
-    return {
-      lead, lastEmail, daysSinceLastContact: daysSinceCreated,
-      suggestedAction: ACTION_LABELS.initial_outreach.description,
-      suggestedType: 'initial_outreach', suggestedChannel: 'email',
-      urgency: daysSinceCreated >= 3 ? 'overdue' : daysSinceCreated >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: 'Day 0 (Initial)', outboundCount, inboundCount,
-    };
-  }
-
-  if (lead.stage === 'email_drafted') {
-    const daysSinceUpdated = Math.floor((Date.now() - new Date(lead.updated_at).getTime()) / 86400000);
-    return {
-      lead, lastEmail, daysSinceLastContact: daysSinceUpdated,
-      suggestedAction: ACTION_LABELS.review_draft.description,
-      suggestedType: 'review_draft', suggestedChannel: 'email',
-      urgency: daysSinceUpdated >= 2 ? 'overdue' : daysSinceUpdated >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: 'Draft Ready', outboundCount, inboundCount,
-    };
-  }
-
-  if (lead.stage === 'replied') {
-    const replyDate = lastInbound?.replied_at || lastInbound?.created_at || lead.last_inbound_at;
-    if (!replyDate) return null;
-    const daysSinceReply = Math.floor((Date.now() - new Date(replyDate).getTime()) / 86400000);
-    if (lastOutboundDate && replyDate && new Date(lastOutboundDate) > new Date(replyDate)) return null;
-    return {
-      lead, lastEmail, daysSinceLastContact: daysSinceReply,
-      suggestedAction: 'They replied. Respond using ACA framework.',
-      suggestedType: 'reply_needed', suggestedChannel: 'email',
-      urgency: daysSinceReply >= 3 ? 'overdue' : daysSinceReply >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSinceReply}d since reply`, outboundCount, inboundCount,
-    };
-  }
-
-  if (lead.stage === 'meeting_held') {
-    const meetingDate = lead.last_contacted_at || lead.updated_at;
-    if (!meetingDate) return null;
-    const daysSinceMeeting = Math.floor((Date.now() - new Date(meetingDate).getTime()) / 86400000);
-    if (lastOutboundDate && new Date(lastOutboundDate) > new Date(meetingDate)) return null;
-    return {
-      lead, lastEmail, daysSinceLastContact: daysSinceMeeting,
-      suggestedAction: 'Send post-meeting follow-up with next steps',
-      suggestedType: 'post_meeting', suggestedChannel: 'email',
-      urgency: daysSinceMeeting >= 3 ? 'overdue' : daysSinceMeeting >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: `${daysSinceMeeting}d since meeting`, outboundCount, inboundCount,
-    };
-  }
-
-  if (lead.stage === 'meeting_booked') {
-    if (lead.battle_card) return null;
-    const meetingDate = lead.updated_at;
-    const daysSinceBooked = Math.floor((Date.now() - new Date(meetingDate).getTime()) / 86400000);
-    return {
-      lead, lastEmail, daysSinceLastContact: daysSinceBooked,
-      suggestedAction: ACTION_LABELS.prep_meeting.description,
-      suggestedType: 'prep_meeting', suggestedChannel: 'email',
-      urgency: daysSinceBooked >= 2 ? 'overdue' : daysSinceBooked >= 1 ? 'due_today' : 'upcoming',
-      sequenceDay: 'Meeting Booked', outboundCount, inboundCount,
-    };
-  }
-
-  if (!lastOutboundDate) return null;
-  const daysSinceLastOutbound = Math.floor((Date.now() - new Date(lastOutboundDate).getTime()) / 86400000);
-
-  const sequence = [
-    { type: 'follow_up_1' as const, channel: 'email' as const, afterOutboundCount: 1, waitDays: 3, label: 'Day 4', overdueDays: 7 },
-    { type: 'follow_up_2' as const, channel: 'email' as const, afterOutboundCount: 2, waitDays: 5, label: 'Day 9', overdueDays: 9 },
-    { type: 'follow_up_3' as const, channel: 'linkedin' as const, afterOutboundCount: 3, waitDays: 5, label: 'Day 14', overdueDays: 9 },
-    { type: 'break_up' as const, channel: 'email' as const, afterOutboundCount: 4, waitDays: 7, label: 'Day 21+', overdueDays: 14 },
-  ];
-
-  let nextStep = null;
-  for (const step of sequence) {
-    if (outboundCount <= step.afterOutboundCount) { nextStep = step; break; }
-  }
-  if (!nextStep) return null;
-
-  const isDue = daysSinceLastOutbound >= nextStep.waitDays;
-  const isOverdue = daysSinceLastOutbound >= nextStep.overdueDays;
-  const urgency = isOverdue ? 'overdue' as const : isDue ? 'due_today' as const : 'upcoming' as const;
-  if (!isDue && daysSinceLastOutbound < nextStep.waitDays - 1) return null;
-
-  return {
-    lead, lastEmail, daysSinceLastContact: daysSinceLastOutbound,
-    suggestedAction: ACTION_LABELS[nextStep.type].description,
-    suggestedType: nextStep.type, suggestedChannel: nextStep.channel, urgency,
-    sequenceDay: nextStep.label, outboundCount, inboundCount,
-  };
-}
 
 export default function FollowUpSuggestions({ compact = false, typeFilter }: FollowUpSuggestionsProps) {
   const [items, setItems] = useState<FollowUpItem[]>([]);
@@ -223,37 +88,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
         if (item) computed.push(item);
       }
 
-      const urgencyOrder = { overdue: 0, due_today: 1, upcoming: 2 };
-      computed.sort((a, b) => {
-        // 1. High ICP score leads first (priority)
-        const icpA = a.lead.icp_score || 0;
-        const icpB = b.lead.icp_score || 0;
-        if (icpA >= 70 && icpB < 70) return -1;
-        if (icpA < 70 && icpB >= 70) return 1;
-
-        // 2. Urgent actions (replies, meetings)
-        const isUrgentA = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(a.suggestedType);
-        const isUrgentB = ['reply_needed', 'post_meeting', 'prep_meeting'].includes(b.suggestedType);
-        if (isUrgentA && !isUrgentB) return -1;
-        if (!isUrgentA && isUrgentB) return 1;
-
-        // 3. Urgency levels (overdue > due_today > upcoming)
-        const urgDiff = urgencyOrder[a.urgency] - urgencyOrder[b.urgency];
-        if (urgDiff !== 0) return urgDiff;
-
-        // 4. Higher ICP within same urgency
-        if (icpA !== icpB) return icpB - icpA;
-
-        // 5. High-priority new leads before lower-priority new leads
-        const isNewA = ['initial_outreach', 'review_draft'].includes(a.suggestedType);
-        const isNewB = ['initial_outreach', 'review_draft'].includes(b.suggestedType);
-        if (isNewA && !isNewB && a.lead.priority === 'high') return -1;
-        if (!isNewA && isNewB && b.lead.priority === 'high') return 1;
-
-        return b.daysSinceLastContact - a.daysSinceLastContact;
-      });
-
-      setItems(computed);
+      setItems(sortFollowUps(computed));
     } catch (err) {
       console.error('Failed to load follow-ups:', err);
     } finally {
@@ -313,16 +148,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     promise.finally(() => setIsProcessing(null));
   };
 
-  const filtered = items.filter(item => {
-    if (filter === 'all') return true;
-    if (filter === 'overdue') return item.urgency === 'overdue';
-    if (filter === 'due_today') return item.urgency === 'due_today';
-    if (filter === 'upcoming') return item.urgency === 'upcoming';
-    if (filter === 'urgent') return ['reply_needed', 'post_meeting', 'prep_meeting'].includes(item.suggestedType);
-    if (filter === 'new_leads') return ['initial_outreach', 'run_research', 'review_draft'].includes(item.suggestedType);
-    if (filter === 'cold_sequence') return !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'run_research', 'review_draft'].includes(item.suggestedType);
-    return true;
-  });
+  const filtered = filterFollowUps(items, filter);
 
   if (loading) {
     return <div className="flex items-center justify-center py-8"><Loader2 className="h-5 w-5 animate-spin text-zinc-400" /></div>;
@@ -366,18 +192,14 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   }
 
   // Full page mode
-  const overdueCount = items.filter(i => i.urgency === 'overdue').length;
-  const dueCount = items.filter(i => i.urgency === 'due_today').length;
-  const replyCount = items.filter(i => ['reply_needed', 'post_meeting', 'prep_meeting'].includes(i.suggestedType)).length;
-  const newCount = items.filter(i => ['initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
-  const coldCount = items.filter(i => !['reply_needed', 'post_meeting', 'prep_meeting', 'initial_outreach', 'run_research', 'review_draft'].includes(i.suggestedType)).length;
+  const counts = getFollowUpCounts(items);
 
   const filters: Array<{ id: FilterType; label: string; count: number; color?: string }> = [
     { id: 'all', label: 'All', count: items.length },
-    { id: 'overdue', label: 'Overdue', count: overdueCount, color: 'text-red-600' },
-    { id: 'urgent', label: 'Urgent', count: replyCount, color: 'text-blue-600' },
-    { id: 'new_leads', label: 'New Leads', count: newCount, color: 'text-emerald-600' },
-    { id: 'cold_sequence', label: 'Cold Sequence', count: coldCount },
+    { id: 'overdue', label: 'Overdue', count: counts.overdue, color: 'text-red-600' },
+    { id: 'urgent', label: 'Urgent', count: counts.urgent, color: 'text-blue-600' },
+    { id: 'new_leads', label: 'New Leads', count: counts.newLeads, color: 'text-emerald-600' },
+    { id: 'cold_sequence', label: 'Cold Sequence', count: counts.coldSequence },
   ];
 
   return (
@@ -385,9 +207,9 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
       {/* Stats bar */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
         <StatCard label="Total" value={items.length} icon={<Bell className="h-4 w-4" />} color="zinc" />
-        <StatCard label="Overdue" value={overdueCount} icon={<AlertTriangle className="h-4 w-4" />} color="red" />
-        <StatCard label="Urgent" value={replyCount} icon={<MessageSquare className="h-4 w-4" />} color="blue" />
-        <StatCard label="New Leads" value={newCount} icon={<Zap className="h-4 w-4" />} color="emerald" />
+        <StatCard label="Overdue" value={counts.overdue} icon={<AlertTriangle className="h-4 w-4" />} color="red" />
+        <StatCard label="Urgent" value={counts.urgent} icon={<MessageSquare className="h-4 w-4" />} color="blue" />
+        <StatCard label="New Leads" value={counts.newLeads} icon={<Zap className="h-4 w-4" />} color="emerald" />
       </div>
 
       {/* Filters */}
@@ -446,14 +268,17 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
   );
 }
 
-function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: string }) {
-  const colors: Record<string, { bg: string; iconColor: string; text: string }> = {
+type StatCardColor = 'zinc' | 'red' | 'blue' | 'amber' | 'emerald';
+
+function StatCard({ label, value, icon, color }: { label: string; value: number; icon: React.ReactNode; color: StatCardColor }) {
+  const colors: Record<StatCardColor, { bg: string; iconColor: string; text: string }> = {
     zinc: { bg: 'bg-zinc-50 dark:bg-zinc-800/50', iconColor: 'text-zinc-400', text: 'text-zinc-900 dark:text-zinc-100' },
     red: { bg: 'bg-red-50 dark:bg-red-950/30', iconColor: 'text-red-500', text: 'text-red-700 dark:text-red-300' },
     blue: { bg: 'bg-blue-50 dark:bg-blue-950/30', iconColor: 'text-blue-500', text: 'text-blue-700 dark:text-blue-300' },
     amber: { bg: 'bg-amber-50 dark:bg-amber-950/30', iconColor: 'text-amber-500', text: 'text-amber-700 dark:text-amber-300' },
+    emerald: { bg: 'bg-emerald-50 dark:bg-emerald-950/30', iconColor: 'text-emerald-500', text: 'text-emerald-700 dark:text-emerald-300' },
   };
-  const c = colors[color] || colors.zinc;
+  const c = colors[color];
   return (
     <div className={`rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 ${c.bg} p-3`}>
       <div className={`${c.iconColor} mb-1`}>{icon}</div>
