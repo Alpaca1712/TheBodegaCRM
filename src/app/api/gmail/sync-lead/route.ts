@@ -10,6 +10,7 @@ import {
   type GmailThread,
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
+import { rateLimitResponse } from '@/lib/api/auth-guard'
 import type { PipelineStage } from '@/types/leads'
 
 interface ConversationAnalysis {
@@ -74,11 +75,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
+    const limited = rateLimitResponse(user.id, 'gmail:sync-lead', {
+      limit: 10,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+
     // Fetch the lead
     const { data: lead, error: leadError } = await supabase
       .from('leads')
       .select('id, contact_name, company_name, contact_email, email_domain, type, stage, company_description, attack_surface_notes, investment_thesis_notes, notes')
       .eq('id', leadId)
+      .eq('user_id', user.id)
       .single()
 
     if (leadError || !lead) {
@@ -122,6 +130,7 @@ export async function POST(request: NextRequest) {
           token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
         })
         .eq('id', account.id)
+        .eq('user_id', user.id)
     }
 
     // Fetch threads for this lead
@@ -347,7 +356,7 @@ JSON response:
             syncResult.stageReason = analysis.stage_reason
           }
 
-          await supabase.from('leads').update(updatePayload).eq('id', lead.id)
+          await supabase.from('leads').update(updatePayload).eq('id', lead.id).eq('user_id', user.id)
 
           syncResult.summary = analysis.conversation_summary
           syncResult.nextStep = analysis.next_step
@@ -358,6 +367,7 @@ JSON response:
               .from('lead_emails')
               .update({ email_type: c.email_type })
               .eq('lead_id', lead.id)
+              .eq('user_id', user.id)
               .eq('gmail_message_id', c.gmail_message_id)
           )
           await Promise.all(classifyPromises)

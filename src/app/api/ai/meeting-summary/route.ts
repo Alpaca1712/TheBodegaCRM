@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { generateJSON } from '@/lib/ai/anthropic'
+import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 import { z } from 'zod'
 
 const requestSchema = z.object({
@@ -44,11 +44,16 @@ RULES:
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const guard = await requireUser()
+    if (guard instanceof NextResponse) return guard
+
+    const limited = rateLimitResponse(guard.user.id, 'ai:meeting-summary', {
+      limit: 10,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+
+    const { user, supabase } = guard
 
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
     const { leadId, content, meetingType, occurredAt } = validation.data
 
     const [leadRes, profileRes] = await Promise.all([
-      supabase.from('leads').select('contact_name, company_name, type, stage').eq('id', leadId).single(),
+      supabase.from('leads').select('contact_name, company_name, type, stage').eq('id', leadId).eq('user_id', user.id).single(),
       supabase.from('profiles').select('active_org_id').eq('user_id', user.id).single(),
     ])
 

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createClient } from '@/lib/supabase/server'
 import { generateJSON } from '@/lib/ai/anthropic'
+import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 import { z } from 'zod'
 
 const requestSchema = z.object({
@@ -43,11 +43,16 @@ RULES:
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    }
+    const guard = await requireUser()
+    if (guard instanceof NextResponse) return guard
+
+    const limited = rateLimitResponse(guard.user.id, 'ai:account-snapshot', {
+      limit: 10,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
+
+    const { user, supabase } = guard
 
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
@@ -58,9 +63,9 @@ export async function POST(request: NextRequest) {
     const { leadId } = validation.data
 
     const [leadResult, emailsResult, interactionsResult, memoriesResult] = await Promise.all([
-      supabase.from('leads').select('*').eq('id', leadId).single(),
-      supabase.from('lead_emails').select('*').eq('lead_id', leadId).order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('*').eq('lead_id', leadId).order('occurred_at', { ascending: true }),
+      supabase.from('leads').select('*').eq('id', leadId).eq('user_id', user.id).single(),
+      supabase.from('lead_emails').select('*').eq('lead_id', leadId).eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('*').eq('lead_id', leadId).eq('user_id', user.id).order('occurred_at', { ascending: true }),
       supabase.from('agent_memory').select('*').eq('lead_id', leadId).order('relevance_score', { ascending: false }),
     ])
 
@@ -80,6 +85,7 @@ export async function POST(request: NextRequest) {
         .from('leads')
         .select('contact_name, contact_title, stage')
         .eq('email_domain', lead.email_domain)
+        .eq('user_id', user.id)
         .neq('id', leadId)
         .limit(10)
       relatedLeads = related || []
@@ -138,7 +144,7 @@ ${memoryContext || 'No memories yet'}`
     await supabase.from('leads').update({
       account_snapshot: snapshot,
       snapshot_generated_at: new Date().toISOString(),
-    }).eq('id', leadId)
+    }).eq('id', leadId).eq('user_id', user.id)
 
     return NextResponse.json(snapshot)
   } catch (error) {
