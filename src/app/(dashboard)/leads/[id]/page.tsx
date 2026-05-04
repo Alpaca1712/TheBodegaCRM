@@ -4,6 +4,7 @@ import { useState, useEffect, useRef, useCallback, use } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   ArrowLeft,
   Edit,
@@ -786,27 +787,55 @@ function ContactCard({ lead }: { lead: Lead }) {
       {/* Contact links */}
       <div className="space-y-2">
         {lead.contact_email && (
-          <div className="flex items-center gap-2">
-            <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-            <a href={`mailto:${lead.contact_email}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+          <div className="flex items-center justify-between gap-2 group/item">
+            <div className="flex items-center gap-2 min-w-0">
+              <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+              <a href={`mailto:${lead.contact_email}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+            </div>
+            <CopyButton
+              value={lead.contact_email}
+              label="Email"
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 opacity-0 group-hover/item:opacity-100 focus:opacity-100 transition-opacity"
+            />
           </div>
         )}
         {lead.contact_linkedin && (
-          <div className="flex items-center gap-2">
-            <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] shrink-0" />
-            <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0A66C2] hover:underline truncate">LinkedIn Profile</a>
+          <div className="flex items-center justify-between gap-2 group/item">
+            <div className="flex items-center gap-2 min-w-0">
+              <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] shrink-0" />
+              <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0A66C2] hover:underline truncate">LinkedIn Profile</a>
+            </div>
+            <CopyButton
+              value={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`}
+              label="LinkedIn"
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 opacity-0 group-hover/item:opacity-100 focus:opacity-100 transition-opacity"
+            />
           </div>
         )}
         {lead.contact_twitter && (
-          <div className="flex items-center gap-2">
-            <Twitter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-            <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_twitter}</a>
+          <div className="flex items-center justify-between gap-2 group/item">
+            <div className="flex items-center gap-2 min-w-0">
+              <Twitter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+              <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_twitter}</a>
+            </div>
+            <CopyButton
+              value={lead.contact_twitter}
+              label="Twitter"
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 opacity-0 group-hover/item:opacity-100 focus:opacity-100 transition-opacity"
+            />
           </div>
         )}
         {lead.contact_phone && (
-          <div className="flex items-center gap-2">
-            <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
-            <a href={`tel:${lead.contact_phone}`} className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_phone}</a>
+          <div className="flex items-center justify-between gap-2 group/item">
+            <div className="flex items-center gap-2 min-w-0">
+              <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
+              <a href={`tel:${lead.contact_phone}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_phone}</a>
+            </div>
+            <CopyButton
+              value={lead.contact_phone}
+              label="Phone"
+              className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 opacity-0 group-hover/item:opacity-100 focus:opacity-100 transition-opacity"
+            />
           </div>
         )}
       </div>
