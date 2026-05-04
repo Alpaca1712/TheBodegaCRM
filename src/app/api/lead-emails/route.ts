@@ -4,7 +4,7 @@ import { z } from 'zod'
 
 const createSchema = z.object({
   lead_id: z.string().uuid(),
-  email_type: z.enum(['initial', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'reply_response', 'meeting_request', 'lead_magnet']),
+  email_type: z.enum(['initial', 'follow_up_1', 'follow_up_2', 'follow_up_3', 'reply_response', 'meeting_request', 'lead_magnet', 'break_up']),
   cta_type: z.enum(['mckenna', 'hormozi']).optional().nullable(),
   subject: z.string(),
   body: z.string(),
