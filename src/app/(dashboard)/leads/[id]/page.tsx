@@ -53,6 +53,7 @@ import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface RelatedLead {
   id: string;
@@ -786,27 +787,51 @@ function ContactCard({ lead }: { lead: Lead }) {
       {/* Contact links */}
       <div className="space-y-2">
         {lead.contact_email && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group/item">
             <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`mailto:${lead.contact_email}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+            <CopyButton
+              text={lead.contact_email}
+              label="Email"
+              className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 ml-auto h-6 w-6"
+              iconSize={12}
+            />
           </div>
         )}
         {lead.contact_linkedin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group/item">
             <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] shrink-0" />
             <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0A66C2] hover:underline truncate">LinkedIn Profile</a>
+            <CopyButton
+              text={lead.contact_linkedin}
+              label="LinkedIn"
+              className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 ml-auto h-6 w-6"
+              iconSize={12}
+            />
           </div>
         )}
         {lead.contact_twitter && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group/item">
             <Twitter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_twitter}</a>
+            <CopyButton
+              text={lead.contact_twitter}
+              label="Twitter"
+              className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 ml-auto h-6 w-6"
+              iconSize={12}
+            />
           </div>
         )}
         {lead.contact_phone && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group/item">
             <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`tel:${lead.contact_phone}`} className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_phone}</a>
+            <CopyButton
+              text={lead.contact_phone}
+              label="Phone"
+              className="opacity-0 group-hover/item:opacity-100 focus:opacity-100 ml-auto h-6 w-6"
+              iconSize={12}
+            />
           </div>
         )}
       </div>

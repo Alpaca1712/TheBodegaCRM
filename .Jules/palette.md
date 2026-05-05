@@ -17,3 +17,7 @@
 ## 2025-05-18 - [Reusable Pattern: Search Experience]
 **Learning:** A great search experience includes a quick focus shortcut (`/`), a visual hint for that shortcut, and an immediate clear button. This reduces friction for the most common navigation and filtering tasks.
 **Action:** Implement search inputs with `useRef` for programmatic focus, a `kbd` hint, and a conditional `X` button for rapid reset.
+
+## 2025-05-19 - [Reusable Pattern: Centralized Copy Functionality]
+**Learning:** Consolidating repeated "copy to clipboard" logic into a single, accessible `CopyButton` component ensures consistent styling, keyboard accessibility, and feedback across the app. Using `stopPropagation` and `preventDefault` in the shared component prevents conflicts when nested inside other interactive elements like links or cards.
+**Action:** Always reach for the shared `CopyButton` instead of reimplementing clipboard logic. Ensure `focus:opacity-100` is used when the button is hidden by default to maintain keyboard accessibility.

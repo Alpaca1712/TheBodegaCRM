@@ -1,10 +1,9 @@
 'use client';
 
-import { useState } from 'react';
 import { formatDistanceToNow, format } from 'date-fns';
-import { toast } from 'sonner';
 import type { LeadEmail } from '@/types/leads';
-import { Mail, Reply, Clock, Copy, Check } from 'lucide-react';
+import { Mail, Reply, Clock } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface EmailThreadProps {
   emails: LeadEmail[];
@@ -34,26 +33,6 @@ const typeLabels: Record<string, string> = {
   lead_magnet: 'Lead Magnet',
   break_up: 'Break-up Email',
 };
-
-function CopyButton({ text, label }: { text: string; label?: string }) {
-  const [copied, setCopied] = useState(false);
-  const handleCopy = async (e: React.MouseEvent) => {
-    e.stopPropagation();
-    await navigator.clipboard.writeText(text);
-    setCopied(true);
-    toast.success(label ? `${label} copied` : 'Copied to clipboard');
-    setTimeout(() => setCopied(false), 2000);
-  };
-  return (
-    <button
-      onClick={handleCopy}
-      className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium text-zinc-500 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-md transition-colors"
-    >
-      {copied ? <Check className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
-      {copied ? 'Copied' : 'Copy'}
-    </button>
-  );
-}
 
 export default function EmailThread({ emails }: EmailThreadProps) {
   if (!emails.length) {
@@ -91,7 +70,11 @@ export default function EmailThread({ emails }: EmailThreadProps) {
               </div>
               <div className="flex items-center gap-2">
                 <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                  <CopyButton text={fullText} label="Email" />
+                  <CopyButton
+                    text={fullText}
+                    label="Email"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium h-auto w-auto"
+                  />
                 </div>
                 <div className="text-[11px] text-zinc-500 dark:text-zinc-400">
                   {email.sent_at ? (
@@ -124,7 +107,11 @@ export default function EmailThread({ emails }: EmailThreadProps) {
                       Reply {email.replied_at && `on ${format(new Date(email.replied_at), 'MMM d, yyyy')}`}
                     </span>
                   </div>
-                  <CopyButton text={replyContent} label="Reply" />
+                  <CopyButton
+                    text={replyContent}
+                    label="Reply"
+                    className="flex items-center gap-1 px-2 py-1 text-[10px] font-medium h-auto w-auto"
+                  />
                 </div>
                 <p className="text-sm text-zinc-700 dark:text-zinc-300 whitespace-pre-wrap">
                   {replyContent}
