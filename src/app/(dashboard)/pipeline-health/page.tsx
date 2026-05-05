@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { STAGE_LABELS, type PipelineStage } from '@/types/leads';
+import { toast } from 'sonner';
 
 interface LeadRisk {
   lead_id: string;
@@ -173,6 +174,43 @@ export default function PipelineHealthPage() {
   );
 }
 
+function MagicDraftButton({ leadId, contactName }: { leadId: string; contactName: string }) {
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const handleMagicDraft = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsProcessing(true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Magic draft failed');
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${contactName}...`,
+      success: `Draft ready for ${contactName}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(false));
+  };
+
+  return (
+    <button
+      onClick={handleMagicDraft}
+      disabled={isProcessing}
+      title="AI Magic Draft (Background)"
+      className="p-1.5 rounded-lg bg-purple-50 dark:bg-purple-950/40 text-purple-600 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/60 transition-colors disabled:opacity-50"
+    >
+      {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
+    </button>
+  );
+}
+
 function RiskSection({ title, subtitle, color, leads }: {
   title: string;
   subtitle: string;
@@ -218,7 +256,10 @@ function RiskSection({ title, subtitle, color, leads }: {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-2 ml-4">
+              {['email_sent', 'replied', 'follow_up', 'no_response'].includes(lead.stage) && (
+                <MagicDraftButton leadId={lead.lead_id} contactName={lead.contact_name} />
+              )}
               <span className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg ${c.badge}`}>
                 {lead.risk_score}
               </span>
