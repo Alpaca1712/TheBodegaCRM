@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { STAGE_LABELS, type PipelineStage } from '@/types/leads';
+import { toast } from 'sonner';
 
 interface LeadRisk {
   lead_id: string;
@@ -28,6 +29,7 @@ export default function PipelineHealthPage() {
   const [data, setData] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const fetchHealth = useCallback(async () => {
     try {
@@ -80,6 +82,27 @@ export default function PipelineHealthPage() {
   const handleRefresh = async () => {
     const result = await fetchHealth();
     if (result?.leads) fetchAiRecommendations(result.leads);
+  };
+
+  const handleMagicDraft = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Magic draft failed');
+      await fetchHealth();
+    })();
+
+    toast.promise(promise, {
+      loading: `Drafting next step for ${contactName}...`,
+      success: `Draft ready for ${contactName}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
   };
 
   if (loading) {
@@ -161,23 +184,46 @@ export default function PipelineHealthPage() {
 
       {/* Risk Buckets */}
       {riskBuckets.critical.length > 0 && (
-        <RiskSection title="Critical" subtitle="Immediate attention needed" color="red" leads={riskBuckets.critical} />
+        <RiskSection
+          title="Critical"
+          subtitle="Immediate attention needed"
+          color="red"
+          leads={riskBuckets.critical}
+          onMagicDraft={handleMagicDraft}
+          isProcessing={isProcessing}
+        />
       )}
       {riskBuckets.warning.length > 0 && (
-        <RiskSection title="Warning" subtitle="Starting to go cold" color="amber" leads={riskBuckets.warning} />
+        <RiskSection
+          title="Warning"
+          subtitle="Starting to go cold"
+          color="amber"
+          leads={riskBuckets.warning}
+          onMagicDraft={handleMagicDraft}
+          isProcessing={isProcessing}
+        />
       )}
       {riskBuckets.healthy.length > 0 && (
-        <RiskSection title="Healthy" subtitle="On track" color="emerald" leads={riskBuckets.healthy} />
+        <RiskSection
+          title="Healthy"
+          subtitle="On track"
+          color="emerald"
+          leads={riskBuckets.healthy}
+          onMagicDraft={handleMagicDraft}
+          isProcessing={isProcessing}
+        />
       )}
     </div>
   );
 }
 
-function RiskSection({ title, subtitle, color, leads }: {
+function RiskSection({ title, subtitle, color, leads, onMagicDraft, isProcessing }: {
   title: string;
   subtitle: string;
   color: 'red' | 'amber' | 'emerald';
   leads: LeadRisk[];
+  onMagicDraft: (leadId: string, contactName: string) => Promise<void>;
+  isProcessing: string | null;
 }) {
   const colorMap = {
     red: { dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', border: 'border-red-200 dark:border-red-900/50' },
@@ -196,14 +242,13 @@ function RiskSection({ title, subtitle, color, leads }: {
       </div>
       <div className="space-y-2">
         {leads.map(lead => (
-          <Link
+          <div
             key={lead.lead_id}
-            href={`/leads/${lead.lead_id}`}
-            className={`flex items-center justify-between p-4 rounded-xl border ${c.border} bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all`}
+            className={`flex items-center justify-between p-4 rounded-xl border ${c.border} bg-white dark:bg-zinc-900/50 hover:bg-zinc-50 dark:hover:bg-zinc-800/50 transition-all group`}
           >
-            <div className="min-w-0 flex-1">
+            <Link href={`/leads/${lead.lead_id}`} className="min-w-0 flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">{lead.contact_name}</p>
+                <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 group-hover:text-red-600 transition-colors">{lead.contact_name}</p>
                 <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-100 dark:bg-zinc-800 text-zinc-500 font-medium">
                   {STAGE_LABELS[lead.stage as PipelineStage] || lead.stage}
                 </span>
@@ -217,14 +262,34 @@ function RiskSection({ title, subtitle, color, leads }: {
                   {lead.recommendation}
                 </p>
               )}
-            </div>
+            </Link>
             <div className="flex items-center gap-3 ml-4">
+              {lead.risk_score > 30 && lead.stage !== 'email_drafted' && (
+                <button
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    onMagicDraft(lead.lead_id, lead.contact_name);
+                  }}
+                  disabled={isProcessing === lead.lead_id}
+                  title="Magic Draft: Address risk with one-click AI outreach"
+                  className="p-2 text-zinc-400 hover:text-amber-500 hover:bg-amber-50 dark:hover:bg-amber-950/30 rounded-lg transition-all disabled:opacity-50"
+                >
+                  {isProcessing === lead.lead_id ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Zap className="h-4 w-4" />
+                  )}
+                </button>
+              )}
               <span className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg ${c.badge}`}>
                 {lead.risk_score}
               </span>
-              <ArrowRight className="h-3.5 w-3.5 text-zinc-400" />
+              <Link href={`/leads/${lead.lead_id}`}>
+                <ArrowRight className="h-3.5 w-3.5 text-zinc-400 hover:text-red-600 transition-colors" />
+              </Link>
             </div>
-          </Link>
+          </div>
         ))}
       </div>
     </div>
