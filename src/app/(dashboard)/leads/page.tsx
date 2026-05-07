@@ -1,70 +1,55 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
 import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
-import type { Lead, LeadType, PipelineStage, Priority } from '@/types/leads';
+import type { LeadType, PipelineStage, Priority } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
 import { exportLeadsToCsv } from '@/lib/csv-export';
+import { useLeads } from '@/hooks/use-leads';
 
 const PAGE_SIZE = 50;
 
 export default function LeadsPage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [count, setCount] = useState(0);
-  const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
   const [stageFilter, setStageFilter] = useState<PipelineStage | ''>('');
-  const [error, setError] = useState<string | null>(null);
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
   const [page, setPage] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
+  const leadsQuery = useLeads({
+    type: typeFilter,
+    stage: stageFilter,
+    search: debouncedSearch,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  const leads = leadsQuery.data?.data ?? [];
+  const count = leadsQuery.data?.count ?? 0;
+  const loading = leadsQuery.isLoading;
+  const error = leadsQuery.error instanceof Error ? leadsQuery.error.message : null;
   const totalPages = Math.max(1, Math.ceil(count / PAGE_SIZE));
-  const isFiltered = !!(search || typeFilter || stageFilter);
+  const isFiltered = !!(debouncedSearch || typeFilter || stageFilter);
 
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams();
-    if (typeFilter) params.set('type', typeFilter);
-    if (stageFilter) params.set('stage', stageFilter);
-    if (search) params.set('search', search);
-    params.set('limit', String(PAGE_SIZE));
-    params.set('offset', String(page * PAGE_SIZE));
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(search), search ? 300 : 0);
+    return () => clearTimeout(timer);
+  }, [search]);
 
-    try {
-      const res = await fetch(`/api/leads?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeads(data.data || []);
-        setCount(data.count || 0);
-      } else {
-        throw new Error(`Failed to fetch leads (${res.status})`);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load leads';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [typeFilter, stageFilter, search, page]);
+  useEffect(() => {
+    if (error) toast.error(error);
+  }, [error]);
 
-  // Reset to page 0 when filters change
+  // Reset to page 0 when server filters change
   useEffect(() => {
     setPage(0);
-  }, [typeFilter, stageFilter, search]);
-
-  useEffect(() => {
-    const timer = setTimeout(fetchLeads, search ? 300 : 0);
-    return () => clearTimeout(timer);
-  }, [fetchLeads, search]);
+  }, [typeFilter, stageFilter, debouncedSearch]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -135,7 +120,7 @@ export default function LeadsPage() {
       const affected = Number(data?.affected ?? selectedIds.size);
       toast.success(successMsg(affected));
       clearSelection();
-      await fetchLeads();
+      await leadsQuery.refetch();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : 'Bulk operation failed');
     } finally {
@@ -166,14 +151,14 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
           <h1 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 tracking-tight">Leads</h1>
           <p className="text-sm text-zinc-500 dark:text-zinc-400 mt-0.5">
             {count} lead{count !== 1 ? 's' : ''} total
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <button
             onClick={() => {
               setSelectionMode((v) => !v);
@@ -369,16 +354,14 @@ export default function LeadsPage() {
         <div className="flex flex-col items-center justify-center py-12 gap-3">
           <p className="text-sm text-red-500">{error}</p>
           <button
-            onClick={fetchLeads}
+            onClick={() => void leadsQuery.refetch()}
             className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
           >
             Retry
           </button>
         </div>
       ) : loading ? (
-        <div className="flex items-center justify-center py-12">
-          <div className="h-6 w-6 border-2 border-red-600 border-t-transparent rounded-full animate-spin" />
-        </div>
+        <LeadsLoadingSkeleton />
       ) : (
         <LeadsTable
           leads={leads}
@@ -446,6 +429,60 @@ export default function LeadsPage() {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+function LeadsLoadingSkeleton() {
+  const rows = Array.from({ length: 6 }, (_, i) => i);
+
+  return (
+    <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading leads">
+      <span className="sr-only">Loading leads…</span>
+      <div className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50 md:block">
+        <div className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+          {['Contact', 'Company', 'Type', 'Stage', 'ICP', 'Priority', 'Updated'].map((label) => (
+            <div key={label} className="h-3 w-16 rounded bg-zinc-100 dark:bg-zinc-800" />
+          ))}
+        </div>
+        {rows.map((row) => (
+          <div key={row} className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-4 last:border-0 dark:border-zinc-800/60">
+            <div className="space-y-2">
+              <div className="h-4 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-3 w-44 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/70" />
+            </div>
+            <div className="space-y-2">
+              <div className="h-4 w-36 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+              <div className="h-3 w-24 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/70" />
+            </div>
+            <div className="h-5 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-5 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-5 w-10 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-4 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-4 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+          </div>
+        ))}
+      </div>
+      <div className="space-y-3 md:hidden">
+        {rows.slice(0, 3).map((row) => (
+          <div key={row} className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+            <div className="flex justify-between gap-4">
+              <div className="space-y-2">
+                <div className="h-4 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
+                <div className="h-3 w-40 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/70" />
+                <div className="h-3 w-48 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/70" />
+              </div>
+              <div className="h-5 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            </div>
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800/70" />
+              <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800/70" />
+              <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800/70" />
+              <div className="h-10 animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800/70" />
+            </div>
+          </div>
+        ))}
+      </div>
     </div>
   );
 }

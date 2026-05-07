@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { buildSalesActionPlan } from '@/lib/dashboard/sales-actions'
 import { NextResponse } from 'next/server'
 
 type ConversationSignal = {
@@ -153,6 +154,13 @@ export async function GET(req: Request) {
       if (!['researched', 'email_drafted', 'closed_won', 'closed_lost'].includes(lead.stage)) activePipeline++
     }
 
+    const salesActionPlan = buildSalesActionPlan({
+      leads,
+      outboundEmails,
+      inboundEmails,
+      now,
+    })
+
     const response = NextResponse.json({
       totalLeads: leads.length,
       outreachThisWeek: thisWeekOutbound.length,
@@ -168,6 +176,7 @@ export async function GET(req: Request) {
       followUpCompliance: Math.round(followUpCompliance),
       avgTouchpoints: Math.round(avgTouchpoints * 10) / 10,
       hotLeads,
+      salesActionPlan,
       pipelineCounts,
       byType: {
         customers: customerCount,

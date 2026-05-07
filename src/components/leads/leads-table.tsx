@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { formatDistanceToNow } from 'date-fns';
-import { Copy, Check } from 'lucide-react';
+import { Copy, Check, FilterX, UserPlus, ArrowRight } from 'lucide-react';
 import { toast } from 'sonner';
 import type { Lead } from '@/types/leads';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } from '@/types/leads';
@@ -77,21 +77,53 @@ export default function LeadsTable({
 
   if (!leads.length) {
     return (
-      <div className="text-center py-12 px-4 rounded-xl border border-dashed border-zinc-200 dark:border-zinc-800">
+      <div className="rounded-2xl border border-dashed border-zinc-200 bg-zinc-50/60 px-6 py-12 text-center dark:border-zinc-800 dark:bg-zinc-900/30">
         {isFiltered ? (
-          <div className="space-y-3">
-            <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads match your search or filters.</p>
+          <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-white text-zinc-400 shadow-sm ring-1 ring-zinc-200 dark:bg-zinc-900 dark:ring-zinc-800">
+              <FilterX className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No matching leads</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Try broadening the search, changing stages, or clearing filters to get back to the full pipeline.
+              </p>
+            </div>
             {onClearFilters && (
               <button
                 onClick={onClearFilters}
-                className="text-xs font-medium text-red-600 dark:text-red-400 hover:underline"
+                className="mt-1 inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-red-600/20 transition-colors hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
               >
                 Clear all filters
               </button>
             )}
           </div>
         ) : (
-          <p className="text-sm text-zinc-500 dark:text-zinc-400">No leads yet. Add your first lead to get started.</p>
+          <div className="mx-auto flex max-w-md flex-col items-center gap-3">
+            <div className="flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-500 ring-1 ring-red-100 dark:bg-red-950/30 dark:ring-red-900/40">
+              <UserPlus className="h-5 w-5" />
+            </div>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Start your outreach pipeline</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                Add a lead or import a CSV to start tracking conversations, follow-ups, and close-ready accounts.
+              </p>
+            </div>
+            <div className="mt-1 flex flex-wrap items-center justify-center gap-2">
+              <Link
+                href="/leads/new?type=customer"
+                className="inline-flex items-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-red-600/20 transition-colors hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+              >
+                Add first lead
+              </Link>
+              <Link
+                href="/leads/import"
+                className="inline-flex items-center gap-1.5 rounded-lg border border-zinc-200 bg-white px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-50 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+              >
+                Import CSV
+              </Link>
+            </div>
+          </div>
         )}
       </div>
     );
@@ -101,8 +133,91 @@ export default function LeadsTable({
   const someSelected = selectable && selectedIds ? leads.some((l) => selectedIds.has(l.id)) : false;
 
   return (
-    <div className="overflow-x-auto">
-      <table className="w-full">
+    <>
+      <div className="space-y-3 md:hidden" aria-label="Lead cards">
+        {leads.map((lead) => {
+          const checked = selectable && selectedIds ? selectedIds.has(lead.id) : false;
+          return (
+            <article
+              key={lead.id}
+              className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors dark:bg-zinc-900/60 ${
+                checked
+                  ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10'
+                  : 'border-zinc-200 dark:border-zinc-800'
+              }`}
+            >
+              <div className="flex items-start gap-3">
+                {selectable && (
+                  <input
+                    type="checkbox"
+                    aria-label={`Select ${lead.contact_name}`}
+                    checked={checked}
+                    onChange={() => onToggleOne?.(lead.id)}
+                    className="mt-1 h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500/30 dark:border-zinc-700"
+                  />
+                )}
+                <div className="min-w-0 flex-1">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link href={`/leads/${lead.id}`} className="text-sm font-semibold text-zinc-900 transition-colors hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
+                        {lead.contact_name}
+                      </Link>
+                      <p className="truncate text-sm text-zinc-600 dark:text-zinc-300">{lead.company_name}</p>
+                      {lead.contact_email && (
+                        <div className="mt-0.5 flex items-center text-xs text-zinc-500 dark:text-zinc-400">
+                          <span className="truncate">{lead.contact_email}</span>
+                          <CopyEmailButton email={lead.contact_email} />
+                        </div>
+                      )}
+                    </div>
+                    <span className={`shrink-0 rounded px-2 py-0.5 text-[11px] font-medium ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                      {LEAD_TYPE_LABELS[lead.type]}
+                    </span>
+                  </div>
+
+                  <dl className="mt-4 grid grid-cols-2 gap-3 text-xs">
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Stage</dt>
+                      <dd className="mt-1">
+                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
+                          {STAGE_LABELS[lead.stage]}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Priority</dt>
+                      <dd className="mt-1 flex items-center gap-1.5 text-zinc-600 capitalize dark:text-zinc-400">
+                        <span className={`h-2 w-2 rounded-full ${priorityDots[lead.priority]}`} />
+                        {lead.priority}
+                      </dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">ICP</dt>
+                      <dd className="mt-1 text-zinc-600 dark:text-zinc-400">{lead.icp_score != null ? `${lead.icp_score}/100` : 'Not scored'}</dd>
+                    </div>
+                    <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Updated</dt>
+                      <dd className="mt-1 text-zinc-600 dark:text-zinc-400">
+                        {formatDistanceToNow(new Date(lead.updated_at), { addSuffix: true })}
+                      </dd>
+                    </div>
+                  </dl>
+
+                  <Link
+                    href={`/leads/${lead.id}`}
+                    className="mt-4 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+                  >
+                    Open lead <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
+
+      <div className="hidden overflow-x-auto md:block">
+        <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-200 dark:border-zinc-800">
             {selectable && (
@@ -222,5 +337,6 @@ export default function LeadsTable({
         </tbody>
       </table>
     </div>
+  </>
   );
 }

@@ -26,6 +26,7 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
+import type { SalesAction } from '@/lib/dashboard/sales-actions';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 import { toast } from 'sonner';
 
@@ -44,6 +45,7 @@ interface DashboardData {
   followUpCompliance: number;
   avgTouchpoints: number;
   hotLeads: Lead[];
+  salesActionPlan: SalesAction[];
   pipelineCounts: Record<string, number>;
   byType: { customers: number; investors: number; partnerships: number };
   closedWon: number;
@@ -84,7 +86,7 @@ export default function DashboardPage() {
       ]);
       if (!dashRes.ok) throw new Error(`Dashboard request failed (${dashRes.status})`);
       const dashData = await dashRes.json();
-      setData(dashData);
+      setData({ ...dashData, salesActionPlan: Array.isArray(dashData.salesActionPlan) ? dashData.salesActionPlan : [] });
       setHealth(healthData);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Failed to load dashboard';
