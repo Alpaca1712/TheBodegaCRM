@@ -53,6 +53,7 @@ import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface RelatedLead {
   id: string;
@@ -786,27 +787,31 @@ function ContactCard({ lead }: { lead: Lead }) {
       {/* Contact links */}
       <div className="space-y-2">
         {lead.contact_email && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group">
             <Mail className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`mailto:${lead.contact_email}`} className="text-xs text-red-600 dark:text-red-400 hover:underline truncate">{lead.contact_email}</a>
+            <CopyButton text={lead.contact_email} label="Email" className="ml-auto opacity-0 group-hover:opacity-100 focus:opacity-100" />
           </div>
         )}
         {lead.contact_linkedin && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group">
             <Linkedin className="h-3.5 w-3.5 text-[#0A66C2] shrink-0" />
             <a href={lead.contact_linkedin.startsWith('http') ? lead.contact_linkedin : `https://${lead.contact_linkedin}`} target="_blank" rel="noopener noreferrer" className="text-xs text-[#0A66C2] hover:underline truncate">LinkedIn Profile</a>
+            <CopyButton text={lead.contact_linkedin} label="LinkedIn" className="ml-auto opacity-0 group-hover:opacity-100 focus:opacity-100" />
           </div>
         )}
         {lead.contact_twitter && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group">
             <Twitter className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`https://twitter.com/${lead.contact_twitter.replace('@', '')}`} target="_blank" rel="noopener noreferrer" className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_twitter}</a>
+            <CopyButton text={lead.contact_twitter} label="Twitter" className="ml-auto opacity-0 group-hover:opacity-100 focus:opacity-100" />
           </div>
         )}
         {lead.contact_phone && (
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 group">
             <Phone className="h-3.5 w-3.5 text-zinc-400 shrink-0" />
             <a href={`tel:${lead.contact_phone}`} className="text-xs text-red-600 dark:text-red-400 hover:underline">{lead.contact_phone}</a>
+            <CopyButton text={lead.contact_phone} label="Phone" className="ml-auto opacity-0 group-hover:opacity-100 focus:opacity-100" />
           </div>
         )}
       </div>
@@ -1779,8 +1784,11 @@ function BattleCardPanel({ card, defaultExpanded = true }: { card: Record<string
       </button>
 
       {bc.our_angle && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-          <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Our Angle</p>
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 group/angle relative">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Our Angle</p>
+            <CopyButton text={bc.our_angle} label="Our Angle" className="opacity-0 group-hover/angle:opacity-100 focus:opacity-100 -mr-1 -mt-1" />
+          </div>
           <p className="text-sm text-zinc-800 dark:text-zinc-200">{bc.our_angle}</p>
         </div>
       )}

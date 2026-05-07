@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { Swords, ChevronDown, Target } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 
 export function BattleCardPanel({ card, defaultExpanded = true }: { card: Record<string, unknown>; defaultExpanded?: boolean }) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -37,8 +38,11 @@ export function BattleCardPanel({ card, defaultExpanded = true }: { card: Record
       </button>
 
       {bc.our_angle && (
-        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800">
-          <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider mb-1">Our Angle</p>
+        <div className="p-3 rounded-lg bg-red-50 dark:bg-red-950/30 border border-red-200 dark:border-red-800 group/angle relative">
+          <div className="flex items-center justify-between mb-1">
+            <p className="text-[10px] font-semibold text-red-600 dark:text-red-400 uppercase tracking-wider">Our Angle</p>
+            <CopyButton text={bc.our_angle} label="Our Angle" className="opacity-0 group-hover/angle:opacity-100 focus:opacity-100 -mr-1 -mt-1" />
+          </div>
           <p className="text-sm text-zinc-800 dark:text-zinc-200">{bc.our_angle}</p>
         </div>
       )}

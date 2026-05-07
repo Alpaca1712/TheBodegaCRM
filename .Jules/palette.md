@@ -17,3 +17,7 @@
 ## 2025-05-18 - [Reusable Pattern: Search Experience]
 **Learning:** A great search experience includes a quick focus shortcut (`/`), a visual hint for that shortcut, and an immediate clear button. This reduces friction for the most common navigation and filtering tasks.
 **Action:** Implement search inputs with `useRef` for programmatic focus, a `kbd` hint, and a conditional `X` button for rapid reset.
+
+## 2025-05-19 - [Reusable Pattern: Just-in-Time Copy Actions]
+**Learning:** A reusable 'CopyButton' component that appears only on hover or focus reduces visual clutter while maintaining high utility. Combining it with 'stopPropagation' prevents accidental navigation when the button is nested in clickable elements like table rows or cards.
+**Action:** Implement clipboard actions using a shared 'CopyButton' with icon feedback, sonner toasts, and 'focus:opacity-100' to ensure keyboard accessibility for hidden-by-default elements.
