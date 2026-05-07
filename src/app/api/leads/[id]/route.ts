@@ -57,6 +57,8 @@ const updateSchema = z.object({
   icp_reasons: z.array(z.string()).optional(),
   battle_card: z.record(z.unknown()).optional().nullable(),
   battle_card_generated_at: z.string().optional().nullable(),
+  investor_memo: z.record(z.unknown()).optional().nullable(),
+  investor_memo_generated_at: z.string().optional().nullable(),
 })
 
 export async function GET(

@@ -176,6 +176,8 @@ export interface Lead {
   icp_reasons: string[]
   battle_card: BattleCard | null
   battle_card_generated_at: string | null
+  investor_memo: Record<string, unknown> | null
+  investor_memo_generated_at: string | null
   // Conversation intelligence
   email_domain: string | null
   conversation_summary: string | null
@@ -223,7 +225,8 @@ export type LeadInsert = Omit<Lead,
   'last_inbound_at' | 'last_outbound_at' |
   'account_snapshot' | 'snapshot_generated_at' | 'risk_score' | 'risk_factors' | 'risk_assessed_at' |
   'contact_photo_url' | 'company_website' | 'company_logo_url' | 'org_chart' |
-  'icp_score' | 'icp_reasons' | 'battle_card' | 'battle_card_generated_at'
+  'icp_score' | 'icp_reasons' | 'battle_card' | 'battle_card_generated_at' |
+  'investor_memo' | 'investor_memo_generated_at'
 > & {
   id?: string
   contact_phone?: string | null
@@ -361,6 +364,17 @@ export interface EmailVariant {
     issues: string[]
     score: number
   }
+}
+
+export interface InvestorMemo {
+  title: string
+  executive_summary: string
+  the_problem: string
+  the_solution: string
+  why_now: string
+  traction: string
+  the_team: string
+  strategic_fit: string
 }
 
 export interface GeneratedEmail {
