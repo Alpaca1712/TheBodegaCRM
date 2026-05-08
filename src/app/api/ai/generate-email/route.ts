@@ -1,7 +1,7 @@
 import { generateJSON } from '@/lib/ai/anthropic'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { checkEmailQuality, countWords } from '@/lib/ai/quality'
+import { checkEmailQuality, countWords, normalizeGeneratedEmail } from '@/lib/ai/quality'
 import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
 
 const requestSchema = z.object({
@@ -331,24 +331,30 @@ export async function POST(request: NextRequest) {
       ),
     ])
 
-    const stripEmDashes = (text: string) => text.replace(/[\u2013\u2014]/g, ',')
+    const normalizeResult = (result: { subject: string; body: string }) => ({
+      subject: normalizeGeneratedEmail(result.subject),
+      body: normalizeGeneratedEmail(result.body),
+    })
 
-    const mckennaQuality = checkEmailQuality(mckennaResult.subject, mckennaResult.body, 'initial')
-    const hormoziQuality = checkEmailQuality(hormoziResult.subject, hormoziResult.body, 'initial')
+    const mckenna = normalizeResult(mckennaResult)
+    const hormozi = normalizeResult(hormoziResult)
+
+    const mckennaQuality = checkEmailQuality(mckenna.subject, mckenna.body, 'initial')
+    const hormoziQuality = checkEmailQuality(hormozi.subject, hormozi.body, 'initial')
 
     return NextResponse.json({
       mckenna: {
-        subject: stripEmDashes(mckennaResult.subject),
-        body: stripEmDashes(mckennaResult.body),
+        subject: mckenna.subject,
+        body: mckenna.body,
         ctaType: 'mckenna' as const,
-        wordCount: countWords(mckennaResult.body),
+        wordCount: countWords(mckenna.body),
         quality: mckennaQuality,
       },
       hormozi: {
-        subject: stripEmDashes(hormoziResult.subject),
-        body: stripEmDashes(hormoziResult.body),
+        subject: hormozi.subject,
+        body: hormozi.body,
         ctaType: 'hormozi' as const,
-        wordCount: countWords(hormoziResult.body),
+        wordCount: countWords(hormozi.body),
         quality: hormoziQuality,
       },
     })

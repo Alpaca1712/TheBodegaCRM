@@ -2,7 +2,7 @@ import { generateJSON } from '@/lib/ai/anthropic'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
-import { checkEmailQuality, countWords } from '@/lib/ai/quality'
+import { checkEmailQuality, countWords, normalizeGeneratedEmail } from '@/lib/ai/quality'
 
 const emailSchema = z.object({
   direction: z.enum(['inbound', 'outbound']),
@@ -376,9 +376,8 @@ export async function POST(request: NextRequest) {
       maxTokens: 4096,
     })
 
-    const stripEmDashes = (text: string) => text.replace(/[\u2013\u2014]/g, ',')
-    result.subject = stripEmDashes(result.subject)
-    result.body = stripEmDashes(result.body)
+    result.subject = normalizeGeneratedEmail(result.subject)
+    result.body = normalizeGeneratedEmail(result.body)
 
     const quality = checkEmailQuality(result.subject, result.body, 'follow_up')
 

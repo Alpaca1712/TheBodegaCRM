@@ -26,6 +26,40 @@ export const BANNED_PHRASES = [
   'inspired by',
 ]
 
+const LOW_VALUE_CTA_PATTERNS = [
+  /would love to (?:find )?time to (?:chat|connect|talk|discuss)/i,
+  /(?:hop on|jump on|get on) (?:a )?(?:quick )?call/i,
+  /book (?:a )?(?:quick )?(?:meeting|call)/i,
+  /find (?:some )?time (?:to|for)/i,
+  /schedule (?:a )?(?:quick )?(?:meeting|call|chat)/i,
+]
+
+const CONCRETE_VALUE_PATTERNS = [
+  /\b(?:free|short|quick|specific|custom|personalized)\b.{0,80}\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource)\b/i,
+  /\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource)\b.{0,80}\b(?:for|of|about|on)\b/i,
+  /want me to send (?:it|that|this)/i,
+]
+
+const UNSUPPORTED_TRACTION_PATTERNS = [
+  /\b(?:dozens|hundreds|thousands|\d+\+?)\s+(?:of\s+)?(?:customers|clients|companies|teams|enterprises|startups)\b/i,
+  /\b(?:fortune\s*500|series\s+[abc]|unicorns?)\b/i,
+  /\b(?:reduced|increased|improved|cut|saved)\b.{0,50}\b\d+%\b/i,
+  /\b\d+\s*(?:x|times)\b.{0,50}\b(?:faster|better|more|less)\b/i,
+]
+
+const AVOIDABLE_SECURITY_JARGON = [
+  'agentic pentesting',
+  'adversarial inputs',
+  'prompt injection',
+  'jailbreaking',
+  'data exfiltration',
+  'tool abuse',
+  'confused deputy',
+  'RAG pipeline',
+  'input surface',
+  'attack surface',
+]
+
 export interface QualityResult {
   issues: string[]
   score: number
@@ -33,6 +67,10 @@ export interface QualityResult {
 
 export function countWords(text: string): number {
   return text.trim().split(/\s+/).filter(Boolean).length
+}
+
+export function normalizeGeneratedEmail(text: string): string {
+  return text.replace(/\s*[\u2013\u2014]\s*/g, ', ')
 }
 
 export function checkEmailQuality(
@@ -75,6 +113,27 @@ export function checkEmailQuality(
     if (bodyLower.includes(phrase.toLowerCase()) || subjectLower.includes(phrase.toLowerCase())) {
       issues.push(`Contains banned phrase: "${phrase}".`)
       score -= 10
+    }
+  }
+
+  const hasLowValueAsk = LOW_VALUE_CTA_PATTERNS.some(pattern => pattern.test(body))
+  const offersConcreteValue = CONCRETE_VALUE_PATTERNS.some(pattern => pattern.test(body))
+  if (hasLowValueAsk && !offersConcreteValue) {
+    issues.push('CTA asks for time without offering a concrete free deliverable.')
+    score -= 15
+  }
+
+  const mentionsMason = /\bmason\b/i.test(body)
+  const hasUnsupportedTraction = UNSUPPORTED_TRACTION_PATTERNS.some(pattern => pattern.test(body))
+  if (hasUnsupportedTraction && !mentionsMason) {
+    issues.push('Contains unsupported traction claim. Only the Mason pilot may be referenced as a real result.')
+    score -= 20
+  }
+
+  for (const jargon of AVOIDABLE_SECURITY_JARGON) {
+    if (bodyLower.includes(jargon.toLowerCase()) || subjectLower.includes(jargon.toLowerCase())) {
+      issues.push(`Uses avoidable security jargon: "${jargon}". Use plain language unless the lead used it first.`)
+      score -= 5
     }
   }
 
