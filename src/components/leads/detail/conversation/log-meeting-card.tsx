@@ -45,6 +45,7 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
             placeholder="Paste transcript or type notes..."
             className="min-h-[100px] bg-zinc-50 dark:bg-zinc-800"
             aria-label="Meeting notes"
+            autoResize
           />
           <Button
             onClick={onSubmit}

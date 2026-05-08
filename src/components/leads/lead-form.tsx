@@ -324,7 +324,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div>
           <label htmlFor="company_description" className={labelClass}>Company Description</label>
-          <Textarea id="company_description" {...form.register('company_description')} placeholder="What does this company do? What's their product?" />
+          <Textarea id="company_description" {...form.register('company_description')} placeholder="What does this company do? What's their product?" autoResize />
         </div>
 
         {watchType === 'customer' && (
@@ -334,6 +334,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               id="attack_surface_notes"
               {...form.register('attack_surface_notes')}
               placeholder="How is their AI agent vulnerable? What channels does it use? What tools does it connect to? What data can it access?"
+              autoResize
             />
           </div>
         )}
@@ -344,6 +345,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               id="investment_thesis_notes"
               {...form.register('investment_thesis_notes')}
               placeholder="What do they invest in? What's their thesis? What blog posts have they written?"
+              autoResize
             />
           </div>
         )}
@@ -354,6 +356,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
               id="partnership_notes"
               {...form.register('investment_thesis_notes')}
               placeholder="What kind of partnership? Lead gen agency, cyber insurance, reseller, integration partner? What's the mutual value prop?"
+              autoResize
             />
           </div>
         )}
@@ -364,6 +367,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
             id="personal_details"
             {...form.register('personal_details')}
             placeholder="Blog posts, podcast quotes, GitHub activity, personal story, career arc, side projects..."
+            autoResize
           />
         </div>
 
@@ -412,7 +416,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
         <div>
           <label htmlFor="notes" className={labelClass}>Notes</label>
-          <Textarea id="notes" {...form.register('notes')} placeholder="Any other notes about this lead..." />
+          <Textarea id="notes" {...form.register('notes')} placeholder="Any other notes about this lead..." autoResize />
         </div>
       </div>
 

@@ -17,3 +17,7 @@
 ## 2025-05-18 - [Reusable Pattern: Search Experience]
 **Learning:** A great search experience includes a quick focus shortcut (`/`), a visual hint for that shortcut, and an immediate clear button. This reduces friction for the most common navigation and filtering tasks.
 **Action:** Implement search inputs with `useRef` for programmatic focus, a `kbd` hint, and a conditional `X` button for rapid reset.
+
+## 2025-05-19 - [Reusable Pattern: Auto-resizing Textareas]
+**Learning:** For forms where users enter variable-length content (notes, transcripts, descriptions), static textareas often lead to frustrating scroll-within-scroll experiences. Auto-resizing textareas that grow with content provide a more "document-like" and fluid experience.
+**Action:** Use the `autoResize` prop on the shared `Textarea` component for any multi-line input where the content length is unpredictable.

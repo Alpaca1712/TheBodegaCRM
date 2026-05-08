@@ -105,6 +105,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
             placeholder="Paste DM, call notes..."
             className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800 text-xs"
             aria-label="Interaction content"
+            autoResize
           />
           <Button
             onClick={handleSubmit}

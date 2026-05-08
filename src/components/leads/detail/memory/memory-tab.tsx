@@ -59,6 +59,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
           placeholder="Type a fact, preference, or context to remember about this lead..."
           className="min-h-[60px] bg-zinc-50 dark:bg-zinc-800"
           aria-label="New memory content"
+          autoResize
         />
         <div className="flex items-center gap-2">
           <select
