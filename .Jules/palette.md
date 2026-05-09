@@ -21,3 +21,7 @@
 ## 2026-05-04 - [A11y: Visible Focus for Hidden Actions]
 **Learning:** UX patterns that hide actions until hover (using opacity-0) are inaccessible to keyboard users unless they also include focus:opacity-100. Without this, users tabbing through the interface will encounter invisible focus stops, which is confusing and frustrating.
 **Action:** When using hover-to-reveal patterns, always pair 'group-hover:opacity-100' with 'focus:opacity-100' (and proper focus rings) to ensure parity for keyboard and screen reader users.
+
+## 2025-05-19 - [Reusable Pattern: Centralized Copy Functionality]
+**Learning:** Consolidating repeated "copy to clipboard" logic into a single, accessible `CopyButton` component ensures consistent styling, keyboard accessibility, and feedback across the app. Using `stopPropagation` and `preventDefault` in the shared component prevents conflicts when nested inside other interactive elements like links or cards.
+**Action:** Always reach for the shared `CopyButton` instead of reimplementing clipboard logic. Ensure `focus:opacity-100` is used when the button is hidden by default to maintain keyboard accessibility.
