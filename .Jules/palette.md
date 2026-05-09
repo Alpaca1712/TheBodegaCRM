@@ -17,3 +17,7 @@
 ## 2025-05-18 - [Reusable Pattern: Search Experience]
 **Learning:** A great search experience includes a quick focus shortcut (`/`), a visual hint for that shortcut, and an immediate clear button. This reduces friction for the most common navigation and filtering tasks.
 **Action:** Implement search inputs with `useRef` for programmatic focus, a `kbd` hint, and a conditional `X` button for rapid reset.
+
+## 2026-05-04 - [A11y: Visible Focus for Hidden Actions]
+**Learning:** UX patterns that hide actions until hover (using opacity-0) are inaccessible to keyboard users unless they also include focus:opacity-100. Without this, users tabbing through the interface will encounter invisible focus stops, which is confusing and frustrating.
+**Action:** When using hover-to-reveal patterns, always pair 'group-hover:opacity-100' with 'focus:opacity-100' (and proper focus rings) to ensure parity for keyboard and screen reader users.
