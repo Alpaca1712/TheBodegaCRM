@@ -29,3 +29,7 @@
 ## 2025-05-19 - [Reusable Pattern: Just-in-Time Copy Actions]
 **Learning:** A reusable 'CopyButton' component that appears only on hover or focus reduces visual clutter while maintaining high utility. Combining it with 'stopPropagation' prevents accidental navigation when the button is nested in clickable elements like table rows or cards.
 **Action:** Implement clipboard actions using a shared 'CopyButton' with icon feedback, sonner toasts, and 'focus:opacity-100' to ensure keyboard accessibility for hidden-by-default elements.
+
+## 2025-05-19 - [Reusable Pattern: Auto-resizing Textareas]
+**Learning:** For forms where users enter variable-length content (notes, transcripts, descriptions), static textareas often lead to frustrating scroll-within-scroll experiences. Auto-resizing textareas that grow with content provide a more "document-like" and fluid experience.
+**Action:** Use the `autoResize` prop on the shared `Textarea` component for any multi-line input where the content length is unpredictable.
