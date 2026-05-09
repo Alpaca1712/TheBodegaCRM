@@ -87,8 +87,43 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
   const [mode, setMode] = useState<EmailMode>(initialMode);
   const [isGenerating, setIsGenerating] = useState(false);
   const [result, setResult] = useState<GeneratedEmail | null>(null);
-  const [editedMckenna, setEditedMckenna] = useState<EmailVariant | null>(null);
+
+  // If in review_draft mode, check for existing unsent outbound emails
+  const existingDraft = useMemo(() => {
+    if (mode !== 'review_draft') return null;
+    return emails.find(e => e.direction === 'outbound' && !e.sent_at);
+  }, [mode, emails]);
+
+  const [editedMckenna, setEditedMckenna] = useState<EmailVariant | null>(() => {
+    if (existingDraft) {
+      return {
+        subject: existingDraft.subject,
+        body: existingDraft.body,
+        ctaType: existingDraft.cta_type || 'mckenna',
+        wordCount: countWords(existingDraft.body),
+        quality: checkEmailQuality(existingDraft.subject, existingDraft.body, 'initial'),
+      };
+    }
+    return null;
+  });
+
   const [editedHormozi, setEditedHormozi] = useState<EmailVariant | null>(null);
+
+  // When result or existingDraft is loaded, ensure the state is synced
+  useEffect(() => {
+    if (existingDraft && !result) {
+      setEditedMckenna({
+        subject: existingDraft.subject,
+        body: existingDraft.body,
+        ctaType: existingDraft.cta_type || 'mckenna',
+        wordCount: countWords(existingDraft.body),
+        quality: checkEmailQuality(existingDraft.subject, existingDraft.body, 'initial'),
+      });
+      // In review mode, we usually only have one draft
+      setEditedHormozi(null);
+    }
+  }, [existingDraft, result]);
+
   const [copiedSide, setCopiedSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [sendingSide, setSendingSide] = useState<'mckenna' | 'hormozi' | null>(null);
   const [customContext, setCustomContext] = useState('');
@@ -210,18 +245,32 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         : mode === 'post_meeting' ? 'reply_response'
         : mode;
 
-      await fetch('/api/lead-emails', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          lead_id: lead.id,
-          email_type: emailType,
-          cta_type: side,
-          subject: variant.subject,
-          body: variant.body,
-          direction: 'outbound',
-        }),
-      });
+      if (existingDraft) {
+        // Update the existing draft and mark as sent
+        await fetch(`/api/lead-emails/${existingDraft.id}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            subject: variant.subject,
+            body: variant.body,
+            sent_at: new Date().toISOString(),
+          }),
+        });
+      } else {
+        await fetch('/api/lead-emails', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            lead_id: lead.id,
+            email_type: emailType,
+            cta_type: side,
+            subject: variant.subject,
+            body: variant.body,
+            direction: 'outbound',
+            sent_at: new Date().toISOString(),
+          }),
+        });
+      }
 
       // Only update stage if it makes sense
       // Don't regress from advanced stages, don't override replied/meeting_held
@@ -267,8 +316,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
     );
   }
 
-  // Pre-generation view
-  if (!result) {
+  // Pre-generation view (unless we have an existing draft to review)
+  if (!result && !existingDraft) {
     return (
       <div className="space-y-4">
         {/* Tactical Advice & GTM Angle */}
@@ -542,10 +591,10 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         </div>
       )}
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className={editedHormozi ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "max-w-2xl mx-auto"}>
         <VariantCard
-          title={config.isFollowUp ? 'Variant A' : 'McKenna CTA'}
-          subtitle={config.isFollowUp ? 'Edit and send' : 'Sell the conversation'}
+          title={mode === 'review_draft' ? 'Existing Draft' : (config.isFollowUp ? 'Variant A' : 'McKenna CTA')}
+          subtitle={mode === 'review_draft' ? 'Refine and send' : (config.isFollowUp ? 'Edit and send' : 'Sell the conversation')}
           variant={editedMckenna!}
           mode={mode}
           onSubjectChange={(s) => setEditedMckenna((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
@@ -556,18 +605,20 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
           isSending={sendingSide === 'mckenna'}
         />
 
-        <VariantCard
-          title={config.isFollowUp ? 'Variant B' : 'Hormozi CTA'}
-          subtitle={config.isFollowUp ? 'Alternative version' : 'Lead with value'}
-          variant={editedHormozi!}
-          mode={mode}
-          onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
-          onBodyChange={(b) => setEditedHormozi((v) => v ? { ...v, body: b, wordCount: countWords(b), quality: checkEmailQuality(v.subject, b, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
-          onCopy={() => handleCopy('hormozi')}
-          onSend={() => handleSend('hormozi')}
-          isCopied={copiedSide === 'hormozi'}
-          isSending={sendingSide === 'hormozi'}
-        />
+        {editedHormozi && (
+          <VariantCard
+            title={config.isFollowUp ? 'Variant B' : 'Hormozi CTA'}
+            subtitle={config.isFollowUp ? 'Alternative version' : 'Lead with value'}
+            variant={editedHormozi!}
+            mode={mode}
+            onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
+            onBodyChange={(b) => setEditedHormozi((v) => v ? { ...v, body: b, wordCount: countWords(b), quality: checkEmailQuality(v.subject, b, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
+            onCopy={() => handleCopy('hormozi')}
+            onSend={() => handleSend('hormozi')}
+            isCopied={copiedSide === 'hormozi'}
+            isSending={sendingSide === 'hormozi'}
+          />
+        )}
       </div>
     </div>
   );
