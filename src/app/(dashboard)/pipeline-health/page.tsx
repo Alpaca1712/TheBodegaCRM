@@ -2,8 +2,9 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
-import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles } from 'lucide-react';
+import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { STAGE_LABELS, type PipelineStage } from '@/types/leads';
+import { toast } from 'sonner';
 
 interface LeadRisk {
   lead_id: string;
@@ -25,6 +26,7 @@ interface PipelineHealthData {
 }
 
 export default function PipelineHealthPage() {
+  const [isDrafting, setIsDrafting] = useState<string | null>(null);
   const [data, setData] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
   const [aiLoading, setAiLoading] = useState(false);
@@ -80,6 +82,27 @@ export default function PipelineHealthPage() {
   const handleRefresh = async () => {
     const result = await fetchHealth();
     if (result?.leads) fetchAiRecommendations(result.leads);
+  };
+
+  const handleMagicDraft = async (leadId: string, contactName: string) => {
+    setIsDrafting(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await handleRefresh();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${contactName}...`,
+      success: `Draft ready for ${contactName}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsDrafting(null));
   };
 
   if (loading) {
@@ -161,23 +184,46 @@ export default function PipelineHealthPage() {
 
       {/* Risk Buckets */}
       {riskBuckets.critical.length > 0 && (
-        <RiskSection title="Critical" subtitle="Immediate attention needed" color="red" leads={riskBuckets.critical} />
+        <RiskSection
+          title="Critical"
+          subtitle="Immediate attention needed"
+          color="red"
+          leads={riskBuckets.critical}
+          isDrafting={isDrafting}
+          onMagicDraft={handleMagicDraft}
+        />
       )}
       {riskBuckets.warning.length > 0 && (
-        <RiskSection title="Warning" subtitle="Starting to go cold" color="amber" leads={riskBuckets.warning} />
+        <RiskSection
+          title="Warning"
+          subtitle="Starting to go cold"
+          color="amber"
+          leads={riskBuckets.warning}
+          isDrafting={isDrafting}
+          onMagicDraft={handleMagicDraft}
+        />
       )}
       {riskBuckets.healthy.length > 0 && (
-        <RiskSection title="Healthy" subtitle="On track" color="emerald" leads={riskBuckets.healthy} />
+        <RiskSection
+          title="Healthy"
+          subtitle="On track"
+          color="emerald"
+          leads={riskBuckets.healthy}
+          isDrafting={isDrafting}
+          onMagicDraft={handleMagicDraft}
+        />
       )}
     </div>
   );
 }
 
-function RiskSection({ title, subtitle, color, leads }: {
+function RiskSection({ title, subtitle, color, leads, isDrafting, onMagicDraft }: {
   title: string;
   subtitle: string;
   color: 'red' | 'amber' | 'emerald';
   leads: LeadRisk[];
+  isDrafting: string | null;
+  onMagicDraft: (leadId: string, contactName: string) => void;
 }) {
   const colorMap = {
     red: { dot: 'bg-red-500', badge: 'bg-red-100 dark:bg-red-900/40 text-red-600 dark:text-red-400', border: 'border-red-200 dark:border-red-900/50' },
@@ -218,7 +264,23 @@ function RiskSection({ title, subtitle, color, leads }: {
                 </p>
               )}
             </div>
-            <div className="flex items-center gap-3 ml-4">
+            <div className="flex items-center gap-3 ml-4 shrink-0">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  onMagicDraft(lead.lead_id, lead.contact_name);
+                }}
+                disabled={isDrafting !== null}
+                className="p-2 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                title="Magic Draft"
+              >
+                {isDrafting === lead.lead_id ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Zap className="h-4 w-4" />
+                )}
+              </button>
               <span className={`text-xs font-bold tabular-nums px-2 py-1 rounded-lg ${c.badge}`}>
                 {lead.risk_score}
               </span>
