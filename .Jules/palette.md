@@ -25,3 +25,7 @@
 ## 2025-05-19 - [Reusable Pattern: Centralized Copy Functionality]
 **Learning:** Consolidating repeated "copy to clipboard" logic into a single, accessible `CopyButton` component ensures consistent styling, keyboard accessibility, and feedback across the app. Using `stopPropagation` and `preventDefault` in the shared component prevents conflicts when nested inside other interactive elements like links or cards.
 **Action:** Always reach for the shared `CopyButton` instead of reimplementing clipboard logic. Ensure `focus:opacity-100` is used when the button is hidden by default to maintain keyboard accessibility.
+
+## 2025-05-19 - [Reusable Pattern: Just-in-Time Copy Actions]
+**Learning:** A reusable 'CopyButton' component that appears only on hover or focus reduces visual clutter while maintaining high utility. Combining it with 'stopPropagation' prevents accidental navigation when the button is nested in clickable elements like table rows or cards.
+**Action:** Implement clipboard actions using a shared 'CopyButton' with icon feedback, sonner toasts, and 'focus:opacity-100' to ensure keyboard accessibility for hidden-by-default elements.
