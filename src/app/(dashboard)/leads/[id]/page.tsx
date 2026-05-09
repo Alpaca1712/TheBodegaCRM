@@ -8,6 +8,7 @@ import {
   ArrowLeft,
   Edit,
   Trash2,
+  Copy,
   ExternalLink,
   Mail,
   Loader2,
@@ -48,6 +49,7 @@ import {
   INTERACTION_CHANNELS,
   type Lead, type LeadEmail, type LeadInteraction, type PipelineStage, type InteractionChannel, type InteractionType,
   PIPELINE_STAGES, type ConversationSignal, type OrgChartMember,
+  type InvestorMemo,
 } from '@/types/leads';
 import EmailGenerator from '@/components/email/email-generator';
 import EmailThread from '@/components/email/email-thread';
@@ -99,6 +101,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [coaching, setCoaching] = useState<Record<string, unknown> | null>(null);
   const [battleCardLoading, setBattleCardLoading] = useState(false);
   const [battleCard, setBattleCard] = useState<Record<string, unknown> | null>(null);
+  const [memoLoading, setMemoLoading] = useState(false);
+  const [memo, setMemo] = useState<Record<string, unknown> | null>(null);
   const [orgChartLoading, setOrgChartLoading] = useState(false);
 
   const fetchLead = useCallback(async () => {
@@ -112,6 +116,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       setRelatedLeads(data.relatedLeads || []);
       if (data.lead?.account_snapshot) setSnapshot(data.lead.account_snapshot);
       if (data.lead?.battle_card) setBattleCard(data.lead.battle_card);
+      if (data.lead?.investor_memo) setMemo(data.lead.investor_memo);
     } catch {
       toast.error('Lead not found');
       router.push('/leads');
@@ -201,6 +206,29 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       console.error('Battle card error:', err);
       toast.error(err instanceof Error ? err.message : 'Failed to generate battle card');
     } finally { setBattleCardLoading(false); }
+  };
+
+  const generateMemo = async () => {
+    setMemoLoading(true);
+    try {
+      const res = await fetch('/api/ai/investor-memo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Unknown error' }));
+        throw new Error(err.error || `Failed (${res.status})`);
+      }
+      const data = await res.json();
+      setMemo(data);
+      setActiveTab('overview');
+      await fetchLead();
+      toast.success('Investor memo generated');
+    } catch (err) {
+      console.error('Investor memo error:', err);
+      toast.error(err instanceof Error ? err.message : 'Failed to generate memo');
+    } finally { setMemoLoading(false); }
   };
 
   const enrichOrgChart = async () => {
@@ -369,6 +397,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             {battleCardLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
             Battle Card
           </button>
+          {lead.type === 'investor' && (
+            <button
+              onClick={generateMemo}
+              disabled={memoLoading}
+              className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-700 dark:text-zinc-300 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors disabled:opacity-50"
+            >
+              {memoLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+              Draft Memo
+            </button>
+          )}
           <button
             onClick={handleSyncLead}
             disabled={isSyncing || !lead.contact_email}
@@ -476,6 +514,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           {activeTab === 'overview' && (
             <div className="space-y-4">
               {lead.conversation_summary && <EnhancedAISummary lead={lead} />}
+              {memo && <MemoPanel memo={memo} />}
               {battleCard && <BattleCardPanel card={battleCard} />}
               <ResearchSection lead={lead} />
             </div>
@@ -1911,6 +1950,62 @@ function BattleCardPanel({ card, defaultExpanded = true }: { card: Record<string
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+// --- Memo Panel ---
+function MemoPanel({ memo }: { memo: Record<string, unknown> }) {
+  const [copied, setCopied] = useState(false);
+  const m = memo as unknown as InvestorMemo;
+
+  const fullText = `# ${m.title}\n\n## Executive Summary\n${m.executive_summary}\n\n## The Problem\n${m.the_problem}\n\n## The Solution\n${m.the_solution}\n\n## Why Now\n${m.why_now}\n\n## Traction\n${m.traction}\n\n## The Team\n${m.the_team}\n\n## Strategic Fit\n${m.strategic_fit}`;
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(fullText);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+    toast.success('Memo copied to clipboard');
+  };
+
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-6 space-y-6 relative group">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <BookOpen className="h-4 w-4 text-red-500" />
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Investor Memo (Amazon-style)</h3>
+        </div>
+        <button
+          onClick={handleCopy}
+          className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-zinc-100 dark:bg-zinc-800 hover:bg-zinc-200 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+        >
+          {copied ? <CheckCircle2 className="h-3.5 w-3.5 text-green-500" /> : <Copy className="h-3.5 w-3.5" />}
+          {copied ? 'Copied' : 'Copy Memo'}
+        </button>
+      </div>
+
+      <div className="space-y-6 max-h-[600px] overflow-y-auto pr-2 scrollbar-thin scrollbar-thumb-zinc-200 dark:scrollbar-thumb-zinc-700">
+        <h2 className="text-2xl font-bold text-zinc-900 dark:text-zinc-100 text-center border-b border-zinc-100 dark:border-zinc-800 pb-4">
+          {m.title}
+        </h2>
+
+        <MemoSection title="Executive Summary" content={m.executive_summary} />
+        <MemoSection title="The Problem" content={m.the_problem} />
+        <MemoSection title="The Solution" content={m.the_solution} />
+        <MemoSection title="Why Now" content={m.why_now} />
+        <MemoSection title="Traction" content={m.traction} />
+        <MemoSection title="The Team" content={m.the_team} />
+        <MemoSection title="Strategic Fit" content={m.strategic_fit} highlight />
+      </div>
+    </div>
+  );
+}
+
+function MemoSection({ title, content, highlight = false }: { title: string; content: string; highlight?: boolean }) {
+  return (
+    <div className={highlight ? 'p-4 rounded-lg bg-red-50 dark:bg-red-950/20 border border-red-100 dark:border-red-900/40' : ''}>
+      <h4 className="text-[10px] font-bold text-zinc-500 dark:text-zinc-400 uppercase tracking-wider mb-2">{title}</h4>
+      <p className="text-sm text-zinc-800 dark:text-zinc-200 leading-relaxed whitespace-pre-wrap">{content}</p>
     </div>
   );
 }
