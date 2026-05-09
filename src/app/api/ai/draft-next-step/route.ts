@@ -61,16 +61,8 @@ export async function POST(request: NextRequest) {
         : result.hormozi
     } else {
       // follow_up_1, follow_up_2, follow_up_3, break_up, reply_needed, post_meeting
-      const emailThread = (emails || [])
+      const emailThread = [...((emails || []) as LeadEmail[])]
         .sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
-        .map(e => ({
-          direction: e.direction,
-          subject: e.subject,
-          body: e.body,
-          sent_at: e.sent_at,
-          created_at: e.created_at,
-          email_type: e.email_type,
-        }))
 
       const outboundCount = (emails || []).filter(e => e.direction === 'outbound').length
 

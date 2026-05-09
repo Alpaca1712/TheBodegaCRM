@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { toast } from 'sonner';
 import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCircle, Info, Target } from 'lucide-react';
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';

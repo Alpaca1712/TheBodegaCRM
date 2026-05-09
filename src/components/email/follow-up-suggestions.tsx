@@ -272,7 +272,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               onGenerate={() => setSelectedItem(item)}
               onResearch={() => handleResearch(item.lead)}
               onPrep={() => handlePrep(item.lead)}
-            onMagicDraft={() => handleMagicDraft(item.lead)}
+              onMagicDraft={() => handleMagicDraft(item.lead)}
               isProcessing={isProcessing === item.lead.id}
             />
           ))}
@@ -336,6 +336,7 @@ function FollowUpCard({
   onGenerate,
   onResearch,
   onPrep,
+  onMagicDraft,
   isProcessing
 }: {
   item: FollowUpItem;

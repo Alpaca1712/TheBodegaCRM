@@ -5,7 +5,8 @@ import { Check, Copy } from 'lucide-react';
 import { toast } from 'sonner';
 
 interface CopyButtonProps {
-  value: string;
+  value?: string;
+  text?: string;
   label?: string;
   className?: string;
   showText?: boolean;
@@ -13,18 +14,20 @@ interface CopyButtonProps {
 
 export function CopyButton({
   value,
+  text,
   label = 'Content',
   className = '',
   showText = false,
 }: CopyButtonProps) {
   const [copied, setCopied] = useState(false);
+  const copyValue = value ?? text ?? '';
 
   const handleCopy = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
 
     try {
-      await navigator.clipboard.writeText(value);
+      await navigator.clipboard.writeText(copyValue);
       setCopied(true);
       toast.success(`${label} copied to clipboard`);
       setTimeout(() => setCopied(false), 2000);

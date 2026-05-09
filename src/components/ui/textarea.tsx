@@ -22,7 +22,7 @@ export const Textarea = React.forwardRef<HTMLTextAreaElement, TextareaProps>(
       adjustHeight()
     }, [adjustHeight, props.value, props.defaultValue])
 
-    const handleInput = (e: React.FormEvent<HTMLTextAreaElement>) => {
+    const handleInput = (e: React.InputEvent<HTMLTextAreaElement>) => {
       adjustHeight()
       if (onInput) onInput(e)
     }
