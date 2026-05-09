@@ -5,3 +5,7 @@
 ## 2026-04-12 - Research & Prep Workflow Integration
 **Learning:** Found that requiring users to navigate to individual lead pages to trigger research or meeting prep created a bottleneck in the GTM loop. Surfacing these as "Next Actions" in the Follow-Up Suggestions panel increased the velocity of moving leads from 'researched' to 'outreach ready'.
 **Action:** Integrated 'run_research' and 'prep_meeting' actions directly into the Follow-Up Suggestions UI with background AI handlers and per-lead loading indicators. Updated the research-lead API to support auto-updating leads via leadId to enable this one-click workflow.
+
+## 2026-05-09 - Magic Draft & Outreach Centralization
+**Learning:** Found that fragmented outreach logic across multiple API routes hindered the ability to implement high-leverage background actions. Moving prompts and generation logic into a shared service enabled the "Magic Draft" feature, which significantly reduces the friction of moving leads through the pipeline.
+**Action:** Centralized all SMYKM and Hormozi outreach logic in `src/lib/ai/email-service.ts`. Implemented the `POST /api/ai/draft-next-step` API for automated, quality-gated background drafting. Surfaced "Magic Draft" (Zap icon) across the Outreach Command Center and Pipeline Health dashboard to tighten the GTM loop.

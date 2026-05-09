@@ -3,9 +3,9 @@
 import { useState, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import {
-  Bell, Clock, Send, Loader2, MessageSquare, Twitter, Mail,
+  Bell, Clock, Loader2, MessageSquare, Twitter, Mail,
   AlertTriangle, CheckCircle2, Filter, Linkedin, ArrowRight,
-  User, Building2, ChevronDown, Zap, Sparkles, Swords,
+  Building2, ChevronDown, Zap, Sparkles, Swords, ClipboardCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
@@ -148,6 +148,27 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
     promise.finally(() => setIsProcessing(null));
   };
 
+  const handleMagicDraft = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await loadFollowUps();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
   const filtered = filterFollowUps(items, filter);
 
   if (loading) {
@@ -251,6 +272,7 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
               onGenerate={() => setSelectedItem(item)}
               onResearch={() => handleResearch(item.lead)}
               onPrep={() => handlePrep(item.lead)}
+            onMagicDraft={() => handleMagicDraft(item.lead)}
               isProcessing={isProcessing === item.lead.id}
             />
           ))}
@@ -320,6 +342,7 @@ function FollowUpCard({
   onGenerate: () => void;
   onResearch: () => void;
   onPrep: () => void;
+  onMagicDraft: () => void;
   isProcessing: boolean;
 }) {
 
@@ -463,7 +486,8 @@ function FollowUpCard({
             onClick={() => {
               if (item.suggestedType === 'run_research') onResearch();
               else if (item.suggestedType === 'prep_meeting') onPrep();
-              else onGenerate();
+              else if (item.suggestedType === 'review_draft') onGenerate();
+              else onMagicDraft();
             }}
             disabled={isProcessing}
             className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 disabled:opacity-50"
@@ -475,9 +499,9 @@ function FollowUpCard({
             ) : item.suggestedType === 'prep_meeting' ? (
               <Swords className="h-3 w-3" />
             ) : item.suggestedType === 'review_draft' ? (
-              <Zap className="h-3 w-3" />
+              <ClipboardCheck className="h-3 w-3" />
             ) : (
-              <Send className="h-3 w-3" />
+              <Zap className="h-3 w-3" />
             )}
 
             {isProcessing ? (
@@ -489,7 +513,7 @@ function FollowUpCard({
             ) : item.suggestedType === 'review_draft' ? (
               'Review'
             ) : (
-              'Generate'
+              'Magic Draft'
             )}
             {!isProcessing && <ArrowRight className="h-3 w-3" />}
           </button>
