@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 import { toast } from 'sonner';
 
@@ -72,8 +73,30 @@ export default function DashboardPage() {
   const [data, setData] = useState<DashboardData | null>(null);
   const [health, setHealth] = useState<PipelineHealthData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isDrafting, setIsDrafting] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<string>('all');
+
+  const handleMagicDraft = async (leadId: string, contactName: string) => {
+    setIsDrafting(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await loadDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${contactName}...`,
+      success: `Draft ready for ${contactName}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsDrafting(null));
+  };
 
   const loadDashboard = useCallback(async () => {
     setLoading(true);
@@ -246,6 +269,13 @@ export default function DashboardPage() {
         <MiniKPI icon={<TrendingUp className="h-3.5 w-3.5 text-purple-500" />} label="Total Leads" value={data.totalLeads.toString()} />
       </div>
 
+      {/* Sales Action Plan */}
+      <SalesActionPlan
+        actions={data.salesActionPlan}
+        isDrafting={isDrafting}
+        onMagicDraft={handleMagicDraft}
+      />
+
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Pipeline Overview */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
@@ -361,11 +391,29 @@ export default function DashboardPage() {
                       </div>
                       <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">{lead.company_name}</p>
                     </div>
-                    <div className="flex flex-col items-end gap-1">
-                      <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
-                        {STAGE_LABELS[lead.stage]}
-                      </span>
-                      {isHighIcp && <span className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase tracking-tight">High ICP</span>}
+                    <div className="flex items-center gap-3 ml-4 shrink-0">
+                      <button
+                        onClick={(e) => {
+                          e.preventDefault();
+                          e.stopPropagation();
+                          handleMagicDraft(lead.id, lead.contact_name);
+                        }}
+                        disabled={isDrafting !== null}
+                        className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
+                        title="Magic Draft"
+                      >
+                        {isDrafting === lead.id ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Zap className="h-3.5 w-3.5" />
+                        )}
+                      </button>
+                      <div className="flex flex-col items-end gap-1">
+                        <span className={`text-[10px] px-1.5 py-0.5 rounded font-medium shrink-0 ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
+                          {STAGE_LABELS[lead.stage]}
+                        </span>
+                        {isHighIcp && <span className="text-[9px] font-bold text-red-600 dark:text-red-400 uppercase tracking-tight">High ICP</span>}
+                      </div>
                     </div>
                   </Link>
                 );
