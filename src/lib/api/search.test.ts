@@ -72,6 +72,21 @@ describe('search API', () => {
     expect(result[1].results[0].title).toBe('Nick VC');
   });
 
+  it('searchAll should return partnership category', async () => {
+    const mockLeads = [
+      { id: 'lead-1', type: 'partnership', contact_name: 'Sarah Partner', company_name: 'Partner Agency', contact_email: 'sarah@agency.com', stage: 'researched' },
+    ];
+
+    mockLimit.mockResolvedValue({ data: mockLeads, error: null });
+
+    const result = await searchAll('Sarah');
+
+    expect(result).toHaveLength(1);
+    expect(result[0].type).toBe('partnership');
+    expect(result[0].title).toBe('Partnerships');
+    expect(result[0].results[0].title).toBe('Sarah Partner');
+  });
+
   it('searchAll should filter out empty categories', async () => {
     const mockLeads = [
       { id: 'lead-1', type: 'investor', contact_name: 'Nick VC', company_name: 'Seed Fund', contact_email: 'nick@seed.vc', stage: 'replied' },

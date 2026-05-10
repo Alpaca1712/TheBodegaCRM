@@ -9,6 +9,7 @@ import {
   ChevronRight,
   Users,
   UserPlus,
+  Handshake,
   BarChart3,
   Settings,
   Mail,
@@ -72,6 +73,7 @@ interface GlobalSearchProps {
 export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = externalIsOpen ?? internalIsOpen;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const setIsOpen = useCallback((open: boolean) => {
     if (onClose && !open) onClose();
@@ -127,15 +129,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     performSearch();
   }, [debouncedQuery]);
 
-  const allItems: { type: 'result' | 'action'; route: string }[] = [];
-  results.forEach((category) => {
-    category.results.forEach((result) => {
-      allItems.push({ type: 'result', route: result.route });
+  const allItems = useMemo(() => {
+    const items: { type: 'result' | 'action'; id: string; route: string }[] = [];
+    results.forEach((category) => {
+      category.results.forEach((result) => {
+        items.push({ type: 'result', id: `search-result-${result.id}`, route: result.route });
+      });
     });
-  });
-  filteredActions.forEach((action) => {
-    allItems.push({ type: 'action', route: action.route });
-  });
+    filteredActions.forEach((action) => {
+      items.push({ type: 'action', id: `search-action-${action.id}`, route: action.route });
+    });
+    return items;
+  }, [results, filteredActions]);
 
   const totalItems = allItems.length;
 
@@ -185,24 +190,50 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
           <div className="flex items-center border-b border-zinc-200 dark:border-zinc-700 px-4 py-3">
             <Search className="h-5 w-5 text-zinc-400" />
             <input
+              ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Search leads or type a command..."
               aria-label="Search leads or commands"
+              role="combobox"
+              aria-expanded={isOpen}
+              aria-autocomplete="list"
+              aria-controls="search-results-listbox"
+              aria-activedescendant={totalItems > 0 ? allItems[selectedIndex]?.id : undefined}
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => {
+                  setQuery('');
+                  setResults([]);
+                  inputRef.current?.focus();
+                }}
+                className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <div className="mx-2 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
             <button
+              type="button"
               onClick={handleClose}
-              className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               aria-label="Close search"
             >
               <X className="h-4 w-4 text-zinc-400" />
             </button>
           </div>
 
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div
+            id="search-results-listbox"
+            role="listbox"
+            className="max-h-[50vh] overflow-y-auto"
+          >
             {isLoading && (
               <div className="flex items-center justify-center py-6">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-red-600" />
@@ -231,6 +262,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                   return (
                     <button
                       key={`${result.type}-${result.id}`}
+                      id={`search-result-${result.id}`}
+                      role="option"
+                      aria-selected={isSelected}
+                      type="button"
                       onClick={() => { router.push(result.route); handleClose(); }}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
@@ -240,6 +275,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                         {result.type === 'customer' && <User className="h-4 w-4 text-zinc-500" />}
                         {result.type === 'investor' && <Landmark className="h-4 w-4 text-zinc-500" />}
+                        {result.type === 'partnership' && <Handshake className="h-4 w-4 text-zinc-500" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">{result.title}</span>
@@ -271,6 +307,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
+                          id={`search-action-${action.id}`}
+                          role="option"
+                          aria-selected={isSelected}
+                          type="button"
                           onClick={() => { router.push(action.route); handleClose(); }}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
@@ -305,6 +345,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
+                          id={`search-action-${action.id}`}
+                          role="option"
+                          aria-selected={isSelected}
+                          type="button"
                           onClick={() => { router.push(action.route); handleClose(); }}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
