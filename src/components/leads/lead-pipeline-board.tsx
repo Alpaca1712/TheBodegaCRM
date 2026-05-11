@@ -115,9 +115,12 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
                       {lead.company_name}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-                        lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
-                      }`} />
+                      <span
+                        title={`${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} Priority`}
+                        className={`inline-block h-1.5 w-1.5 rounded-full cursor-help ${
+                          lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
+                        }`}
+                      />
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
                         {LEAD_TYPE_SHORT[lead.type]}
                       </span>
