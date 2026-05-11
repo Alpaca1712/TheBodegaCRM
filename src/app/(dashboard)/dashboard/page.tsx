@@ -28,6 +28,7 @@ import {
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
+import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
 interface DashboardData {
@@ -247,6 +248,11 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+        {/* Sales Action Plan */}
+        <div className="lg:col-span-2 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
+          <SalesActionPlan actions={data.salesActionPlan} onRefresh={loadDashboard} />
+        </div>
+
         {/* Pipeline Overview */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
           <div className="flex items-center justify-between mb-4">
