@@ -1,11 +1,12 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   X,
   User,
   Landmark,
+  Handshake,
   ChevronRight,
   Users,
   UserPlus,
@@ -127,15 +128,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     performSearch();
   }, [debouncedQuery]);
 
-  const allItems: { type: 'result' | 'action'; route: string }[] = [];
-  results.forEach((category) => {
-    category.results.forEach((result) => {
-      allItems.push({ type: 'result', route: result.route });
+  const allItems = useMemo(() => {
+    const items: { id: string; type: 'result' | 'action'; route: string }[] = [];
+    results.forEach((category) => {
+      category.results.forEach((result) => {
+        items.push({ id: `result-${result.type}-${result.id}`, type: 'result', route: result.route });
+      });
     });
-  });
-  filteredActions.forEach((action) => {
-    allItems.push({ type: 'action', route: action.route });
-  });
+    filteredActions.forEach((action) => {
+      items.push({ id: `action-${action.id}`, type: 'action', route: action.route });
+    });
+    return items;
+  }, [results, filteredActions]);
 
   const totalItems = allItems.length;
 
@@ -179,13 +183,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
       <div className="flex min-h-full items-start justify-center p-4 pt-[15vh]">
         <div
-          className="relative w-full max-w-xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 shadow-2xl animate-scale-in border border-zinc-200 dark:border-zinc-700"
+          className="relative w-full max-w-xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 shadow-2xl animate-scale-in border border-zinc-200 dark:border-zinc-700 focus-within:ring-2 focus-within:ring-red-500/20"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center border-b border-zinc-200 dark:border-zinc-700 px-4 py-3">
             <Search className="h-5 w-5 text-zinc-400" />
             <input
               type="text"
+              role="combobox"
+              aria-expanded={isOpen}
+              aria-haspopup="listbox"
+              aria-controls="search-results"
+              aria-activedescendant={totalItems > 0 ? allItems[selectedIndex]?.id : undefined}
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Search leads or type a command..."
@@ -193,7 +202,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => { setQuery(''); setResults([]); setSelectedIndex(0); }}
+                className="mr-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
+              type="button"
               onClick={handleClose}
               className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               aria-label="Close search"
@@ -202,7 +222,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
             </button>
           </div>
 
-          <div className="max-h-[50vh] overflow-y-auto">
+          <div id="search-results" role="listbox" className="max-h-[50vh] overflow-y-auto">
             {isLoading && (
               <div className="flex items-center justify-center py-6">
                 <div className="h-6 w-6 animate-spin rounded-full border-2 border-zinc-200 border-t-red-600" />
@@ -231,6 +251,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                   return (
                     <button
                       key={`${result.type}-${result.id}`}
+                      id={`result-${result.type}-${result.id}`}
+                      role="option"
+                      aria-selected={isSelected}
+                      type="button"
                       onClick={() => { router.push(result.route); handleClose(); }}
                       onMouseEnter={() => setSelectedIndex(idx)}
                       className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
@@ -240,6 +264,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-zinc-100 dark:bg-zinc-800">
                         {result.type === 'customer' && <User className="h-4 w-4 text-zinc-500" />}
                         {result.type === 'investor' && <Landmark className="h-4 w-4 text-zinc-500" />}
+                        {result.type === 'partnership' && <Handshake className="h-4 w-4 text-zinc-500" />}
                       </div>
                       <div className="flex-1 min-w-0">
                         <span className="text-sm font-medium text-zinc-900 dark:text-white">{result.title}</span>
@@ -271,6 +296,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
+                          id={`action-${action.id}`}
+                          role="option"
+                          aria-selected={isSelected}
+                          type="button"
                           onClick={() => { router.push(action.route); handleClose(); }}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${
@@ -305,6 +334,10 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
+                          id={`action-${action.id}`}
+                          role="option"
+                          aria-selected={isSelected}
+                          type="button"
                           onClick={() => { router.push(action.route); handleClose(); }}
                           onMouseEnter={() => setSelectedIndex(idx)}
                           className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition-colors ${

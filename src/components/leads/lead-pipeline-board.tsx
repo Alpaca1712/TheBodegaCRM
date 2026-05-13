@@ -4,7 +4,15 @@ import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
-import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
+import {
+  PIPELINE_STAGES,
+  STAGE_LABELS,
+  STAGE_DESCRIPTIONS,
+  LEAD_TYPE_SHORT,
+  LEAD_TYPE_COLORS,
+  type Lead,
+  type PipelineStage,
+} from '@/types/leads';
 import { GripVertical } from 'lucide-react';
 
 interface LeadPipelineBoardProps {
@@ -82,7 +90,10 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
           onDragLeave={handleDragLeave}
           onDrop={() => handleDrop(stage)}
         >
-          <div className={`px-3 py-2.5 border-t-2 ${stageColors[stage]} rounded-t-xl`}>
+          <div
+            title={STAGE_DESCRIPTIONS[stage]}
+            className={`px-3 py-2.5 border-t-2 ${stageColors[stage]} rounded-t-xl cursor-help`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 {STAGE_LABELS[stage]}
@@ -115,9 +126,15 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
                       {lead.company_name}
                     </p>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${
-                        lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
-                      }`} />
+                      <span
+                        role="img"
+                        tabIndex={0}
+                        aria-label={`${lead.priority} priority`}
+                        title={`${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} priority`}
+                        className={`inline-block h-1.5 w-1.5 rounded-full cursor-help focus:ring-2 focus:ring-offset-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none ${
+                          lead.priority === 'high' ? 'bg-red-500 focus:ring-red-500' : lead.priority === 'medium' ? 'bg-amber-500 focus:ring-amber-500' : 'bg-zinc-400'
+                        }`}
+                      />
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
                         {LEAD_TYPE_SHORT[lead.type]}
                       </span>
