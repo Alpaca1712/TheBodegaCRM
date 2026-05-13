@@ -12,11 +12,7 @@ export default function PipelinePage() {
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    fetchLeads();
-  }, [typeFilter]);
-
-  const fetchLeads = async () => {
+  const fetchLeads = useCallback(async () => {
     setLoading(true);
     setError(null);
     const params = new URLSearchParams({ limit: '200' });
@@ -37,7 +33,11 @@ export default function PipelinePage() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [typeFilter]);
+
+  useEffect(() => {
+    fetchLeads();
+  }, [fetchLeads]);
 
   const handleLeadUpdate = (leadId: string, newStage: PipelineStage) => {
     setLeads((prev) =>
@@ -109,7 +109,7 @@ export default function PipelinePage() {
           <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
         </div>
       ) : (
-        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} />
+        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} onRefresh={fetchLeads} />
       )}
     </div>
   );

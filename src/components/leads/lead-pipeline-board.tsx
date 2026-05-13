@@ -5,11 +5,12 @@ import Link from 'next/link';
 import { toast } from 'sonner';
 import { formatDistanceToNow } from 'date-fns';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage } from '@/types/leads';
-import { GripVertical } from 'lucide-react';
+import { GripVertical, Zap, Swords, Sparkles, Loader2 } from 'lucide-react';
 
 interface LeadPipelineBoardProps {
   leads: Lead[];
   onLeadUpdate?: (leadId: string, newStage: PipelineStage) => void;
+  onRefresh?: () => void;
 }
 
 const stageColors: Record<PipelineStage, string> = {
@@ -25,9 +26,10 @@ const stageColors: Record<PipelineStage, string> = {
   no_response: 'border-t-zinc-300',
 };
 
-export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineBoardProps) {
+export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: LeadPipelineBoardProps) {
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<PipelineStage | null>(null);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
 
   const leadsByStage = useMemo(() => PIPELINE_STAGES.reduce(
     (acc, stage) => {
@@ -70,6 +72,75 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
     setDropTarget(null);
   };
 
+  const handleMagicDraft = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      onRefresh?.();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handlePrep = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      onRefresh?.();
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${lead.contact_name}...`,
+      success: `Battle card ready for ${lead.contact_name}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handleResearch = async (lead: Lead) => {
+    setIsProcessing(lead.id);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          type: lead.type,
+          contact_name: lead.contact_name,
+          company_name: lead.company_name,
+          linkedin_url: lead.contact_linkedin,
+        }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      onRefresh?.();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${lead.contact_name}...`,
+      success: `Research complete for ${lead.contact_name}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
   return (
     <div className="flex gap-3 overflow-x-auto pb-4" style={{ minHeight: '60vh' }}>
       {PIPELINE_STAGES.map((stage) => (
@@ -106,18 +177,57 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate }: LeadPipelineB
                 <div className="flex items-start gap-2">
                   <GripVertical className="h-4 w-4 text-zinc-300 dark:text-zinc-600 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                   <div className="flex-1 min-w-0">
-                    <Link href={`/leads/${lead.id}`}>
-                      <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate hover:text-red-600 dark:hover:text-red-400">
-                        {lead.contact_name}
-                      </p>
-                    </Link>
+                    <div className="flex items-start justify-between gap-1">
+                      <Link href={`/leads/${lead.id}`} className="min-w-0">
+                        <p className="text-xs font-medium text-zinc-900 dark:text-zinc-100 truncate hover:text-red-600 dark:hover:text-red-400">
+                          {lead.contact_name}
+                        </p>
+                      </Link>
+                      <div className="flex items-center gap-1 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
+                        {lead.stage === 'researched' && !lead.smykm_hooks?.length && (
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleResearch(lead); }}
+                            disabled={!!isProcessing}
+                            title="Run Research"
+                            className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-red-500 transition-colors"
+                          >
+                            {isProcessing === lead.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                          </button>
+                        )}
+                        {['researched', 'email_sent', 'replied', 'follow_up', 'no_response'].includes(lead.stage) && (
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleMagicDraft(lead); }}
+                            disabled={!!isProcessing}
+                            title="Magic Draft"
+                            className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-amber-500 transition-colors"
+                          >
+                            {isProcessing === lead.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
+                          </button>
+                        )}
+                        {lead.stage === 'meeting_booked' && !lead.battle_card && (
+                          <button
+                            onClick={(e) => { e.preventDefault(); e.stopPropagation(); handlePrep(lead); }}
+                            disabled={!!isProcessing}
+                            title="Prep Meeting"
+                            className="p-1 rounded hover:bg-zinc-100 dark:hover:bg-zinc-700 text-zinc-400 hover:text-blue-500 transition-colors"
+                          >
+                            {isProcessing === lead.id ? <Loader2 className="h-3 w-3 animate-spin" /> : <Swords className="h-3 w-3" />}
+                          </button>
+                        )}
+                      </div>
+                    </div>
                     <p className="text-[11px] text-zinc-500 dark:text-zinc-400 truncate">
                       {lead.company_name}
                     </p>
+                    {lead.conversation_next_step && (
+                      <p className="text-[10px] text-zinc-400 mt-1 line-clamp-1 italic">
+                        {lead.conversation_next_step.replace(/^\[[^\]]+\]\s*/g, '')}
+                      </p>
+                    )}
                     <div className="flex items-center gap-1.5 mt-1.5">
                       <span className={`inline-block h-1.5 w-1.5 rounded-full ${
                         lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
-                      }`} />
+                      }`} title={`Priority: ${lead.priority}`} />
                       <span className={`text-[10px] px-1.5 py-0.5 rounded ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>
                         {LEAD_TYPE_SHORT[lead.type]}
                       </span>

@@ -28,6 +28,7 @@ import {
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
+import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
 interface DashboardData {
@@ -245,6 +246,9 @@ export default function DashboardPage() {
         <MiniKPI icon={<CheckCircle2 className="h-3.5 w-3.5 text-green-500" />} label="Follow-up Compliance" value={`${data.followUpCompliance}%`} />
         <MiniKPI icon={<TrendingUp className="h-3.5 w-3.5 text-purple-500" />} label="Total Leads" value={data.totalLeads.toString()} />
       </div>
+
+      {/* Action Plan Section */}
+      <SalesActionPlan actions={data.salesActionPlan} onRefresh={loadDashboard} />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Pipeline Overview */}
