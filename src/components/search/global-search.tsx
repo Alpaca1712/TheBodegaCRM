@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   X,
@@ -99,15 +99,32 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // CMD/CTRL + K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsOpen(true);
+        return;
       }
+
+      // '/' shortcut
+      if (e.key === '/' && !isOpen) {
+        const target = e.target as HTMLElement;
+        const isInput = target.tagName === 'INPUT' ||
+                        target.tagName === 'TEXTAREA' ||
+                        target.isContentEditable;
+
+        if (!isInput) {
+          e.preventDefault();
+          setIsOpen(true);
+          return;
+        }
+      }
+
       if (e.key === 'Escape') setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsOpen]);
+  }, [setIsOpen, isOpen]);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -127,15 +144,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     performSearch();
   }, [debouncedQuery]);
 
-  const allItems: { type: 'result' | 'action'; route: string }[] = [];
-  results.forEach((category) => {
-    category.results.forEach((result) => {
-      allItems.push({ type: 'result', route: result.route });
+  const allItems = useMemo(() => {
+    const items: { type: 'result' | 'action'; route: string }[] = [];
+    results.forEach((category) => {
+      category.results.forEach((result) => {
+        items.push({ type: 'result', route: result.route });
+      });
     });
-  });
-  filteredActions.forEach((action) => {
-    allItems.push({ type: 'action', route: action.route });
-  });
+    filteredActions.forEach((action) => {
+      items.push({ type: 'action', route: action.route });
+    });
+    return items;
+  }, [results, filteredActions]);
 
   const totalItems = allItems.length;
 

@@ -227,9 +227,16 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="contact_name" className={labelClass}>Contact Name *</label>
-            <Input id="contact_name" {...form.register('contact_name')} placeholder="Felix Schlegel" />
+            <Input
+              id="contact_name"
+              {...form.register('contact_name')}
+              placeholder="Felix Schlegel"
+              aria-required="true"
+              aria-invalid={!!form.formState.errors.contact_name}
+              aria-describedby={form.formState.errors.contact_name ? "contact_name-error" : undefined}
+            />
             {form.formState.errors.contact_name && (
-              <p className="text-xs text-red-500 mt-1">{form.formState.errors.contact_name.message}</p>
+              <p id="contact_name-error" className="text-xs text-red-500 mt-1">{form.formState.errors.contact_name.message}</p>
             )}
           </div>
           <div>
@@ -238,9 +245,16 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
           <div>
             <label htmlFor="company_name" className={labelClass}>Company Name *</label>
-            <Input id="company_name" {...form.register('company_name')} placeholder="Parahelp" />
+            <Input
+              id="company_name"
+              {...form.register('company_name')}
+              placeholder="Parahelp"
+              aria-required="true"
+              aria-invalid={!!form.formState.errors.company_name}
+              aria-describedby={form.formState.errors.company_name ? "company_name-error" : undefined}
+            />
             {form.formState.errors.company_name && (
-              <p className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
+              <p id="company_name-error" className="text-xs text-red-500 mt-1">{form.formState.errors.company_name.message}</p>
             )}
           </div>
           {watchType === 'customer' && (
@@ -266,7 +280,17 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
             <label htmlFor="contact_email" className={labelClass}>Email</label>
-            <Input id="contact_email" {...form.register('contact_email')} type="email" placeholder="name@company.com" />
+            <Input
+              id="contact_email"
+              {...form.register('contact_email')}
+              type="email"
+              placeholder="name@company.com"
+              aria-invalid={!!form.formState.errors.contact_email}
+              aria-describedby={form.formState.errors.contact_email ? "contact_email-error" : undefined}
+            />
+            {form.formState.errors.contact_email && (
+              <p id="contact_email-error" className="text-xs text-red-500 mt-1">{form.formState.errors.contact_email.message}</p>
+            )}
           </div>
           <div>
             <label htmlFor="contact_phone" className={labelClass}>Phone</label>

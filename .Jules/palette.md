@@ -33,3 +33,11 @@
 ## 2025-05-19 - [Reusable Pattern: Auto-resizing Textareas]
 **Learning:** For forms where users enter variable-length content (notes, transcripts, descriptions), static textareas often lead to frustrating scroll-within-scroll experiences. Auto-resizing textareas that grow with content provide a more "document-like" and fluid experience.
 **Action:** Use the `autoResize` prop on the shared `Textarea` component for any multi-line input where the content length is unpredictable.
+
+## 2025-05-20 - [A11y: Standardized Form Error Handling]
+**Learning:** Combining 'aria-invalid', 'aria-required', and 'aria-describedby' with unique IDs for error messages significantly improves the experience for screen reader users by providing immediate and clear context for form validation failures.
+**Action:** When adding validation to forms, always associate inputs with their error message elements using 'aria-describedby' and 'id'.
+
+## 2025-05-20 - [UX: Discoverable Search Shortcuts]
+**Learning:** Adding the standard '/' shortcut in addition to 'Cmd+K' and displaying it visually in the UI increases search discoverability for power users. It's critical to exclude shortcut triggers when focus is in input fields.
+**Action:** Implement '/' as a secondary search trigger and update UI hints to reflect it. Use 'e.target' checks to prevent interference with typing.
