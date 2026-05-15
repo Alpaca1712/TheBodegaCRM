@@ -65,6 +65,10 @@ export default function Header({ userEmail, userName }: HeaderProps) {
             <kbd className="ml-1 rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
               ⌘K
             </kbd>
+            <span className="mx-1 text-zinc-300 dark:text-zinc-600">or</span>
+            <kbd className="rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
+              /
+            </kbd>
           </button>
 
           <button

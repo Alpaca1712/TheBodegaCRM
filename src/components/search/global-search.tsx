@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import {
   Search,
   X,
@@ -72,6 +72,7 @@ interface GlobalSearchProps {
 export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchProps) {
   const [internalIsOpen, setInternalIsOpen] = useState(false);
   const isOpen = externalIsOpen ?? internalIsOpen;
+  const inputRef = useRef<HTMLInputElement>(null);
 
   const setIsOpen = useCallback((open: boolean) => {
     if (onClose && !open) onClose();
@@ -86,28 +87,50 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
   const debouncedQuery = useDebounce(query, 300);
 
-  const filteredActions = query.trim()
-    ? quickActions.filter(
-        (a) =>
-          a.label.toLowerCase().includes(query.toLowerCase()) ||
-          a.description.toLowerCase().includes(query.toLowerCase())
-      )
-    : quickActions;
+  const filteredActions = useMemo(() =>
+    query.trim()
+      ? quickActions.filter(
+          (a) =>
+            a.label.toLowerCase().includes(query.toLowerCase()) ||
+            a.description.toLowerCase().includes(query.toLowerCase())
+        )
+      : quickActions,
+    [query]
+  );
 
-  const createActions = filteredActions.filter((a) => a.group === 'create');
-  const navActions = filteredActions.filter((a) => a.group === 'navigate');
+  const createActions = useMemo(() => filteredActions.filter((a) => a.group === 'create'), [filteredActions]);
+  const navActions = useMemo(() => filteredActions.filter((a) => a.group === 'navigate'), [filteredActions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      // ⌘K or Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsOpen(true);
+        return;
       }
+
+      // '/' shortcut
+      if (e.key === '/' && !isOpen) {
+        const el = document.activeElement;
+        const isInput = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || (el as HTMLElement)?.isContentEditable;
+        if (!isInput) {
+          e.preventDefault();
+          setIsOpen(true);
+        }
+      }
+
       if (e.key === 'Escape') setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsOpen]);
+  }, [setIsOpen, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -127,15 +150,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     performSearch();
   }, [debouncedQuery]);
 
-  const allItems: { type: 'result' | 'action'; route: string }[] = [];
-  results.forEach((category) => {
-    category.results.forEach((result) => {
-      allItems.push({ type: 'result', route: result.route });
+  const allItems = useMemo(() => {
+    const items: { type: 'result' | 'action'; route: string }[] = [];
+    results.forEach((category) => {
+      category.results.forEach((result) => {
+        items.push({ type: 'result', route: result.route });
+      });
     });
-  });
-  filteredActions.forEach((action) => {
-    allItems.push({ type: 'action', route: action.route });
-  });
+    filteredActions.forEach((action) => {
+      items.push({ type: 'action', route: action.route });
+    });
+    return items;
+  }, [results, filteredActions]);
 
   const totalItems = allItems.length;
 
@@ -185,6 +211,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
           <div className="flex items-center border-b border-zinc-200 dark:border-zinc-700 px-4 py-3">
             <Search className="h-5 w-5 text-zinc-400" />
             <input
+              ref={inputRef}
               type="text"
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
@@ -193,6 +220,16 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
+            {query && (
+              <button
+                onClick={() => { setQuery(''); inputRef.current?.focus(); }}
+                className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
+                aria-label="Clear search"
+                type="button"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
             <button
               onClick={handleClose}
               className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"

@@ -22,6 +22,7 @@ const shortcutGroups = [
     label: 'Quick Actions',
     shortcuts: [
       { keys: ['⌘', 'K'], description: 'Open command palette' },
+      { keys: ['/'], description: 'Open command palette' },
       { keys: ['?'], description: 'Show keyboard shortcuts' },
     ],
   },
