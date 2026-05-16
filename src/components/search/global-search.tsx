@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Search,
   X,
@@ -102,12 +102,25 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsOpen(true);
+      } else if (e.key === '/' && !isOpen) {
+        const activeElement = document.activeElement;
+        const isInput =
+          activeElement &&
+          (activeElement.tagName === 'INPUT' ||
+            activeElement.tagName === 'TEXTAREA' ||
+            (activeElement as HTMLElement).isContentEditable);
+
+        if (!isInput) {
+          e.preventDefault();
+          setIsOpen(true);
+        }
       }
+
       if (e.key === 'Escape') setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [setIsOpen]);
+  }, [setIsOpen, isOpen]);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -127,15 +140,18 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     performSearch();
   }, [debouncedQuery]);
 
-  const allItems: { type: 'result' | 'action'; route: string }[] = [];
-  results.forEach((category) => {
-    category.results.forEach((result) => {
-      allItems.push({ type: 'result', route: result.route });
+  const allItems = useMemo(() => {
+    const items: { type: 'result' | 'action'; route: string }[] = [];
+    results.forEach((category) => {
+      category.results.forEach((result) => {
+        items.push({ type: 'result', route: result.route });
+      });
     });
-  });
-  filteredActions.forEach((action) => {
-    allItems.push({ type: 'action', route: action.route });
-  });
+    filteredActions.forEach((action) => {
+      items.push({ type: 'action', route: action.route });
+    });
+    return items;
+  }, [results, filteredActions]);
 
   const totalItems = allItems.length;
 
@@ -193,9 +209,20 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
+            {query && (
+              <button
+                type="button"
+                onClick={() => { setQuery(''); setResults([]); setSelectedIndex(0); }}
+                className="flex items-center justify-center p-1 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                aria-label="Clear search"
+              >
+                <X className="h-3.5 w-3.5" />
+              </button>
+            )}
+            <div className="mx-1.5 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
             <button
               onClick={handleClose}
-              className="ml-2 rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
+              className="rounded-md p-1 hover:bg-zinc-100 dark:hover:bg-zinc-800"
               aria-label="Close search"
             >
               <X className="h-4 w-4 text-zinc-400" />
