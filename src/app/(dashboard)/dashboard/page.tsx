@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
-import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
+import { SalesActionPlan } from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
 interface DashboardData {
@@ -394,9 +394,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Follow-up Suggestions */}
+      {/* Sales Action Plan */}
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
-        <FollowUpSuggestions compact typeFilter={activeType} />
+        <SalesActionPlan actions={data.salesActionPlan} onRefresh={loadDashboard} />
       </div>
     </div>
   );
