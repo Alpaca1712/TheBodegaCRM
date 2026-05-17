@@ -13,7 +13,7 @@ You can learn more, including how to opt-out if you'd not like to participate in
 https://nextjs.org/telemetry
 
 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
-✓ Ready in 2s
+✓ Ready in 1727ms
 ⨯ Error: Your project's URL and Key are required to create a Supabase client!
 
 Check your Supabase project's API settings to find these values

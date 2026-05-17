@@ -1,5 +1,6 @@
 import { Brain, CheckCircle2, ArrowRight, Zap, Linkedin, Twitter, Phone, MapPin, Hash } from 'lucide-react';
 import type { Lead } from '@/types/leads';
+import { CopyButton } from '@/components/ui/copy-button';
 
 const channelIcons: Record<string, React.ReactNode> = {
   linkedin: <Linkedin className="h-3.5 w-3.5" />, twitter: <Twitter className="h-3.5 w-3.5" />,
@@ -19,16 +20,30 @@ export function EnhancedAISummary({ lead }: { lead: Lead }) {
   const parsed = lead.conversation_next_step ? parseNextStep(lead.conversation_next_step) : null;
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
-      <div className="flex items-center gap-2">
-        <Brain className="h-4 w-4 text-red-500" />
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Strategy</h3>
+      <div className="flex items-center justify-between group/summary">
+        <div className="flex items-center gap-2">
+          <Brain className="h-4 w-4 text-red-500" />
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">AI Strategy</h3>
+        </div>
+        <CopyButton
+          value={lead.conversation_summary || ''}
+          label="Strategy"
+          className="opacity-0 group-hover/summary:opacity-100 focus:opacity-100"
+        />
       </div>
       <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{lead.conversation_summary}</p>
       {parsed && (
-        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <p className="text-xs font-semibold text-green-800 dark:text-green-300">Next Step</p>
+        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2 group/next-step">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <p className="text-xs font-semibold text-green-800 dark:text-green-300">Next Step</p>
+            </div>
+            <CopyButton
+              value={parsed.text}
+              label="Next Step"
+              className="opacity-0 group-hover/next-step:opacity-100 focus:opacity-100"
+            />
           </div>
           <div className="flex flex-wrap gap-1.5">
             {parsed.channel && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/60 dark:bg-zinc-800/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">{channelIcons[parsed.channel.toLowerCase()] || <Zap className="h-3 w-3" />}{parsed.channel}</span>}
@@ -44,9 +59,16 @@ export function EnhancedAISummary({ lead }: { lead: Lead }) {
         </div>
       )}
       {!parsed && lead.conversation_next_step && (
-        <div className="flex items-start gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800">
-          <ArrowRight className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
-          <p className="text-xs text-green-700 dark:text-green-400">{lead.conversation_next_step}</p>
+        <div className="flex items-start justify-between gap-2 p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 group/fallback">
+          <div className="flex items-start gap-2">
+            <ArrowRight className="h-3.5 w-3.5 text-green-500 mt-0.5 shrink-0" />
+            <p className="text-xs text-green-700 dark:text-green-400">{lead.conversation_next_step}</p>
+          </div>
+          <CopyButton
+            value={lead.conversation_next_step}
+            label="Next Step"
+            className="opacity-0 group-hover/fallback:opacity-100 focus:opacity-100"
+          />
         </div>
       )}
     </div>
