@@ -32,6 +32,7 @@ export async function searchAll(query: string): Promise<SearchCategory[]> {
 
     const customers = leads.filter(l => l.type === 'customer')
     const investors = leads.filter(l => l.type === 'investor')
+    const partnerships = leads.filter(l => l.type === 'partnership')
 
     const results: SearchCategory[] = []
 
@@ -43,6 +44,21 @@ export async function searchAll(query: string): Promise<SearchCategory[]> {
         results: customers.map(l => ({
           id: l.id,
           type: 'customer' as const,
+          title: l.contact_name,
+          subtitle: `${l.company_name} · ${l.stage}`,
+          route: `/leads/${l.id}`,
+        })),
+      })
+    }
+
+    if (partnerships.length > 0) {
+      results.push({
+        type: 'partnership',
+        title: 'Partnerships',
+        icon: null,
+        results: partnerships.map(l => ({
+          id: l.id,
+          type: 'partnership' as const,
           title: l.contact_name,
           subtitle: `${l.company_name} · ${l.stage}`,
           route: `/leads/${l.id}`,
