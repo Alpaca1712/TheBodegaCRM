@@ -79,7 +79,10 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                       {action.title}
                     </Link>
                   </div>
-                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">{action.reason}</p>
+                  <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
+                    {action.companyName && <span className="font-medium text-zinc-700 dark:text-zinc-300">{action.companyName} · </span>}
+                    {action.reason}
+                  </p>
                   <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
                     <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
