@@ -442,12 +442,9 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Sales Action Plan */}
-      <div className="space-y-4">
-        <SalesActionPlan
-          actions={data.salesActionPlan}
-          onRefresh={loadDashboard}
-        />
+      {/* Follow-up Suggestions */}
+      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
+        <FollowUpSuggestions compact typeFilter={activeType} />
       </div>
     </div>
   );
