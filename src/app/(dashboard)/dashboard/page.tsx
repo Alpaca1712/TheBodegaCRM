@@ -98,6 +98,48 @@ export default function DashboardPage() {
     promise.finally(() => setIsDrafting(null));
   };
 
+  const handleResearch = async (leadId: string, contactName: string) => {
+    setIsDrafting(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await loadDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${contactName}...`,
+      success: `Research complete for ${contactName}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsDrafting(null));
+  };
+
+  const handlePrep = async (leadId: string, contactName: string) => {
+    setIsDrafting(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      await loadDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${contactName}...`,
+      success: `Battle card ready for ${contactName}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsDrafting(null));
+  };
+
   const loadDashboard = useCallback(async () => {
     setLoading(true);
     setError(null);
@@ -274,6 +316,8 @@ export default function DashboardPage() {
         actions={data.salesActionPlan}
         isDrafting={isDrafting}
         onMagicDraft={handleMagicDraft}
+        onResearch={handleResearch}
+        onPrep={handlePrep}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

@@ -1,12 +1,13 @@
 import { describe, expect, it } from 'vitest'
 import { buildSalesActionPlan } from './sales-actions'
+import { PipelineStage } from '@/types/leads'
 
 const baseLead = {
   id: 'lead-1',
   contact_name: 'Ari Founder',
   company_name: 'Acme AI',
-  type: 'customer',
-  stage: 'researched',
+  type: 'customer' as const,
+  stage: 'researched' as PipelineStage,
   icp_score: 85,
   last_contacted_at: null,
   last_inbound_at: null,
@@ -14,6 +15,9 @@ const baseLead = {
   updated_at: '2026-05-06T12:00:00Z',
   conversation_next_step: null,
   conversation_signals: [],
+  smykm_hooks: [],
+  company_description: null,
+  battle_card: null,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -31,7 +35,7 @@ describe('buildSalesActionPlan', () => {
           last_inbound_at: '2026-05-06T10:00:00Z',
           updated_at: '2026-05-06T10:00:00Z',
         },
-        baseLead,
+        { ...baseLead, smykm_hooks: ['Hook 1'] },
       ],
       outboundEmails: [],
       inboundEmails: [],
@@ -48,7 +52,77 @@ describe('buildSalesActionPlan', () => {
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
   })
 
-  it('surfaces overdue follow-ups before fresh high-ICP prospects', () => {
+  it('suggests research for high-ICP leads without hooks', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-needs-research',
+          icp_score: 90,
+          smykm_hooks: [],
+          company_description: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-needs-research',
+      category: 'research',
+      priority: 'high',
+      ctaLabel: 'Run Research',
+    })
+  })
+
+  it('suggests meeting prep for booked meetings without battle cards', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-meeting',
+          stage: 'meeting_booked',
+          battle_card: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-meeting',
+      category: 'meeting_prep',
+      ctaLabel: 'Run Prep',
+    })
+  })
+
+  it('upgrades prospecting to high priority if positive signals exist', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-hot',
+          smykm_hooks: ['Hook 1'],
+          conversation_signals: [{ type: 'positive', detected_at: '2026-05-06T11:00:00Z', signal: 'Interested', source: 'email' }],
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-hot',
+      category: 'prospecting',
+      priority: 'high',
+    })
+    // Score should be higher due to signal
+    expect(actions[0].score).toBeGreaterThan(650 + 85)
+  })
+
+  it('surfaces overdue follow-ups correctly', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -68,6 +142,7 @@ describe('buildSalesActionPlan', () => {
           company_name: 'Perfect ICP',
           stage: 'researched',
           icp_score: 96,
+          smykm_hooks: ['Hook 1'],
         },
       ],
       outboundEmails: [],
@@ -77,7 +152,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
     expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
-    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'medium' })
+    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' }) // 96 ICP
   })
 
   it('limits the action plan to the strongest five actions', () => {
@@ -86,6 +161,7 @@ describe('buildSalesActionPlan', () => {
       id: `lead-${index}`,
       contact_name: `Lead ${index}`,
       icp_score: 90 - index,
+      smykm_hooks: ['Hook 1'],
     }))
 
     const actions = buildSalesActionPlan({
