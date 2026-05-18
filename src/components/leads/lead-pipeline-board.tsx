@@ -1,12 +1,21 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
-import { formatDistanceToNow, differenceInDays } from 'date-fns';
-import { PIPELINE_STAGES, STAGE_LABELS, STAGE_DESCRIPTIONS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage, type BattleCard } from '@/types/leads';
-import { GripVertical, Zap, Swords, ClipboardCheck, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
+import { differenceInDays, formatDistanceToNow } from 'date-fns';
+import {
+  LEAD_TYPE_COLORS,
+  LEAD_TYPE_SHORT,
+  PIPELINE_STAGES,
+  STAGE_DESCRIPTIONS,
+  STAGE_LABELS,
+  type BattleCard,
+  type Lead,
+  type PipelineStage,
+} from '@/types/leads';
+import { AlertCircle, ClipboardCheck, GripVertical, Loader2, Sparkles, Swords, Zap } from 'lucide-react';
 
 function parseNextStep(nextStep: string): { channel: string | null; framework: string | null; text: string; tactical: string | null } {
   const channelMatch = nextStep.match(/^\[([^\]]+)\]\s*/);
@@ -83,8 +92,12 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
     setDropTarget(null);
   };
 
+  const setLeadProcessing = (leadId: string, processing: boolean) => {
+    setIsProcessing(prev => ({ ...prev, [leadId]: processing }));
+  };
+
   const handleMagicDraft = async (leadId: string, contactName: string) => {
-    setIsProcessing(prev => ({ ...prev, [leadId]: true }));
+    setLeadProcessing(leadId, true);
     const promise = (async () => {
       const res = await fetch('/api/ai/draft-next-step', {
         method: 'POST',
@@ -102,11 +115,11 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
       error: 'Drafting failed',
     });
 
-    promise.finally(() => setIsProcessing(prev => ({ ...prev, [leadId]: false })));
+    promise.finally(() => setLeadProcessing(leadId, false));
   };
 
   const handlePrep = async (leadId: string, contactName: string) => {
-    setIsProcessing(prev => ({ ...prev, [leadId]: true }));
+    setLeadProcessing(leadId, true);
     const promise = (async () => {
       const res = await fetch('/api/ai/battle-card', {
         method: 'POST',
@@ -123,7 +136,34 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
       error: 'Prep failed',
     });
 
-    promise.finally(() => setIsProcessing(prev => ({ ...prev, [leadId]: false })));
+    promise.finally(() => setLeadProcessing(leadId, false));
+  };
+
+  const handleResearch = async (lead: Lead) => {
+    setLeadProcessing(lead.id, true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId: lead.id,
+          type: lead.type,
+          contact_name: lead.contact_name,
+          company_name: lead.company_name,
+          linkedin_url: lead.contact_linkedin,
+        }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      onRefresh?.();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${lead.contact_name}...`,
+      success: `Research complete for ${lead.contact_name}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setLeadProcessing(lead.id, false));
   };
 
   return (
@@ -159,7 +199,11 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
               const strategyText = lead.conversation_next_step
                 ? parseNextStep(lead.conversation_next_step).text
                 : (lead.battle_card as BattleCard | null)?.our_angle;
-              const showAction = ['researched', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'email_drafted'].includes(lead.stage) || (lead.stage === 'email_sent' && daysSinceLastContact !== null && daysSinceLastContact >= 3);
+              const needsResearch = lead.stage === 'researched' && !lead.smykm_hooks?.length;
+              const showAction = needsResearch ||
+                ['researched', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'email_drafted'].includes(lead.stage) ||
+                (lead.stage === 'email_sent' && daysSinceLastContact !== null && daysSinceLastContact >= 3);
+              const isLeadProcessing = !!isProcessing[lead.id];
 
               return (
                 <div
@@ -223,15 +267,18 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
                             onClick={(e) => {
                               e.preventDefault();
                               e.stopPropagation();
-                              if (lead.stage === 'meeting_booked') handlePrep(lead.id, lead.contact_name);
+                              if (needsResearch) handleResearch(lead);
+                              else if (lead.stage === 'meeting_booked') handlePrep(lead.id, lead.contact_name);
                               else if (lead.stage === 'email_drafted') router.push(`/leads/${lead.id}?tab=emails`);
                               else handleMagicDraft(lead.id, lead.contact_name);
                             }}
-                            disabled={isProcessing[lead.id]}
+                            disabled={isLeadProcessing}
                             className="flex items-center gap-1 px-1.5 py-0.5 rounded bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50 border border-red-100 dark:border-red-900/30"
                           >
-                            {isProcessing[lead.id] ? (
+                            {isLeadProcessing ? (
                               <Loader2 className="h-2.5 w-2.5 animate-spin" />
+                            ) : needsResearch ? (
+                              <Sparkles className="h-2.5 w-2.5" />
                             ) : lead.stage === 'meeting_booked' ? (
                               <Swords className="h-2.5 w-2.5" />
                             ) : lead.stage === 'email_drafted' ? (
@@ -240,7 +287,7 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
                               <Zap className="h-2.5 w-2.5" />
                             )}
                             <span className="text-[9px] font-bold uppercase tracking-tight">
-                              {isProcessing[lead.id] ? '...' : lead.stage === 'meeting_booked' ? 'Prep' : lead.stage === 'email_drafted' ? 'Review' : 'Magic'}
+                              {isLeadProcessing ? '...' : needsResearch ? 'Research' : lead.stage === 'meeting_booked' ? 'Prep' : lead.stage === 'email_drafted' ? 'Review' : 'Magic'}
                             </span>
                           </button>
                         )}
