@@ -149,6 +149,7 @@ export default function DashboardLayoutClient({
                         key={item.href}
                         href={item.href}
                         onClick={() => setIsQuickCreateOpen(false)}
+                        aria-current={pathname === item.href ? 'page' : undefined}
                         className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
                       >
                         <Icon className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
@@ -176,6 +177,7 @@ export default function DashboardLayoutClient({
                       <li key={item.href}>
                         <Link
                           href={item.href}
+                          aria-current={active ? 'page' : undefined}
                           className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                             active
                               ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none'
@@ -202,6 +204,7 @@ export default function DashboardLayoutClient({
           <div className="px-3 py-3 border-t border-zinc-100 dark:border-zinc-800 space-y-1">
             <Link
               href="/settings"
+              aria-current={isActive('/settings') ? 'page' : undefined}
               className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                 isActive('/settings')
                   ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
