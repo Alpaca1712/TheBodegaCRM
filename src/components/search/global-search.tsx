@@ -121,7 +121,6 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
           return;
         }
       }
-
       if (e.key === 'Escape') setIsOpen(false);
     };
     window.addEventListener('keydown', handleKeyDown);
@@ -243,7 +242,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                 <X className="h-3.5 w-3.5" />
               </button>
             )}
-            <div className="mx-2 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
+            <div className="mx-1.5 h-4 w-px bg-zinc-200 dark:bg-zinc-700" />
             <button
               type="button"
               onClick={handleClose}
