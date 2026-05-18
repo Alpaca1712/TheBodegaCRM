@@ -88,20 +88,23 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
   const debouncedQuery = useDebounce(query, 300);
 
-  const filteredActions = query.trim()
-    ? quickActions.filter(
-        (a) =>
-          a.label.toLowerCase().includes(query.toLowerCase()) ||
-          a.description.toLowerCase().includes(query.toLowerCase())
-      )
-    : quickActions;
+  const filteredActions = useMemo(() =>
+    query.trim()
+      ? quickActions.filter(
+          (a) =>
+            a.label.toLowerCase().includes(query.toLowerCase()) ||
+            a.description.toLowerCase().includes(query.toLowerCase())
+        )
+      : quickActions,
+    [query]
+  );
 
-  const createActions = filteredActions.filter((a) => a.group === 'create');
-  const navActions = filteredActions.filter((a) => a.group === 'navigate');
+  const createActions = useMemo(() => filteredActions.filter((a) => a.group === 'create'), [filteredActions]);
+  const navActions = useMemo(() => filteredActions.filter((a) => a.group === 'navigate'), [filteredActions]);
 
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // CMD/CTRL + K
+      // ⌘K or Ctrl+K
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setIsOpen(true);
@@ -110,11 +113,8 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
       // '/' shortcut
       if (e.key === '/' && !isOpen) {
-        const target = e.target as HTMLElement;
-        const isInput = target.tagName === 'INPUT' ||
-                        target.tagName === 'TEXTAREA' ||
-                        target.isContentEditable;
-
+        const el = document.activeElement;
+        const isInput = el?.tagName === 'INPUT' || el?.tagName === 'TEXTAREA' || (el as HTMLElement)?.isContentEditable;
         if (!isInput) {
           e.preventDefault();
           setIsOpen(true);
@@ -127,6 +127,12 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [setIsOpen, isOpen]);
+
+  useEffect(() => {
+    if (isOpen) {
+      setTimeout(() => inputRef.current?.focus(), 100);
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const performSearch = async () => {
