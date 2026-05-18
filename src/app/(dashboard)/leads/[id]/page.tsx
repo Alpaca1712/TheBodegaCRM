@@ -56,7 +56,6 @@ import { EnhancedAISummary } from '@/components/leads/detail/overview/enhanced-a
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
-import { EnhancedAISummary } from '@/components/leads/detail/overview';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
 
@@ -98,7 +97,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   );
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
-  const [isDrafting, setIsDrafting] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
   const [snapshot, setSnapshot] = useState<Record<string, unknown> | null>(null);
   const [coachingLoading, setCoachingLoading] = useState(false);
@@ -258,29 +256,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } finally {
       setIsSyncing(false);
     }
-  };
-
-  const handleMagicDraft = async () => {
-    if (!lead) return;
-    setIsDrafting(true);
-    const promise = (async () => {
-      const res = await fetch('/api/ai/draft-next-step', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId: id }),
-      });
-      if (!res.ok) throw new Error('Magic drafting failed');
-      await fetchLead();
-      setActiveTab('emails');
-    })();
-
-    toast.promise(promise, {
-      loading: `Magic drafting for ${lead.contact_name}...`,
-      success: `Draft ready for ${lead.contact_name}`,
-      error: 'Drafting failed',
-    });
-
-    promise.finally(() => setIsDrafting(false));
   };
 
   const generateSnapshot = async () => {

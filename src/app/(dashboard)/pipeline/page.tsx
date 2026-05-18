@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Loader2, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadPipelineBoard from '@/components/leads/lead-pipeline-board';
 import { toast } from 'sonner';
