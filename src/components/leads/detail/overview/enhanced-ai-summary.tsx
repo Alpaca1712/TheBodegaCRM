@@ -55,7 +55,7 @@ export function EnhancedAISummary({ lead, onRefresh }: EnhancedAISummaryProps) {
 
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-3">
-      <div className="group/strategy relative">
+      <div className="group/summary">
         <div className="flex items-center justify-between mb-1">
           <div className="flex items-center gap-2">
             <Brain className="h-4 w-4 text-red-500" />
@@ -64,7 +64,7 @@ export function EnhancedAISummary({ lead, onRefresh }: EnhancedAISummaryProps) {
           <CopyButton
             value={lead.conversation_summary || ''}
             label="Strategy"
-            className="opacity-0 group-hover/strategy:opacity-100 focus:opacity-100"
+            className="opacity-0 group-hover/summary:opacity-100 focus:opacity-100"
           />
         </div>
         <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{lead.conversation_summary}</p>
@@ -118,7 +118,7 @@ export function EnhancedAISummary({ lead, onRefresh }: EnhancedAISummaryProps) {
       )}
 
       {!parsed && lead.conversation_next_step && (
-        <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 group/next">
+        <div className="flex items-center justify-between p-4 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 group/fallback">
           <div className="flex items-start gap-2 min-w-0">
             <ArrowRight className="h-4 w-4 text-green-500 mt-0.5 shrink-0" />
             <p className="text-sm text-green-700 dark:text-green-400 leading-relaxed font-medium">{lead.conversation_next_step}</p>
@@ -127,7 +127,7 @@ export function EnhancedAISummary({ lead, onRefresh }: EnhancedAISummaryProps) {
             <CopyButton
               value={lead.conversation_next_step}
               label="Next Step"
-              className="opacity-0 group-hover/next:opacity-100 focus:opacity-100"
+              className="opacity-0 group-hover/fallback:opacity-100 focus:opacity-100"
             />
             <button
               onClick={handleMagicDraft}

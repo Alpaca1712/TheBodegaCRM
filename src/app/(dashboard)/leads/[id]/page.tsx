@@ -27,7 +27,6 @@ import {
   MapPin,
   Hash,
   Send,
-  Zap,
   Camera,
   GraduationCap,
   Sparkles,
@@ -57,6 +56,7 @@ import { EnhancedAISummary } from '@/components/leads/detail/overview/enhanced-a
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
+import { EnhancedAISummary } from '@/components/leads/detail/overview';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
 
@@ -772,6 +772,7 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
           placeholder="Type a fact, preference, or context to remember about this lead..."
           aria-label="New memory content"
           className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 min-h-[60px]"
+            autoResize
         />
         <div className="flex items-center gap-2">
           <select value={addType} onChange={(e) => setAddType(e.target.value)} className="rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-2 py-1.5 text-xs text-zinc-700 dark:text-zinc-300">
@@ -1047,6 +1048,7 @@ function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string; initia
         onBlur={() => { if (timeoutRef.current) { clearTimeout(timeoutRef.current); save(notes); } }}
         placeholder="Paste LinkedIn DMs, call notes, or any context..."
         className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
+        autoResize
       />
     </div>
   );
@@ -1138,6 +1140,7 @@ function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLogged: ()
             placeholder="Paste DM, call notes..."
             aria-label="Interaction content"
             className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 text-xs min-h-[60px]"
+            autoResize
           />
           <button
             onClick={handleSubmit}
@@ -1563,6 +1566,7 @@ function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, loading
             placeholder="Paste transcript or type notes..."
             aria-label="Meeting notes"
             className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700 min-h-[100px]"
+            autoResize
           />
           <button
             onClick={onSubmit}
