@@ -109,7 +109,7 @@ export default function PipelinePage() {
           <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
         </div>
       ) : (
-        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} />
+        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} onRefresh={fetchLeads} />
       )}
     </div>
   );
