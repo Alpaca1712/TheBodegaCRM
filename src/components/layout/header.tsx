@@ -63,9 +63,15 @@ export default function Header({ userEmail, userName }: HeaderProps) {
           >
             <Search className="h-3.5 w-3.5" />
             <span>Search...</span>
-            <kbd className="ml-1 rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
-              ⌘K
-            </kbd>
+            <div className="ml-1 flex items-center gap-1">
+              <kbd className="rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
+                ⌘K
+              </kbd>
+              <span className="text-[10px] text-zinc-400">or</span>
+              <kbd className="rounded border border-zinc-300/60 dark:border-zinc-600/60 bg-white dark:bg-zinc-800 px-1.5 py-0.5 font-mono text-[10px] text-zinc-400 dark:text-zinc-500">
+                /
+              </kbd>
+            </div>
           </button>
 
           <button
