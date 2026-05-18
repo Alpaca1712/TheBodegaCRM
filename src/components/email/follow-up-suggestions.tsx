@@ -442,7 +442,7 @@ function FollowUpCard({
 
           {/* Action description */}
           {aiStrategy ? (
-            <div className="space-y-1">
+            <div className="space-y-1 group/strategy relative">
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-1.5">
                   <ArrowRight className="h-3 w-3 text-red-500" />
@@ -453,7 +453,11 @@ function FollowUpCard({
                     </span>
                   )}
                 </div>
-                <CopyButton value={aiStrategy.text} label="Strategy" className="opacity-0 group-hover:opacity-100 focus:opacity-100" />
+                <CopyButton
+                  value={aiStrategy.text}
+                  label="Strategy"
+                  className="opacity-0 group-hover/strategy:opacity-100 focus:opacity-100 -mr-1"
+                />
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{aiStrategy.text}</p>
               {aiStrategy.tactical && (
