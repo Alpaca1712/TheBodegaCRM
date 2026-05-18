@@ -58,6 +58,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
 
           <button
             onClick={() => setIsSearchOpen(true)}
+            aria-haspopup="dialog"
             className="hidden md:flex items-center gap-2 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/80 px-3 py-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80 transition-colors"
           >
             <Search className="h-3.5 w-3.5" />
@@ -70,6 +71,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
           <button
             onClick={() => setIsSearchOpen(true)}
             aria-label="Search"
+            aria-haspopup="dialog"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 dark:text-zinc-400 hover:bg-zinc-100 dark:hover:bg-zinc-800 transition-colors md:hidden"
           >
             <Search className="h-4 w-4" />

@@ -1,15 +1,15 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import {
   Search,
   X,
   User,
   Landmark,
+  Handshake,
   ChevronRight,
   Users,
   UserPlus,
-  Handshake,
   BarChart3,
   Settings,
   Mail,
@@ -130,14 +130,14 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
   }, [debouncedQuery]);
 
   const allItems = useMemo(() => {
-    const items: { type: 'result' | 'action'; id: string; route: string }[] = [];
+    const items: { id: string; type: 'result' | 'action'; route: string }[] = [];
     results.forEach((category) => {
       category.results.forEach((result) => {
-        items.push({ type: 'result', id: `search-result-${result.id}`, route: result.route });
+        items.push({ id: `result-${result.type}-${result.id}`, type: 'result', route: result.route });
       });
     });
     filteredActions.forEach((action) => {
-      items.push({ type: 'action', id: `search-action-${action.id}`, route: action.route });
+      items.push({ id: `action-${action.id}`, type: 'action', route: action.route });
     });
     return items;
   }, [results, filteredActions]);
@@ -184,7 +184,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
 
       <div className="flex min-h-full items-start justify-center p-4 pt-[15vh]">
         <div
-          className="relative w-full max-w-xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 shadow-2xl animate-scale-in border border-zinc-200 dark:border-zinc-700"
+          className="relative w-full max-w-xl transform overflow-hidden rounded-xl bg-white dark:bg-zinc-900 shadow-2xl animate-scale-in border border-zinc-200 dark:border-zinc-700 focus-within:ring-2 focus-within:ring-red-500/20"
           onClick={(e) => e.stopPropagation()}
         >
           <div className="flex items-center border-b border-zinc-200 dark:border-zinc-700 px-4 py-3">
@@ -192,15 +192,16 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
             <input
               ref={inputRef}
               type="text"
+              role="combobox"
+              aria-expanded={isOpen}
+              aria-haspopup="listbox"
+              aria-autocomplete="list"
+              aria-controls="search-results-listbox"
+              aria-activedescendant={totalItems > 0 ? allItems[selectedIndex]?.id : undefined}
               value={query}
               onChange={(e) => { setQuery(e.target.value); setSelectedIndex(0); }}
               placeholder="Search leads or type a command..."
               aria-label="Search leads or commands"
-              role="combobox"
-              aria-expanded={isOpen}
-              aria-autocomplete="list"
-              aria-controls="search-results-listbox"
-              aria-activedescendant={totalItems > 0 ? allItems[selectedIndex]?.id : undefined}
               className="ml-3 flex-1 border-0 bg-transparent py-1 text-zinc-900 dark:text-white placeholder-zinc-400 focus:outline-none focus:ring-0 text-sm"
               autoFocus
             />
@@ -210,6 +211,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                 onClick={() => {
                   setQuery('');
                   setResults([]);
+                  setSelectedIndex(0);
                   inputRef.current?.focus();
                 }}
                 className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 hover:text-zinc-600 transition-colors"
@@ -262,7 +264,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                   return (
                     <button
                       key={`${result.type}-${result.id}`}
-                      id={`search-result-${result.id}`}
+                      id={`result-${result.type}-${result.id}`}
                       role="option"
                       aria-selected={isSelected}
                       type="button"
@@ -307,7 +309,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
-                          id={`search-action-${action.id}`}
+                          id={`action-${action.id}`}
                           role="option"
                           aria-selected={isSelected}
                           type="button"
@@ -345,7 +347,7 @@ export function GlobalSearch({ isOpen: externalIsOpen, onClose }: GlobalSearchPr
                       return (
                         <button
                           key={action.id}
-                          id={`search-action-${action.id}`}
+                          id={`action-${action.id}`}
                           role="option"
                           aria-selected={isSelected}
                           type="button"

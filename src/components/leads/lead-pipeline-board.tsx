@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
 import { formatDistanceToNow, differenceInDays } from 'date-fns';
-import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage, type BattleCard } from '@/types/leads';
+import { PIPELINE_STAGES, STAGE_LABELS, STAGE_DESCRIPTIONS, LEAD_TYPE_SHORT, LEAD_TYPE_COLORS, type Lead, type PipelineStage, type BattleCard } from '@/types/leads';
 import { GripVertical, Zap, Swords, ClipboardCheck, Sparkles, AlertCircle, Loader2 } from 'lucide-react';
 
 function parseNextStep(nextStep: string): { channel: string | null; framework: string | null; text: string; tactical: string | null } {
@@ -138,7 +138,10 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
           onDragLeave={handleDragLeave}
           onDrop={() => handleDrop(stage)}
         >
-          <div className={`px-3 py-2.5 border-t-2 ${stageColors[stage]} rounded-t-xl`}>
+          <div
+            title={STAGE_DESCRIPTIONS[stage]}
+            className={`px-3 py-2.5 border-t-2 ${stageColors[stage]} rounded-t-xl cursor-help`}
+          >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-zinc-700 dark:text-zinc-300">
                 {STAGE_LABELS[stage]}
@@ -202,9 +205,12 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
                       <div className="flex items-center justify-between mt-2.5">
                         <div className="flex items-center gap-1.5">
                           <span
+                            role="img"
+                            tabIndex={0}
+                            aria-label={`${lead.priority} priority`}
                             title={`${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} Priority`}
-                            className={`inline-block h-1.5 w-1.5 rounded-full cursor-help ${
-                              lead.priority === 'high' ? 'bg-red-500' : lead.priority === 'medium' ? 'bg-amber-500' : 'bg-zinc-400'
+                            className={`inline-block h-1.5 w-1.5 rounded-full cursor-help outline-none focus:ring-2 focus:ring-offset-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 ${
+                              lead.priority === 'high' ? 'bg-red-500 focus:ring-red-500' : lead.priority === 'medium' ? 'bg-amber-500 focus:ring-amber-500' : 'bg-zinc-400'
                             }`}
                           />
                           <span className={`text-[10px] px-1.5 py-0.5 rounded ${LEAD_TYPE_COLORS[lead.type].bg} ${LEAD_TYPE_COLORS[lead.type].text}`}>

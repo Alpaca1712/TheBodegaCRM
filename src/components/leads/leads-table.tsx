@@ -154,7 +154,10 @@ export default function LeadsTable({
                     <div>
                       <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Stage</dt>
                       <dd className="mt-1">
-                        <span className={`inline-block rounded px-2 py-0.5 text-[11px] font-medium ${stageColors[lead.stage] || ''}`}>
+                        <span
+                          title={STAGE_DESCRIPTIONS[lead.stage]}
+                          className={`inline-block rounded px-2 py-0.5 text-[11px] font-medium cursor-help ${stageColors[lead.stage] || ''}`}
+                        >
                           {STAGE_LABELS[lead.stage]}
                         </span>
                       </dd>
@@ -162,7 +165,13 @@ export default function LeadsTable({
                     <div>
                       <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Priority</dt>
                       <dd className="mt-1 flex items-center gap-1.5 text-zinc-600 capitalize dark:text-zinc-400">
-                        <span className={`h-2 w-2 rounded-full ${priorityDots[lead.priority]}`} />
+                        <span
+                          role="img"
+                          tabIndex={0}
+                          aria-label={`${lead.priority} priority`}
+                          title={`${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} priority`}
+                          className={`h-2 w-2 rounded-full cursor-help focus:ring-2 focus:ring-offset-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none ${priorityDots[lead.priority]}`}
+                        />
                         {lead.priority}
                       </dd>
                     </div>
@@ -298,7 +307,13 @@ export default function LeadsTable({
                 </td>
                 <td className="py-3">
                   <div className="flex items-center gap-1.5">
-                    <div className={`h-2 w-2 rounded-full ${priorityDots[lead.priority]}`} />
+                    <div
+                      role="img"
+                      tabIndex={0}
+                      aria-label={`${lead.priority} priority`}
+                      title={`${lead.priority.charAt(0).toUpperCase() + lead.priority.slice(1)} priority`}
+                      className={`h-2 w-2 rounded-full cursor-help focus:ring-2 focus:ring-offset-1 focus:ring-zinc-400 dark:focus:ring-zinc-600 outline-none ${priorityDots[lead.priority]}`}
+                    />
                     <span className="text-xs text-zinc-600 dark:text-zinc-400 capitalize">{lead.priority}</span>
                   </div>
                 </td>
