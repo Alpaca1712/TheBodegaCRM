@@ -1,5 +1,6 @@
 import { Brain, CheckCircle2, ArrowRight, Zap, Linkedin, Twitter, Phone, MapPin, Hash } from 'lucide-react';
 import type { Lead } from '@/types/leads';
+import { CopyButton } from '@/components/ui/copy-button';
 
 const channelIcons: Record<string, React.ReactNode> = {
   linkedin: <Linkedin className="h-3.5 w-3.5" />, twitter: <Twitter className="h-3.5 w-3.5" />,
@@ -25,10 +26,13 @@ export function EnhancedAISummary({ lead }: { lead: Lead }) {
       </div>
       <p className="text-sm text-zinc-700 dark:text-zinc-300 leading-relaxed">{lead.conversation_summary}</p>
       {parsed && (
-        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2">
-          <div className="flex items-center gap-2">
-            <CheckCircle2 className="h-4 w-4 text-green-600" />
-            <p className="text-xs font-semibold text-green-800 dark:text-green-300">Next Step</p>
+        <div className="p-3 rounded-lg bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 space-y-2 group/next">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="h-4 w-4 text-green-600" />
+              <p className="text-xs font-semibold text-green-800 dark:text-green-300">Next Step</p>
+            </div>
+            <CopyButton value={parsed.text} label="Next Step" className="opacity-0 group-hover/next:opacity-100 focus:opacity-100 -mr-1 -mt-1" />
           </div>
           <div className="flex flex-wrap gap-1.5">
             {parsed.channel && <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-medium bg-white/60 dark:bg-zinc-800/60 text-green-700 dark:text-green-300 border border-green-200 dark:border-green-700">{channelIcons[parsed.channel.toLowerCase()] || <Zap className="h-3 w-3" />}{parsed.channel}</span>}

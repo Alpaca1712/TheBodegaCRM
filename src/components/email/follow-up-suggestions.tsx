@@ -11,6 +11,7 @@ import { toast } from 'sonner';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
+import { CopyButton } from '@/components/ui/copy-button';
 import {
   ACTION_LABELS,
   FOLLOW_UP_STAGES,
@@ -361,7 +362,7 @@ function FollowUpCard({
   const aiStrategy = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step) : null;
 
   return (
-    <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm`}>
+    <div className={`rounded-xl border ${urg.border} ${urg.bg} p-4 transition-all hover:shadow-sm group`}>
       <div className="flex items-start gap-3">
         {/* Avatar */}
         <div className="shrink-0">
@@ -442,14 +443,17 @@ function FollowUpCard({
           {/* Action description */}
           {aiStrategy ? (
             <div className="space-y-1">
-              <div className="flex items-center gap-1.5">
-                <ArrowRight className="h-3 w-3 text-red-500" />
-                <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">AI Strategy</p>
-                {aiStrategy.framework && (
-                  <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-600 font-medium border border-purple-100 dark:border-purple-800">
-                    {aiStrategy.framework}
-                  </span>
-                )}
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-1.5">
+                  <ArrowRight className="h-3 w-3 text-red-500" />
+                  <p className="text-xs font-semibold text-zinc-700 dark:text-zinc-200">AI Strategy</p>
+                  {aiStrategy.framework && (
+                    <span className="text-[9px] px-1 py-0.5 rounded bg-purple-50 dark:bg-purple-900/30 text-purple-600 font-medium border border-purple-100 dark:border-purple-800">
+                      {aiStrategy.framework}
+                    </span>
+                  )}
+                </div>
+                <CopyButton value={aiStrategy.text} label="Strategy" className="opacity-0 group-hover:opacity-100 focus:opacity-100" />
               </div>
               <p className="text-xs text-zinc-600 dark:text-zinc-300 leading-relaxed">{aiStrategy.text}</p>
               {aiStrategy.tactical && (
