@@ -78,6 +78,7 @@ export function RemindersPanel() {
           variant="ghost"
           className="relative h-10 w-10 p-0"
           aria-label={unreadCount > 0 ? `Notifications, ${unreadCount} unread` : 'Notifications'}
+          title="Notifications"
         >
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (

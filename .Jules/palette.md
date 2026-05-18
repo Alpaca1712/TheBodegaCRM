@@ -41,3 +41,11 @@
 ## 2025-05-20 - [UX: Discoverable Search Shortcuts]
 **Learning:** Adding the standard '/' shortcut in addition to 'Cmd+K' and displaying it visually in the UI increases search discoverability for power users. It's critical to exclude shortcut triggers when focus is in input fields.
 **Action:** Implement '/' as a secondary search trigger and update UI hints to reflect it. Use 'e.target' checks to prevent interference with typing.
+
+## 2025-05-21 - [A11y: Semantic Active States]
+**Learning:** Visual-only active states (e.g. red text for current route) are invisible to screen readers. Using 'aria-current="page"' provides the necessary semantic context to assistive technologies.
+**Action:** Always add 'aria-current="page"' to active navigation links in sidebars and bottom bars.
+
+## 2025-05-21 - [A11y: Programmatic Helper Text]
+**Learning:** Helper text placed below an input is not automatically read by screen readers when the input is focused. Linking them via 'aria-describedby' ensures the context is available.
+**Action:** Use 'aria-describedby' to link inputs to their associated helper text or validation hints.

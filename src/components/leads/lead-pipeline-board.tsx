@@ -16,6 +16,7 @@ import {
   type PipelineStage,
 } from '@/types/leads';
 import { AlertCircle, ClipboardCheck, GripVertical, Loader2, Sparkles, Swords, Zap } from 'lucide-react';
+import { CopyButton } from '@/components/ui/copy-button';
 
 function parseNextStep(nextStep: string): { channel: string | null; framework: string | null; text: string; tactical: string | null } {
   const channelMatch = nextStep.match(/^\[([^\]]+)\]\s*/);
@@ -235,10 +236,17 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
                       </div>
 
                       {strategyText && (
-                        <div className="mt-2 p-1.5 rounded bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50">
-                          <div className="flex items-center gap-1 mb-0.5">
-                            <Sparkles className="h-2.5 w-2.5 text-red-500" />
-                            <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">Strategy</span>
+                        <div className="mt-2 p-1.5 rounded bg-zinc-50 dark:bg-zinc-900/50 border border-zinc-100 dark:border-zinc-800/50 group/strategy relative">
+                          <div className="flex items-center justify-between mb-0.5">
+                            <div className="flex items-center gap-1">
+                              <Sparkles className="h-2.5 w-2.5 text-red-500" />
+                              <span className="text-[9px] font-bold text-zinc-400 uppercase tracking-tight">Strategy</span>
+                            </div>
+                            <CopyButton
+                              value={strategyText}
+                              label="Strategy"
+                              className="opacity-0 group-hover/strategy:opacity-100 focus:opacity-100 -mr-1 -mt-1"
+                            />
                           </div>
                           <p className="text-[10px] text-zinc-600 dark:text-zinc-400 line-clamp-2 leading-relaxed">
                             {strategyText}
