@@ -1,4 +1,4 @@
-import type { Lead } from '@/types/leads'
+import type { Lead, LeadType } from '@/types/leads'
 
 export type SalesActionPriority = 'critical' | 'high' | 'medium'
 export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting'
@@ -7,6 +7,7 @@ export interface SalesAction {
   id: string
   leadId: string
   leadName: string
+  leadType: LeadType
   companyName: string
   priority: SalesActionPriority
   category: SalesActionCategory
@@ -24,6 +25,7 @@ type ActionLead = Pick<
   | 'contact_name'
   | 'company_name'
   | 'stage'
+  | 'type'
   | 'icp_score'
   | 'last_contacted_at'
   | 'last_inbound_at'
@@ -78,6 +80,7 @@ export function buildSalesActionPlan({
         id: `${lead.id}:reply`,
         leadId: lead.id,
         leadName: lead.contact_name,
+        leadType: lead.type,
         companyName: lead.company_name,
         priority: 'critical',
         category: 'reply',
@@ -98,6 +101,7 @@ export function buildSalesActionPlan({
         id: `${lead.id}:meeting`,
         leadId: lead.id,
         leadName: lead.contact_name,
+        leadType: lead.type,
         companyName: lead.company_name,
         priority: 'high',
         category: 'meeting',
@@ -121,6 +125,7 @@ export function buildSalesActionPlan({
         id: `${lead.id}:follow-up`,
         leadId: lead.id,
         leadName: lead.contact_name,
+        leadType: lead.type,
         companyName: lead.company_name,
         priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
         category: 'follow_up',
@@ -147,6 +152,7 @@ export function buildSalesActionPlan({
         id: `${lead.id}:prospecting`,
         leadId: lead.id,
         leadName: lead.contact_name,
+        leadType: lead.type,
         companyName: lead.company_name,
         priority: hasPositiveSignal || icp >= 90 ? 'medium' : 'medium',
         category: 'prospecting',
