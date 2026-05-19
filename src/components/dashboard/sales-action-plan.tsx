@@ -7,10 +7,13 @@ import {
   ArrowRight,
   CalendarCheck,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   ExternalLink,
   Loader2,
   MessageSquare,
+  Sparkles,
+  Swords,
   Target,
   Zap,
 } from 'lucide-react';
@@ -18,8 +21,10 @@ import type { SalesAction } from '@/lib/dashboard/sales-actions';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
-  isDrafting?: string | null;
+  isProcessing?: string | null;
   onMagicDraft?: (leadId: string, leadName: string) => void;
+  onResearch?: (leadId: string, leadName: string) => void;
+  onPrep?: (leadId: string, leadName: string) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -27,6 +32,9 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
+  research: <Sparkles className="h-4 w-4 text-indigo-500" />,
+  meeting_prep: <Swords className="h-4 w-4 text-red-500" />,
+  review: <ClipboardCheck className="h-4 w-4 text-emerald-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -35,7 +43,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
 };
 
-export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: SalesActionPlanProps) {
+export default function SalesActionPlan({ actions, isProcessing, onMagicDraft, onResearch, onPrep }: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
@@ -58,8 +66,10 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
 
       <div className="space-y-3">
         {actions.map((action) => {
+          const isLoading = isProcessing === action.leadId;
           const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
-          const isProcessing = isDrafting === action.leadId;
+          const canResearch = onResearch && action.category === 'research';
+          const canPrep = onPrep && action.category === 'meeting_prep';
 
           return (
             <div
@@ -91,6 +101,44 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
               </div>
 
               <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                {canResearch && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onResearch(action.leadId, action.leadName);
+                    }}
+                    disabled={!!isProcessing}
+                    title="Run AI Research"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    Research
+                  </button>
+                )}
+                {canPrep && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPrep(action.leadId, action.leadName);
+                    }}
+                    disabled={!!isProcessing}
+                    title="Generate Battle Card"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-red-600 dark:text-red-400 bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors border border-red-100 dark:border-red-800 disabled:opacity-50"
+                  >
+                    {isLoading ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Swords className="h-3.5 w-3.5" />
+                    )}
+                    Prep
+                  </button>
+                )}
                 {canMagicDraft && (
                   <button
                     onClick={(e) => {
@@ -98,11 +146,11 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                       e.stopPropagation();
                       onMagicDraft(action.leadId, action.leadName);
                     }}
-                    disabled={!!isDrafting}
+                    disabled={!!isProcessing}
                     title="Magic Draft"
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
                   >
-                    {isProcessing ? (
+                    {isLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
                       <Zap className="h-3.5 w-3.5 fill-current" />
@@ -110,13 +158,24 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     Draft
                   </button>
                 )}
-                <Link
-                  href={action.ctaHref}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
-                >
-                  {action.ctaLabel}
-                  <ArrowRight className="h-3.5 w-3.5" />
-                </Link>
+                {action.category === 'review' && (
+                  <Link
+                    href={action.ctaHref}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800"
+                  >
+                    <ClipboardCheck className="h-3.5 w-3.5" />
+                    Review
+                  </Link>
+                )}
+                {action.category !== 'review' && (
+                  <Link
+                    href={action.ctaHref}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+                  >
+                    {action.ctaLabel}
+                    <ArrowRight className="h-3.5 w-3.5" />
+                  </Link>
+                )}
               </div>
             </div>
           );

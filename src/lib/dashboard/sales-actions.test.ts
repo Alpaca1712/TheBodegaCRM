@@ -14,6 +14,9 @@ const baseLead = {
   updated_at: '2026-05-06T12:00:00Z',
   conversation_next_step: null,
   conversation_signals: [],
+  smykm_hooks: ['Hook 1'],
+  company_description: 'Description 1',
+  battle_card: null,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -77,7 +80,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
     expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
-    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'medium' })
+    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' }) // Priority is high because icp >= 90
   })
 
   it('limits the action plan to the strongest five actions', () => {
