@@ -28,6 +28,23 @@ export interface DashboardData {
   activePipeline: number
 }
 
+export interface PipelineHealthData {
+  overall_score: number
+  total_leads: number
+  at_risk_count: number
+  healthy_count: number
+  leads: Array<{
+    lead_id: string
+    contact_name: string
+    company_name: string
+    stage: string
+    risk_score: number
+    risk_factors: string[]
+    recommendation: string
+  }>
+  ai_summary: string
+}
+
 export function buildDashboardQueryString(type: DashboardLeadTypeFilter | string) {
   return type && type !== 'all' ? `?type=${encodeURIComponent(type)}` : ''
 }
@@ -46,11 +63,32 @@ export async function fetchDashboard(type: DashboardLeadTypeFilter | string): Pr
   }
 }
 
+export async function fetchPipelineHealth(type: DashboardLeadTypeFilter | string): Promise<PipelineHealthData | null> {
+  const res = await fetch(`/api/ai/pipeline-health${buildDashboardQueryString(type)}`)
+  const payload = await res.json().catch(() => null)
+
+  if (!res.ok) {
+    return null
+  }
+
+  return payload as PipelineHealthData
+}
+
 export function useDashboard(type: DashboardLeadTypeFilter | string) {
   return useQuery({
     queryKey: ['dashboard', type || 'all'],
     queryFn: () => fetchDashboard(type),
     staleTime: DASHBOARD_QUERY_STALE_TIME_MS,
     placeholderData: (previousData) => previousData,
+  })
+}
+
+export function usePipelineHealth(type: DashboardLeadTypeFilter | string) {
+  return useQuery({
+    queryKey: ['pipeline-health', type || 'all'],
+    queryFn: () => fetchPipelineHealth(type),
+    staleTime: DASHBOARD_QUERY_STALE_TIME_MS,
+    placeholderData: (previousData) => previousData,
+    retry: false,
   })
 }

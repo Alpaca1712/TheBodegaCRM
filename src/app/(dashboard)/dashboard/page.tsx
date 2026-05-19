@@ -1,7 +1,8 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState } from 'react';
 import Link from 'next/link';
+import { useQueryClient } from '@tanstack/react-query';
 import {
   Send,
   MessageSquare,
@@ -25,57 +26,24 @@ import {
   Handshake,
   Sparkles,
 } from 'lucide-react';
-import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS, type Lead } from '@/types/leads';
-import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads';
+import { useDashboard, usePipelineHealth, type DashboardLeadTypeFilter } from '@/hooks/use-dashboard';
 import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
-interface DashboardData {
-  totalLeads: number;
-  outreachThisWeek: number;
-  outreachLastWeek: number;
-  totalOutbound: number;
-  totalInbound: number;
-  leadsContacted: number;
-  leadsWithReplies: number;
-  replyRate: number;
-  meetingsBooked: number;
-  meetingConversion: number;
-  avgDaysToReply: number;
-  followUpCompliance: number;
-  avgTouchpoints: number;
-  hotLeads: Lead[];
-  salesActionPlan: SalesAction[];
-  pipelineCounts: Record<string, number>;
-  byType: { customers: number; investors: number; partnerships: number };
-  closedWon: number;
-  activePipeline: number;
-}
-
-interface PipelineHealthData {
-  overall_score: number;
-  at_risk_count: number;
-  healthy_count: number;
-  leads: Array<{
-    lead_id: string;
-    contact_name: string;
-    company_name: string;
-    stage: string;
-    risk_score: number;
-    risk_factors: string[];
-    recommendation: string;
-  }>;
-  ai_summary: string;
-}
-
 export default function DashboardPage() {
-  const [data, setData] = useState<DashboardData | null>(null);
-  const [health, setHealth] = useState<PipelineHealthData | null>(null);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [isDrafting, setIsDrafting] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [activeType, setActiveType] = useState<string>('all');
+  const [activeType, setActiveType] = useState<DashboardLeadTypeFilter>('all');
+  const dashboardQuery = useDashboard(activeType);
+  const healthQuery = usePipelineHealth(activeType);
+  const data = dashboardQuery.data;
+  const health = healthQuery.data;
+
+  const refreshDashboard = async () => {
+    await Promise.all([dashboardQuery.refetch(), healthQuery.refetch()]);
+  };
 
   const handleMagicDraft = async (leadId: string, contactName: string) => {
     setIsDrafting(leadId);
@@ -86,7 +54,10 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Magic drafting failed');
-      await loadDashboard();
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
+      ]);
     })();
 
     toast.promise(promise, {
@@ -98,31 +69,7 @@ export default function DashboardPage() {
     promise.finally(() => setIsDrafting(null));
   };
 
-  const loadDashboard = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const query = activeType !== 'all' ? `?type=${activeType}` : '';
-      const [dashRes, healthData] = await Promise.all([
-        fetch(`/api/dashboard${query}`),
-        fetch(`/api/ai/pipeline-health${query}`).then(r => r.ok ? r.json() : null).catch(() => null),
-      ]);
-      if (!dashRes.ok) throw new Error(`Dashboard request failed (${dashRes.status})`);
-      const dashData = await dashRes.json();
-      setData({ ...dashData, salesActionPlan: Array.isArray(dashData.salesActionPlan) ? dashData.salesActionPlan : [] });
-      setHealth(healthData);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load dashboard';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [activeType]);
-
-  useEffect(() => { loadDashboard(); }, [loadDashboard, activeType]);
-
-  if (loading) {
+  if (dashboardQuery.isLoading && !data) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
@@ -130,13 +77,14 @@ export default function DashboardPage() {
     );
   }
 
-  if (error || !data) {
+  if (dashboardQuery.error || !data) {
+    const message = dashboardQuery.error instanceof Error ? dashboardQuery.error.message : 'Failed to load dashboard data';
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-4">
         <AlertTriangle className="h-8 w-8 text-red-400" />
-        <p className="text-sm text-zinc-600 dark:text-zinc-400">{error || 'Failed to load dashboard data'}</p>
+        <p className="text-sm text-zinc-600 dark:text-zinc-400">{message}</p>
         <button
-          onClick={loadDashboard}
+          onClick={refreshDashboard}
           className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
         >
           Retry
@@ -172,7 +120,7 @@ export default function DashboardPage() {
     ? health.overall_score >= 70 ? 'bg-emerald-50 dark:bg-emerald-950/30' : health.overall_score >= 40 ? 'bg-amber-50 dark:bg-amber-950/30' : 'bg-red-50 dark:bg-red-950/30'
     : 'bg-zinc-50 dark:bg-zinc-800';
 
-  const leadTypeConfig: Record<string, { label: string; icon: React.ReactNode; color: string; subtext: string }> = {
+  const leadTypeConfig: Record<DashboardLeadTypeFilter, { label: string; icon: React.ReactNode; color: string; subtext: string }> = {
     all: { label: 'Overall Funnel', icon: <Target className="h-5 w-5" />, color: 'text-zinc-500', subtext: 'Total pipeline metrics' },
     customer: { label: 'Customer Motion', icon: <Users className="h-5 w-5" />, color: 'text-blue-500', subtext: 'Reaching teams shipping AI' },
     investor: { label: 'Investor Motion', icon: <Crosshair className="h-5 w-5" />, color: 'text-purple-500', subtext: 'VC and angel outreach' },
@@ -180,6 +128,7 @@ export default function DashboardPage() {
   };
 
   const currentConfig = leadTypeConfig[activeType] || leadTypeConfig.all;
+  const atRiskLeads = health?.leads.filter(l => l.risk_score > 30).slice(0, 3) ?? [];
 
   return (
     <div className="space-y-6">
@@ -196,7 +145,7 @@ export default function DashboardPage() {
         </div>
         <div className="flex items-center gap-2">
           <div className="flex items-center p-1 bg-zinc-100 dark:bg-zinc-800 rounded-xl border border-zinc-200 dark:border-zinc-700">
-            {Object.keys(leadTypeConfig).map((type) => (
+            {(Object.keys(leadTypeConfig) as DashboardLeadTypeFilter[]).map((type) => (
               <button
                 key={type}
                 onClick={() => setActiveType(type)}
@@ -331,7 +280,7 @@ export default function DashboardPage() {
                   <span className="text-xs font-medium text-zinc-700 dark:text-zinc-300">{health.healthy_count} healthy</span>
                 </div>
               </div>
-              {health.leads.filter(l => l.risk_score > 30).slice(0, 3).map(lead => (
+              {atRiskLeads.map(lead => (
                 <Link
                   key={lead.lead_id}
                   href={`/leads/${lead.lead_id}`}

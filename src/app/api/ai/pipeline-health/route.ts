@@ -97,7 +97,7 @@ export async function GET(req: NextRequest) {
     }
 
     if (!leads || leads.length === 0) {
-      return NextResponse.json({
+      const response = NextResponse.json({
         overall_score: 100,
         total_leads: 0,
         at_risk_count: 0,
@@ -105,6 +105,8 @@ export async function GET(req: NextRequest) {
         leads: [],
         ai_summary: 'No active leads in the pipeline.',
       })
+      response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
+      return response
     }
 
     const scoredLeads: LeadRisk[] = leads.map(lead => {
@@ -122,9 +124,15 @@ export async function GET(req: NextRequest) {
 
     scoredLeads.sort((a, b) => b.risk_score - a.risk_score)
 
-    const atRisk = scoredLeads.filter(l => l.risk_score > 30).length
-    const healthy = scoredLeads.filter(l => l.risk_score <= 15).length
-    const overallScore = Math.round(100 - (scoredLeads.reduce((sum, l) => sum + l.risk_score, 0) / leads.length))
+    let atRisk = 0
+    let healthy = 0
+    let totalRisk = 0
+    for (const lead of scoredLeads) {
+      totalRisk += lead.risk_score
+      if (lead.risk_score > 30) atRisk += 1
+      if (lead.risk_score <= 15) healthy += 1
+    }
+    const overallScore = Math.round(100 - (totalRisk / leads.length))
 
     // Fire-and-forget DB update for the top 20 risk scores
     Promise.all(
@@ -152,7 +160,9 @@ export async function GET(req: NextRequest) {
       ai_summary: summaryParts.join('. ') + '.',
     }
 
-    return NextResponse.json(result)
+    const response = NextResponse.json(result)
+    response.headers.set('Cache-Control', 'private, max-age=30, stale-while-revalidate=60')
+    return response
   } catch (error) {
     console.error('Pipeline health error:', error)
     return NextResponse.json(
