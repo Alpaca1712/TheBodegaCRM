@@ -68,6 +68,7 @@ describe('buildSalesActionPlan', () => {
           company_name: 'Perfect ICP',
           stage: 'researched',
           icp_score: 96,
+          smykm_hooks: ['some hook'], // Add hook so it's 'prospecting' not 'research'
         },
       ],
       outboundEmails: [],
@@ -86,6 +87,7 @@ describe('buildSalesActionPlan', () => {
       id: `lead-${index}`,
       contact_name: `Lead ${index}`,
       icp_score: 90 - index,
+      smykm_hooks: ['hook'], // Ensure they are prospecting
     }))
 
     const actions = buildSalesActionPlan({

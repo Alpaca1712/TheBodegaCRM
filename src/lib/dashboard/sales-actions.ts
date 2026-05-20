@@ -1,7 +1,15 @@
 import type { Lead, LeadType } from '@/types/leads'
 
 export type SalesActionPriority = 'critical' | 'high' | 'medium'
-export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting'
+export type SalesActionCategory =
+  | 'reply'
+  | 'follow_up'
+  | 'meeting'
+  | 'prospecting'
+  | 'research'
+  | 'meeting_prep'
+  | 'review'
+  | 'investor_memo'
 
 export interface SalesAction {
   id: string
@@ -33,6 +41,10 @@ type ActionLead = Pick<
   | 'updated_at'
   | 'conversation_next_step'
   | 'conversation_signals'
+  | 'smykm_hooks'
+  | 'company_description'
+  | 'battle_card'
+  | 'investor_memo'
 >
 
 type ActionEmail = {
@@ -91,28 +103,118 @@ export function buildSalesActionPlan({
         recommendedAction: lead.conversation_next_step || 'Send a thoughtful ACA reply and lock the next step.',
         ctaLabel: 'Open thread',
         ctaHref: `/leads/${lead.id}`,
-        score: 1_000 + icp + recencyBoost(daysSinceInbound),
+        score: 1000 + icp + recencyBoost(daysSinceInbound),
       })
       continue
     }
 
-    if (lead.stage === 'meeting_booked' || lead.stage === 'meeting_held') {
+    if (lead.stage === 'meeting_booked') {
+      if (!lead.battle_card) {
+        actions.push({
+          id: `${lead.id}:prep`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          companyName: lead.company_name,
+          priority: 'high',
+          category: 'meeting_prep',
+          title: `Prep meeting with ${lead.contact_name}`,
+          reason: `${lead.company_name} meeting is booked but no battle card exists.`,
+          recommendedAction: 'Generate a battle card to prep discovery questions and objection handlers.',
+          ctaLabel: 'Prep',
+          ctaHref: `/leads/${lead.id}`,
+          score: 850 + icp,
+        })
+      } else if (lead.type === 'investor' && !lead.investor_memo) {
+        actions.push({
+          id: `${lead.id}:memo`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          companyName: lead.company_name,
+          priority: 'high',
+          category: 'investor_memo',
+          title: `Generate memo for ${lead.contact_name}`,
+          reason: `${lead.company_name} meeting is booked but lacks a personalized memo.`,
+          recommendedAction: 'Create an Amazon-style one-page memo to share with the investor.',
+          ctaLabel: 'Memo',
+          ctaHref: `/leads/${lead.id}`,
+          score: 840 + icp,
+        })
+      } else {
+        actions.push({
+          id: `${lead.id}:meeting`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          companyName: lead.company_name,
+          priority: 'high',
+          category: 'meeting',
+          title: `Prep meeting with ${lead.contact_name}`,
+          reason: `${lead.company_name} is in a meeting-stage opportunity.`,
+          recommendedAction: 'Review battle card, SMYKM hooks, and objection handlers before the call.',
+          ctaLabel: 'Review prep',
+          ctaHref: `/leads/${lead.id}`,
+          score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        })
+      }
+      continue
+    }
+
+    if (lead.stage === 'meeting_held') {
       actions.push({
-        id: `${lead.id}:meeting`,
+        id: `${lead.id}:recap`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         companyName: lead.company_name,
         priority: 'high',
         category: 'meeting',
-        title: lead.stage === 'meeting_booked' ? `Prep meeting with ${lead.contact_name}` : `Send recap to ${lead.contact_name}`,
-        reason: `${lead.company_name} is in a meeting-stage opportunity.`,
-        recommendedAction: lead.stage === 'meeting_booked'
-          ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
-          : 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Prep deal',
+        title: `Send recap to ${lead.contact_name}`,
+        reason: `Meeting completed with ${lead.company_name}.`,
+        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
         score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      })
+      continue
+    }
+
+    if (lead.stage === 'email_drafted') {
+      actions.push({
+        id: `${lead.id}:review`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        companyName: lead.company_name,
+        priority: 'high',
+        category: 'review',
+        title: `Review draft for ${lead.contact_name}`,
+        reason: `Email draft is ready for review and sending.`,
+        recommendedAction: 'Personalize the final draft and hit send to move the lead forward.',
+        ctaLabel: 'Review',
+        ctaHref: `/leads/${lead.id}`,
+        score: 900 + icp,
+      })
+      continue
+    }
+
+    const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description
+    if (lead.stage === 'researched' && !hasResearch) {
+      actions.push({
+        id: `${lead.id}:research`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        companyName: lead.company_name,
+        priority: icp >= 80 ? 'high' : 'medium',
+        category: 'research',
+        title: `Research ${lead.contact_name}`,
+        reason: `Lead is missing deep SMYKM hooks for effective outreach.`,
+        recommendedAction: 'Run AI research to find personal blog posts, podcasts, or GitHub activity.',
+        ctaLabel: 'Research',
+        ctaHref: `/leads/${lead.id}`,
+        score: 750 + icp,
       })
       continue
     }
