@@ -111,7 +111,7 @@ export default function LeadsTable({
           return (
             <article
               key={lead.id}
-              className={`rounded-2xl border bg-white p-4 shadow-sm transition-colors dark:bg-zinc-900/60 ${
+              className={`group rounded-2xl border bg-white p-4 shadow-sm transition-colors dark:bg-zinc-900/60 ${
                 checked
                   ? 'border-red-200 bg-red-50/50 dark:border-red-900/50 dark:bg-red-950/10'
                   : 'border-zinc-200 dark:border-zinc-800'

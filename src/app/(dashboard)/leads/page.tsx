@@ -2,13 +2,14 @@
 
 import { useState, useEffect, useMemo, useRef } from 'react';
 import Link from 'next/link';
-import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight } from 'lucide-react';
+import { Plus, Search, Upload, Target, Users, Crosshair, Handshake, Download, Trash2, X, CheckSquare, ChevronLeft, ChevronRight, Sparkles, MessageSquareReply, Clock3 } from 'lucide-react';
 import LeadsTable from '@/components/leads/leads-table';
 import { toast } from 'sonner';
 import type { LeadType, PipelineStage, Priority } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
 import { exportLeadsToCsv } from '@/lib/csv-export';
 import { useLeads } from '@/hooks/use-leads';
+import { getLeadFocusItems, type LeadFocusItem } from '@/lib/leads/focus';
 
 const PAGE_SIZE = 50;
 
@@ -80,6 +81,7 @@ export default function LeadsPage() {
     () => leads.filter((l) => selectedIds.has(l.id)),
     [leads, selectedIds],
   );
+  const focusItems = useMemo(() => getLeadFocusItems(leads), [leads]);
 
   const toggleOne = (id: string) => {
     setSelectedIds((prev) => {
@@ -197,6 +199,10 @@ export default function LeadsPage() {
           </Link>
         </div>
       </div>
+
+      {!loading && !error && focusItems.length > 0 && (
+        <LeadFocusPanel items={focusItems} totalCount={count} />
+      )}
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
@@ -430,6 +436,77 @@ export default function LeadsPage() {
         </div>
       )}
     </div>
+  );
+}
+
+function LeadFocusPanel({ items, totalCount }: { items: LeadFocusItem[]; totalCount: number }) {
+  const urgencyStyles: Record<LeadFocusItem['urgency'], string> = {
+    critical: 'border-red-200 bg-red-50 text-red-700 dark:border-red-900/50 dark:bg-red-950/20 dark:text-red-300',
+    high: 'border-amber-200 bg-amber-50 text-amber-700 dark:border-amber-900/50 dark:bg-amber-950/20 dark:text-amber-300',
+    medium: 'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-900/50 dark:bg-blue-950/20 dark:text-blue-300',
+  };
+
+  return (
+    <section
+      aria-labelledby="lead-focus-heading"
+      className="overflow-hidden rounded-2xl border border-red-100 bg-gradient-to-br from-red-50 via-white to-zinc-50 p-4 shadow-sm dark:border-red-950/50 dark:from-red-950/20 dark:via-zinc-950 dark:to-zinc-900"
+    >
+      <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-full bg-red-600 text-white shadow-sm shadow-red-600/20">
+              <Sparkles className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 id="lead-focus-heading" className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">
+                Today&apos;s deal focus
+              </h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Prioritized from the {totalCount} lead{totalCount === 1 ? '' : 's'} matching your current view.
+              </p>
+            </div>
+          </div>
+        </div>
+        <div className="inline-flex items-center gap-1.5 rounded-full border border-zinc-200 bg-white px-2.5 py-1 text-[11px] font-medium text-zinc-600 shadow-sm dark:border-zinc-800 dark:bg-zinc-900 dark:text-zinc-300">
+          <Clock3 className="h-3 w-3 text-red-500" />
+          Work these first
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-3 lg:grid-cols-3">
+        {items.map((item) => (
+          <Link
+            key={item.lead.id}
+            href={`/leads/${item.lead.id}`}
+            className="group rounded-xl border border-zinc-200 bg-white/80 p-3 transition-all hover:-translate-y-0.5 hover:border-red-200 hover:shadow-md hover:shadow-red-950/5 focus:outline-none focus:ring-2 focus:ring-red-500/25 dark:border-zinc-800 dark:bg-zinc-900/80 dark:hover:border-red-900/60"
+          >
+            <div className="flex items-start justify-between gap-3">
+              <div className="min-w-0">
+                <div className="flex items-center gap-2">
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${urgencyStyles[item.urgency]}`}>
+                    {item.label}
+                  </span>
+                </div>
+                <p className="mt-2 truncate text-sm font-semibold text-zinc-900 group-hover:text-red-600 dark:text-zinc-100 dark:group-hover:text-red-400">
+                  {item.lead.company_name}
+                </p>
+                <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">
+                  {item.lead.contact_name}{item.lead.contact_title ? ` · ${item.lead.contact_title}` : ''}
+                </p>
+              </div>
+              <MessageSquareReply className="h-4 w-4 shrink-0 text-zinc-400 transition-colors group-hover:text-red-500" />
+            </div>
+            <p className="mt-3 line-clamp-2 text-xs leading-5 text-zinc-600 dark:text-zinc-300">
+              {item.description}
+            </p>
+            <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
+              <span>{STAGE_LABELS[item.lead.stage]}</span>
+              <span className="font-medium text-red-600 dark:text-red-400">Open lead →</span>
+            </div>
+          </Link>
+        ))}
+      </div>
+    </section>
   );
 }
 
