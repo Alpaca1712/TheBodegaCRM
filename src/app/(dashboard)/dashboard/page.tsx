@@ -34,7 +34,7 @@ import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
-  const [isDrafting, setIsDrafting] = useState<string | null>(null);
+  const [processingLeadId, setProcessingLeadId] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<DashboardLeadTypeFilter>('all');
   const dashboardQuery = useDashboard(activeType);
   const healthQuery = usePipelineHealth(activeType);
@@ -42,11 +42,14 @@ export default function DashboardPage() {
   const health = healthQuery.data;
 
   const refreshDashboard = async () => {
-    await Promise.all([dashboardQuery.refetch(), healthQuery.refetch()]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
+    ]);
   };
 
   const handleMagicDraft = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
+    setProcessingLeadId(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/draft-next-step', {
         method: 'POST',
@@ -54,10 +57,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Magic drafting failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
@@ -66,7 +66,70 @@ export default function DashboardPage() {
       error: 'Drafting failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setProcessingLeadId(null));
+  };
+
+  const handleResearch = async (leadId: string, contactName: string) => {
+    setProcessingLeadId(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await refreshDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${contactName}...`,
+      success: `Research complete for ${contactName}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setProcessingLeadId(null));
+  };
+
+  const handlePrep = async (leadId: string, contactName: string) => {
+    setProcessingLeadId(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      await refreshDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${contactName}...`,
+      success: `Battle card ready for ${contactName}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setProcessingLeadId(null));
+  };
+
+  const handleInvestorMemo = async (leadId: string, contactName: string) => {
+    setProcessingLeadId(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/investor-memo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Memo generation failed');
+      await refreshDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Generating memo for ${contactName}...`,
+      success: `Investor memo ready for ${contactName}`,
+      error: 'Memo generation failed',
+    });
+
+    promise.finally(() => setProcessingLeadId(null));
   };
 
   if (dashboardQuery.isLoading && !data) {
@@ -84,7 +147,7 @@ export default function DashboardPage() {
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{message}</p>
         <button
-          onClick={refreshDashboard}
+          onClick={() => dashboardQuery.refetch()}
           className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
         >
           Retry
@@ -221,8 +284,11 @@ export default function DashboardPage() {
       {/* Sales Action Plan */}
       <SalesActionPlan
         actions={data.salesActionPlan}
-        isDrafting={isDrafting}
+        isProcessing={processingLeadId}
         onMagicDraft={handleMagicDraft}
+        onResearch={handleResearch}
+        onPrep={handlePrep}
+        onInvestorMemo={handleInvestorMemo}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -347,11 +413,11 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           handleMagicDraft(lead.id, lead.contact_name);
                         }}
-                        disabled={isDrafting !== null}
+                        disabled={processingLeadId !== null}
                         className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         title="Magic Draft"
                       >
-                        {isDrafting === lead.id ? (
+                        {processingLeadId === lead.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />

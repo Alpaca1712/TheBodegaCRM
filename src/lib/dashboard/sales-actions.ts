@@ -1,13 +1,22 @@
-import type { Lead, LeadType } from '@/types/leads'
+import type { Lead, LeadType, PipelineStage } from '@/types/leads'
 
 export type SalesActionPriority = 'critical' | 'high' | 'medium'
-export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting'
+export type SalesActionCategory =
+  | 'reply'
+  | 'follow_up'
+  | 'meeting'
+  | 'prospecting'
+  | 'research'
+  | 'meeting_prep'
+  | 'review'
+  | 'investor_memo'
 
 export interface SalesAction {
   id: string
   leadId: string
   leadName: string
   leadType: LeadType
+  leadStage: PipelineStage
   companyName: string
   priority: SalesActionPriority
   category: SalesActionCategory
@@ -33,6 +42,10 @@ type ActionLead = Pick<
   | 'updated_at'
   | 'conversation_next_step'
   | 'conversation_signals'
+  | 'smykm_hooks'
+  | 'company_description'
+  | 'battle_card'
+  | 'investor_memo'
 >
 
 type ActionEmail = {
@@ -75,12 +88,14 @@ export function buildSalesActionPlan({
     const daysSinceInbound = daysSince(latestInboundAt, now)
     const daysSinceOutbound = daysSince(latestOutboundAt, now)
 
+    // 1. REPLIED -> Reply (Critical)
     if (lead.stage === 'replied') {
       actions.push({
         id: `${lead.id}:reply`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'critical',
         category: 'reply',
@@ -91,32 +106,75 @@ export function buildSalesActionPlan({
         recommendedAction: lead.conversation_next_step || 'Send a thoughtful ACA reply and lock the next step.',
         ctaLabel: 'Open thread',
         ctaHref: `/leads/${lead.id}`,
-        score: 1_000 + icp + recencyBoost(daysSinceInbound),
+        score: 1000 + icp + recencyBoost(daysSinceInbound),
       })
       continue
     }
 
-    if (lead.stage === 'meeting_booked' || lead.stage === 'meeting_held') {
+    // 2. EMAIL_DRAFTED -> Review (High)
+    if (lead.stage === 'email_drafted') {
       actions.push({
-        id: `${lead.id}:meeting`,
+        id: `${lead.id}:review`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'high',
-        category: 'meeting',
-        title: lead.stage === 'meeting_booked' ? `Prep meeting with ${lead.contact_name}` : `Send recap to ${lead.contact_name}`,
-        reason: `${lead.company_name} is in a meeting-stage opportunity.`,
-        recommendedAction: lead.stage === 'meeting_booked'
-          ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
-          : 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Prep deal',
+        category: 'review',
+        title: `Review draft for ${lead.contact_name}`,
+        reason: `A personalized outreach draft is ready for your final review.`,
+        recommendedAction: 'Check for SMYKM accuracy and hit send to advance the pipeline.',
+        ctaLabel: 'Review',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 900 + icp,
       })
       continue
     }
 
+    // 3. MEETING_BOOKED (No battle card) -> Meeting Prep (High)
+    if (lead.stage === 'meeting_booked' && !lead.battle_card) {
+      actions.push({
+        id: `${lead.id}:prep`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'high',
+        category: 'meeting_prep',
+        title: `Run prep for ${lead.contact_name}`,
+        reason: `Meeting is booked but deep battle card research is missing.`,
+        recommendedAction: 'Generate a battle card to identify technical vulnerabilities and objection handlers.',
+        ctaLabel: 'Prep',
+        ctaHref: `/leads/${lead.id}`,
+        score: 850 + icp,
+      })
+      continue
+    }
+
+    // 4. INVESTOR (No memo) -> Investor Memo (High)
+    if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'replied'].includes(lead.stage)) {
+      actions.push({
+        id: `${lead.id}:memo`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: icp >= 80 ? 'high' : 'medium',
+        category: 'investor_memo',
+        title: `Generate memo for ${lead.contact_name}`,
+        reason: `${lead.contact_name} is a high-value investor missing a personalized memo.`,
+        recommendedAction: 'Create an Amazon-style one-pager to drop in the next follow-up.',
+        ctaLabel: 'Memo',
+        ctaHref: `/leads/${lead.id}`,
+        score: 840 + icp,
+      })
+      // We don't continue here because they might also need follow-up
+    }
+
+    // 5. FOLLOW-UP (Normal sequence)
     const needsFollowUp = ['email_sent', 'follow_up', 'no_response'].includes(lead.stage)
       && (daysSinceOutbound === null || daysSinceOutbound >= 3)
 
@@ -126,6 +184,7 @@ export function buildSalesActionPlan({
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
         category: 'follow_up',
@@ -141,23 +200,67 @@ export function buildSalesActionPlan({
       continue
     }
 
-    const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
-      if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
-      const detectedAt = new Date(signal.detected_at)
-      return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
-    })
+    // 6. MEETING_HELD -> Recap (Medium)
+    if (lead.stage === 'meeting_held') {
+      actions.push({
+        id: `${lead.id}:meeting-recap`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'medium',
+        category: 'meeting',
+        title: `Send recap to ${lead.contact_name}`,
+        reason: `${lead.company_name} meeting completed. Momentum requires a fast recap.`,
+        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        ctaLabel: 'Recap',
+        ctaHref: `/leads/${lead.id}`,
+        score: 780 + icp,
+      })
+      continue
+    }
 
+    // 7. RESEARCHED (No hooks) -> Research (Medium)
+    if (lead.stage === 'researched' && (!lead.smykm_hooks || lead.smykm_hooks.length === 0)) {
+      actions.push({
+        id: `${lead.id}:research`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: icp >= 80 ? 'high' : 'medium',
+        category: 'research',
+        title: `Research ${lead.contact_name}`,
+        reason: `Lead is qualified but missing deep SMYKM homework.`,
+        recommendedAction: 'Run deep research to find blog posts, podcasts, or GitHub activity.',
+        ctaLabel: 'Research',
+        ctaHref: `/leads/${lead.id}`,
+        score: 750 + icp,
+      })
+      continue
+    }
+
+    // 8. RESEARCHED (With hooks) -> Prospecting (Medium)
     if (lead.stage === 'researched' && icp >= 75) {
+      const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
+        if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
+        const detectedAt = new Date(signal.detected_at)
+        return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
+      })
+
       actions.push({
         id: `${lead.id}:prospecting`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: hasPositiveSignal || icp >= 90 ? 'medium' : 'medium',
         category: 'prospecting',
         title: `Draft outreach to ${lead.contact_name}`,
-        reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
+        reason: `${lead.company_name} is outreach-ready with hooks and strong ICP fit.`,
         recommendedAction: 'Create a personalized SMYKM opener using the strongest research hook.',
         ctaLabel: 'Draft email',
         ctaHref: `/leads/${lead.id}`,
@@ -166,7 +269,17 @@ export function buildSalesActionPlan({
     }
   }
 
-  return actions
+  // Remove duplicate leads (e.g. if they have both memo and follow-up)
+  // Keep the one with the higher score
+  const uniqueActions = new Map<string, SalesAction>()
+  for (const action of actions) {
+    const existing = uniqueActions.get(action.leadId)
+    if (!existing || action.score > existing.score) {
+      uniqueActions.set(action.leadId, action)
+    }
+  }
+
+  return Array.from(uniqueActions.values())
     .sort((a, b) => b.score - a.score || a.companyName.localeCompare(b.companyName))
     .slice(0, ACTION_LIMIT)
 }
