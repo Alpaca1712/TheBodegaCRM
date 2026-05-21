@@ -41,3 +41,7 @@
 ## 2025-05-20 - [UX: Discoverable Search Shortcuts]
 **Learning:** Adding the standard '/' shortcut in addition to 'Cmd+K' and displaying it visually in the UI increases search discoverability for power users. It's critical to exclude shortcut triggers when focus is in input fields.
 **Action:** Implement '/' as a secondary search trigger and update UI hints to reflect it. Use 'e.target' checks to prevent interference with typing.
+
+## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
+**Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
+**Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.

@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
@@ -64,7 +65,7 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
           return (
             <div
               key={action.id}
-              className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
+              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div className="mt-0.5 shrink-0">
@@ -75,7 +76,11 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${PRIORITY_COLORS[action.priority]}`}>
                       {action.priority}
                     </span>
-                    <Link href={`/leads/${action.leadId}`} className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate">
+                    <Link
+                      href={`/leads/${action.leadId}`}
+                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
+                      aria-label={`View details for ${action.leadName}`}
+                    >
                       {action.title}
                     </Link>
                   </div>
@@ -83,9 +88,14 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     {action.companyName && <span className="font-medium text-zinc-700 dark:text-zinc-300">{action.companyName} · </span>}
                     {action.reason}
                   </p>
-                  <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                  <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
+                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-6">{action.recommendedAction}</p>
+                    <CopyButton
+                      value={action.recommendedAction}
+                      label="Recommended action"
+                      className="absolute right-1.5 top-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100"
+                    />
                   </div>
                 </div>
               </div>
@@ -99,15 +109,21 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                       onMagicDraft(action.leadId, action.leadName);
                     }}
                     disabled={!!isDrafting}
+                    aria-label={isProcessing ? `Drafting next step for ${action.leadName}...` : `Magic draft next step for ${action.leadName}`}
                     title="Magic Draft"
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center"
                   >
                     {isProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <>
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <span>Drafting...</span>
+                      </>
                     ) : (
-                      <Zap className="h-3.5 w-3.5 fill-current" />
+                      <>
+                        <Zap className="h-3.5 w-3.5 fill-current" />
+                        <span>Draft</span>
+                      </>
                     )}
-                    Draft
                   </button>
                 )}
                 <Link
