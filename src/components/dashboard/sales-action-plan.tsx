@@ -7,10 +7,13 @@ import {
   ArrowRight,
   CalendarCheck,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   ExternalLink,
   Loader2,
   MessageSquare,
+  Sparkles,
+  Swords,
   Target,
   Zap,
 } from 'lucide-react';
@@ -27,6 +30,9 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
+  research: <Sparkles className="h-4 w-4 text-pink-500" />,
+  review: <ClipboardCheck className="h-4 w-4 text-emerald-500" />,
+  prep: <Swords className="h-4 w-4 text-indigo-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -58,7 +64,7 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
 
       <div className="space-y-3">
         {actions.map((action) => {
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'research'].includes(action.category);
           const isProcessing = isDrafting === action.leadId;
 
           return (
