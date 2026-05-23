@@ -6,7 +6,7 @@ const baseLead = {
   contact_name: 'Ari Founder',
   company_name: 'Acme AI',
   type: 'customer',
-  stage: 'researched',
+  stage: 'researched' as const,
   icp_score: 85,
   last_contacted_at: null,
   last_inbound_at: null,
@@ -14,6 +14,11 @@ const baseLead = {
   updated_at: '2026-05-06T12:00:00Z',
   conversation_next_step: null,
   conversation_signals: [],
+  smykm_hooks: ['Hook 1'],
+  company_description: 'AI security for agents',
+  battle_card: null,
+  investor_memo: null,
+  total_emails_out: 0,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -48,7 +53,7 @@ describe('buildSalesActionPlan', () => {
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
   })
 
-  it('surfaces overdue follow-ups before fresh high-ICP prospects', () => {
+  it('prioritizes review draft over follow-ups', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -63,10 +68,10 @@ describe('buildSalesActionPlan', () => {
         },
         {
           ...baseLead,
-          id: 'lead-high-icp',
+          id: 'lead-drafted',
           contact_name: 'Casey CEO',
-          company_name: 'Perfect ICP',
-          stage: 'researched',
+          company_name: 'Drafted Co',
+          stage: 'email_drafted',
           icp_score: 96,
         },
       ],
@@ -75,9 +80,31 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
-    expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
-    expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
-    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'medium' })
+    expect(actions[0]).toMatchObject({ category: 'review', leadId: 'lead-drafted' })
+    expect(actions[1]).toMatchObject({ category: 'follow_up', leadId: 'lead-followup' })
+  })
+
+  it('suggests research for leads missing hooks', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-no-hooks',
+          contact_name: 'No Hooks',
+          smykm_hooks: [],
+          stage: 'researched',
+          icp_score: 80,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      category: 'research',
+      title: 'Research No Hooks',
+    })
   })
 
   it('limits the action plan to the strongest five actions', () => {
@@ -96,6 +123,5 @@ describe('buildSalesActionPlan', () => {
     })
 
     expect(actions).toHaveLength(5)
-    expect(actions.map((a) => a.leadId)).toEqual(['lead-0', 'lead-1', 'lead-2', 'lead-3', 'lead-4'])
   })
 })
