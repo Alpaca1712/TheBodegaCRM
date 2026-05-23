@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
@@ -83,9 +84,14 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     {action.companyName && <span className="font-medium text-zinc-700 dark:text-zinc-300">{action.companyName} · </span>}
                     {action.reason}
                   </p>
-                  <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                  <div className="group/action relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
+                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-6">{action.recommendedAction}</p>
+                    <CopyButton
+                      value={action.recommendedAction}
+                      label="Recommended Action"
+                      className="absolute right-1.5 top-1.5 opacity-0 group-hover/action:opacity-100 focus:opacity-100"
+                    />
                   </div>
                 </div>
               </div>
@@ -100,6 +106,7 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     }}
                     disabled={!!isDrafting}
                     title="Magic Draft"
+                    aria-label={`Magic Draft next step for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
                   >
                     {isProcessing ? (
@@ -107,7 +114,7 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
                     ) : (
                       <Zap className="h-3.5 w-3.5 fill-current" />
                     )}
-                    Draft
+                    {isProcessing ? 'Drafting...' : 'Draft'}
                   </button>
                 )}
                 <Link

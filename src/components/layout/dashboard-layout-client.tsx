@@ -176,6 +176,7 @@ export default function DashboardLayoutClient({
                       <li key={item.href}>
                         <Link
                           href={item.href}
+                          aria-current={active ? 'page' : undefined}
                           className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                             active
                               ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 shadow-sm shadow-red-100 dark:shadow-none'
@@ -202,6 +203,7 @@ export default function DashboardLayoutClient({
           <div className="px-3 py-3 border-t border-zinc-100 dark:border-zinc-800 space-y-1">
             <Link
               href="/settings"
+              aria-current={isActive('/settings') ? 'page' : undefined}
               className={`flex items-center gap-2.5 px-2.5 py-[7px] rounded-lg text-[13px] font-medium transition-all ${
                 isActive('/settings')
                   ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300'
