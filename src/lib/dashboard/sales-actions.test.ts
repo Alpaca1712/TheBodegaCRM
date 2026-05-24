@@ -68,6 +68,7 @@ describe('buildSalesActionPlan', () => {
           company_name: 'Perfect ICP',
           stage: 'researched',
           icp_score: 96,
+          smykm_hooks: ['Hook 1'],
         },
       ],
       outboundEmails: [],
@@ -77,7 +78,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
     expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
-    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'medium' })
+    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
   })
 
   it('limits the action plan to the strongest five actions', () => {
@@ -86,6 +87,7 @@ describe('buildSalesActionPlan', () => {
       id: `lead-${index}`,
       contact_name: `Lead ${index}`,
       icp_score: 90 - index,
+      smykm_hooks: ['Hook 1'],
     }))
 
     const actions = buildSalesActionPlan({
@@ -97,5 +99,70 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions).toHaveLength(5)
     expect(actions.map((a) => a.leadId)).toEqual(['lead-0', 'lead-1', 'lead-2', 'lead-3', 'lead-4'])
+  })
+
+  it('suggests research for fresh high-ICP leads without hooks', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-new',
+          smykm_hooks: [],
+          icp_score: 88,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      category: 'research',
+      title: 'Research Ari Founder',
+      ctaLabel: 'Run research',
+    })
+  })
+
+  it('suggests prep for booked meetings without a battle card', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-mtg',
+          stage: 'meeting_booked',
+          battle_card: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      category: 'prep',
+      title: 'Generate battle card for Ari Founder',
+      ctaLabel: 'Generate prep',
+    })
+  })
+
+  it('suggests review for drafted emails', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-draft',
+          stage: 'email_drafted',
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      category: 'review',
+      title: 'Review draft for Ari Founder',
+      ctaLabel: 'Review draft',
+    })
   })
 })

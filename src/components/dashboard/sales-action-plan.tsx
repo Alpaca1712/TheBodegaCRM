@@ -13,13 +13,18 @@ import {
   MessageSquare,
   Target,
   Zap,
+  Sparkles,
+  Swords,
+  ClipboardCheck,
 } from 'lucide-react';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
-  isDrafting?: string | null;
+  isProcessing?: string | null;
   onMagicDraft?: (leadId: string, leadName: string) => void;
+  onResearch?: (leadId: string, leadName: string) => void;
+  onPrep?: (leadId: string, leadName: string) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -27,6 +32,9 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
+  research: <Sparkles className="h-4 w-4 text-emerald-500" />,
+  prep: <Swords className="h-4 w-4 text-indigo-500" />,
+  review: <ClipboardCheck className="h-4 w-4 text-blue-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -35,7 +43,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
 };
 
-export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: SalesActionPlanProps) {
+export default function SalesActionPlan({ actions, isProcessing, onMagicDraft, onResearch, onPrep }: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
@@ -58,8 +66,29 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
 
       <div className="space-y-3">
         {actions.map((action) => {
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
-          const isProcessing = isDrafting === action.leadId;
+          const isLoading = isProcessing === action.leadId;
+          const isDraftable = ['reply', 'follow_up', 'prospecting'].includes(action.category);
+
+          const getActionConfig = () => {
+            if (action.category === 'research' && onResearch) {
+              return { label: 'Research', icon: <Sparkles className="h-3.5 w-3.5" />, onClick: () => onResearch(action.leadId, action.leadName), color: 'emerald' };
+            }
+            if (action.category === 'prep' && onPrep) {
+              return { label: 'Prep', icon: <Swords className="h-3.5 w-3.5" />, onClick: () => onPrep(action.leadId, action.leadName), color: 'indigo' };
+            }
+            if (isDraftable && onMagicDraft) {
+              return { label: 'Draft', icon: <Zap className="h-3.5 w-3.5 fill-current" />, onClick: () => onMagicDraft(action.leadId, action.leadName), color: 'amber' };
+            }
+            return null;
+          };
+
+          const actionConfig = getActionConfig();
+          const colorClasses: Record<string, string> = {
+            emerald: 'text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 border-emerald-100 dark:border-emerald-800',
+            indigo: 'text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 border-indigo-100 dark:border-indigo-800',
+            blue: 'text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 border-blue-100 dark:border-blue-800',
+            amber: 'text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 border-amber-100 dark:border-amber-800',
+          };
 
           return (
             <div
@@ -91,25 +120,30 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
               </div>
 
               <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
-                {canMagicDraft && (
+                {actionConfig && actionConfig.onClick ? (
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onMagicDraft(action.leadId, action.leadName);
+                      actionConfig.onClick?.();
                     }}
-                    disabled={!!isDrafting}
-                    title="Magic Draft"
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
+                    disabled={!!isProcessing}
+                    title={actionConfig.label}
+                    className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold rounded-lg transition-colors border disabled:opacity-50 ${colorClasses[actionConfig.color]}`}
                   >
-                    {isProcessing ? (
+                    {isLoading ? (
                       <Loader2 className="h-3.5 w-3.5 animate-spin" />
                     ) : (
-                      <Zap className="h-3.5 w-3.5 fill-current" />
+                      actionConfig.icon
                     )}
-                    Draft
+                    {actionConfig.label}
                   </button>
-                )}
+                ) : actionConfig ? (
+                  <div className={`flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold rounded-lg border opacity-80 ${colorClasses[actionConfig.color]}`}>
+                    {actionConfig.icon}
+                    {actionConfig.label}
+                  </div>
+                ) : null}
                 <Link
                   href={action.ctaHref}
                   className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"

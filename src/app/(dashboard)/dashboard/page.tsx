@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
-import { useQueryClient } from '@tanstack/react-query';
 import {
   Send,
   MessageSquare,
@@ -33,8 +32,7 @@ import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
-  const queryClient = useQueryClient();
-  const [isDrafting, setIsDrafting] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<DashboardLeadTypeFilter>('all');
   const dashboardQuery = useDashboard(activeType);
   const healthQuery = usePipelineHealth(activeType);
@@ -46,7 +44,7 @@ export default function DashboardPage() {
   };
 
   const handleMagicDraft = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
+    setIsProcessing(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/draft-next-step', {
         method: 'POST',
@@ -54,10 +52,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Magic drafting failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
@@ -66,7 +61,55 @@ export default function DashboardPage() {
       error: 'Drafting failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handleResearch = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const action = data?.salesActionPlan.find(a => a.leadId === leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          leadId,
+          type: action?.leadType || 'customer',
+          contact_name: contactName,
+          company_name: action?.companyName,
+        }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await refreshDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${contactName}...`,
+      success: `Research complete for ${contactName}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handlePrep = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      await refreshDashboard();
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${contactName}...`,
+      success: `Battle card ready for ${contactName}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
   };
 
   if (dashboardQuery.isLoading && !data) {
@@ -221,8 +264,10 @@ export default function DashboardPage() {
       {/* Sales Action Plan */}
       <SalesActionPlan
         actions={data.salesActionPlan}
-        isDrafting={isDrafting}
+        isProcessing={isProcessing}
         onMagicDraft={handleMagicDraft}
+        onResearch={handleResearch}
+        onPrep={handlePrep}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -347,11 +392,11 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           handleMagicDraft(lead.id, lead.contact_name);
                         }}
-                        disabled={isDrafting !== null}
+                        disabled={isProcessing !== null}
                         className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         title="Magic Draft"
                       >
-                        {isDrafting === lead.id ? (
+                        {isProcessing === lead.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />
