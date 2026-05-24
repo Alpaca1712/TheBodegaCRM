@@ -15,6 +15,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
@@ -29,13 +30,32 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  high: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+const PRIORITY_CONFIG: Record<
+  string,
+  { label: string; color: string; dot: string }
+> = {
+  critical: {
+    label: 'Critical',
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+    dot: 'bg-red-500',
+  },
+  high: {
+    label: 'High',
+    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+    dot: 'bg-amber-500',
+  },
+  medium: {
+    label: 'Medium',
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+    dot: 'bg-blue-500',
+  },
 };
 
-export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: SalesActionPlanProps) {
+export default function SalesActionPlan({
+  actions,
+  isDrafting,
+  onMagicDraft,
+}: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
@@ -64,28 +84,59 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
           return (
             <div
               key={action.id}
-              className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
+              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="mt-0.5 shrink-0">
-                  {CATEGORY_ICONS[action.category] || <AlertCircle className="h-4 w-4 text-zinc-400" />}
+                <div
+                  className="mt-0.5 shrink-0"
+                  title={`${action.category.replace('_', ' ')} action`}
+                >
+                  {CATEGORY_ICONS[action.category] || (
+                    <AlertCircle className="h-4 w-4 text-zinc-400" />
+                  )}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${PRIORITY_COLORS[action.priority]}`}>
-                      {action.priority}
-                    </span>
-                    <Link href={`/leads/${action.leadId}`} className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate">
+                    <div
+                      className="flex items-center gap-1"
+                      title={`${PRIORITY_CONFIG[action.priority]?.label} Priority`}
+                    >
+                      <span
+                        className={`h-1.5 w-1.5 rounded-full ${PRIORITY_CONFIG[action.priority]?.dot}`}
+                      />
+                      <span
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${PRIORITY_CONFIG[action.priority]?.color}`}
+                      >
+                        {PRIORITY_CONFIG[action.priority]?.label ||
+                          action.priority}
+                      </span>
+                    </div>
+                    <Link
+                      href={`/leads/${action.leadId}`}
+                      aria-label={`View details for ${action.leadName} from ${action.companyName}`}
+                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
+                    >
                       {action.title}
                     </Link>
                   </div>
                   <p className="text-xs text-zinc-500 dark:text-zinc-400 mb-2">
-                    {action.companyName && <span className="font-medium text-zinc-700 dark:text-zinc-300">{action.companyName} · </span>}
+                    {action.companyName && (
+                      <span className="font-medium text-zinc-700 dark:text-zinc-300">
+                        {action.companyName} ·{' '}
+                      </span>
+                    )}
                     {action.reason}
                   </p>
-                  <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                  <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 transition-colors hover:border-zinc-200 dark:hover:border-zinc-700">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
+                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-8">
+                      {action.recommendedAction}
+                    </p>
+                    <CopyButton
+                      value={action.recommendedAction}
+                      label="Recommended action"
+                      className="absolute top-1.5 right-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100"
+                    />
                   </div>
                 </div>
               </div>
