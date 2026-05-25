@@ -17,3 +17,7 @@
 ## 2026-05-09 - Magic Draft & Outreach Centralization
 **Learning:** Found that fragmented outreach logic across multiple API routes hindered the ability to implement high-leverage background actions. Moving prompts and generation logic into a shared service enabled the "Magic Draft" feature, which significantly reduces the friction of moving leads through the pipeline.
 **Action:** Centralized all SMYKM and Hormozi outreach logic in `src/lib/ai/email-service.ts`. Implemented the `POST /api/ai/draft-next-step` API for automated, quality-gated background drafting. Surfaced "Magic Draft" (Zap icon) across the Outreach Command Center and Pipeline Health dashboard to tighten the GTM loop.
+
+## 2026-05-10 - One-Click Action Personalization
+**Learning:** Found that the Sales Action Plan was often a list of links rather than direct actions. Integrating background AI tasks (research, meeting prep) as one-click buttons directly in the dashboard widget creates a "completionist" loop that keeps founders in the flow without page transitions.
+**Action:** Always check if a recommended action depends on missing data (research hooks, battle cards) and surface the specific one-click "fix" (Sparkles for research, Swords for prep) directly in the action plan.

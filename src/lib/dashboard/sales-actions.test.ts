@@ -14,6 +14,9 @@ const baseLead = {
   updated_at: '2026-05-06T12:00:00Z',
   conversation_next_step: null,
   conversation_signals: [],
+  smykm_hooks: ['Hook'],
+  company_description: 'Description',
+  battle_card: null,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -86,6 +89,8 @@ describe('buildSalesActionPlan', () => {
       id: `lead-${index}`,
       contact_name: `Lead ${index}`,
       icp_score: 90 - index,
+      // Ensure they have research so they don't trigger research action which has higher score than prospecting
+      smykm_hooks: ['Hook'],
     }))
 
     const actions = buildSalesActionPlan({
@@ -97,5 +102,53 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions).toHaveLength(5)
     expect(actions.map((a) => a.leadId)).toEqual(['lead-0', 'lead-1', 'lead-2', 'lead-3', 'lead-4'])
+  })
+
+  it('assigns research category to leads in researched stage missing research data', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-no-research',
+          stage: 'researched',
+          smykm_hooks: [],
+          company_description: null,
+          icp_score: 85,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-no-research',
+      category: 'research',
+      priority: 'high',
+      ctaLabel: 'Run research',
+    })
+  })
+
+  it('recommends prep action for meeting_booked leads without a battle card', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-meeting',
+          stage: 'meeting_booked',
+          battle_card: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-meeting',
+      category: 'meeting',
+      title: 'Prep meeting with Ari Founder',
+      ctaLabel: 'Generate prep',
+    })
   })
 })
