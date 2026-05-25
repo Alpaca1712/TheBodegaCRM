@@ -11,6 +11,8 @@ import {
   ExternalLink,
   Loader2,
   MessageSquare,
+  Sparkles,
+  Swords,
   Target,
   Zap,
 } from 'lucide-react';
@@ -20,6 +22,8 @@ interface SalesActionPlanProps {
   actions: SalesAction[];
   isDrafting?: string | null;
   onMagicDraft?: (leadId: string, leadName: string) => void;
+  onResearch?: (leadId: string, contactName: string) => void;
+  onPrep?: (leadId: string, contactName: string) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -27,6 +31,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
+  research: <Sparkles className="h-4 w-4 text-emerald-500" />,
+  meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -35,7 +41,7 @@ const PRIORITY_COLORS: Record<string, string> = {
   medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
 };
 
-export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: SalesActionPlanProps) {
+export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onResearch, onPrep }: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
@@ -58,7 +64,9 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
 
       <div className="space-y-3">
         {actions.map((action) => {
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && (['reply', 'follow_up', 'prospecting'].includes(action.category) || (action.category === 'meeting' && action.leadStage === 'meeting_held'));
+          const canResearch = onResearch && action.category === 'research';
+          const canPrep = onPrep && action.category === 'meeting_prep';
           const isProcessing = isDrafting === action.leadId;
 
           return (
@@ -91,6 +99,44 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft }: S
               </div>
 
               <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                {canResearch && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onResearch(action.leadId, action.leadName);
+                    }}
+                    disabled={!!isDrafting}
+                    title="Run Research"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Sparkles className="h-3.5 w-3.5" />
+                    )}
+                    Research
+                  </button>
+                )}
+                {canPrep && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onPrep(action.leadId, action.leadName);
+                    }}
+                    disabled={!!isDrafting}
+                    title="Run Prep"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+                  >
+                    {isProcessing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Swords className="h-3.5 w-3.5" />
+                    )}
+                    Prep
+                  </button>
+                )}
                 {canMagicDraft && (
                   <button
                     onClick={(e) => {

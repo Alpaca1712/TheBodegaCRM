@@ -1,13 +1,14 @@
-import type { Lead, LeadType } from '@/types/leads'
+import type { Lead, LeadType, PipelineStage } from '@/types/leads'
 
 export type SalesActionPriority = 'critical' | 'high' | 'medium'
-export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting'
+export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting' | 'research' | 'meeting_prep'
 
 export interface SalesAction {
   id: string
   leadId: string
   leadName: string
   leadType: LeadType
+  leadStage: PipelineStage
   companyName: string
   priority: SalesActionPriority
   category: SalesActionCategory
@@ -33,6 +34,9 @@ type ActionLead = Pick<
   | 'updated_at'
   | 'conversation_next_step'
   | 'conversation_signals'
+  | 'smykm_hooks'
+  | 'company_description'
+  | 'battle_card'
 >
 
 type ActionEmail = {
@@ -81,6 +85,7 @@ export function buildSalesActionPlan({
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'critical',
         category: 'reply',
@@ -96,21 +101,43 @@ export function buildSalesActionPlan({
       continue
     }
 
-    if (lead.stage === 'meeting_booked' || lead.stage === 'meeting_held') {
+    if (lead.stage === 'meeting_booked') {
+      const hasBattleCard = !!lead.battle_card
       actions.push({
-        id: `${lead.id}:meeting`,
+        id: `${lead.id}:meeting-prep`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'high',
+        category: hasBattleCard ? 'meeting' : 'meeting_prep',
+        title: `Prep meeting with ${lead.contact_name}`,
+        reason: hasBattleCard ? `${lead.company_name} meeting is booked.` : `Need battle card for ${lead.company_name} meeting.`,
+        recommendedAction: hasBattleCard
+          ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
+          : 'Generate battle card and research to prep for the upcoming call.',
+        ctaLabel: hasBattleCard ? 'Prep deal' : 'Run Prep',
+        ctaHref: `/leads/${lead.id}`,
+        score: (hasBattleCard ? 780 : 850) + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      })
+      continue
+    }
+
+    if (lead.stage === 'meeting_held') {
+      actions.push({
+        id: `${lead.id}:meeting-recap`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'high',
         category: 'meeting',
-        title: lead.stage === 'meeting_booked' ? `Prep meeting with ${lead.contact_name}` : `Send recap to ${lead.contact_name}`,
-        reason: `${lead.company_name} is in a meeting-stage opportunity.`,
-        recommendedAction: lead.stage === 'meeting_booked'
-          ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
-          : 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Prep deal',
+        title: `Send recap to ${lead.contact_name}`,
+        reason: `${lead.company_name} meeting just finished.`,
+        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
         score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
@@ -126,6 +153,7 @@ export function buildSalesActionPlan({
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
+        leadStage: lead.stage,
         companyName: lead.company_name,
         priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
         category: 'follow_up',
@@ -147,22 +175,43 @@ export function buildSalesActionPlan({
       return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
     })
 
-    if (lead.stage === 'researched' && icp >= 75) {
-      actions.push({
-        id: `${lead.id}:prospecting`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        companyName: lead.company_name,
-        priority: hasPositiveSignal || icp >= 90 ? 'medium' : 'medium',
-        category: 'prospecting',
-        title: `Draft outreach to ${lead.contact_name}`,
-        reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
-        recommendedAction: 'Create a personalized SMYKM opener using the strongest research hook.',
-        ctaLabel: 'Draft email',
-        ctaHref: `/leads/${lead.id}`,
-        score: 650 + icp + (hasPositiveSignal ? 40 : 0),
-      })
+    if (lead.stage === 'researched') {
+      const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description
+      if (!hasResearch && icp >= 50) {
+        actions.push({
+          id: `${lead.id}:research`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          leadStage: lead.stage,
+          companyName: lead.company_name,
+          priority: icp >= 80 ? 'high' : 'medium',
+          category: 'research',
+          title: `Research ${lead.contact_name}`,
+          reason: `${lead.company_name} needs deep research for SMYKM hooks.`,
+          recommendedAction: 'Perform deep research to find personal details and specific attack surface hooks.',
+          ctaLabel: 'Run Research',
+          ctaHref: `/leads/${lead.id}`,
+          score: 700 + icp,
+        })
+      } else if (icp >= 75) {
+        actions.push({
+          id: `${lead.id}:prospecting`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          leadStage: lead.stage,
+          companyName: lead.company_name,
+          priority: hasPositiveSignal || icp >= 90 ? 'high' : 'medium',
+          category: 'prospecting',
+          title: `Draft outreach to ${lead.contact_name}`,
+          reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
+          recommendedAction: 'Create a personalized SMYKM opener using the strongest research hook.',
+          ctaLabel: 'Draft email',
+          ctaHref: `/leads/${lead.id}`,
+          score: 650 + icp + (hasPositiveSignal ? 100 : 0),
+        })
+      }
     }
   }
 
