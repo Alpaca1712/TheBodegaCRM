@@ -49,3 +49,7 @@
 ## 2025-05-21 - [A11y: Programmatic Helper Text]
 **Learning:** Helper text placed below an input is not automatically read by screen readers when the input is focused. Linking them via 'aria-describedby' ensures the context is available.
 **Action:** Use 'aria-describedby' to link inputs to their associated helper text or validation hints.
+
+## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
+**Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
+**Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
