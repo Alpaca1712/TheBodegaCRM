@@ -46,6 +46,7 @@ type ActionLead = Pick<
   | 'company_description'
   | 'battle_card'
   | 'investor_memo'
+  | 'total_emails_out'
 >
 
 type ActionEmail = {
@@ -74,6 +75,7 @@ export function buildSalesActionPlan({
 }: SalesActionPlanInput): SalesAction[] {
   const outboundByLead = latestEmailByLead(outboundEmails)
   const inboundByLead = latestEmailByLead(inboundEmails)
+  const outboundCountByLead = emailCountByLead(outboundEmails)
   const actions: SalesAction[] = []
 
   for (const lead of leads) {
@@ -255,6 +257,9 @@ export function buildSalesActionPlan({
       && (daysSinceOutbound === null || daysSinceOutbound >= 3)
 
     if (needsFollowUp) {
+      const outboundCount = lead.total_emails_out ?? outboundCountByLead.get(lead.id) ?? 0
+      const followUp = followUpPlay(outboundCount)
+
       actions.push({
         id: `${lead.id}:follow-up`,
         leadId: lead.id,
@@ -264,12 +269,12 @@ export function buildSalesActionPlan({
         companyName: lead.company_name,
         priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
         category: 'follow_up',
-        title: `Follow up with ${lead.contact_name}`,
+        title: `${followUp.label} with ${lead.contact_name}`,
         reason: daysSinceOutbound === null
           ? `${lead.company_name} has no recorded recent outbound touch.`
           : `Last outbound was ${formatDaysAgo(daysSinceOutbound)}.`,
-        recommendedAction: 'Send the next concise, value-led follow-up and add a clear low-friction CTA.',
-        ctaLabel: 'Follow up',
+        recommendedAction: followUp.recommendedAction,
+        ctaLabel: followUp.label,
         ctaHref: `/leads/${lead.id}`,
         score: 820 + icp + Math.min(daysSinceOutbound ?? 6, 10) * 12,
       })
@@ -344,6 +349,42 @@ function latestEmailByLead(emails: ActionEmail[]) {
     }
   }
   return map
+}
+
+function emailCountByLead(emails: ActionEmail[]) {
+  const map = new Map<string, number>()
+  for (const email of emails) {
+    map.set(email.lead_id, (map.get(email.lead_id) ?? 0) + 1)
+  }
+  return map
+}
+
+function followUpPlay(outboundCount: number) {
+  if (outboundCount === 1) {
+    return {
+      label: 'Bump',
+      recommendedAction: 'Send a short 2-3 sentence bump with a new SMYKM hook.',
+    }
+  }
+
+  if (outboundCount === 2) {
+    return {
+      label: 'Value Drop',
+      recommendedAction: 'Use the Hormozi approach: deliver value with a free resource, teardown, or breakdown.',
+    }
+  }
+
+  if (outboundCount >= 3) {
+    return {
+      label: 'Channel Switch',
+      recommendedAction: 'Move to LinkedIn or Twitter DM with a short, casual opener.',
+    }
+  }
+
+  return {
+    label: 'Follow up',
+    recommendedAction: 'Send the next concise, value-led follow-up and add a clear low-friction CTA.',
+  }
 }
 
 function mostRecentDate(values: Array<string | null | undefined>) {

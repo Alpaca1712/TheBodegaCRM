@@ -36,6 +36,7 @@ const baseLead = {
   company_description: null,
   battle_card: null,
   investor_memo: null,
+  total_emails_out: 0,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -246,6 +247,7 @@ describe('buildSalesActionPlan', () => {
           company_name: 'Followup Co',
           stage: 'email_sent',
           icp_score: 70,
+          total_emails_out: 0,
           last_outbound_at: '2026-04-30T12:00:00Z',
           last_contacted_at: '2026-04-30T12:00:00Z',
         },
@@ -265,8 +267,43 @@ describe('buildSalesActionPlan', () => {
     })
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
-    expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
+    expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high', ctaLabel: 'Follow up' })
     expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
+  })
+
+  it('differentiates follow-up plays by outbound count', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-bump',
+          stage: 'email_sent',
+          total_emails_out: 1,
+          last_outbound_at: '2026-05-01T12:00:00Z',
+        },
+        {
+          ...baseLead,
+          id: 'lead-value',
+          stage: 'email_sent',
+          total_emails_out: 2,
+          last_outbound_at: '2026-05-01T12:00:00Z',
+        },
+        {
+          ...baseLead,
+          id: 'lead-switch',
+          stage: 'email_sent',
+          total_emails_out: 3,
+          last_outbound_at: '2026-05-01T12:00:00Z',
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions.find((action) => action.leadId === 'lead-bump')?.ctaLabel).toBe('Bump')
+    expect(actions.find((action) => action.leadId === 'lead-value')?.ctaLabel).toBe('Value Drop')
+    expect(actions.find((action) => action.leadId === 'lead-switch')?.ctaLabel).toBe('Channel Switch')
   })
 
   it('deduplicates actions for the same lead by strongest score', () => {
@@ -277,6 +314,7 @@ describe('buildSalesActionPlan', () => {
           id: 'lead-multi',
           type: 'investor',
           stage: 'email_sent',
+          total_emails_out: 1,
           last_outbound_at: '2026-05-01T12:00:00Z',
           last_contacted_at: '2026-05-01T12:00:00Z',
           investor_memo: null,
