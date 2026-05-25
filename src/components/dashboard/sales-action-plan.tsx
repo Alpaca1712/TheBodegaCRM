@@ -94,14 +94,14 @@ export default function SalesActionPlan({
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span
-                      title={`${action.priority} priority`}
+                      title={`${action.priority.charAt(0).toUpperCase() + action.priority.slice(1)} priority`}
                       className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight cursor-help ${PRIORITY_COLORS[action.priority]}`}
                     >
                       {action.priority}
                     </span>
                     <Link
                       href={`/leads/${action.leadId}`}
-                      aria-label={`Open ${action.leadName}`}
+                      aria-label={`Open ${action.leadName} lead`}
                       className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
                     >
                       {action.title}
@@ -111,13 +111,13 @@ export default function SalesActionPlan({
                     {action.companyName && <span className="font-medium text-zinc-700 dark:text-zinc-300">{action.companyName} · </span>}
                     {action.reason}
                   </p>
-                  <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+                  <div className="group/recommendation flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
                     <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
                     <CopyButton
                       value={action.recommendedAction}
                       label="Recommended action"
-                      className="ml-auto -mr-1 -mt-1 shrink-0 opacity-0 group-hover/action:opacity-100 focus:opacity-100"
+                      className="ml-auto -mr-1 -mt-1 shrink-0 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100"
                     />
                   </div>
                 </div>
@@ -181,10 +181,14 @@ export default function SalesActionPlan({
                     }}
                     disabled={!!isDrafting}
                     title="Magic Draft"
-                    aria-label={`Magic draft for ${action.leadName}`}
+                    aria-label={isProcessing ? `Drafting outreach for ${action.leadName}` : `Magic draft for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
                   >
-                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+                    {isProcessing ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Zap className="h-3.5 w-3.5 fill-current" />
+                    )}
                     {isProcessing ? 'Drafting...' : 'Draft'}
                   </button>
                 )}
