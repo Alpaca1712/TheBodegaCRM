@@ -1,6 +1,23 @@
 import { describe, expect, it } from 'vitest'
 import { buildSalesActionPlan } from './sales-actions'
-import { PipelineStage } from '@/types/leads'
+import { BattleCard, PipelineStage } from '@/types/leads'
+
+const battleCard: BattleCard = {
+  company_overview: 'Ready',
+  their_product: 'Product',
+  their_strengths: [],
+  their_weaknesses: [],
+  competitive_landscape: [],
+  our_angle: 'Angle',
+  objection_handlers: [],
+  discovery_questions: [],
+  trigger_events: [],
+  icp_score: 80,
+  icp_reasons: [],
+  pricing_intel: null,
+  tech_stack: [],
+  decision_makers: [],
+}
 
 const baseLead = {
   id: 'lead-1',
@@ -133,7 +150,7 @@ describe('buildSalesActionPlan', () => {
           id: 'lead-booked-investor',
           type: 'investor',
           stage: 'meeting_booked',
-          battle_card: { company_overview: 'Ready' },
+          battle_card: battleCard,
           investor_memo: null,
         },
       ],
@@ -169,6 +186,30 @@ describe('buildSalesActionPlan', () => {
       leadId: 'lead-investor',
       category: 'investor_memo',
       ctaLabel: 'Generate memo',
+    })
+  })
+
+  it('surfaces investor memo actions for outreach-ready investors', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-investor-researched',
+          type: 'investor',
+          stage: 'researched',
+          smykm_hooks: ['Hook 1'],
+          company_description: 'Fund',
+          investor_memo: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-investor-researched',
+      category: 'investor_memo',
     })
   })
 
@@ -226,6 +267,29 @@ describe('buildSalesActionPlan', () => {
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
     expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
     expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
+  })
+
+  it('deduplicates actions for the same lead by strongest score', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-multi',
+          type: 'investor',
+          stage: 'email_sent',
+          last_outbound_at: '2026-05-01T12:00:00Z',
+          last_contacted_at: '2026-05-01T12:00:00Z',
+          investor_memo: null,
+          icp_score: 90,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions).toHaveLength(1)
+    expect(actions[0].category).toBe('follow_up')
   })
 
   it('limits the action plan to the strongest five actions', () => {

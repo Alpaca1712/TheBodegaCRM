@@ -232,6 +232,25 @@ export function buildSalesActionPlan({
       continue
     }
 
+    if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
+      actions.push({
+        id: `${lead.id}:investor-memo`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: icp >= 80 ? 'high' : 'medium',
+        category: 'investor_memo',
+        title: `Generate memo for ${lead.contact_name}`,
+        reason: `${lead.contact_name} is an investor lead missing a personalized memo.`,
+        recommendedAction: 'Create an Amazon-style one-pager to drop in the next follow-up.',
+        ctaLabel: 'Generate memo',
+        ctaHref: `/leads/${lead.id}`,
+        score: 840 + icp,
+      })
+    }
+
     const needsFollowUp = ['email_sent', 'follow_up', 'no_response'].includes(lead.stage)
       && (daysSinceOutbound === null || daysSinceOutbound >= 3)
 
@@ -303,7 +322,15 @@ export function buildSalesActionPlan({
     }
   }
 
-  return actions
+  const uniqueActions = new Map<string, SalesAction>()
+  for (const action of actions) {
+    const existing = uniqueActions.get(action.leadId)
+    if (!existing || action.score > existing.score) {
+      uniqueActions.set(action.leadId, action)
+    }
+  }
+
+  return Array.from(uniqueActions.values())
     .sort((a, b) => b.score - a.score || a.companyName.localeCompare(b.companyName))
     .slice(0, ACTION_LIMIT)
 }

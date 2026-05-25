@@ -41,10 +41,22 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   investor_memo: <FileText className="h-4 w-4 text-indigo-500" />,
 };
 
-const PRIORITY_COLORS: Record<string, string> = {
-  critical: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
-  high: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
-  medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: string }> = {
+  critical: {
+    color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
+    label: 'Critical',
+    dot: 'bg-red-500',
+  },
+  high: {
+    color: 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-400',
+    label: 'High',
+    dot: 'bg-amber-500',
+  },
+  medium: {
+    color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
+    label: 'Medium',
+    dot: 'bg-blue-500',
+  },
 };
 
 export default function SalesActionPlan({
@@ -83,6 +95,7 @@ export default function SalesActionPlan({
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';
+          const priority = PRIORITY_CONFIG[action.priority] || PRIORITY_CONFIG.medium;
 
           return (
             <div
@@ -95,12 +108,15 @@ export default function SalesActionPlan({
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span
-                      title={`${action.priority.charAt(0).toUpperCase() + action.priority.slice(1)} priority`}
-                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight cursor-help ${PRIORITY_COLORS[action.priority]}`}
-                    >
-                      {action.priority}
-                    </span>
+                    <div className="flex items-center gap-1.5">
+                      <div className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
+                      <span
+                        title={`${priority.label} priority`}
+                        className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight cursor-help ${priority.color}`}
+                      >
+                        {priority.label}
+                      </span>
+                    </div>
                     <Link
                       href={`/leads/${action.leadId}`}
                       className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
@@ -115,7 +131,7 @@ export default function SalesActionPlan({
                   </p>
                   <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-6">{action.recommendedAction}</p>
+                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-8">{action.recommendedAction}</p>
                     <CopyButton
                       value={action.recommendedAction}
                       label="Recommended action"

@@ -41,7 +41,10 @@ export default function DashboardPage() {
   const health = healthQuery.data;
 
   const refreshDashboard = async () => {
-    await Promise.all([dashboardQuery.refetch(), healthQuery.refetch()]);
+    await Promise.all([
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+      queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
+    ]);
   };
 
   const handleMagicDraft = async (leadId: string, contactName: string) => {
@@ -53,10 +56,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Magic drafting failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
@@ -77,10 +77,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId, type: leadType }),
       });
       if (!res.ok) throw new Error('Research failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
@@ -101,14 +98,11 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Prep failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
-      loading: `Prepping for ${contactName}...`,
+      loading: `Prepping for meeting with ${contactName}...`,
       success: `Battle card ready for ${contactName}`,
       error: 'Prep failed',
     });
@@ -125,10 +119,7 @@ export default function DashboardPage() {
         body: JSON.stringify({ leadId }),
       });
       if (!res.ok) throw new Error('Memo generation failed');
-      await Promise.all([
-        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
-        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
-      ]);
+      await refreshDashboard();
     })();
 
     toast.promise(promise, {
@@ -155,7 +146,7 @@ export default function DashboardPage() {
         <AlertTriangle className="h-8 w-8 text-red-400" />
         <p className="text-sm text-zinc-600 dark:text-zinc-400">{message}</p>
         <button
-          onClick={refreshDashboard}
+          onClick={() => dashboardQuery.refetch()}
           className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
         >
           Retry
