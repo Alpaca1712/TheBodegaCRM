@@ -28,13 +28,12 @@ import {
 } from 'lucide-react';
 import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads';
 import { useDashboard, usePipelineHealth, type DashboardLeadTypeFilter } from '@/hooks/use-dashboard';
-import FollowUpSuggestions from '@/components/email/follow-up-suggestions';
 import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
-  const [isDrafting, setIsDrafting] = useState<string | null>(null);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [activeType, setActiveType] = useState<DashboardLeadTypeFilter>('all');
   const dashboardQuery = useDashboard(activeType);
   const healthQuery = usePipelineHealth(activeType);
@@ -46,7 +45,7 @@ export default function DashboardPage() {
   };
 
   const handleMagicDraft = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
+    setIsProcessing(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/draft-next-step', {
         method: 'POST',
@@ -66,7 +65,49 @@ export default function DashboardPage() {
       error: 'Drafting failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handleResearch = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${contactName}...`,
+      success: `Research complete for ${contactName}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
+  };
+
+  const handlePrep = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${contactName}...`,
+      success: `Battle card ready for ${contactName}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsProcessing(null));
   };
 
   const handleResearch = async (leadId: string, contactName: string) => {
@@ -112,6 +153,30 @@ export default function DashboardPage() {
       loading: `Prepping for meeting with ${contactName}...`,
       success: `Battle card ready for ${contactName}`,
       error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsDrafting(null));
+  };
+
+  const handleMemo = async (leadId: string, contactName: string) => {
+    setIsDrafting(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/investor-memo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Memo failed');
+      await Promise.all([
+        queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
+        queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
+      ]);
+    })();
+
+    toast.promise(promise, {
+      loading: `Writing investor memo for ${contactName}...`,
+      success: `Investor memo ready for ${contactName}`,
+      error: 'Memo failed',
     });
 
     promise.finally(() => setIsDrafting(null));
@@ -269,10 +334,11 @@ export default function DashboardPage() {
       {/* Sales Action Plan */}
       <SalesActionPlan
         actions={data.salesActionPlan}
-        isDrafting={isDrafting}
+        isProcessing={isProcessing}
         onMagicDraft={handleMagicDraft}
         onResearch={handleResearch}
         onPrep={handlePrep}
+        onMemo={handleMemo}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -397,11 +463,11 @@ export default function DashboardPage() {
                           e.stopPropagation();
                           handleMagicDraft(lead.id, lead.contact_name);
                         }}
-                        disabled={isDrafting !== null}
+                        disabled={isProcessing !== null}
                         className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         title="Magic Draft"
                       >
-                        {isDrafting === lead.id ? (
+                        {isProcessing === lead.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
                         ) : (
                           <Zap className="h-3.5 w-3.5" />
@@ -441,10 +507,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Follow-up Suggestions */}
-      <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
-        <FollowUpSuggestions compact typeFilter={activeType} />
-      </div>
     </div>
   );
 }

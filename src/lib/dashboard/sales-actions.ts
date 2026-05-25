@@ -1,7 +1,15 @@
 import type { Lead, LeadType, PipelineStage } from '@/types/leads'
 
 export type SalesActionPriority = 'critical' | 'high' | 'medium'
-export type SalesActionCategory = 'reply' | 'follow_up' | 'meeting' | 'prospecting' | 'research' | 'meeting_prep'
+export type SalesActionCategory =
+  | 'reply'
+  | 'follow_up'
+  | 'meeting'
+  | 'prospecting'
+  | 'research'
+  | 'meeting_prep'
+  | 'review'
+  | 'investor_memo'
 
 export interface SalesAction {
   id: string
@@ -37,6 +45,7 @@ type ActionLead = Pick<
   | 'smykm_hooks'
   | 'company_description'
   | 'battle_card'
+  | 'investor_memo'
 >
 
 type ActionEmail = {
@@ -96,7 +105,27 @@ export function buildSalesActionPlan({
         recommendedAction: lead.conversation_next_step || 'Send a thoughtful ACA reply and lock the next step.',
         ctaLabel: 'Open thread',
         ctaHref: `/leads/${lead.id}`,
-        score: 1_000 + icp + recencyBoost(daysSinceInbound),
+        score: 1_200 + icp + recencyBoost(daysSinceInbound),
+      })
+      continue
+    }
+
+    if (lead.stage === 'email_drafted') {
+      actions.push({
+        id: `${lead.id}:review`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'critical',
+        category: 'review',
+        title: `Review draft for ${lead.contact_name}`,
+        reason: 'A personalized draft is ready for review.',
+        recommendedAction: 'Review the AI draft, refine the SMYKM hook, and send to advance the pipeline.',
+        ctaLabel: 'Review',
+        ctaHref: `/leads/${lead.id}?tab=emails`,
+        score: 1_100 + icp,
       })
       continue
     }
@@ -110,21 +139,41 @@ export function buildSalesActionPlan({
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
+        priority: hasBattleCard ? 'high' : 'critical',
         category: hasBattleCard ? 'meeting' : 'meeting_prep',
-        title: `Prep meeting with ${lead.contact_name}`,
+        title: hasBattleCard ? `Review prep for ${lead.contact_name}` : `Prep meeting with ${lead.contact_name}`,
         reason: hasBattleCard ? `${lead.company_name} meeting is booked.` : `Need battle card for ${lead.company_name} meeting.`,
         recommendedAction: hasBattleCard
           ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
-          : 'Generate battle card and research to prep for the upcoming call.',
+          : 'Generate a battle card to identify attack surface, pitch angles, and objections.',
         ctaLabel: hasBattleCard ? 'Prep deal' : 'Run Prep',
         ctaHref: `/leads/${lead.id}`,
-        score: (hasBattleCard ? 780 : 850) + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: (hasBattleCard ? 780 : 950) + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
       continue
     }
 
     if (lead.stage === 'meeting_held') {
+      if (lead.type === 'investor' && !lead.investor_memo) {
+        actions.push({
+          id: `${lead.id}:investor-memo`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          leadStage: lead.stage,
+          companyName: lead.company_name,
+          priority: 'high',
+          category: 'investor_memo',
+          title: `Draft memo for ${lead.contact_name}`,
+          reason: `${lead.company_name} meeting is complete and needs a tailored investor memo.`,
+          recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
+          ctaLabel: 'Generate memo',
+          ctaHref: `/leads/${lead.id}`,
+          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        })
+        continue
+      }
+
       actions.push({
         id: `${lead.id}:meeting-recap`,
         leadId: lead.id,
@@ -176,7 +225,7 @@ export function buildSalesActionPlan({
     })
 
     if (lead.stage === 'researched') {
-      const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || lead.company_description
+      const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || !!lead.company_description
       if (!hasResearch && icp >= 50) {
         actions.push({
           id: `${lead.id}:research`,
@@ -189,10 +238,10 @@ export function buildSalesActionPlan({
           category: 'research',
           title: `Research ${lead.contact_name}`,
           reason: `${lead.company_name} needs deep research for SMYKM hooks.`,
-          recommendedAction: 'Perform deep research to find personal details and specific attack surface hooks.',
+          recommendedAction: 'Run AI research to find personal details and attack surface notes.',
           ctaLabel: 'Run Research',
           ctaHref: `/leads/${lead.id}`,
-          score: 700 + icp,
+          score: 850 + icp,
         })
       } else if (icp >= 75) {
         actions.push({

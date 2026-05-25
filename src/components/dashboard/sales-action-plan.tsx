@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock,
   ExternalLink,
+  FileText,
   Loader2,
   MessageSquare,
   Sparkles,
@@ -17,6 +18,7 @@ import {
   Zap,
 } from 'lucide-react';
 import type { SalesAction } from '@/lib/dashboard/sales-actions';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
@@ -24,6 +26,7 @@ interface SalesActionPlanProps {
   onMagicDraft?: (leadId: string, leadName: string) => void;
   onResearch?: (leadId: string, contactName: string) => void;
   onPrep?: (leadId: string, contactName: string) => void;
+  onMemo?: (leadId: string, contactName: string) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -33,6 +36,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
+  review: <CheckCircle2 className="h-4 w-4 text-blue-500" />,
+  investor_memo: <FileText className="h-4 w-4 text-violet-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -41,7 +46,14 @@ const PRIORITY_COLORS: Record<string, string> = {
   medium: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
 };
 
-export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onResearch, onPrep }: SalesActionPlanProps) {
+export default function SalesActionPlan({
+  actions,
+  isDrafting,
+  onMagicDraft,
+  onResearch,
+  onPrep,
+  onMemo,
+}: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
@@ -64,15 +76,16 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
 
       <div className="space-y-3">
         {actions.map((action) => {
-          const canMagicDraft = onMagicDraft && (['reply', 'follow_up', 'prospecting'].includes(action.category) || (action.category === 'meeting' && action.leadStage === 'meeting_held'));
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
+          const canMemo = onMemo && action.category === 'investor_memo';
           const isProcessing = isDrafting === action.leadId;
 
           return (
             <div
               key={action.id}
-              className="group relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
+              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div className="mt-0.5 shrink-0">
@@ -80,10 +93,17 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight ${PRIORITY_COLORS[action.priority]}`}>
+                    <span
+                      title={`${action.priority} priority`}
+                      className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight cursor-help ${PRIORITY_COLORS[action.priority]}`}
+                    >
                       {action.priority}
                     </span>
-                    <Link href={`/leads/${action.leadId}`} className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate">
+                    <Link
+                      href={`/leads/${action.leadId}`}
+                      aria-label={`Open ${action.leadName}`}
+                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
+                    >
                       {action.title}
                     </Link>
                   </div>
@@ -94,6 +114,11 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
                   <div className="flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
                     <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{action.recommendedAction}</p>
+                    <CopyButton
+                      value={action.recommendedAction}
+                      label="Recommended action"
+                      className="ml-auto -mr-1 -mt-1 shrink-0 opacity-0 group-hover/action:opacity-100 focus:opacity-100"
+                    />
                   </div>
                 </div>
               </div>
@@ -108,14 +133,11 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
                     }}
                     disabled={!!isDrafting}
                     title="Run Research"
+                    aria-label={`Run research for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Sparkles className="h-3.5 w-3.5" />
-                    )}
-                    Research
+                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {isProcessing ? 'Researching...' : 'Research'}
                   </button>
                 )}
                 {canPrep && (
@@ -127,14 +149,27 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
                     }}
                     disabled={!!isDrafting}
                     title="Run Prep"
+                    aria-label={`Run meeting prep for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Swords className="h-3.5 w-3.5" />
-                    )}
-                    Prep
+                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+                    {isProcessing ? 'Prepping...' : 'Prep'}
+                  </button>
+                )}
+                {canMemo && (
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      onMemo(action.leadId, action.leadName);
+                    }}
+                    disabled={!!isDrafting}
+                    title="Generate Memo"
+                    aria-label={`Generate investor memo for ${action.leadName}`}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-lg transition-colors border border-violet-100 dark:border-violet-800 disabled:opacity-50"
+                  >
+                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                    {isProcessing ? 'Writing...' : 'Memo'}
                   </button>
                 )}
                 {canMagicDraft && (
@@ -146,14 +181,11 @@ export default function SalesActionPlan({ actions, isDrafting, onMagicDraft, onR
                     }}
                     disabled={!!isDrafting}
                     title="Magic Draft"
+                    aria-label={`Magic draft for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Zap className="h-3.5 w-3.5 fill-current" />
-                    )}
-                    Draft
+                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+                    {isProcessing ? 'Drafting...' : 'Draft'}
                   </button>
                 )}
                 <Link

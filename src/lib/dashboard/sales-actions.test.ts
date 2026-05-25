@@ -18,6 +18,7 @@ const baseLead = {
   smykm_hooks: [],
   company_description: null,
   battle_card: null,
+  investor_memo: null,
 }
 
 describe('buildSalesActionPlan', () => {
@@ -50,6 +51,31 @@ describe('buildSalesActionPlan', () => {
       ctaHref: '/leads/lead-replied',
     })
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
+  })
+
+  it('surfaces ready-to-review drafts before prospecting', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        { ...baseLead, id: 'lead-prospect', smykm_hooks: ['Hook 1'] },
+        {
+          ...baseLead,
+          id: 'lead-draft',
+          contact_name: 'Dana Draft',
+          stage: 'email_drafted',
+          icp_score: 70,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-draft',
+      priority: 'critical',
+      category: 'review',
+      ctaLabel: 'Review',
+    })
   })
 
   it('suggests research for high-ICP leads without hooks', () => {
@@ -94,7 +120,31 @@ describe('buildSalesActionPlan', () => {
     expect(actions[0]).toMatchObject({
       leadId: 'lead-meeting',
       category: 'meeting_prep',
+      priority: 'critical',
       ctaLabel: 'Run Prep',
+    })
+  })
+
+  it('suggests investor memos after investor meetings', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-investor',
+          type: 'investor',
+          stage: 'meeting_held',
+          investor_memo: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-investor',
+      category: 'investor_memo',
+      ctaLabel: 'Generate memo',
     })
   })
 
@@ -118,7 +168,6 @@ describe('buildSalesActionPlan', () => {
       category: 'prospecting',
       priority: 'high',
     })
-    // Score should be higher due to signal
     expect(actions[0].score).toBeGreaterThan(650 + 85)
   })
 
@@ -152,7 +201,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
     expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high' })
-    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' }) // 96 ICP
+    expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
   })
 
   it('limits the action plan to the strongest five actions', () => {
