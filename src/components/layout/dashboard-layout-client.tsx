@@ -16,9 +16,7 @@ import {
   Bell,
   Target,
   Handshake,
-  Brain,
   HeartPulse,
-  MessageCircle,
 } from 'lucide-react';
 import Header from '@/components/layout/header';
 import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper';
