@@ -415,6 +415,7 @@ export default function DashboardPage() {
                         disabled={isProcessing !== null}
                         className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         title="Magic Draft"
+                        aria-label="Magic Draft"
                       >
                         {isProcessing === lead.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
