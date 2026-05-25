@@ -103,15 +103,20 @@ export default function SalesActionPlan({
               className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
-                <div className="mt-0.5 shrink-0">
+                <div
+                  className="mt-0.5 shrink-0"
+                  title={`${action.category.replace('_', ' ')} action`}
+                >
                   {CATEGORY_ICONS[action.category] || <AlertCircle className="h-4 w-4 text-zinc-400" />}
                 </div>
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2 mb-1">
-                    <div className="flex items-center gap-1.5">
+                    <div
+                      className="flex items-center gap-1.5"
+                      title={`${priority.label} priority`}
+                    >
                       <div className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
                       <span
-                        title={`${priority.label} priority`}
                         className={`text-[9px] px-1.5 py-0.5 rounded font-bold uppercase tracking-tight cursor-help ${priority.color}`}
                       >
                         {priority.label}
@@ -119,7 +124,7 @@ export default function SalesActionPlan({
                     </div>
                     <Link
                       href={`/leads/${action.leadId}`}
-                      aria-label={`View lead: ${action.leadName}`}
+                      aria-label={`View details for ${action.leadName} from ${action.companyName}`}
                       className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
                     >
                       {action.title}
@@ -131,11 +136,11 @@ export default function SalesActionPlan({
                   </p>
                   <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 transition-colors hover:border-zinc-200 dark:hover:border-zinc-700">
                     <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
-                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 pr-6">{action.recommendedAction}</p>
+                    <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 pr-8">{action.recommendedAction}</p>
                     <CopyButton
                       value={action.recommendedAction}
                       label="Recommended action"
-                      className="absolute top-1 right-1 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100 transition-opacity"
+                      className="absolute top-1.5 right-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100 transition-opacity"
                     />
                   </div>
                 </div>
