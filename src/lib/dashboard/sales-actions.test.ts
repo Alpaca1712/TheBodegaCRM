@@ -125,6 +125,30 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
+  it('suggests investor memos for booked investor meetings that already have prep', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-booked-investor',
+          type: 'investor',
+          stage: 'meeting_booked',
+          battle_card: { company_overview: 'Ready' },
+          investor_memo: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-booked-investor',
+      category: 'investor_memo',
+      ctaLabel: 'Generate memo',
+    })
+  })
+
   it('suggests investor memos after investor meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [

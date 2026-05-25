@@ -65,58 +65,16 @@ export default function DashboardPage() {
       error: 'Drafting failed',
     });
 
-    promise.finally(() => setIsProcessing(null));
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
   };
 
-  const handleResearch = async (leadId: string, contactName: string) => {
+  const handleResearch = async (leadId: string, contactName: string, leadType: string) => {
     setIsProcessing(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/research-lead', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId }),
-      });
-      if (!res.ok) throw new Error('Research failed');
-      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    })();
-
-    toast.promise(promise, {
-      loading: `Researching ${contactName}...`,
-      success: `Research complete for ${contactName}`,
-      error: 'Research failed',
-    });
-
-    promise.finally(() => setIsProcessing(null));
-  };
-
-  const handlePrep = async (leadId: string, contactName: string) => {
-    setIsProcessing(leadId);
-    const promise = (async () => {
-      const res = await fetch('/api/ai/battle-card', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId }),
-      });
-      if (!res.ok) throw new Error('Prep failed');
-      await queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-    })();
-
-    toast.promise(promise, {
-      loading: `Prepping for meeting with ${contactName}...`,
-      success: `Battle card ready for ${contactName}`,
-      error: 'Prep failed',
-    });
-
-    promise.finally(() => setIsProcessing(null));
-  };
-
-  const handleResearch = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
-    const promise = (async () => {
-      const res = await fetch('/api/ai/research-lead', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ leadId }),
+        body: JSON.stringify({ leadId, type: leadType }),
       });
       if (!res.ok) throw new Error('Research failed');
       await Promise.all([
@@ -131,11 +89,11 @@ export default function DashboardPage() {
       error: 'Research failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
   };
 
   const handlePrep = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
+    setIsProcessing(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/battle-card', {
         method: 'POST',
@@ -150,23 +108,23 @@ export default function DashboardPage() {
     })();
 
     toast.promise(promise, {
-      loading: `Prepping for meeting with ${contactName}...`,
+      loading: `Prepping for ${contactName}...`,
       success: `Battle card ready for ${contactName}`,
       error: 'Prep failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
   };
 
-  const handleMemo = async (leadId: string, contactName: string) => {
-    setIsDrafting(leadId);
+  const handleInvestorMemo = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
     const promise = (async () => {
       const res = await fetch('/api/ai/investor-memo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId }),
       });
-      if (!res.ok) throw new Error('Memo failed');
+      if (!res.ok) throw new Error('Memo generation failed');
       await Promise.all([
         queryClient.invalidateQueries({ queryKey: ['dashboard'] }),
         queryClient.invalidateQueries({ queryKey: ['pipeline-health'] }),
@@ -174,12 +132,12 @@ export default function DashboardPage() {
     })();
 
     toast.promise(promise, {
-      loading: `Writing investor memo for ${contactName}...`,
+      loading: `Generating memo for ${contactName}...`,
       success: `Investor memo ready for ${contactName}`,
-      error: 'Memo failed',
+      error: 'Memo generation failed',
     });
 
-    promise.finally(() => setIsDrafting(null));
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
   };
 
   if (dashboardQuery.isLoading && !data) {
@@ -338,7 +296,7 @@ export default function DashboardPage() {
         onMagicDraft={handleMagicDraft}
         onResearch={handleResearch}
         onPrep={handlePrep}
-        onMemo={handleMemo}
+        onInvestorMemo={handleInvestorMemo}
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">

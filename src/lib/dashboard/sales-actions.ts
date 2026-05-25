@@ -132,23 +132,62 @@ export function buildSalesActionPlan({
 
     if (lead.stage === 'meeting_booked') {
       const hasBattleCard = !!lead.battle_card
+
+      if (!hasBattleCard) {
+        actions.push({
+          id: `${lead.id}:meeting-prep`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          leadStage: lead.stage,
+          companyName: lead.company_name,
+          priority: 'critical',
+          category: 'meeting_prep',
+          title: `Prep meeting with ${lead.contact_name}`,
+          reason: `Need battle card for ${lead.company_name} meeting.`,
+          recommendedAction: 'Generate a battle card to identify attack surface, pitch angles, and objections.',
+          ctaLabel: 'Run Prep',
+          ctaHref: `/leads/${lead.id}`,
+          score: 950 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        })
+        continue
+      }
+
+      if (lead.type === 'investor' && !lead.investor_memo) {
+        actions.push({
+          id: `${lead.id}:investor-memo`,
+          leadId: lead.id,
+          leadName: lead.contact_name,
+          leadType: lead.type,
+          leadStage: lead.stage,
+          companyName: lead.company_name,
+          priority: 'high',
+          category: 'investor_memo',
+          title: `Generate memo for ${lead.contact_name}`,
+          reason: `${lead.company_name} meeting is booked but lacks a personalized memo.`,
+          recommendedAction: 'Create an Amazon-style one-page memo to share with the investor.',
+          ctaLabel: 'Generate memo',
+          ctaHref: `/leads/${lead.id}`,
+          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        })
+        continue
+      }
+
       actions.push({
-        id: `${lead.id}:meeting-prep`,
+        id: `${lead.id}:meeting`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: hasBattleCard ? 'high' : 'critical',
-        category: hasBattleCard ? 'meeting' : 'meeting_prep',
-        title: hasBattleCard ? `Review prep for ${lead.contact_name}` : `Prep meeting with ${lead.contact_name}`,
-        reason: hasBattleCard ? `${lead.company_name} meeting is booked.` : `Need battle card for ${lead.company_name} meeting.`,
-        recommendedAction: hasBattleCard
-          ? 'Review battle card, SMYKM hooks, and objection handlers before the call.'
-          : 'Generate a battle card to identify attack surface, pitch angles, and objections.',
-        ctaLabel: hasBattleCard ? 'Prep deal' : 'Run Prep',
+        priority: 'high',
+        category: 'meeting',
+        title: `Review prep for ${lead.contact_name}`,
+        reason: `${lead.company_name} meeting is booked.`,
+        recommendedAction: 'Review battle card, SMYKM hooks, and objection handlers before the call.',
+        ctaLabel: 'Prep deal',
         ctaHref: `/leads/${lead.id}`,
-        score: (hasBattleCard ? 780 : 950) + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
       continue
     }
@@ -184,7 +223,7 @@ export function buildSalesActionPlan({
         priority: 'high',
         category: 'meeting',
         title: `Send recap to ${lead.contact_name}`,
-        reason: `${lead.company_name} meeting just finished.`,
+        reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
@@ -218,15 +257,15 @@ export function buildSalesActionPlan({
       continue
     }
 
-    const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
-      if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
-      const detectedAt = new Date(signal.detected_at)
-      return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
-    })
-
     if (lead.stage === 'researched') {
       const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || !!lead.company_description
-      if (!hasResearch && icp >= 50) {
+      const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
+        if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
+        const detectedAt = new Date(signal.detected_at)
+        return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
+      })
+
+      if (!hasResearch) {
         actions.push({
           id: `${lead.id}:research`,
           leadId: lead.id,

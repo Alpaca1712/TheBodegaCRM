@@ -7,6 +7,7 @@ import {
   ArrowRight,
   CalendarCheck,
   CheckCircle2,
+  ClipboardCheck,
   Clock,
   ExternalLink,
   FileText,
@@ -22,11 +23,11 @@ import { CopyButton } from '@/components/ui/copy-button';
 
 interface SalesActionPlanProps {
   actions: SalesAction[];
-  isDrafting?: string | null;
+  isProcessing?: string | null;
   onMagicDraft?: (leadId: string, leadName: string) => void;
-  onResearch?: (leadId: string, contactName: string) => void;
-  onPrep?: (leadId: string, contactName: string) => void;
-  onMemo?: (leadId: string, contactName: string) => void;
+  onResearch?: (leadId: string, leadName: string, leadType: string) => void;
+  onPrep?: (leadId: string, leadName: string) => void;
+  onInvestorMemo?: (leadId: string, leadName: string) => void;
 }
 
 const CATEGORY_ICONS: Record<string, React.ReactNode> = {
@@ -36,8 +37,8 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
-  review: <CheckCircle2 className="h-4 w-4 text-blue-500" />,
-  investor_memo: <FileText className="h-4 w-4 text-violet-500" />,
+  review: <ClipboardCheck className="h-4 w-4 text-emerald-500" />,
+  investor_memo: <FileText className="h-4 w-4 text-indigo-500" />,
 };
 
 const PRIORITY_COLORS: Record<string, string> = {
@@ -48,11 +49,11 @@ const PRIORITY_COLORS: Record<string, string> = {
 
 export default function SalesActionPlan({
   actions,
-  isDrafting,
+  isProcessing,
   onMagicDraft,
   onResearch,
   onPrep,
-  onMemo,
+  onInvestorMemo,
 }: SalesActionPlanProps) {
   if (!actions || actions.length === 0) {
     return (
@@ -76,11 +77,12 @@ export default function SalesActionPlan({
 
       <div className="space-y-3">
         {actions.map((action) => {
+          const isLeadProcessing = isProcessing === action.leadId;
+          const hasActiveAction = !!isProcessing;
           const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
-          const canMemo = onMemo && action.category === 'investor_memo';
-          const isProcessing = isDrafting === action.leadId;
+          const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';
 
           return (
             <div
@@ -129,17 +131,18 @@ export default function SalesActionPlan({
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onResearch(action.leadId, action.leadName);
+                      onResearch(action.leadId, action.leadName, action.leadType);
                     }}
-                    disabled={!!isDrafting}
-                    title="Run Research"
-                    aria-label={`Run research for ${action.leadName}`}
+                    disabled={hasActiveAction}
+                    title="Run AI Research"
+                    aria-label={isLeadProcessing ? `Researching ${action.leadName}` : `Run AI research for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
                   >
-                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
-                    {isProcessing ? 'Researching...' : 'Research'}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? 'Researching...' : 'Research'}
                   </button>
                 )}
+
                 {canPrep && (
                   <button
                     onClick={(e) => {
@@ -147,31 +150,33 @@ export default function SalesActionPlan({
                       e.stopPropagation();
                       onPrep(action.leadId, action.leadName);
                     }}
-                    disabled={!!isDrafting}
-                    title="Run Prep"
-                    aria-label={`Run meeting prep for ${action.leadName}`}
+                    disabled={hasActiveAction}
+                    title="Generate Battle Card"
+                    aria-label={isLeadProcessing ? `Preparing for ${action.leadName}` : `Generate battle card for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
                   >
-                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
-                    {isProcessing ? 'Prepping...' : 'Prep'}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? 'Prepping...' : 'Prep'}
                   </button>
                 )}
-                {canMemo && (
+
+                {canInvestorMemo && (
                   <button
                     onClick={(e) => {
                       e.preventDefault();
                       e.stopPropagation();
-                      onMemo(action.leadId, action.leadName);
+                      onInvestorMemo(action.leadId, action.leadName);
                     }}
-                    disabled={!!isDrafting}
-                    title="Generate Memo"
-                    aria-label={`Generate investor memo for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-violet-600 dark:text-violet-400 bg-violet-50 dark:bg-violet-900/30 hover:bg-violet-100 dark:hover:bg-violet-900/50 rounded-lg transition-colors border border-violet-100 dark:border-violet-800 disabled:opacity-50"
+                    disabled={hasActiveAction}
+                    title="Generate Investor Memo"
+                    aria-label={isLeadProcessing ? `Generating investor memo for ${action.leadName}` : `Generate investor memo for ${action.leadName}`}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
                   >
-                    {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
-                    {isProcessing ? 'Writing...' : 'Memo'}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? 'Writing...' : 'Memo'}
                   </button>
                 )}
+
                 {canMagicDraft && (
                   <button
                     onClick={(e) => {
@@ -179,19 +184,16 @@ export default function SalesActionPlan({
                       e.stopPropagation();
                       onMagicDraft(action.leadId, action.leadName);
                     }}
-                    disabled={!!isDrafting}
+                    disabled={hasActiveAction}
                     title="Magic Draft"
-                    aria-label={isProcessing ? `Drafting outreach for ${action.leadName}` : `Magic draft for ${action.leadName}`}
+                    aria-label={isLeadProcessing ? `Drafting outreach for ${action.leadName}` : `Magic draft for ${action.leadName}`}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
                   >
-                    {isProcessing ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                    ) : (
-                      <Zap className="h-3.5 w-3.5 fill-current" />
-                    )}
-                    {isProcessing ? 'Drafting...' : 'Draft'}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+                    {isLeadProcessing ? 'Drafting...' : 'Draft'}
                   </button>
                 )}
+
                 <Link
                   href={action.ctaHref}
                   className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
