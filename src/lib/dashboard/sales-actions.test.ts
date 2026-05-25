@@ -54,7 +54,7 @@ describe('buildSalesActionPlan', () => {
           last_inbound_at: '2026-05-06T10:00:00Z',
           updated_at: '2026-05-06T10:00:00Z',
         },
-        { ...baseLead, smykm_hooks: ['Hook 1'] },
+        { ...baseLead, smykm_hooks: ['Hook 1'], company_description: 'Company context' },
       ],
       outboundEmails: [],
       inboundEmails: [],
@@ -74,7 +74,7 @@ describe('buildSalesActionPlan', () => {
   it('surfaces ready-to-review drafts before prospecting', () => {
     const actions = buildSalesActionPlan({
       leads: [
-        { ...baseLead, id: 'lead-prospect', smykm_hooks: ['Hook 1'] },
+        { ...baseLead, id: 'lead-prospect', smykm_hooks: ['Hook 1'], company_description: 'Company context' },
         {
           ...baseLead,
           id: 'lead-draft',
@@ -96,14 +96,14 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests research for high-ICP leads without hooks', () => {
+  it('suggests research for high-ICP leads without hooks or company context', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
           ...baseLead,
           id: 'lead-needs-research',
           icp_score: 90,
-          smykm_hooks: [],
+          smykm_hooks: ['Hook 1'],
           company_description: null,
         },
       ],
@@ -221,6 +221,7 @@ describe('buildSalesActionPlan', () => {
           ...baseLead,
           id: 'lead-hot',
           smykm_hooks: ['Hook 1'],
+          company_description: 'Company context',
           conversation_signals: [{ type: 'positive', detected_at: '2026-05-06T11:00:00Z', signal: 'Interested', source: 'email' }],
         },
       ],
@@ -259,6 +260,7 @@ describe('buildSalesActionPlan', () => {
           stage: 'researched',
           icp_score: 96,
           smykm_hooks: ['Hook 1'],
+          company_description: 'Company context',
         },
       ],
       outboundEmails: [],
@@ -337,6 +339,7 @@ describe('buildSalesActionPlan', () => {
       contact_name: `Lead ${index}`,
       icp_score: 90 - index,
       smykm_hooks: ['Hook 1'],
+      company_description: 'Company context',
     }))
 
     const actions = buildSalesActionPlan({

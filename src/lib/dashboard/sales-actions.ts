@@ -282,7 +282,7 @@ export function buildSalesActionPlan({
     }
 
     if (lead.stage === 'researched') {
-      const hasResearch = (lead.smykm_hooks && lead.smykm_hooks.length > 0) || !!lead.company_description
+      const hasResearch = !!lead.company_description && !!lead.smykm_hooks && lead.smykm_hooks.length > 0
       const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
         if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
         const detectedAt = new Date(signal.detected_at)
@@ -300,7 +300,7 @@ export function buildSalesActionPlan({
           priority: icp >= 80 ? 'high' : 'medium',
           category: 'research',
           title: `Research ${lead.contact_name}`,
-          reason: `${lead.company_name} needs deep research for SMYKM hooks.`,
+          reason: `${lead.company_name} needs deep SMYKM hooks or company context.`,
           recommendedAction: 'Run AI research to find personal details and attack surface notes.',
           ctaLabel: 'Run Research',
           ctaHref: `/leads/${lead.id}`,
