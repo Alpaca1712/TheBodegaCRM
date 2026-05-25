@@ -161,6 +161,7 @@ export async function GET(request: NextRequest) {
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', leadId)
+      .eq('user_id', user.id)
       .order('occurred_at', { ascending: true })
 
     if (error) throw error
@@ -216,9 +217,9 @@ export async function POST(request: NextRequest) {
 
     // Fetch full lead + all emails + all interactions for AI analysis
     const [leadRes, emailsRes, interactionsRes] = await Promise.all([
-      supabase.from('leads').select('*').eq('id', validation.data.lead_id).single(),
-      supabase.from('lead_emails').select('*').eq('lead_id', validation.data.lead_id).order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('*').eq('lead_id', validation.data.lead_id).order('occurred_at', { ascending: true }),
+      supabase.from('leads').select('*').eq('id', validation.data.lead_id).eq('user_id', user.id).single(),
+      supabase.from('lead_emails').select('*').eq('lead_id', validation.data.lead_id).eq('user_id', user.id).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('*').eq('lead_id', validation.data.lead_id).eq('user_id', user.id).order('occurred_at', { ascending: true }),
     ])
 
     if (leadRes.error || !leadRes.data) {
@@ -273,6 +274,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .select('*')
       .eq('id', validation.data.lead_id)
+      .eq('user_id', user.id)
       .single()
 
     return NextResponse.json({ interaction, lead: updatedLead, analysis })

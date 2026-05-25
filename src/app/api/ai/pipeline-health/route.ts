@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateJSON } from '@/lib/ai/anthropic'
+import { rateLimitResponse } from '@/lib/api/auth-guard'
 
 interface LeadRisk {
   lead_id: string
@@ -141,7 +142,7 @@ export async function GET(req: NextRequest) {
           risk_score: l.risk_score,
           risk_factors: l.risk_factors,
           risk_assessed_at: new Date().toISOString(),
-        }).eq('id', l.lead_id)
+        }).eq('id', l.lead_id).eq('user_id', user.id)
       )
     ).catch(() => {})
 
@@ -183,11 +184,17 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const limited = rateLimitResponse(user.id, 'ai:pipeline-health', {
+      limit: 10,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
 
     const { data: leads } = await supabase
       .from('leads')
       .select('id, contact_name, company_name, stage, risk_score, risk_factors, conversation_summary, total_emails_in, total_emails_out, last_contacted_at')
       .in('id', leadIds.slice(0, 10))
+      .eq('user_id', user.id)
 
     if (!leads?.length) return NextResponse.json({ recommendations: [] })
 

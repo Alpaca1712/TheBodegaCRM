@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { z } from 'zod'
+import { rateLimitResponse } from '@/lib/api/auth-guard'
 
 const requestSchema = z.object({
   leadId: z.string().uuid(),
@@ -44,6 +45,11 @@ export async function POST(request: NextRequest) {
     if (authError || !user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
+    const limited = rateLimitResponse(user.id, 'ai:extract-memories', {
+      limit: 20,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
 
     const body = await request.json()
     const validation = requestSchema.safeParse(body)
@@ -52,6 +58,14 @@ export async function POST(request: NextRequest) {
     }
 
     const { leadId, text, source, sourceId } = validation.data
+
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', leadId)
+      .eq('user_id', user.id)
+      .single()
+    if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
     const { data: profile } = await supabase
       .from('profiles')
@@ -114,6 +128,14 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'leadId required' }, { status: 400 })
     }
 
+    const { data: lead } = await supabase
+      .from('leads')
+      .select('id')
+      .eq('id', leadId)
+      .eq('user_id', user.id)
+      .single()
+    if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+
     const { data: memories, error } = await supabase
       .from('agent_memory')
       .select('*')
@@ -145,10 +167,21 @@ export async function DELETE(request: NextRequest) {
       return NextResponse.json({ error: 'id required' }, { status: 400 })
     }
 
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('active_org_id')
+      .eq('user_id', user.id)
+      .single()
+
+    if (!profile?.active_org_id) {
+      return NextResponse.json({ error: 'No active organization' }, { status: 403 })
+    }
+
     const { error } = await supabase
       .from('agent_memory')
       .delete()
       .eq('id', memoryId)
+      .eq('org_id', profile.active_org_id)
 
     if (error) {
       return NextResponse.json({ error: 'Failed to delete memory' }, { status: 500 })

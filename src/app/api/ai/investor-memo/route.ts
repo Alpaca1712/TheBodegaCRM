@@ -3,6 +3,7 @@ import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import type { InvestorMemo } from '@/types/leads'
+import { rateLimitResponse } from '@/lib/api/auth-guard'
 
 const requestSchema = z.object({
   leadId: z.string().uuid(),
@@ -50,6 +51,11 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const limited = rateLimitResponse(user.id, 'ai:investor-memo', {
+      limit: 10,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
 
     const { data: lead } = await supabase
       .from('leads')

@@ -42,6 +42,7 @@ export async function PATCH(
       .from('lead_emails')
       .update(validation.data)
       .eq('id', id)
+      .eq('user_id', user.id)
       .select()
       .single()
 

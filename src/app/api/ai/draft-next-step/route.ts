@@ -31,7 +31,7 @@ export async function POST(request: NextRequest) {
     // 1. Fetch lead and emails
     const [{ data: lead }, { data: emails }] = await Promise.all([
       supabase.from('leads').select('*').eq('id', leadId).eq('user_id', user.id).single(),
-      supabase.from('lead_emails').select('*').eq('lead_id', leadId).order('created_at', { ascending: false })
+      supabase.from('lead_emails').select('*').eq('lead_id', leadId).eq('user_id', user.id).order('created_at', { ascending: false })
     ])
 
     if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
@@ -119,6 +119,7 @@ export async function POST(request: NextRequest) {
       stage: 'email_drafted',
       updated_at: new Date().toISOString()
     }).eq('id', leadId)
+      .eq('user_id', user.id)
 
     if (updateError) throw updateError
 
