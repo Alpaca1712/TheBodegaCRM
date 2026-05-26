@@ -107,7 +107,9 @@ export async function GET(
       relatedLeads = related || []
     }
 
-    return NextResponse.json({ lead, emails: emails || [], interactions: interactions || [], relatedLeads })
+    const response = NextResponse.json({ lead, emails: emails || [], interactions: interactions || [], relatedLeads })
+    response.headers.set('Cache-Control', 'private, max-age=15, stale-while-revalidate=30')
+    return response
   } catch (error) {
     console.error('GET /api/leads/[id] error:', error)
     return NextResponse.json(

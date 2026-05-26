@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, use } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { toast } from 'sonner';
@@ -58,40 +59,32 @@ import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
-
-interface RelatedLead {
-  id: string;
-  contact_name: string;
-  contact_email: string | null;
-  contact_title: string | null;
-  contact_photo_url: string | null;
-  stage: string;
-  type: string;
-}
-
-interface AgentMemory {
-  id: string;
-  memory_type: string;
-  content: string;
-  source: string | null;
-  relevance_score: number;
-  created_at: string;
-}
+import {
+  leadDetailQueryKey,
+  leadMemoriesQueryKey,
+  useLeadDetail,
+  useLeadMemories,
+  type AgentMemory,
+  type LeadDetailResponse,
+  type RelatedLead,
+} from '@/hooks/use-lead-detail';
 
 type TabId = 'overview' | 'emails' | 'conversation' | 'company' | 'memory';
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
   const router = useRouter();
+  const queryClient = useQueryClient();
   const searchParams = useSearchParams();
   const urlTab = searchParams.get('tab');
   const urlFollowup = searchParams.get('followup');
+  const leadQuery = useLeadDetail(id);
+  const memoriesQuery = useLeadMemories(id);
   const [lead, setLead] = useState<Lead | null>(null);
   const [emails, setEmails] = useState<LeadEmail[]>([]);
   const [interactions, setInteractions] = useState<LeadInteraction[]>([]);
   const [relatedLeads, setRelatedLeads] = useState<RelatedLead[]>([]);
   const [memories, setMemories] = useState<AgentMemory[]>([]);
-  const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<TabId>(
     urlTab === 'emails' || urlTab === 'conversation' || urlTab === 'company' || urlTab === 'memory' ? urlTab : 'overview'
   );
@@ -107,39 +100,46 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [memo, setMemo] = useState<Record<string, unknown> | null>(null);
   const [orgChartLoading, setOrgChartLoading] = useState(false);
 
-  const fetchLead = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/leads/${id}`);
-      if (!res.ok) throw new Error('Not found');
-      const data = await res.json();
-      setLead(data.lead);
-      setEmails(data.emails || []);
-      setInteractions(data.interactions || []);
-      setRelatedLeads(data.relatedLeads || []);
-      if (data.lead?.account_snapshot) setSnapshot(data.lead.account_snapshot);
-      if (data.lead?.battle_card) setBattleCard(data.lead.battle_card);
-      if (data.lead?.investor_memo) setMemo(data.lead.investor_memo);
-    } catch {
+  const applyLeadDetail = useCallback((data: LeadDetailResponse) => {
+    setLead(data.lead);
+    setEmails(data.emails);
+    setInteractions(data.interactions);
+    setRelatedLeads(data.relatedLeads);
+    if (data.lead?.account_snapshot) setSnapshot(data.lead.account_snapshot as Record<string, unknown>);
+    if (data.lead?.battle_card) setBattleCard(data.lead.battle_card as unknown as Record<string, unknown>);
+    if (data.lead?.investor_memo) setMemo(data.lead.investor_memo as unknown as Record<string, unknown>);
+  }, []);
+
+  useEffect(() => {
+    if (leadQuery.data) applyLeadDetail(leadQuery.data);
+  }, [applyLeadDetail, leadQuery.data]);
+
+  useEffect(() => {
+    if (memoriesQuery.data) setMemories(memoriesQuery.data);
+  }, [memoriesQuery.data]);
+
+  useEffect(() => {
+    if (leadQuery.isError) {
       toast.error('Lead not found');
       router.push('/leads');
-    } finally {
-      setLoading(false);
     }
-  }, [id, router]);
+  }, [leadQuery.isError, router]);
+
+  useEffect(() => {
+    if (memoriesQuery.isError) toast.error('Failed to load memories');
+  }, [memoriesQuery.isError]);
+
+  const fetchLead = useCallback(async () => {
+    const result = await leadQuery.refetch();
+    if (result.data) applyLeadDetail(result.data);
+    return result.data;
+  }, [applyLeadDetail, leadQuery]);
 
   const fetchMemories = useCallback(async () => {
-    try {
-      const res = await fetch(`/api/ai/extract-memories?leadId=${id}`);
-      if (res.ok) {
-        const data = await res.json();
-        setMemories(data.memories || []);
-      }
-    } catch {
-      toast.error('Failed to load memories');
-    }
-  }, [id]);
-
-  useEffect(() => { fetchLead(); fetchMemories(); }, [fetchLead, fetchMemories]);
+    const result = await memoriesQuery.refetch();
+    if (result.data) setMemories(result.data);
+    return result.data;
+  }, [memoriesQuery]);
 
   const handleStageChange = async (newStage: PipelineStage) => {
     if (!lead) return;
@@ -152,6 +152,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       if (!res.ok) throw new Error('Failed');
       const updated = await res.json();
       setLead(updated);
+      queryClient.setQueryData(leadDetailQueryKey(id), (current: LeadDetailResponse | undefined) =>
+        current ? { ...current, lead: updated } : current
+      );
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+      queryClient.invalidateQueries({ queryKey: ['pipeline-health'] });
       toast.success(`Stage updated to ${STAGE_LABELS[newStage]}`);
     } catch {
       toast.error('Failed to update stage');
@@ -175,13 +181,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   const handleEmailSaved = async () => {
     try {
-      const emailRes = await fetch('/api/leads/' + id, { method: 'GET' });
-      if (emailRes.ok) {
-        const data = await emailRes.json();
-        setLead(data.lead);
-        setEmails(data.emails || []);
-        setInteractions(data.interactions || []);
-      }
+      await fetchLead();
     } catch {
       toast.error('Failed to refresh lead data');
     }
@@ -288,13 +288,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     try {
       await fetch(`/api/ai/extract-memories?id=${memoryId}`, { method: 'DELETE' });
       setMemories(prev => prev.filter(m => m.id !== memoryId));
+      queryClient.setQueryData(leadMemoriesQueryKey(id), (current: AgentMemory[] | undefined) =>
+        current?.filter(m => m.id !== memoryId) ?? []
+      );
       toast.success('Memory deleted');
     } catch {
       toast.error('Failed to delete');
     }
   };
 
-  if (loading) {
+  if (leadQuery.isLoading && !lead) {
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
