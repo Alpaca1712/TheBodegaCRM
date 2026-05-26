@@ -81,10 +81,15 @@ export default function SalesActionPlan({
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
-          <Target className="h-4 w-4 text-red-500" />
+          <Target className="h-4 w-4 text-red-500" aria-hidden="true" />
           Sales Action Plan
         </h2>
-        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Prioritized by AI</span>
+        <span
+          className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest cursor-help"
+          title="Ranked by lead score, engagement signals, and conversion probability"
+        >
+          Prioritized by AI
+        </span>
       </div>
 
       <div className="space-y-3">
@@ -100,12 +105,13 @@ export default function SalesActionPlan({
           return (
             <div
               key={action.id}
-              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
+              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 focus-within:border-red-200 dark:focus-within:border-red-900/40 focus-within:ring-1 focus-within:ring-red-500/10 transition-all"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div
                   className="mt-0.5 shrink-0"
                   title={`${action.category.replace('_', ' ')} action`}
+                  aria-hidden="true"
                 >
                   {CATEGORY_ICONS[action.category] || <AlertCircle className="h-4 w-4 text-zinc-400" />}
                 </div>
@@ -125,7 +131,7 @@ export default function SalesActionPlan({
                     <Link
                       href={`/leads/${action.leadId}`}
                       aria-label={`View details for ${action.leadName} from ${action.companyName}`}
-                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
+                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 focus-visible:text-red-600 dark:focus-visible:text-red-400 outline-none truncate"
                     >
                       {action.title}
                     </Link>
@@ -135,7 +141,7 @@ export default function SalesActionPlan({
                     {action.reason}
                   </p>
                   <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 transition-colors hover:border-zinc-200 dark:hover:border-zinc-700">
-                    <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                    <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" aria-hidden="true" />
                     <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 pr-8">{action.recommendedAction}</p>
                     <CopyButton
                       value={action.recommendedAction}
@@ -155,11 +161,12 @@ export default function SalesActionPlan({
                       onResearch(action.leadId, action.leadName, action.leadType);
                     }}
                     disabled={hasActiveAction}
+                    aria-busy={isLeadProcessing}
                     title="Run AI Research"
                     aria-label={isLeadProcessing ? `Researching ${action.leadName}` : `Run AI research for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2 outline-none"
                   >
-                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Sparkles className="h-3.5 w-3.5" aria-hidden="true" />}
                     {isLeadProcessing ? 'Researching...' : 'Research'}
                   </button>
                 )}
@@ -172,11 +179,12 @@ export default function SalesActionPlan({
                       onPrep(action.leadId, action.leadName);
                     }}
                     disabled={hasActiveAction}
+                    aria-busy={isLeadProcessing}
                     title="Generate Battle Card"
                     aria-label={isLeadProcessing ? `Preparing for ${action.leadName}` : `Generate battle card for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-purple-500 focus-visible:ring-offset-2 outline-none"
                   >
-                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <Swords className="h-3.5 w-3.5" aria-hidden="true" />}
                     {isLeadProcessing ? 'Prepping...' : 'Prep'}
                   </button>
                 )}
@@ -189,11 +197,12 @@ export default function SalesActionPlan({
                       onInvestorMemo(action.leadId, action.leadName);
                     }}
                     disabled={hasActiveAction}
+                    aria-busy={isLeadProcessing}
                     title="Generate Investor Memo"
                     aria-label={isLeadProcessing ? `Generating investor memo for ${action.leadName}` : `Generate investor memo for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 outline-none"
                   >
-                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+                    {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" /> : <FileText className="h-3.5 w-3.5" aria-hidden="true" />}
                     {isLeadProcessing ? 'Writing...' : 'Memo'}
                   </button>
                 )}
@@ -206,18 +215,19 @@ export default function SalesActionPlan({
                       onMagicDraft(action.leadId, action.leadName);
                     }}
                     disabled={hasActiveAction}
+                    aria-busy={isLeadProcessing}
                     title="Magic Draft"
                     aria-label={isLeadProcessing ? `Drafting next step for ${action.leadName}...` : `Magic draft next step for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center"
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center focus-visible:ring-2 focus-visible:ring-amber-500 focus-visible:ring-offset-2 outline-none"
                   >
                     {isLeadProcessing ? (
                       <>
-                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden="true" />
                         <span>Drafting...</span>
                       </>
                     ) : (
                       <>
-                        <Zap className="h-3.5 w-3.5 fill-current" />
+                        <Zap className="h-3.5 w-3.5 fill-current" aria-hidden="true" />
                         <span>Draft</span>
                       </>
                     )}
@@ -226,10 +236,10 @@ export default function SalesActionPlan({
 
                 <Link
                   href={action.ctaHref}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 outline-none"
                 >
                   {action.ctaLabel}
-                  <ArrowRight className="h-3.5 w-3.5" />
+                  <ArrowRight className="h-3.5 w-3.5" aria-hidden="true" />
                 </Link>
               </div>
             </div>
@@ -238,8 +248,8 @@ export default function SalesActionPlan({
       </div>
 
       <div className="mt-4 flex items-center justify-center">
-        <Link href="/follow-ups" className="text-[11px] font-semibold text-zinc-500 hover:text-red-600 transition-colors flex items-center gap-1">
-          View full action queue <ExternalLink className="h-3 w-3" />
+        <Link href="/follow-ups" className="text-[11px] font-semibold text-zinc-500 hover:text-red-600 transition-colors flex items-center gap-1 focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 outline-none rounded">
+          View full action queue <ExternalLink className="h-3 w-3" aria-hidden="true" />
         </Link>
       </div>
     </div>
