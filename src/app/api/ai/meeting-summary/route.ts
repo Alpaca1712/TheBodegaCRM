@@ -102,6 +102,21 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Failed to save meeting summary' }, { status: 500 })
     }
 
+    // Update lead with intelligence
+    try {
+      await supabase
+        .from('leads')
+        .update({
+          conversation_summary: summary.summary,
+          conversation_next_step: summary.next_steps?.[0] || null,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', leadId)
+        .eq('user_id', user.id)
+    } catch (updateErr) {
+      console.error('Lead intelligence update error:', updateErr)
+    }
+
     // Auto-extract memories from the meeting
     try {
       const memoryPrompt = `Extract memorable facts from this meeting summary:\n\nSummary: ${summary.summary}\nKey quotes: ${summary.key_quotes.join('; ')}\nObjections: ${summary.objections_raised.join('; ')}`
