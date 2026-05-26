@@ -17,3 +17,7 @@
 ## 2026-05-09 - Magic Draft & Outreach Centralization
 **Learning:** Found that fragmented outreach logic across multiple API routes hindered the ability to implement high-leverage background actions. Moving prompts and generation logic into a shared service enabled the "Magic Draft" feature, which significantly reduces the friction of moving leads through the pipeline.
 **Action:** Centralized all SMYKM and Hormozi outreach logic in `src/lib/ai/email-service.ts`. Implemented the `POST /api/ai/draft-next-step` API for automated, quality-gated background drafting. Surfaced "Magic Draft" (Zap icon) across the Outreach Command Center and Pipeline Health dashboard to tighten the GTM loop.
+
+## 2026-05-26 - Meeting Intelligence Sync & Dashboard Prioritization
+**Learning:** Found that meeting summaries and next steps were trapped in the interaction log, requiring manual copy-paste for recaps. Syncing AI-generated 'next steps' directly back to the lead record enables high-velocity post-meeting workflows.
+**Action:** Updated `meeting-summary` API to auto-sync intelligence to the `leads` table. Elevated `meeting-recap` action priority in the dashboard and enabled one-click "Magic Draft" (Zap icon) for leads in the `meeting_held` stage to bridge the "meeting to follow-up" gap.

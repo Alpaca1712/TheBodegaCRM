@@ -222,14 +222,14 @@ export function buildSalesActionPlan({
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
+        priority: 'critical',
         category: 'meeting',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
-        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        recommendedAction: lead.conversation_next_step || 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 1000 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
       continue
     }
