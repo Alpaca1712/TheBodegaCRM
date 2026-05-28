@@ -39,8 +39,27 @@ export async function POST(request: NextRequest) {
     // 2. Determine next step
     const followUpItem = computeFollowUp(lead as Lead, (emails || []) as LeadEmail[])
     if (!followUpItem) {
-      return NextResponse.json({ error: 'No immediate outreach step recommended' }, { status: 400 })
+      // Specialized check for meeting_held which might not be picked up by the follow-up engine
+      // if it's purely stage-based but has no outbound after.
+      if (lead.stage === 'meeting_held') {
+        const outboundEmails = (emails || []).filter(e => e.direction === 'outbound')
+        const lastOutbound = outboundEmails[0]
+        const lastOutboundDate = lastOutbound?.sent_at || lastOutbound?.created_at
+        const meetingDate = lead.last_contacted_at || lead.updated_at
+
+        // If we haven't sent anything since the meeting, it's a recap candidate
+        if (!lastOutboundDate || new Date(lastOutboundDate) <= new Date(meetingDate)) {
+          // Continue with post_meeting logic
+        } else {
+          return NextResponse.json({ error: 'Recap already sent or not needed' }, { status: 400 })
+        }
+      } else {
+        return NextResponse.json({ error: 'No immediate outreach step recommended' }, { status: 400 })
+      }
     }
+
+    const suggestedType = followUpItem?.suggestedType || (lead.stage === 'meeting_held' ? 'post_meeting' : null)
+    if (!suggestedType) return NextResponse.json({ error: 'Unknown outreach step' }, { status: 400 })
 
     // 3. Fetch agent memories
     const { data: memories } = await supabase
@@ -53,7 +72,7 @@ export async function POST(request: NextRequest) {
     // 4. Generate variants
     let bestVariant: { subject: string; body: string; ctaType?: string }
 
-    if (followUpItem.suggestedType === 'initial_outreach') {
+    if (suggestedType === 'initial_outreach') {
       const result = await generateInitialOutreach(lead as Lead, undefined, memories || [])
       // Pick the one with the higher quality score
       bestVariant = (result.mckenna.quality?.score || 0) >= (result.hormozi.quality?.score || 0)
@@ -67,17 +86,17 @@ export async function POST(request: NextRequest) {
       const outboundCount = (emails || []).filter(e => e.direction === 'outbound').length
 
       let followUpNumber = 1
-      if (followUpItem.suggestedType === 'follow_up_1') followUpNumber = 1
-      else if (followUpItem.suggestedType === 'follow_up_2') followUpNumber = 2
-      else if (followUpItem.suggestedType === 'follow_up_3') followUpNumber = 3
-      else if (followUpItem.suggestedType === 'break_up') followUpNumber = 4
+      if (suggestedType === 'follow_up_1') followUpNumber = 1
+      else if (suggestedType === 'follow_up_2') followUpNumber = 2
+      else if (suggestedType === 'follow_up_3') followUpNumber = 3
+      else if (suggestedType === 'break_up') followUpNumber = 4
       else followUpNumber = Math.max(1, outboundCount)
 
       // Draft next step needs a stable stage for generateFollowupOutreach
       const effectiveLead = {
         ...lead,
-        stage: followUpItem.suggestedType === 'reply_needed' ? 'replied' :
-               followUpItem.suggestedType === 'post_meeting' ? 'meeting_held' : lead.stage
+        stage: suggestedType === 'reply_needed' ? 'replied' :
+               suggestedType === 'post_meeting' ? 'meeting_held' : lead.stage
       }
 
       const result = await generateFollowupOutreach({
@@ -90,10 +109,10 @@ export async function POST(request: NextRequest) {
     }
 
     // 5. Save as draft
-    const emailType: EmailType = followUpItem.suggestedType === 'initial_outreach' ? 'initial'
-      : followUpItem.suggestedType === 'reply_needed' ? 'reply_response'
-      : followUpItem.suggestedType === 'post_meeting' ? 'reply_response'
-      : (followUpItem.suggestedType as EmailType)
+    const emailType: EmailType = suggestedType === 'initial_outreach' ? 'initial'
+      : suggestedType === 'reply_needed' ? 'reply_response'
+      : suggestedType === 'post_meeting' ? 'reply_response'
+      : (suggestedType as EmailType)
 
     const { data: profile } = await supabase
       .from('profiles')

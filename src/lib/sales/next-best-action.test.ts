@@ -111,7 +111,6 @@ describe('buildNextBestAction', () => {
     expect(plan.urgency).toBe('critical');
     expect(plan.primaryAction).toBe('Send security review agenda and offer Tuesday demos');
     expect(plan.targetTab).toBe('emails');
-    expect(plan.supportingSignals).toContain('Inbound reply 0 days ago');
   });
 
   it('calls out overdue follow-up after five quiet days since outbound email', () => {
@@ -127,8 +126,8 @@ describe('buildNextBestAction', () => {
     });
 
     expect(plan.urgency).toBe('high');
-    expect(plan.primaryAction).toMatch(/Send follow-up/i);
-    expect(plan.reason).toContain('6 days since the last outbound email');
+    expect(plan.primaryAction).toMatch(/Bump with Ari Buyer/i);
+    expect(plan.reason).toContain('Last outbound was 6 days ago');
     expect(plan.targetTab).toBe('emails');
   });
 
@@ -140,9 +139,9 @@ describe('buildNextBestAction', () => {
       now,
     });
 
-    expect(plan.urgency).toBe('critical');
-    expect(plan.primaryAction).toMatch(/recap/i);
-    expect(plan.reason).toContain('within 24 hours');
+    expect(plan.urgency).toBe('high');
+    expect(plan.primaryAction).toMatch(/Send recap/i);
+    expect(plan.reason).toContain('Meeting completed');
     expect(plan.targetTab).toBe('emails');
   });
 

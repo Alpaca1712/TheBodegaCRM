@@ -66,7 +66,7 @@ describe('buildSalesActionPlan', () => {
       priority: 'critical',
       category: 'reply',
       title: 'Reply to Riley Buyer',
-      ctaHref: '/leads/lead-replied',
+      ctaHref: '/leads/lead-replied?tab=emails',
     })
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
   })
@@ -183,10 +183,33 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
+    // Investor memo action should take precedence over meeting recap if it's an investor
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
       category: 'investor_memo',
       ctaLabel: 'Generate memo',
+    })
+  })
+
+  it('suggests meeting recaps for held meetings', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-recap',
+          stage: 'meeting_held',
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-recap',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
+      ctaHref: '/leads/lead-recap?tab=emails',
     })
   })
 
