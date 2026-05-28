@@ -6,7 +6,6 @@ import { Plus, BookOpen, Trash } from 'lucide-react';
 import type { AgentMemory } from '@/types/leads-detail';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 
 const typeColors: Record<string, string> = {
   preference: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
@@ -112,7 +111,7 @@ export function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories:
               </div>
               <button
                 onClick={() => onDelete(m.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all focus-visible:ring-2 focus-visible:ring-red-500/50 outline-none"
                 aria-label="Delete memory"
               >
                 <Trash className="h-3 w-3 text-red-400" />

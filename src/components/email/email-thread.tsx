@@ -69,7 +69,7 @@ export default function EmailThread({ emails }: EmailThreadProps) {
                 )}
               </div>
               <div className="flex items-center gap-2">
-                <div className="opacity-0 group-hover:opacity-100 transition-opacity">
+                <div className="opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity">
                   <CopyButton
                     value={fullText}
                     label="Email"

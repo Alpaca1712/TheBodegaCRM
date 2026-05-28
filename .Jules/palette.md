@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2026-05-28 - [A11y: Focus Visibility for Revealable Actions]
+**Learning:** Actions hidden by 'opacity-0' and revealed on 'group-hover' create "dead zones" for keyboard users. Adding 'focus:opacity-100' or 'focus-within:opacity-100' (on the wrapper) ensures these elements are visible when focused, maintaining feature parity for all users.
+**Action:** When using hover-to-reveal patterns, always pair with focus-based visibility and include 'focus-visible:ring' for clear visual affordance.

@@ -87,7 +87,13 @@ export function OrgChartTree({ members, companyName }: { members: OrgChartMember
                         <p className="text-[10px] text-zinc-400 truncate">{person.title}</p>
                       </div>
                       {person.linkedin_url && (
-                        <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={person.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus-visible:ring-2 focus-visible:ring-blue-500/50 outline-none rounded"
+                          aria-label={`View ${person.name}'s LinkedIn profile`}
+                        >
                           <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
                         </a>
                       )}
