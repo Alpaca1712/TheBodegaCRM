@@ -91,7 +91,7 @@ export default function SalesActionPlan({
         {actions.map((action) => {
           const isLeadProcessing = isProcessing === action.leadId;
           const hasActiveAction = !!isProcessing;
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+  const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';

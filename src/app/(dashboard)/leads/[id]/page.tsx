@@ -28,10 +28,12 @@ import {
   MapPin,
   Hash,
   Send,
+  Zap,
   Camera,
   GraduationCap,
   Sparkles,
   BookOpen,
+  FileText,
   Trash,
   RefreshCw,
   Globe,
@@ -80,6 +82,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const urlFollowup = searchParams.get('followup');
   const leadQuery = useLeadDetail(id);
   const memoriesQuery = useLeadMemories(id);
+  const [isProcessing, setIsProcessing] = useState<string | null>(null);
   const [lead, setLead] = useState<Lead | null>(null);
   const [emails, setEmails] = useState<LeadEmail[]>([]);
   const [interactions, setInteractions] = useState<LeadInteraction[]>([]);
@@ -295,6 +298,90 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } catch {
       toast.error('Failed to delete');
     }
+  };
+
+  const handleMagicDraft = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${contactName}...`,
+      success: `Draft ready for ${contactName}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
+  };
+
+  const handleResearch = async (leadId: string, contactName: string, leadType: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId, type: leadType }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${contactName}...`,
+      success: `Research complete for ${contactName}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
+  };
+
+  const handlePrep = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/battle-card', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Prep failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Prepping for meeting with ${contactName}...`,
+      success: `Battle card ready for ${contactName}`,
+      error: 'Prep failed',
+    });
+
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
+  };
+
+  const handleInvestorMemoAction = async (leadId: string, contactName: string) => {
+    setIsProcessing(leadId);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/investor-memo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId }),
+      });
+      if (!res.ok) throw new Error('Memo generation failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Generating memo for ${contactName}...`,
+      success: `Investor memo ready for ${contactName}`,
+      error: 'Memo generation failed',
+    });
+
+    promise.finally(() => setIsProcessing(null)).catch(() => undefined);
   };
 
   if (leadQuery.isLoading && !lead) {
@@ -528,7 +615,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Sidebar */}
         <div className="space-y-4">
           <ContactCard lead={lead} />
-          <NextBestActionCard plan={nextBestAction} onOpenTab={setActiveTab} />
+          <NextBestActionCard
+            plan={nextBestAction}
+            onOpenTab={setActiveTab}
+            isProcessing={isProcessing === lead.id}
+            onMagicDraft={() => handleMagicDraft(lead.id, lead.contact_name)}
+            onResearch={() => handleResearch(lead.id, lead.contact_name, lead.type)}
+            onPrep={() => handlePrep(lead.id, lead.contact_name)}
+            onInvestorMemo={() => handleInvestorMemoAction(lead.id, lead.contact_name)}
+          />
           <LogInteractionCard leadId={id} onLogged={fetchLead} />
           <DetailsCard lead={lead} />
           {(lead.total_emails_in > 0 || lead.total_emails_out > 0) && <EmailStatsCard lead={lead} />}
@@ -541,7 +636,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 }
 
 // --- Next Best Action Card ---
-function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onOpenTab: (tab: TabId) => void }) {
+function NextBestActionCard({
+  plan,
+  onOpenTab,
+  isProcessing,
+  onMagicDraft,
+  onResearch,
+  onPrep,
+  onInvestorMemo,
+}: {
+  plan: NextBestActionPlan;
+  onOpenTab: (tab: TabId) => void;
+  isProcessing?: boolean;
+  onMagicDraft?: () => void;
+  onResearch?: () => void;
+  onPrep?: () => void;
+  onInvestorMemo?: () => void;
+}) {
   const urgencyStyles: Record<NextBestActionPlan['urgency'], string> = {
     critical: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/60',
     high: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60',
@@ -579,14 +690,63 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
         </div>
       )}
       {plan.urgency !== 'none' && (
-        <button
-          type="button"
-          onClick={() => onOpenTab(plan.targetTab)}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
-        >
-          {ctaLabel}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
+        <div className="space-y-2">
+          {/* Background AI Actions */}
+          <div className="flex flex-wrap gap-2">
+            {plan.category === 'research' && onResearch && (
+              <button
+                onClick={onResearch}
+                disabled={isProcessing}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                {isProcessing ? 'Researching...' : 'Research'}
+              </button>
+            )}
+
+            {plan.category === 'meeting_prep' && onPrep && (
+              <button
+                onClick={onPrep}
+                disabled={isProcessing}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Swords className="h-3 w-3" />}
+                {isProcessing ? 'Prepping...' : 'Run Prep'}
+              </button>
+            )}
+
+            {plan.category === 'investor_memo' && onInvestorMemo && (
+              <button
+                onClick={onInvestorMemo}
+                disabled={isProcessing}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <FileText className="h-3 w-3" />}
+                {isProcessing ? 'Writing...' : 'Draft Memo'}
+              </button>
+            )}
+
+            {['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(plan.category || '') && onMagicDraft && (
+              <button
+                onClick={onMagicDraft}
+                disabled={isProcessing}
+                className="flex-1 inline-flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
+              >
+                {isProcessing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3 fill-current" />}
+                {isProcessing ? 'Drafting...' : 'Magic Draft'}
+              </button>
+            )}
+          </div>
+
+          <button
+            type="button"
+            onClick={() => onOpenTab(plan.targetTab)}
+            className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+          >
+            {ctaLabel}
+            <ArrowRight className="h-3.5 w-3.5" />
+          </button>
+        </div>
       )}
     </div>
   );
