@@ -202,7 +202,7 @@ export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: Le
                 : (lead.battle_card as BattleCard | null)?.our_angle;
               const needsResearch = lead.stage === 'researched' && !lead.smykm_hooks?.length;
               const showAction = needsResearch ||
-                ['researched', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'email_drafted'].includes(lead.stage) ||
+                ['researched', 'replied', 'follow_up', 'no_response', 'meeting_booked', 'meeting_held', 'email_drafted'].includes(lead.stage) ||
                 (lead.stage === 'email_sent' && daysSinceLastContact !== null && daysSinceLastContact >= 3);
               const isLeadProcessing = !!isProcessing[lead.id];
 
