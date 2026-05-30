@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -223,7 +224,7 @@ export function buildSalesActionPlan({
         leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'high',
-        category: 'meeting',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
