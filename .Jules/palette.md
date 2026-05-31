@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2025-05-22 - [Reusable Pattern: Accessible Modal Focus Management]
+**Learning:** For modals and dialogs, simply showing the element is not enough for accessibility. Implementing a manual focus trap (Tab/Shift+Tab) and focus restoration (returning focus to the previous element on close) ensures keyboard users maintain their context and don't get lost in the background DOM.
+**Action:** Always implement focus trapping and restoration for custom dialogs using 'useRef' and 'useEffect' listeners if a robust UI library like Radix is not being used.

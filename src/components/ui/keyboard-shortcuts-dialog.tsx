@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 const shortcutGroups = [
@@ -30,24 +30,78 @@ const shortcutGroups = [
 
 export default function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false)
+  const dialogRef = useRef<HTMLDivElement>(null)
+  const lastFocusRef = useRef<HTMLElement | null>(null)
 
   useEffect(() => {
-    const handler = () => setOpen(true)
+    const handler = () => setOpen((prev) => !prev)
     document.addEventListener('show-keyboard-shortcuts', handler)
     return () => document.removeEventListener('show-keyboard-shortcuts', handler)
   }, [])
 
+  useEffect(() => {
+    if (!open) {
+      if (lastFocusRef.current) {
+        lastFocusRef.current.focus()
+        lastFocusRef.current = null
+      }
+      return
+    }
+
+    lastFocusRef.current = document.activeElement as HTMLElement
+    document.body.style.overflow = 'hidden'
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setOpen(false)
+      if (e.key === 'Tab') {
+        const focusable = dialogRef.current?.querySelectorAll(
+          'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])'
+        )
+        if (!focusable || focusable.length === 0) return
+        const first = focusable[0] as HTMLElement
+        const last = focusable[focusable.length - 1] as HTMLElement
+
+        if (e.shiftKey && document.activeElement === first) {
+          e.preventDefault()
+          last.focus()
+        } else if (!e.shiftKey && document.activeElement === last) {
+          e.preventDefault()
+          first.focus()
+        }
+      }
+    }
+
+    document.addEventListener('keydown', handleKeyDown)
+    // Small delay to ensure the dialog is rendered before focusing
+    const focusTimer = setTimeout(() => {
+      const firstFocusable = dialogRef.current?.querySelector('button')
+      firstFocusable?.focus()
+    }, 50)
+
+    return () => {
+      document.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+      clearTimeout(focusTimer)
+    }
+  }, [open])
+
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+    <div
+      ref={dialogRef}
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 animate-fade-in"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-title"
+    >
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden">
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
+          <h2 id="shortcuts-title" className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
           <button
             onClick={() => setOpen(false)}
-            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
+            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 transition-colors"
             aria-label="Close shortcuts"
           >
             <X size={16} />
