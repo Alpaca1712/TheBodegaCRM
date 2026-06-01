@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2025-05-22 - [Reusable Pattern: WAI-ARIA Tab Navigation]
+**Learning:** Standard buttons for tab switching are insufficient for screen readers and power users. Implementing the WAI-ARIA tab pattern (roles, aria-selected, aria-controls) combined with Arrow key navigation provides a superior, accessible, and predictable experience.
+**Action:** When implementing tabbed interfaces, use the full WAI-ARIA pattern and manage focus programmatically during keyboard navigation to ensure a "native" feel.
