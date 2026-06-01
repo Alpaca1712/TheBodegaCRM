@@ -450,12 +450,30 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
-        {tabs.map((tab) => (
+      <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700" role="tablist" aria-label="Lead details">
+        {tabs.map((tab, idx) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${
+            onKeyDown={(e) => {
+              if (e.key === 'ArrowLeft') {
+                e.preventDefault();
+                const prevIdx = (idx - 1 + tabs.length) % tabs.length;
+                setActiveTab(tabs[prevIdx].id);
+                (document.getElementById(`tab-${tabs[prevIdx].id}`) as HTMLElement)?.focus();
+              } else if (e.key === 'ArrowRight') {
+                e.preventDefault();
+                const nextIdx = (idx + 1) % tabs.length;
+                setActiveTab(tabs[nextIdx].id);
+                (document.getElementById(`tab-${tabs[nextIdx].id}`) as HTMLElement)?.focus();
+              }
+            }}
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:text-red-600 dark:focus-visible:text-red-400 ${
               activeTab === tab.id
                 ? 'border-red-600 text-red-600 dark:text-red-400'
                 : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
@@ -483,16 +501,26 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           )}
 
           {/* Tab Content */}
-          {activeTab === 'overview' && (
+          <div
+            id="panel-overview"
+            role="tabpanel"
+            aria-labelledby="tab-overview"
+            className={activeTab === 'overview' ? 'block' : 'hidden'}
+          >
             <div className="space-y-4">
               {lead.conversation_summary && <EnhancedAISummary lead={lead} onRefresh={fetchLead} />}
               {memo && <MemoPanel memo={memo} />}
               {battleCard && <BattleCardPanel card={battleCard} />}
               <ResearchSection lead={lead} />
             </div>
-          )}
+          </div>
 
-          {activeTab === 'emails' && (
+          <div
+            id="panel-emails"
+            role="tabpanel"
+            aria-labelledby="tab-emails"
+            className={activeTab === 'emails' ? 'block' : 'hidden'}
+          >
             <div className="space-y-5">
               <EmailGenerator
                 lead={lead}
@@ -502,13 +530,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               />
               <EmailThread emails={emails} />
             </div>
-          )}
+          </div>
 
-          {activeTab === 'conversation' && (
+          <div
+            id="panel-conversation"
+            role="tabpanel"
+            aria-labelledby="tab-conversation"
+            className={activeTab === 'conversation' ? 'block' : 'hidden'}
+          >
             <ConversationIntel lead={lead} emails={emails} interactions={interactions} onRefresh={fetchLead} />
-          )}
+          </div>
 
-          {activeTab === 'company' && (
+          <div
+            id="panel-company"
+            role="tabpanel"
+            aria-labelledby="tab-company"
+            className={activeTab === 'company' ? 'block' : 'hidden'}
+          >
             <div className="space-y-5">
               <CompanyTab
                 lead={lead}
@@ -518,11 +556,16 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               />
               {battleCard && <BattleCardPanel card={battleCard} />}
             </div>
-          )}
+          </div>
 
-          {activeTab === 'memory' && (
+          <div
+            id="panel-memory"
+            role="tabpanel"
+            aria-labelledby="tab-memory"
+            className={activeTab === 'memory' ? 'block' : 'hidden'}
+          >
             <MemoryTab memories={memories} onDelete={deleteMemory} leadId={id} onRefresh={fetchMemories} />
-          )}
+          </div>
         </div>
 
         {/* Sidebar */}
@@ -797,7 +840,7 @@ function MemoryTab({ memories, onDelete, leadId, onRefresh }: { memories: AgentM
               </div>
               <button
                 onClick={() => onDelete(m.id)}
-                className="opacity-0 group-hover:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all"
+                className="opacity-0 group-hover:opacity-100 focus:opacity-100 p-1 rounded hover:bg-red-50 dark:hover:bg-red-950/30 transition-all focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                 aria-label="Delete memory"
               >
                 <Trash className="h-3 w-3 text-red-400" />
@@ -1724,7 +1767,9 @@ function OrgChartTree({ members, companyName }: { members: OrgChartMember[]; com
             <div key={dept}>
               <button
                 onClick={() => toggleDept(dept)}
-                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors"
+                aria-expanded={isExpanded}
+                aria-label={`${isExpanded ? 'Collapse' : 'Expand'} ${dept} department`}
+                className="w-full flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-zinc-50 dark:hover:bg-zinc-800 transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
               >
                 {isExpanded ? <ChevronDown className="h-3.5 w-3.5 text-zinc-400" /> : <ChevronRight className="h-3.5 w-3.5 text-zinc-400" />}
                 <span className={`text-[10px] font-semibold px-1.5 py-0.5 rounded ${deptColors[dept] || deptColors.Other}`}>{dept}</span>
@@ -1753,7 +1798,13 @@ function OrgChartTree({ members, companyName }: { members: OrgChartMember[]; com
                         <p className="text-[10px] text-zinc-400 truncate">{person.title}</p>
                       </div>
                       {person.linkedin_url && (
-                        <a href={person.linkedin_url} target="_blank" rel="noopener noreferrer" className="opacity-0 group-hover:opacity-100 transition-opacity">
+                        <a
+                          href={person.linkedin_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="opacity-0 group-hover:opacity-100 focus:opacity-100 transition-opacity focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20 rounded-sm"
+                          aria-label={`LinkedIn Profile for ${person.name}`}
+                        >
                           <Linkedin className="h-3.5 w-3.5 text-[#0A66C2]" />
                         </a>
                       )}
