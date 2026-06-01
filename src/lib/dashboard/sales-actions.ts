@@ -28,7 +28,7 @@ export interface SalesAction {
   score: number
 }
 
-type ActionLead = Pick<
+export type ActionLead = Pick<
   Lead,
   | 'id'
   | 'contact_name'
@@ -49,7 +49,7 @@ type ActionLead = Pick<
   | 'total_emails_out'
 >
 
-type ActionEmail = {
+export type ActionEmail = {
   lead_id: string
   direction?: string | null
   created_at: string
@@ -73,258 +73,23 @@ export function buildSalesActionPlan({
   inboundEmails,
   now = new Date(),
 }: SalesActionPlanInput): SalesAction[] {
-  const outboundByLead = latestEmailByLead(outboundEmails)
-  const inboundByLead = latestEmailByLead(inboundEmails)
-  const outboundCountByLead = emailCountByLead(outboundEmails)
+  const outboundByLead = groupEmailsByLead(outboundEmails)
+  const inboundByLead = groupEmailsByLead(inboundEmails)
+
   const actions: SalesAction[] = []
 
   for (const lead of leads) {
-    const icp = lead.icp_score ?? 0
-    const latestInboundAt = mostRecentDate([lead.last_inbound_at, inboundByLead.get(lead.id)?.created_at])
-    const latestOutboundAt = mostRecentDate([
-      lead.last_outbound_at,
-      lead.last_contacted_at,
-      outboundByLead.get(lead.id)?.sent_at,
-      outboundByLead.get(lead.id)?.created_at,
-    ])
-    const daysSinceInbound = daysSince(latestInboundAt, now)
-    const daysSinceOutbound = daysSince(latestOutboundAt, now)
+    const leadOutbound = outboundByLead.get(lead.id) || []
+    const leadInbound = inboundByLead.get(lead.id) || []
 
-    if (lead.stage === 'replied') {
-      actions.push({
-        id: `${lead.id}:reply`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'critical',
-        category: 'reply',
-        title: `Reply to ${lead.contact_name}`,
-        reason: latestInboundAt
-          ? `${lead.company_name} replied ${formatDaysAgo(daysSinceInbound)}.`
-          : `${lead.company_name} is waiting on your response.`,
-        recommendedAction: lead.conversation_next_step || 'Send a thoughtful ACA reply and lock the next step.',
-        ctaLabel: 'Open thread',
-        ctaHref: `/leads/${lead.id}`,
-        score: 1_200 + icp + recencyBoost(daysSinceInbound),
-      })
-      continue
-    }
+    const leadActions = getLeadActions({
+      lead,
+      outboundEmails: leadOutbound,
+      inboundEmails: leadInbound,
+      now,
+    })
 
-    if (lead.stage === 'email_drafted') {
-      actions.push({
-        id: `${lead.id}:review`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'critical',
-        category: 'review',
-        title: `Review draft for ${lead.contact_name}`,
-        reason: 'A personalized draft is ready for review.',
-        recommendedAction: 'Review the AI draft, refine the SMYKM hook, and send to advance the pipeline.',
-        ctaLabel: 'Review',
-        ctaHref: `/leads/${lead.id}?tab=emails`,
-        score: 1_100 + icp,
-      })
-      continue
-    }
-
-    if (lead.stage === 'meeting_booked') {
-      const hasBattleCard = !!lead.battle_card
-
-      if (!hasBattleCard) {
-        actions.push({
-          id: `${lead.id}:meeting-prep`,
-          leadId: lead.id,
-          leadName: lead.contact_name,
-          leadType: lead.type,
-          leadStage: lead.stage,
-          companyName: lead.company_name,
-          priority: 'critical',
-          category: 'meeting_prep',
-          title: `Prep meeting with ${lead.contact_name}`,
-          reason: `Need battle card for ${lead.company_name} meeting.`,
-          recommendedAction: 'Generate a battle card to identify attack surface, pitch angles, and objections.',
-          ctaLabel: 'Run Prep',
-          ctaHref: `/leads/${lead.id}`,
-          score: 950 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-        })
-        continue
-      }
-
-      if (lead.type === 'investor' && !lead.investor_memo) {
-        actions.push({
-          id: `${lead.id}:investor-memo`,
-          leadId: lead.id,
-          leadName: lead.contact_name,
-          leadType: lead.type,
-          leadStage: lead.stage,
-          companyName: lead.company_name,
-          priority: 'high',
-          category: 'investor_memo',
-          title: `Generate memo for ${lead.contact_name}`,
-          reason: `${lead.company_name} meeting is booked but lacks a personalized memo.`,
-          recommendedAction: 'Create an Amazon-style one-page memo to share with the investor.',
-          ctaLabel: 'Generate memo',
-          ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-        })
-        continue
-      }
-
-      actions.push({
-        id: `${lead.id}:meeting`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
-        title: `Review prep for ${lead.contact_name}`,
-        reason: `${lead.company_name} meeting is booked.`,
-        recommendedAction: 'Review battle card, SMYKM hooks, and objection handlers before the call.',
-        ctaLabel: 'Prep deal',
-        ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-      })
-      continue
-    }
-
-    if (lead.stage === 'meeting_held') {
-      if (lead.type === 'investor' && !lead.investor_memo) {
-        actions.push({
-          id: `${lead.id}:investor-memo`,
-          leadId: lead.id,
-          leadName: lead.contact_name,
-          leadType: lead.type,
-          leadStage: lead.stage,
-          companyName: lead.company_name,
-          priority: 'high',
-          category: 'investor_memo',
-          title: `Draft memo for ${lead.contact_name}`,
-          reason: `${lead.company_name} meeting is complete and needs a tailored investor memo.`,
-          recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
-          ctaLabel: 'Generate memo',
-          ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-        })
-        continue
-      }
-
-      actions.push({
-        id: `${lead.id}:meeting-recap`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
-        title: `Send recap to ${lead.contact_name}`,
-        reason: `Meeting completed with ${lead.company_name}.`,
-        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Send recap',
-        ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-      })
-      continue
-    }
-
-    if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
-      actions.push({
-        id: `${lead.id}:investor-memo`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: icp >= 80 ? 'high' : 'medium',
-        category: 'investor_memo',
-        title: `Generate memo for ${lead.contact_name}`,
-        reason: `${lead.contact_name} is an investor lead missing a personalized memo.`,
-        recommendedAction: 'Create an Amazon-style one-pager to drop in the next follow-up.',
-        ctaLabel: 'Generate memo',
-        ctaHref: `/leads/${lead.id}`,
-        score: 840 + icp,
-      })
-    }
-
-    const needsFollowUp = ['email_sent', 'follow_up', 'no_response'].includes(lead.stage)
-      && (daysSinceOutbound === null || daysSinceOutbound >= 3)
-
-    if (needsFollowUp) {
-      const outboundCount = lead.total_emails_out ?? outboundCountByLead.get(lead.id) ?? 0
-      const followUp = followUpPlay(outboundCount)
-
-      actions.push({
-        id: `${lead.id}:follow-up`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
-        category: 'follow_up',
-        title: `${followUp.label} with ${lead.contact_name}`,
-        reason: daysSinceOutbound === null
-          ? `${lead.company_name} has no recorded recent outbound touch.`
-          : `Last outbound was ${formatDaysAgo(daysSinceOutbound)}.`,
-        recommendedAction: followUp.recommendedAction,
-        ctaLabel: followUp.label,
-        ctaHref: `/leads/${lead.id}`,
-        score: 820 + icp + Math.min(daysSinceOutbound ?? 6, 10) * 12,
-      })
-      continue
-    }
-
-    if (lead.stage === 'researched') {
-      const hasResearch = !!lead.company_description && !!lead.smykm_hooks && lead.smykm_hooks.length > 0
-      const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
-        if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
-        const detectedAt = new Date(signal.detected_at)
-        return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
-      })
-
-      if (!hasResearch) {
-        actions.push({
-          id: `${lead.id}:research`,
-          leadId: lead.id,
-          leadName: lead.contact_name,
-          leadType: lead.type,
-          leadStage: lead.stage,
-          companyName: lead.company_name,
-          priority: icp >= 80 ? 'high' : 'medium',
-          category: 'research',
-          title: `Research ${lead.contact_name}`,
-          reason: `${lead.company_name} needs deep SMYKM hooks or company context.`,
-          recommendedAction: 'Run AI research to find personal details and attack surface notes.',
-          ctaLabel: 'Run Research',
-          ctaHref: `/leads/${lead.id}`,
-          score: 850 + icp,
-        })
-      } else if (icp >= 75) {
-        actions.push({
-          id: `${lead.id}:prospecting`,
-          leadId: lead.id,
-          leadName: lead.contact_name,
-          leadType: lead.type,
-          leadStage: lead.stage,
-          companyName: lead.company_name,
-          priority: hasPositiveSignal || icp >= 90 ? 'high' : 'medium',
-          category: 'prospecting',
-          title: `Draft outreach to ${lead.contact_name}`,
-          reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
-          recommendedAction: 'Create a personalized SMYKM opener using the strongest research hook.',
-          ctaLabel: 'Draft email',
-          ctaHref: `/leads/${lead.id}`,
-          score: 650 + icp + (hasPositiveSignal ? 100 : 0),
-        })
-      }
-    }
+    actions.push(...leadActions)
   }
 
   const uniqueActions = new Map<string, SalesAction>()
@@ -340,21 +105,298 @@ export function buildSalesActionPlan({
     .slice(0, ACTION_LIMIT)
 }
 
-function latestEmailByLead(emails: ActionEmail[]) {
-  const map = new Map<string, ActionEmail>()
-  for (const email of emails) {
-    const current = map.get(email.lead_id)
-    if (!current || new Date(email.created_at).getTime() > new Date(current.created_at).getTime()) {
-      map.set(email.lead_id, email)
-    }
-  }
-  return map
+/**
+ * Returns the single best action for a lead, or null if no action is needed.
+ */
+export function getLeadBestAction(input: {
+  lead: ActionLead
+  outboundEmails: ActionEmail[]
+  inboundEmails: ActionEmail[]
+  now?: Date
+}): SalesAction | null {
+  const actions = getLeadActions(input)
+  if (actions.length === 0) return null
+
+  return actions.sort((a, b) => b.score - a.score)[0]
 }
 
-function emailCountByLead(emails: ActionEmail[]) {
-  const map = new Map<string, number>()
+/**
+ * Returns all possible actions for a lead.
+ */
+export function getLeadActions({
+  lead,
+  outboundEmails,
+  inboundEmails,
+  now = new Date(),
+}: {
+  lead: ActionLead
+  outboundEmails: ActionEmail[]
+  inboundEmails: ActionEmail[]
+  now?: Date
+}): SalesAction[] {
+  const icp = lead.icp_score ?? 0
+  const latestInboundAt = mostRecentDate([
+    lead.last_inbound_at,
+    ...inboundEmails.map(e => e.created_at)
+  ])
+  const latestOutboundAt = mostRecentDate([
+    lead.last_outbound_at,
+    lead.last_contacted_at,
+    ...outboundEmails.map(e => e.sent_at || e.created_at),
+  ])
+  const daysSinceInbound = daysSince(latestInboundAt, now)
+  const daysSinceOutbound = daysSince(latestOutboundAt, now)
+  const actions: SalesAction[] = []
+
+  if (['closed_won', 'closed_lost'].includes(lead.stage)) {
+    return []
+  }
+
+  if (lead.stage === 'replied') {
+    actions.push({
+      id: `${lead.id}:reply`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: 'critical',
+      category: 'reply',
+      title: `Reply to ${lead.contact_name}`,
+      reason: latestInboundAt
+        ? `${lead.company_name} replied ${formatDaysAgo(daysSinceInbound)}.`
+        : `${lead.company_name} is waiting on your response.`,
+      recommendedAction: lead.conversation_next_step || 'Send a thoughtful ACA reply and lock the next step.',
+      ctaLabel: 'Open thread',
+      ctaHref: `/leads/${lead.id}?tab=emails`,
+      score: 1_200 + icp + recencyBoost(daysSinceInbound),
+    })
+    return actions
+  }
+
+  if (lead.stage === 'email_drafted') {
+    actions.push({
+      id: `${lead.id}:review`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: 'critical',
+      category: 'review',
+      title: `Review draft for ${lead.contact_name}`,
+      reason: 'A personalized draft is ready for review.',
+      recommendedAction: 'Review the AI draft, refine the SMYKM hook, and send to advance the pipeline.',
+      ctaLabel: 'Review',
+      ctaHref: `/leads/${lead.id}?tab=emails`,
+      score: 1_100 + icp,
+    })
+    return actions
+  }
+
+  if (lead.stage === 'meeting_booked') {
+    const hasBattleCard = !!lead.battle_card
+
+    if (!hasBattleCard) {
+      actions.push({
+        id: `${lead.id}:meeting-prep`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'critical',
+        category: 'meeting_prep',
+        title: `Prep meeting with ${lead.contact_name}`,
+        reason: `Need battle card for ${lead.company_name} meeting.`,
+        recommendedAction: 'Generate a battle card to identify attack surface, pitch angles, and objections.',
+        ctaLabel: 'Run Prep',
+        ctaHref: `/leads/${lead.id}`,
+        score: 950 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      })
+      return actions
+    }
+
+    if (lead.type === 'investor' && !lead.investor_memo) {
+      actions.push({
+        id: `${lead.id}:investor-memo`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'high',
+        category: 'investor_memo',
+        title: `Generate memo for ${lead.contact_name}`,
+        reason: `${lead.company_name} meeting is booked but lacks a personalized memo.`,
+        recommendedAction: 'Create an Amazon-style one-page memo to share with the investor.',
+        ctaLabel: 'Generate memo',
+        ctaHref: `/leads/${lead.id}`,
+        score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      })
+      return actions
+    }
+
+    actions.push({
+      id: `${lead.id}:meeting`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: 'high',
+      category: 'meeting',
+      title: `Review prep for ${lead.contact_name}`,
+      reason: `${lead.company_name} meeting is booked.`,
+      recommendedAction: 'Review battle card, SMYKM hooks, and objection handlers before the call.',
+      ctaLabel: 'Prep deal',
+      ctaHref: `/leads/${lead.id}`,
+      score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+    })
+    return actions
+  }
+
+  if (lead.stage === 'meeting_held') {
+    if (lead.type === 'investor' && !lead.investor_memo) {
+      actions.push({
+        id: `${lead.id}:investor-memo`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: 'high',
+        category: 'investor_memo',
+        title: `Draft memo for ${lead.contact_name}`,
+        reason: `${lead.company_name} meeting is complete and needs a tailored investor memo.`,
+        recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
+        ctaLabel: 'Generate memo',
+        ctaHref: `/leads/${lead.id}`,
+        score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      })
+      return actions
+    }
+
+    actions.push({
+      id: `${lead.id}:meeting-recap`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: 'high',
+      category: 'meeting',
+      title: `Send recap to ${lead.contact_name}`,
+      reason: `Meeting completed with ${lead.company_name}.`,
+      recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+      ctaLabel: 'Send recap',
+      ctaHref: `/leads/${lead.id}?tab=emails`,
+      score: 920 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+    })
+    return actions
+  }
+
+  if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
+    actions.push({
+      id: `${lead.id}:investor-memo`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: icp >= 80 ? 'high' : 'medium',
+      category: 'investor_memo',
+      title: `Generate memo for ${lead.contact_name}`,
+      reason: `${lead.contact_name} is an investor lead missing a personalized memo.`,
+      recommendedAction: 'Create an Amazon-style one-pager to drop in the next follow-up.',
+      ctaLabel: 'Generate memo',
+      ctaHref: `/leads/${lead.id}`,
+      score: 840 + icp,
+    })
+  }
+
+  const needsFollowUp = ['email_sent', 'follow_up', 'no_response'].includes(lead.stage)
+    && (daysSinceOutbound === null || daysSinceOutbound >= 3)
+
+  if (needsFollowUp) {
+    const outboundCount = lead.total_emails_out ?? outboundEmails.length ?? 0
+    const followUp = followUpPlay(outboundCount)
+
+    actions.push({
+      id: `${lead.id}:follow-up`,
+      leadId: lead.id,
+      leadName: lead.contact_name,
+      leadType: lead.type,
+      leadStage: lead.stage,
+      companyName: lead.company_name,
+      priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
+      category: 'follow_up',
+      title: `${followUp.label} with ${lead.contact_name}`,
+      reason: daysSinceOutbound === null
+        ? `${lead.company_name} has no recorded recent outbound touch.`
+        : `Last outbound was ${formatDaysAgo(daysSinceOutbound)}.`,
+      recommendedAction: followUp.recommendedAction,
+      ctaLabel: followUp.label,
+      ctaHref: `/leads/${lead.id}?tab=emails`,
+      score: 820 + icp + Math.min(daysSinceOutbound ?? 6, 10) * 12,
+    })
+  }
+
+  if (lead.stage === 'researched') {
+    const hasResearch = !!lead.company_description && !!lead.smykm_hooks && lead.smykm_hooks.length > 0
+    const hasPositiveSignal = lead.conversation_signals?.some((signal) => {
+      if (!['positive', 'action_needed', 'upsell_opportunity'].includes(signal.type)) return false
+      const detectedAt = new Date(signal.detected_at)
+      return Number.isFinite(detectedAt.getTime()) && now.getTime() - detectedAt.getTime() <= 7 * DAY_MS
+    })
+
+    if (!hasResearch) {
+      actions.push({
+        id: `${lead.id}:research`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: icp >= 80 ? 'high' : 'medium',
+        category: 'research',
+        title: `Research ${lead.contact_name}`,
+        reason: `${lead.company_name} needs deep SMYKM hooks or company context.`,
+        recommendedAction: 'Run AI research to find personal details and attack surface notes.',
+        ctaLabel: 'Run Research',
+        ctaHref: `/leads/${lead.id}`,
+        score: 850 + icp,
+      })
+    } else if (icp >= 75) {
+      actions.push({
+        id: `${lead.id}:prospecting`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: hasPositiveSignal || icp >= 90 ? 'high' : 'medium',
+        category: 'prospecting',
+        title: `Draft outreach to ${lead.contact_name}`,
+        reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
+        recommendedAction: 'Create a personalized SMYKM opener using the strongest research hook.',
+        ctaLabel: 'Draft email',
+        ctaHref: `/leads/${lead.id}?tab=emails`,
+        score: 650 + icp + (hasPositiveSignal ? 100 : 0),
+      })
+    }
+  }
+
+  return actions
+}
+
+function groupEmailsByLead(emails: ActionEmail[]) {
+  const map = new Map<string, ActionEmail[]>()
   for (const email of emails) {
-    map.set(email.lead_id, (map.get(email.lead_id) ?? 0) + 1)
+    if (!map.has(email.lead_id)) {
+      map.set(email.lead_id, [])
+    }
+    map.get(email.lead_id)!.push(email)
   }
   return map
 }
