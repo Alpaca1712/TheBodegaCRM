@@ -48,13 +48,17 @@ export async function GET(request: NextRequest) {
     const stage = url.searchParams.get('stage')
     const priority = url.searchParams.get('priority')
     const search = url.searchParams.get('search')
+    const view = url.searchParams.get('view')
     const parsedLimit = parseInt(url.searchParams.get('limit') || '50')
     const limit = Math.min(Math.max(isNaN(parsedLimit) ? 50 : parsedLimit, 1), 200)
     const offset = parseInt(url.searchParams.get('offset') || '0')
+    const selectColumns = view === 'pipeline'
+      ? 'id,type,company_name,contact_name,stage,priority,last_contacted_at,smykm_hooks,conversation_next_step,battle_card,updated_at'
+      : '*'
 
     let query = supabase
       .from('leads')
-      .select('*', { count: 'exact' })
+      .select(selectColumns, { count: 'exact' })
       .eq('user_id', user.id)
       .order('updated_at', { ascending: false })
 

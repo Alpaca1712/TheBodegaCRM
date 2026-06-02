@@ -1,48 +1,34 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useMemo, useState } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { Loader2, Target, Users, Crosshair, Handshake } from 'lucide-react';
 import LeadPipelineBoard from '@/components/leads/lead-pipeline-board';
-import { toast } from 'sonner';
-import type { Lead, LeadType, PipelineStage } from '@/types/leads';
+import type { LeadType, PipelineStage } from '@/types/leads';
+import { type LeadsResponse, useLeads } from '@/hooks/use-leads';
+
+const PIPELINE_PAGE_SIZE = 200;
 
 export default function PipelinePage() {
-  const [leads, setLeads] = useState<Lead[]>([]);
-  const [loading, setLoading] = useState(true);
+  const queryClient = useQueryClient();
   const [typeFilter, setTypeFilter] = useState<LeadType | ''>('');
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchLeads = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    const params = new URLSearchParams({ limit: '200' });
-    if (typeFilter) params.set('type', typeFilter);
-
-    try {
-      const res = await fetch(`/api/leads?${params}`);
-      if (res.ok) {
-        const data = await res.json();
-        setLeads(data.data || []);
-      } else {
-        throw new Error(`Failed to fetch pipeline data (${res.status})`);
-      }
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Failed to load pipeline';
-      setError(message);
-      toast.error(message);
-    } finally {
-      setLoading(false);
-    }
-  }, [typeFilter]);
-
-  useEffect(() => {
-    fetchLeads();
-  }, [fetchLeads]);
+  const pipelineFilters = useMemo(() => ({
+    type: typeFilter,
+    pageSize: PIPELINE_PAGE_SIZE,
+    view: 'pipeline' as const,
+  }), [typeFilter]);
+  const leadsQuery = useLeads(pipelineFilters);
+  const leads = leadsQuery.data?.data ?? [];
+  const loading = leadsQuery.isLoading && !leadsQuery.data;
+  const error = leadsQuery.error instanceof Error ? leadsQuery.error.message : null;
 
   const handleLeadUpdate = (leadId: string, newStage: PipelineStage) => {
-    setLeads((prev) =>
-      prev.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l))
-    );
+    queryClient.setQueryData<LeadsResponse>(['leads', pipelineFilters], (previous) => previous ? {
+      ...previous,
+      data: previous.data.map((l) => (l.id === leadId ? { ...l, stage: newStage } : l)),
+    } : previous);
+    queryClient.invalidateQueries({ queryKey: ['dashboard'] });
+    queryClient.invalidateQueries({ queryKey: ['pipeline-health'] });
   };
 
   return (
@@ -98,7 +84,7 @@ export default function PipelinePage() {
         <div className="flex flex-col items-center justify-center py-20 gap-3">
           <p className="text-sm text-red-500">{error}</p>
           <button
-            onClick={fetchLeads}
+            onClick={() => void leadsQuery.refetch()}
             className="px-4 py-2 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors"
           >
             Retry
@@ -109,7 +95,7 @@ export default function PipelinePage() {
           <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
         </div>
       ) : (
-        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} onRefresh={fetchLeads} />
+        <LeadPipelineBoard leads={leads} onLeadUpdate={handleLeadUpdate} onRefresh={() => void leadsQuery.refetch()} />
       )}
     </div>
   );

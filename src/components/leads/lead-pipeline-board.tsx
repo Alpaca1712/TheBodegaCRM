@@ -46,19 +46,29 @@ const stageColors: Record<PipelineStage, string> = {
   no_response: 'border-t-zinc-300',
 };
 
+export function groupLeadsByStage(leads: Lead[]) {
+  const grouped = PIPELINE_STAGES.reduce(
+    (acc, stage) => {
+      acc[stage] = [];
+      return acc;
+    },
+    {} as Record<PipelineStage, Lead[]>
+  );
+
+  for (const lead of leads) {
+    grouped[lead.stage].push(lead);
+  }
+
+  return grouped;
+}
+
 export default function LeadPipelineBoard({ leads, onLeadUpdate, onRefresh }: LeadPipelineBoardProps) {
   const router = useRouter();
   const [draggedLeadId, setDraggedLeadId] = useState<string | null>(null);
   const [dropTarget, setDropTarget] = useState<PipelineStage | null>(null);
   const [isProcessing, setIsProcessing] = useState<Record<string, boolean>>({});
 
-  const leadsByStage = useMemo(() => PIPELINE_STAGES.reduce(
-    (acc, stage) => {
-      acc[stage] = leads.filter((l) => l.stage === stage);
-      return acc;
-    },
-    {} as Record<PipelineStage, Lead[]>
-  ), [leads]);
+  const leadsByStage = useMemo(() => groupLeadsByStage(leads), [leads]);
 
   const handleDragStart = (leadId: string) => {
     setDraggedLeadId(leadId);

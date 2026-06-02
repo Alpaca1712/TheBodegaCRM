@@ -7,6 +7,7 @@ export interface LeadFilters {
   type?: LeadType | ''
   stage?: PipelineStage | ''
   search?: string
+  view?: 'pipeline'
   page?: number
   pageSize: number
 }
@@ -16,13 +17,14 @@ export interface LeadsResponse {
   count: number
 }
 
-export function buildLeadsQueryString({ type, stage, search, page = 0, pageSize }: LeadFilters) {
+export function buildLeadsQueryString({ type, stage, search, view, page = 0, pageSize }: LeadFilters) {
   const params = new URLSearchParams()
   const trimmedSearch = search?.trim()
 
   if (type) params.set('type', type)
   if (stage) params.set('stage', stage)
   if (trimmedSearch) params.set('search', trimmedSearch)
+  if (view) params.set('view', view)
   params.set('limit', String(pageSize))
   params.set('offset', String(Math.max(0, page) * pageSize))
 

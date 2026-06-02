@@ -22,6 +22,14 @@ describe('useLeads query helpers', () => {
     })).toBe('limit=25&offset=0')
   })
 
+  it('includes the pipeline view hint for lightweight kanban payloads', () => {
+    expect(buildLeadsQueryString({
+      type: 'investor',
+      view: 'pipeline',
+      pageSize: 200,
+    })).toBe('type=investor&view=pipeline&limit=200&offset=0')
+  })
+
   it('uses a short stale time so list navigation is cached without hiding fresh outreach changes', () => {
     expect(LEADS_QUERY_STALE_TIME_MS).toBe(15_000)
   })
