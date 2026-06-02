@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { buildSalesActionPlan } from './sales-actions'
+import { buildSalesActionPlan, getLeadBestAction } from './sales-actions'
 import { BattleCard, PipelineStage } from '@/types/leads'
 
 const battleCard: BattleCard = {
@@ -38,6 +38,62 @@ const baseLead = {
   investor_memo: null,
   total_emails_out: 0,
 }
+
+describe('getLeadBestAction', () => {
+  it('returns reply action for replied stage', () => {
+    const action = getLeadBestAction({
+      lead: { ...baseLead, stage: 'replied' },
+      latestInboundAt: new Date('2026-05-06T10:00:00Z'),
+      latestOutboundAt: null,
+      outboundCount: 0,
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(action).toMatchObject({
+      category: 'reply',
+      priority: 'critical',
+    })
+  })
+
+  it('returns review action for email_drafted stage', () => {
+    const action = getLeadBestAction({
+      lead: { ...baseLead, stage: 'email_drafted' },
+      latestInboundAt: null,
+      latestOutboundAt: null,
+      outboundCount: 0,
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(action).toMatchObject({
+      category: 'review',
+      priority: 'critical',
+    })
+  })
+
+  it('prioritizes meeting prep over meeting recap for booked meetings', () => {
+    const action = getLeadBestAction({
+      lead: { ...baseLead, stage: 'meeting_booked' },
+      latestInboundAt: null,
+      latestOutboundAt: null,
+      outboundCount: 0,
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(action?.category).toBe('meeting_prep')
+  })
+
+  it('returns null if no action is applicable', () => {
+    const action = getLeadBestAction({
+      lead: { ...baseLead, stage: 'closed_won' },
+      latestInboundAt: null,
+      latestOutboundAt: null,
+      outboundCount: 0,
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(action).toBeNull()
+  })
+})
 
 describe('buildSalesActionPlan', () => {
   it('prioritizes replied leads with explicit conversation next steps', () => {
