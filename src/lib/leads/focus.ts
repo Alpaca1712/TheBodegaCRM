@@ -1,5 +1,6 @@
 import type { Lead } from '@/types/leads';
 import { STAGE_LABELS, STAGE_NEXT_ACTIONS } from '@/types/leads';
+import { getDealScore } from './deal-score';
 
 export type LeadFocusReason =
   | 'needs_reply'
@@ -51,8 +52,12 @@ function icpBoost(lead: Lead) {
   return Math.min(20, Math.max(0, Math.floor((lead.icp_score ?? 0) / 5)));
 }
 
+function dealScoreBoost(lead: Lead, now: Date) {
+  return Math.floor(getDealScore(lead, now).score / 5);
+}
+
 function buildFocusItem(lead: Lead, reason: LeadFocusReason, now: Date): LeadFocusItem {
-  const boost = priorityBoost(lead) + icpBoost(lead);
+  const boost = priorityBoost(lead) + icpBoost(lead) + dealScoreBoost(lead, now);
 
   switch (reason) {
     case 'needs_reply':

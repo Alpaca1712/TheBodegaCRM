@@ -79,6 +79,26 @@ describe('leadsToCsv', () => {
     expect(lines[2]).toContain('Bob')
   })
 
+  it('includes deal score context for prioritizing exported call lists', () => {
+    const csv = leadsToCsv([makeLead({
+      stage: 'replied',
+      priority: 'high',
+      last_inbound_at: '2025-01-02T12:00:00Z',
+      last_outbound_at: '2025-01-01T12:00:00Z',
+      conversation_signals: [{
+        type: 'action_needed',
+        signal: 'Asked for next steps',
+        source: 'gmail',
+        detected_at: '2025-01-02T12:05:00Z',
+      }],
+    })])
+    const [header, row] = csv.split('\n')
+
+    expect(header).toContain('Deal Score')
+    expect(header).toContain('Deal Tier')
+    expect(row).toContain('Hot')
+  })
+
   it('handles empty lead list (header only)', () => {
     const csv = leadsToCsv([])
     expect(csv.split('\n').length).toBe(1)

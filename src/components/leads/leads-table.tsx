@@ -6,6 +6,7 @@ import { FilterX, UserPlus, ArrowRight } from 'lucide-react';
 import type { Lead } from '@/types/leads';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS, STAGE_DESCRIPTIONS } from '@/types/leads';
 import { CopyButton } from '@/components/ui/copy-button';
+import { getDealScore, getDealScoreBadge } from '@/lib/leads/deal-score';
 
 interface LeadsTableProps {
   leads: Lead[];
@@ -108,6 +109,8 @@ export default function LeadsTable({
       <div className="space-y-3 md:hidden" aria-label="Lead cards">
         {leads.map((lead) => {
           const checked = selectable && selectedIds ? selectedIds.has(lead.id) : false;
+          const dealScore = getDealScore(lead);
+          const dealBadge = getDealScoreBadge(dealScore.score);
           return (
             <article
               key={lead.id}
@@ -176,6 +179,17 @@ export default function LeadsTable({
                       </dd>
                     </div>
                     <div>
+                      <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Deal score</dt>
+                      <dd className="mt-1">
+                        <span
+                          title={dealScore.reasons.join('\n')}
+                          className={`inline-flex items-center gap-1 rounded px-2 py-0.5 text-[11px] font-bold tabular-nums cursor-help ${dealBadge.className}`}
+                        >
+                          {dealScore.score} · {dealBadge.label}
+                        </span>
+                      </dd>
+                    </div>
+                    <div>
                       <dt className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">ICP</dt>
                       <dd className="mt-1 text-zinc-600 dark:text-zinc-400">{lead.icp_score != null ? `${lead.icp_score}/100` : 'Not scored'}</dd>
                     </div>
@@ -222,6 +236,7 @@ export default function LeadsTable({
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Company</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Type</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Stage</th>
+            <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Deal Score</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">ICP</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Priority</th>
             <th className="text-left text-[11px] font-semibold uppercase tracking-wider text-zinc-500 dark:text-zinc-400 pb-3">Updated</th>
@@ -230,6 +245,8 @@ export default function LeadsTable({
         <tbody>
           {leads.map((lead) => {
             const checked = selectable && selectedIds ? selectedIds.has(lead.id) : false;
+            const dealScore = getDealScore(lead);
+            const dealBadge = getDealScoreBadge(dealScore.score);
             return (
               <tr
                 key={lead.id}
@@ -286,6 +303,14 @@ export default function LeadsTable({
                     className={`inline-block px-2 py-0.5 rounded text-[11px] font-medium cursor-help ${stageColors[lead.stage] || ''}`}
                   >
                     {STAGE_LABELS[lead.stage]}
+                  </span>
+                </td>
+                <td className="py-3">
+                  <span
+                    title={dealScore.reasons.join('\n')}
+                    className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] font-bold tabular-nums cursor-help ${dealBadge.className}`}
+                  >
+                    {dealScore.score} <span className="font-semibold">{dealBadge.label}</span>
                   </span>
                 </td>
                 <td className="py-3">

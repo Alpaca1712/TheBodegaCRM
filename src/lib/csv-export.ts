@@ -1,7 +1,10 @@
 import type { Lead } from '@/types/leads'
 import { STAGE_LABELS, LEAD_TYPE_LABELS } from '@/types/leads'
+import { getDealScore, getDealScoreBadge } from '@/lib/leads/deal-score'
 
 const CSV_COLUMNS: { key: string; label: string; get: (l: Lead) => unknown }[] = [
+  { key: 'deal_score', label: 'Deal Score', get: (l) => getDealScore(l).score },
+  { key: 'deal_tier', label: 'Deal Tier', get: (l) => getDealScoreBadge(getDealScore(l).score).label },
   { key: 'contact_name', label: 'Contact Name', get: (l) => l.contact_name },
   { key: 'contact_title', label: 'Title', get: (l) => l.contact_title ?? '' },
   { key: 'contact_email', label: 'Email', get: (l) => l.contact_email ?? '' },

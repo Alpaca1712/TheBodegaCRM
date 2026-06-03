@@ -10,6 +10,7 @@ import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
 import { exportLeadsToCsv } from '@/lib/csv-export';
 import { useLeads } from '@/hooks/use-leads';
 import { getLeadFocusItems, type LeadFocusItem } from '@/lib/leads/focus';
+import { getDealScore, getDealScoreBadge } from '@/lib/leads/deal-score';
 
 const PAGE_SIZE = 50;
 
@@ -474,7 +475,10 @@ function LeadFocusPanel({ items, totalCount }: { items: LeadFocusItem[]; totalCo
       </div>
 
       <div className="mt-4 grid gap-3 lg:grid-cols-3">
-        {items.map((item) => (
+        {items.map((item) => {
+          const dealScore = getDealScore(item.lead);
+          const dealBadge = getDealScoreBadge(dealScore.score);
+          return (
           <Link
             key={item.lead.id}
             href={`/leads/${item.lead.id}`}
@@ -501,10 +505,17 @@ function LeadFocusPanel({ items, totalCount }: { items: LeadFocusItem[]; totalCo
             </p>
             <div className="mt-3 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
               <span>{STAGE_LABELS[item.lead.stage]}</span>
+              <span
+                title={dealScore.reasons.join('\n')}
+                className={`rounded px-1.5 py-0.5 font-semibold tabular-nums ${dealBadge.className}`}
+              >
+                {dealScore.score} · {dealBadge.label}
+              </span>
               <span className="font-medium text-red-600 dark:text-red-400">Open lead →</span>
             </div>
           </Link>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
@@ -517,13 +528,13 @@ function LeadsLoadingSkeleton() {
     <div className="space-y-3" role="status" aria-live="polite" aria-label="Loading leads">
       <span className="sr-only">Loading leads…</span>
       <div className="hidden overflow-hidden rounded-xl border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/50 md:block">
-        <div className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
-          {['Contact', 'Company', 'Type', 'Stage', 'ICP', 'Priority', 'Updated'].map((label) => (
+        <div className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.7fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-3 dark:border-zinc-800">
+          {['Contact', 'Company', 'Type', 'Stage', 'Deal Score', 'ICP', 'Priority', 'Updated'].map((label) => (
             <div key={label} className="h-3 w-16 rounded bg-zinc-100 dark:bg-zinc-800" />
           ))}
         </div>
         {rows.map((row) => (
-          <div key={row} className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-4 last:border-0 dark:border-zinc-800/60">
+          <div key={row} className="grid grid-cols-[1.6fr_1.4fr_0.7fr_0.9fr_0.7fr_0.5fr_0.7fr_0.8fr] gap-4 border-b border-zinc-100 px-4 py-4 last:border-0 dark:border-zinc-800/60">
             <div className="space-y-2">
               <div className="h-4 w-32 animate-pulse rounded bg-zinc-200 dark:bg-zinc-800" />
               <div className="h-3 w-44 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800/70" />
@@ -534,6 +545,7 @@ function LeadsLoadingSkeleton() {
             </div>
             <div className="h-5 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
             <div className="h-5 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
+            <div className="h-5 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
             <div className="h-5 w-10 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
             <div className="h-4 w-16 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
             <div className="h-4 w-20 animate-pulse rounded bg-zinc-100 dark:bg-zinc-800" />
