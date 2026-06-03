@@ -12,6 +12,7 @@ import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
 import { CopyButton } from '@/components/ui/copy-button';
+import { getLeadBestAction } from '@/lib/dashboard/sales-actions';
 import {
   ACTION_LABELS,
   FOLLOW_UP_STAGES,
@@ -347,6 +348,12 @@ function FollowUpCard({
   onMagicDraft: () => void;
   isProcessing: boolean;
 }) {
+  const bestAction = getLeadBestAction({
+    lead: item.lead,
+    latestInboundAt: item.lead.last_inbound_at ? new Date(item.lead.last_inbound_at) : null,
+    latestOutboundAt: item.lead.last_outbound_at ? new Date(item.lead.last_outbound_at) : (item.lead.last_contacted_at ? new Date(item.lead.last_contacted_at) : null),
+    outboundCount: item.outboundCount,
+  });
 
   const urg = URGENCY_CONFIG[item.urgency];
   const action = ACTION_LABELS[item.suggestedType];
@@ -354,10 +361,10 @@ function FollowUpCard({
   const isReply = ['reply_needed', 'post_meeting'].includes(item.suggestedType);
   const isInitial = item.suggestedType === 'initial_outreach';
 
-  // Prioritize AI Strategy, then Our Angle (for cold leads), then suggested action
+  // Prioritize Unified Recommended Action, then AI Strategy, then Our Angle (for cold leads), then suggested action
   const battleCard = item.lead.battle_card as Record<string, unknown> | null;
   const ourAngle = (battleCard?.our_angle as string) || null;
-  const rawAction = item.lead.conversation_next_step || ourAngle || item.suggestedAction;
+  const rawAction = bestAction?.recommendedAction || item.lead.conversation_next_step || ourAngle || item.suggestedAction;
   const { badges, text: actionText } = parseActionBadges(rawAction);
   const aiStrategy = item.lead.conversation_next_step ? parseNextStep(item.lead.conversation_next_step) : null;
 
@@ -489,13 +496,15 @@ function FollowUpCard({
         <div className="flex flex-col items-end gap-2 shrink-0">
           <div className="flex items-center gap-1 text-[10px] px-2 py-1 rounded-lg bg-white/60 dark:bg-black/20 font-medium text-zinc-600 dark:text-zinc-400">
             {CHANNEL_ICONS[item.suggestedChannel]}
-            <span>{action.short}</span>
+            <span>{bestAction?.ctaLabel || action.short}</span>
           </div>
           <button
             onClick={() => {
-              if (item.suggestedType === 'run_research') onResearch();
-              else if (item.suggestedType === 'prep_meeting') onPrep();
-              else if (item.suggestedType === 'review_draft') onGenerate();
+              const cat = bestAction?.category;
+              if (cat === 'research') onResearch();
+              else if (cat === 'meeting_prep') onPrep();
+              else if (cat === 'review') onGenerate();
+              else if (cat === 'investor_memo') onPrep(); // Sidebar handler might need update but UI will show Prep/Memo
               else onMagicDraft();
             }}
             disabled={isProcessing}
@@ -503,11 +512,11 @@ function FollowUpCard({
           >
             {isProcessing ? (
               <Loader2 className="h-3 w-3 animate-spin" />
-            ) : item.suggestedType === 'run_research' ? (
+            ) : bestAction?.category === 'research' ? (
               <Sparkles className="h-3 w-3" />
-            ) : item.suggestedType === 'prep_meeting' ? (
+            ) : bestAction?.category === 'meeting_prep' ? (
               <Swords className="h-3 w-3" />
-            ) : item.suggestedType === 'review_draft' ? (
+            ) : bestAction?.category === 'review' ? (
               <ClipboardCheck className="h-3 w-3" />
             ) : (
               <Zap className="h-3 w-3" />
@@ -515,15 +524,7 @@ function FollowUpCard({
 
             {isProcessing ? (
               'Processing...'
-            ) : item.suggestedType === 'run_research' ? (
-              'Research'
-            ) : item.suggestedType === 'prep_meeting' ? (
-              'Prep'
-            ) : item.suggestedType === 'review_draft' ? (
-              'Review'
-            ) : (
-              'Magic Draft'
-            )}
+            ) : (bestAction?.ctaLabel || 'Magic Draft')}
             {!isProcessing && <ArrowRight className="h-3 w-3" />}
           </button>
         </div>
