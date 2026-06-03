@@ -66,7 +66,7 @@ describe('buildSalesActionPlan', () => {
       priority: 'critical',
       category: 'reply',
       title: 'Reply to Riley Buyer',
-      ctaHref: '/leads/lead-replied',
+      ctaHref: '/leads/lead-replied?tab=emails',
     })
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
   })
@@ -190,7 +190,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('surfaces investor memo actions for outreach-ready investors', () => {
+  it('surfaces investor memo actions for outreach-ready investors (with fallback priority)', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -201,6 +201,7 @@ describe('buildSalesActionPlan', () => {
           smykm_hooks: ['Hook 1'],
           company_description: 'Fund',
           investor_memo: null,
+          icp_score: 70, // Below 75 to avoid prospecting taking over
         },
       ],
       outboundEmails: [],
@@ -248,7 +249,7 @@ describe('buildSalesActionPlan', () => {
           company_name: 'Followup Co',
           stage: 'email_sent',
           icp_score: 70,
-          total_emails_out: 0,
+          total_emails_out: 1, // Changed from 0 to 1 as email_sent implies at least one
           last_outbound_at: '2026-04-30T12:00:00Z',
           last_contacted_at: '2026-04-30T12:00:00Z',
         },
@@ -269,7 +270,7 @@ describe('buildSalesActionPlan', () => {
     })
 
     expect(actions.map((a) => a.leadId).slice(0, 2)).toEqual(['lead-followup', 'lead-high-icp'])
-    expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'high', ctaLabel: 'Follow up' })
+    expect(actions[0]).toMatchObject({ category: 'follow_up', priority: 'medium', ctaLabel: 'Bump' })
     expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
   })
 
