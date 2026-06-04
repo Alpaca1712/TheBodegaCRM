@@ -6,7 +6,6 @@ import { Plus, BookOpen, Trash } from 'lucide-react';
 import type { AgentMemory } from '@/types/leads-detail';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Label } from '@/components/ui/label';
 
 const typeColors: Record<string, string> = {
   preference: 'bg-blue-100 dark:bg-blue-900/40 text-blue-600',
