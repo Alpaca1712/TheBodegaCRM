@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2026-05-22 - [A11y: Robust Dialog Patterns]
+**Learning:** For custom dialogs (non-library), manual focus trapping, focus restoration, and Escape key handling are critical for WCAG compliance. Toggle behavior (Open/Close) for the same shortcut key provides a much smoother UX for power users.
+**Action:** Implement focus trapping with querySelectorAll and focus restoration with a 'lastFocusRef' in any custom modal. Ensure the same shortcut key toggles the state.
