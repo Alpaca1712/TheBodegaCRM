@@ -446,13 +446,18 @@ export async function generateInitialOutreach(
     ),
   ])
 
-  const normalizeResult = (result: { subject: string; body: string }, ctaType: CtaType): EmailVariant => ({
-    subject: normalizeGeneratedEmail(result.subject),
-    body: normalizeGeneratedEmail(result.body),
-    ctaType,
-    wordCount: countWords(result.body),
-    quality: checkEmailQuality(result.subject, result.body, 'initial'),
-  })
+  const normalizeResult = (result: { subject: string; body: string }, ctaType: CtaType): EmailVariant => {
+    const subject = normalizeGeneratedEmail(result.subject)
+    const body = normalizeGeneratedEmail(result.body)
+
+    return {
+      subject,
+      body,
+      ctaType,
+      wordCount: countWords(body),
+      quality: checkEmailQuality(subject, body, 'initial'),
+    }
+  }
 
   return {
     mckenna: normalizeResult(mckennaResult, 'mckenna'),
