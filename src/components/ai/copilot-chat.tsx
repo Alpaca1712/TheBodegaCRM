@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -37,6 +38,16 @@ export default function CopilotChat() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && isOpen) {
+        setIsOpen(false);
+      }
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isOpen]);
 
   useEffect(() => {
     scrollToBottom();
@@ -173,7 +184,12 @@ export default function CopilotChat() {
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]"
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+          >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center py-6">
                 <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
@@ -251,16 +267,30 @@ export default function CopilotChat() {
           {/* Input */}
           <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
             <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask the co-pilot..."
-                aria-label="Ask the co-pilot"
-                rows={1}
-                className="flex-1 resize-none rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all"
-              />
+              <div className="relative flex-1 group/input">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the co-pilot..."
+                  aria-label="Ask the co-pilot"
+                  autoResize
+                  rows={1}
+                  className="pr-8 min-h-[40px] max-h-[120px] rounded-xl border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[13px] focus:ring-red-500/20 focus:border-red-500/50 transition-all"
+                />
+                {input && (
+                  <button
+                    type="button"
+                    onClick={() => { setInput(''); inputRef.current?.focus(); }}
+                    className="absolute right-2 bottom-2 p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 opacity-0 group-hover/input:opacity-100 focus:opacity-100 transition-opacity"
+                    aria-label="Clear input"
+                    title="Clear input"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
