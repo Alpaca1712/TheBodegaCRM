@@ -38,6 +38,8 @@ import {
   Building2,
   Swords,
   Target,
+  Zap,
+  FileText,
   ChevronDown,
   ChevronRight,
   Network,
@@ -58,7 +60,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
-import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
+import { getLeadBestAction, mostRecentDate, type SalesAction } from '@/lib/dashboard/sales-actions';
 import {
   leadDetailQueryKey,
   leadMemoriesQueryKey,
@@ -99,6 +101,8 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [memoLoading, setMemoLoading] = useState(false);
   const [memo, setMemo] = useState<Record<string, unknown> | null>(null);
   const [orgChartLoading, setOrgChartLoading] = useState(false);
+  const [isMagicDrafting, setIsMagicDrafting] = useState(false);
+  const [isResearching, setIsResearching] = useState(false);
 
   const applyLeadDetail = useCallback((data: LeadDetailResponse) => {
     setLead(data.lead);
@@ -226,6 +230,50 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     } finally { setOrgChartLoading(false); }
   };
 
+  const handleMagicDraft = async () => {
+    if (!lead) return;
+    setIsMagicDrafting(true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsMagicDrafting(false)).catch(() => undefined);
+  };
+
+  const handleResearch = async () => {
+    if (!lead) return;
+    setIsResearching(true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: lead.id, type: lead.type }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${lead.contact_name}...`,
+      success: `Research complete for ${lead.contact_name}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsResearching(false)).catch(() => undefined);
+  };
+
   const handleSyncLead = async () => {
     setIsSyncing(true);
     try {
@@ -308,7 +356,20 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) return null;
 
   const orgChartCount = lead.org_chart?.length || 0;
-  const nextBestAction = buildNextBestAction({ lead, emails, interactions });
+  const latestInboundAt = mostRecentDate([lead.last_inbound_at, ...emails.filter(e => e.direction === 'inbound').map(e => e.created_at)]);
+  const latestOutboundAt = mostRecentDate([
+    lead.last_outbound_at,
+    lead.last_contacted_at,
+    ...emails.filter(e => e.direction === 'outbound').map(e => e.sent_at || e.created_at)
+  ]);
+  const outboundCount = lead.total_emails_out || emails.filter(e => e.direction === 'outbound').length;
+
+  const nextBestAction = getLeadBestAction(lead, {
+    latestInboundAt,
+    latestOutboundAt,
+    outboundCount,
+  });
+
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
@@ -528,7 +589,18 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Sidebar */}
         <div className="space-y-4">
           <ContactCard lead={lead} />
-          <NextBestActionCard plan={nextBestAction} onOpenTab={setActiveTab} />
+          <NextBestActionCard
+            action={nextBestAction}
+            onOpenTab={setActiveTab}
+            isMagicDrafting={isMagicDrafting}
+            isResearching={isResearching}
+            isPrepping={battleCardLoading}
+            isMemoWriting={memoLoading}
+            onMagicDraft={handleMagicDraft}
+            onResearch={handleResearch}
+            onPrep={generateBattleCard}
+            onInvestorMemo={generateMemo}
+          />
           <LogInteractionCard leadId={id} onLogged={fetchLead} />
           <DetailsCard lead={lead} />
           {(lead.total_emails_in > 0 || lead.total_emails_out > 0) && <EmailStatsCard lead={lead} />}
@@ -541,18 +613,42 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 }
 
 // --- Next Best Action Card ---
-function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onOpenTab: (tab: TabId) => void }) {
-  const urgencyStyles: Record<NextBestActionPlan['urgency'], string> = {
+function NextBestActionCard({
+  action,
+  onOpenTab,
+  isMagicDrafting,
+  isResearching,
+  isPrepping,
+  isMemoWriting,
+  onMagicDraft,
+  onResearch,
+  onPrep,
+  onInvestorMemo
+}: {
+  action: SalesAction | null;
+  onOpenTab: (tab: TabId) => void;
+  isMagicDrafting: boolean;
+  isResearching: boolean;
+  isPrepping: boolean;
+  isMemoWriting: boolean;
+  onMagicDraft: () => void;
+  onResearch: () => void;
+  onPrep: () => void;
+  onInvestorMemo: () => void;
+}) {
+  if (!action) return null;
+
+  const priorityStyles: Record<string, string> = {
     critical: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/60',
     high: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60',
     medium: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60',
-    low: 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700',
-    none: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60',
   };
-  const ctaLabel = plan.targetTab === 'emails' ? 'Open email workspace' :
-    plan.targetTab === 'conversation' ? 'Open conversation' :
-    plan.targetTab === 'company' ? 'Open company intel' :
-    plan.targetTab === 'memory' ? 'Open memory' : 'Open overview';
+
+  const isProcessing = isMagicDrafting || isResearching || isPrepping || isMemoWriting;
+  const canMagicDraft = ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
+  const canResearch = action.category === 'research';
+  const canPrep = action.category === 'meeting_prep';
+  const canInvestorMemo = action.category === 'investor_memo';
 
   return (
     <div className="rounded-xl border border-red-200/70 dark:border-red-900/40 bg-gradient-to-br from-red-50/80 via-white to-white dark:from-red-950/20 dark:via-zinc-900/80 dark:to-zinc-900/60 p-4 space-y-3 shadow-sm shadow-red-900/5">
@@ -561,33 +657,95 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
           <Target className="h-4 w-4 text-red-500" />
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Next Best Action</h3>
         </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${urgencyStyles[plan.urgency]}`}>
-          {plan.dueLabel}
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${priorityStyles[action.priority] || priorityStyles.medium}`}>
+          {action.priority}
         </span>
       </div>
       <div>
-        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{plan.primaryAction}</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{plan.reason}</p>
+        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{action.title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{action.reason}</p>
       </div>
-      {plan.supportingSignals.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {plan.supportingSignals.map((signal) => (
-            <span key={signal} className="rounded-md bg-white/80 dark:bg-zinc-800/80 px-2 py-1 text-[10px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200/70 dark:border-zinc-700/70">
-              {signal}
-            </span>
-          ))}
+
+      <div className="group/recommendation relative flex items-start gap-2 bg-white/60 dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800">
+        <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+        <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 pr-6">{action.recommendedAction}</p>
+        <CopyButton
+          value={action.recommendedAction}
+          label="Recommended action"
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100 transition-opacity"
+        />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          {canResearch && (
+            <button
+              onClick={onResearch}
+              disabled={isProcessing}
+              title="Run AI Research"
+              aria-label={isResearching ? 'Researching...' : 'Run AI research'}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+            >
+              {isResearching ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+              {isResearching ? 'Researching...' : 'Research'}
+            </button>
+          )}
+
+          {canPrep && (
+            <button
+              onClick={onPrep}
+              disabled={isProcessing}
+              title="Generate Battle Card"
+              aria-label={isPrepping ? 'Prepping...' : 'Generate battle card'}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+            >
+              {isPrepping ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+              {isPrepping ? 'Prepping...' : 'Prep'}
+            </button>
+          )}
+
+          {canInvestorMemo && (
+            <button
+              onClick={onInvestorMemo}
+              disabled={isProcessing}
+              title="Generate Investor Memo"
+              aria-label={isMemoWriting ? 'Writing...' : 'Generate investor memo'}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+            >
+              {isMemoWriting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
+              {isMemoWriting ? 'Writing...' : 'Memo'}
+            </button>
+          )}
+
+          {canMagicDraft && (
+            <button
+              onClick={onMagicDraft}
+              disabled={isProcessing}
+              title="Magic Draft"
+              aria-label={isMagicDrafting ? 'Drafting...' : 'Magic draft next step'}
+              className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50"
+            >
+              {isMagicDrafting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+              {isMagicDrafting ? 'Drafting...' : 'Draft'}
+            </button>
+          )}
         </div>
-      )}
-      {plan.urgency !== 'none' && (
+
         <button
           type="button"
-          onClick={() => onOpenTab(plan.targetTab)}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+          onClick={() => {
+            if (action.ctaHref.includes('tab=emails')) onOpenTab('emails');
+            else if (action.ctaHref.includes('tab=conversation')) onOpenTab('conversation');
+            else if (action.ctaHref.includes('tab=company')) onOpenTab('company');
+            else if (action.ctaHref.includes('tab=memory')) onOpenTab('memory');
+            else onOpenTab('overview');
+          }}
+          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500 shadow-sm shadow-red-600/20"
         >
-          {ctaLabel}
+          {action.ctaLabel}
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
-      )}
+      </div>
     </div>
   );
 }

@@ -66,7 +66,7 @@ describe('buildSalesActionPlan', () => {
       priority: 'critical',
       category: 'reply',
       title: 'Reply to Riley Buyer',
-      ctaHref: '/leads/lead-replied',
+      ctaHref: '/leads/lead-replied?tab=emails',
     })
     expect(actions[0].recommendedAction).toBe('Send technical validation plan')
   })
@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('suggests meeting recaps after meetings (and investor memos for investors)', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -183,10 +183,11 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
+    // Meeting recap has score 920, investor memo has 880. Recap should win.
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
     })
   })
 
