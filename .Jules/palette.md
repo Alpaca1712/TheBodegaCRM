@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2025-05-22 - [UX: Enhancing Copilot Accessibility and Flow]
+**Learning:** Standardizing input components with 'autoResize' and providing an immediate 'Clear' action significantly improves the fluid feel of AI chat interfaces. Additionally, ensuring overlays respond to 'Escape' is a critical accessibility pattern that users expect by default.
+**Action:** When adding or updating overlays (modals, sheets, floating panels), always implement an 'Escape' key listener. For long-form inputs in compact spaces, use 'autoResize' and provide a quick reset affordance.
