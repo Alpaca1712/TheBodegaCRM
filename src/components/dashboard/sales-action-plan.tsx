@@ -34,6 +34,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   reply: <MessageSquare className="h-4 w-4 text-red-500" />,
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
+  meeting_recap: <CalendarCheck className="h-4 w-4 text-indigo-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
@@ -41,7 +42,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   investor_memo: <FileText className="h-4 w-4 text-indigo-500" />,
 };
 
-const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: string }> = {
+const PRIORITY_COLORS: Record<string, { color: string; label: string; dot: string }> = {
   critical: {
     color: 'bg-red-100 text-red-700 dark:bg-red-900/40 dark:text-red-400',
     label: 'Critical',
@@ -91,11 +92,11 @@ export default function SalesActionPlan({
         {actions.map((action) => {
           const isLeadProcessing = isProcessing === action.leadId;
           const hasActiveAction = !!isProcessing;
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';
-          const priority = PRIORITY_CONFIG[action.priority] || PRIORITY_CONFIG.medium;
+          const priority = PRIORITY_COLORS[action.priority] || PRIORITY_COLORS.medium;
 
           return (
             <div
@@ -113,7 +114,7 @@ export default function SalesActionPlan({
                   <div className="flex items-center gap-2 mb-1">
                     <div
                       className="flex items-center gap-1.5"
-                      title={`${priority.label} priority`}
+                      title={`${priority.label} Priority`}
                     >
                       <div className={`h-1.5 w-1.5 rounded-full ${priority.dot}`} />
                       <span
@@ -157,6 +158,7 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Run AI Research"
                     aria-label={isLeadProcessing ? `Researching ${action.leadName}` : `Run AI research for ${action.leadName}`}
+                    aria-busy={isLeadProcessing}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
@@ -174,6 +176,7 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Generate Battle Card"
                     aria-label={isLeadProcessing ? `Preparing for ${action.leadName}` : `Generate battle card for ${action.leadName}`}
+                    aria-busy={isLeadProcessing}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
@@ -191,6 +194,7 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Generate Investor Memo"
                     aria-label={isLeadProcessing ? `Generating investor memo for ${action.leadName}` : `Generate investor memo for ${action.leadName}`}
+                    aria-busy={isLeadProcessing}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
@@ -208,6 +212,7 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Magic Draft"
                     aria-label={isLeadProcessing ? `Drafting next step for ${action.leadName}...` : `Magic draft next step for ${action.leadName}`}
+                    aria-busy={isLeadProcessing}
                     className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center"
                   >
                     {isLeadProcessing ? (
