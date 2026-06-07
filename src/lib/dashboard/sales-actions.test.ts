@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('suggests meeting recaps after meetings (prioritized over memos)', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -185,8 +185,8 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Draft recap',
     })
   })
 

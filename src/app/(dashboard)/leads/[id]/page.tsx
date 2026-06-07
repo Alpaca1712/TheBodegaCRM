@@ -38,6 +38,7 @@ import {
   Building2,
   Swords,
   Target,
+  Zap,
   ChevronDown,
   ChevronRight,
   Network,
@@ -58,7 +59,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
-import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
+import { getLeadBestAction, mostRecentDate, type SalesAction } from '@/lib/dashboard/sales-actions';
 import {
   leadDetailQueryKey,
   leadMemoriesQueryKey,
@@ -308,7 +309,17 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) return null;
 
   const orgChartCount = lead.org_chart?.length || 0;
-  const nextBestAction = buildNextBestAction({ lead, emails, interactions });
+
+  const latestInboundAt = mostRecentDate([lead.last_inbound_at, ...emails.filter(e => e.direction === 'inbound').map(e => e.created_at)]);
+  const latestOutboundAt = mostRecentDate([
+    lead.last_outbound_at,
+    lead.last_contacted_at,
+    ...emails.filter(e => e.direction === 'outbound').map(e => e.sent_at || e.created_at)
+  ]);
+  const outboundCount = lead.total_emails_out || emails.filter(e => e.direction === 'outbound').length;
+
+  const nextBestAction = getLeadBestAction(lead, latestInboundAt, latestOutboundAt, outboundCount);
+
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
@@ -528,7 +539,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Sidebar */}
         <div className="space-y-4">
           <ContactCard lead={lead} />
-          <NextBestActionCard plan={nextBestAction} onOpenTab={setActiveTab} />
+          {nextBestAction && <NextBestActionCard action={nextBestAction} onOpenTab={setActiveTab} />}
           <LogInteractionCard leadId={id} onLogged={fetchLead} />
           <DetailsCard lead={lead} />
           {(lead.total_emails_in > 0 || lead.total_emails_out > 0) && <EmailStatsCard lead={lead} />}
@@ -541,18 +552,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 }
 
 // --- Next Best Action Card ---
-function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onOpenTab: (tab: TabId) => void }) {
-  const urgencyStyles: Record<NextBestActionPlan['urgency'], string> = {
+function NextBestActionCard({ action, onOpenTab }: { action: SalesAction; onOpenTab: (tab: TabId) => void }) {
+  const urgencyStyles: Record<SalesAction['priority'], string> = {
     critical: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/60',
     high: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60',
     medium: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60',
     low: 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700',
-    none: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60',
   };
-  const ctaLabel = plan.targetTab === 'emails' ? 'Open email workspace' :
-    plan.targetTab === 'conversation' ? 'Open conversation' :
-    plan.targetTab === 'company' ? 'Open company intel' :
-    plan.targetTab === 'memory' ? 'Open memory' : 'Open overview';
+
+  const targetTab: TabId = action.ctaHref.includes('tab=emails') ? 'emails' : 'overview';
 
   return (
     <div className="rounded-xl border border-red-200/70 dark:border-red-900/40 bg-gradient-to-br from-red-50/80 via-white to-white dark:from-red-950/20 dark:via-zinc-900/80 dark:to-zinc-900/60 p-4 space-y-3 shadow-sm shadow-red-900/5">
@@ -561,33 +569,31 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
           <Target className="h-4 w-4 text-red-500" />
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Next Best Action</h3>
         </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${urgencyStyles[plan.urgency]}`}>
-          {plan.dueLabel}
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${urgencyStyles[action.priority]}`}>
+          {action.priority}
         </span>
       </div>
       <div>
-        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{plan.primaryAction}</p>
-        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{plan.reason}</p>
+        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{action.title}</p>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{action.reason}</p>
       </div>
-      {plan.supportingSignals.length > 0 && (
-        <div className="flex flex-wrap gap-1.5">
-          {plan.supportingSignals.map((signal) => (
-            <span key={signal} className="rounded-md bg-white/80 dark:bg-zinc-800/80 px-2 py-1 text-[10px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200/70 dark:border-zinc-700/70">
-              {signal}
-            </span>
-          ))}
-        </div>
-      )}
-      {plan.urgency !== 'none' && (
-        <button
-          type="button"
-          onClick={() => onOpenTab(plan.targetTab)}
-          className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
-        >
-          {ctaLabel}
-          <ArrowRight className="h-3.5 w-3.5" />
-        </button>
-      )}
+      <div className="group/recommendation relative flex items-start gap-2 bg-white/50 dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 transition-colors hover:border-zinc-200 dark:hover:border-zinc-700">
+        <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+        <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic pr-8">{action.recommendedAction}</p>
+        <CopyButton
+          value={action.recommendedAction}
+          label="Recommended action"
+          className="absolute top-1.5 right-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100 transition-opacity"
+        />
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpenTab(targetTab)}
+        className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
+      >
+        {action.ctaLabel}
+        <ArrowRight className="h-3.5 w-3.5" />
+      </button>
     </div>
   );
 }
