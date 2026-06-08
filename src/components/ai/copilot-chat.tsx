@@ -1,8 +1,9 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
+import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles, Eraser } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { Textarea } from '@/components/ui/textarea';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -37,6 +38,15 @@ export default function CopilotChat() {
   const scrollToBottom = useCallback(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, []);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    const handleEsc = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false);
+    };
+    window.addEventListener('keydown', handleEsc);
+    return () => window.removeEventListener('keydown', handleEsc);
+  }, [isOpen]);
 
   useEffect(() => {
     scrollToBottom();
@@ -167,13 +177,19 @@ export default function CopilotChat() {
             <button
               onClick={() => setIsOpen(false)}
               className="h-7 w-7 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors"
+              aria-label="Close co-pilot"
             >
               <X className="h-4 w-4 text-zinc-500" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]"
+            role="log"
+            aria-label="Chat messages"
+            aria-live="polite"
+          >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center py-6">
                 <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
@@ -249,25 +265,41 @@ export default function CopilotChat() {
           </div>
 
           {/* Input */}
-          <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
-            <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask the co-pilot..."
-                aria-label="Ask the co-pilot"
-                rows={1}
-                className="flex-1 resize-none rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all"
-              />
+          <div className="p-3 border-t border-zinc-100 dark:border-zinc-800 bg-white dark:bg-zinc-900">
+            <div className="flex items-end gap-2 relative">
+              <div className="relative flex-1">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the co-pilot..."
+                  aria-label="Ask the co-pilot"
+                  autoResize
+                  rows={1}
+                  className="min-h-[40px] max-h-[200px] pr-9 rounded-xl border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 text-[13px] focus:ring-red-500/20 focus:border-red-500/50 transition-all"
+                />
+                {input && (
+                  <button
+                    onClick={() => {
+                      setInput('');
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-2 bottom-2 p-1 rounded-md text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-200 transition-colors"
+                    aria-label="Clear input"
+                  >
+                    <Eraser className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
-                aria-label="Send message"
+                aria-label={isLoading ? 'Sending message...' : 'Send message'}
+                aria-busy={isLoading}
                 className="h-9 w-9 rounded-xl bg-red-600 hover:bg-red-500 disabled:bg-zinc-200 dark:disabled:bg-zinc-700 text-white disabled:text-zinc-400 flex items-center justify-center transition-all flex-shrink-0"
               >
-                <Send className="h-3.5 w-3.5" />
+                {isLoading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
               </button>
             </div>
           </div>
