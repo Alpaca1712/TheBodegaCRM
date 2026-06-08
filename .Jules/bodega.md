@@ -17,3 +17,7 @@
 ## 2026-05-09 - Magic Draft & Outreach Centralization
 **Learning:** Found that fragmented outreach logic across multiple API routes hindered the ability to implement high-leverage background actions. Moving prompts and generation logic into a shared service enabled the "Magic Draft" feature, which significantly reduces the friction of moving leads through the pipeline.
 **Action:** Centralized all SMYKM and Hormozi outreach logic in `src/lib/ai/email-service.ts`. Implemented the `POST /api/ai/draft-next-step` API for automated, quality-gated background drafting. Surfaced "Magic Draft" (Zap icon) across the Outreach Command Center and Pipeline Health dashboard to tighten the GTM loop.
+
+## 2026-05-15 - Unified Prioritization Engine
+**Learning:** Found that divergent prioritization logic between the Dashboard (Sales Action Plan) and Lead Detail (Next Best Action) created a fragmented GTM experience. Unifying these into a single, score-based engine in `src/lib/dashboard/sales-actions.ts` ensures that founders see the same top-priority tasks regardless of where they are in the app.
+**Action:** Consolidated all "Next Best Action" logic into a unified `getLeadBestAction` function. Integrated this into both the Dashboard and Lead Detail sidebar. Added support for `meeting_recap` category to prioritize post-meeting outreach and deep-linking to the Emails tab.
