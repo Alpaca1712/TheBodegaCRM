@@ -34,6 +34,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   reply: <MessageSquare className="h-4 w-4 text-red-500" />,
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
+  meeting_recap: <CalendarCheck className="h-4 w-4 text-indigo-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
@@ -56,6 +57,11 @@ const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: strin
     color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
     label: 'Medium',
     dot: 'bg-blue-500',
+  },
+  low: {
+    color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-400',
+    label: 'Low',
+    dot: 'bg-zinc-500',
   },
 };
 
@@ -84,14 +90,14 @@ export default function SalesActionPlan({
           <Target className="h-4 w-4 text-red-500" />
           Sales Action Plan
         </h2>
-        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Prioritized by AI</span>
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest" title="Leads are ranked by urgency, ICP score, and engagement signals">Prioritized by AI</span>
       </div>
 
       <div className="space-y-3">
         {actions.map((action) => {
           const isLeadProcessing = isProcessing === action.leadId;
           const hasActiveAction = !!isProcessing;
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';
@@ -100,12 +106,12 @@ export default function SalesActionPlan({
           return (
             <div
               key={action.id}
-              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all"
+              className="group/action relative flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4 rounded-xl border border-zinc-100 dark:border-zinc-800 bg-zinc-50/50 dark:bg-zinc-800/30 hover:border-red-200 dark:hover:border-red-900/40 transition-all focus-within:border-red-200 dark:focus-within:border-red-900/40"
             >
               <div className="flex items-start gap-3 min-w-0 flex-1">
                 <div
                   className="mt-0.5 shrink-0"
-                  title={`${action.category.replace('_', ' ')} action`}
+                  aria-hidden="true"
                 >
                   {CATEGORY_ICONS[action.category] || <AlertCircle className="h-4 w-4 text-zinc-400" />}
                 </div>
@@ -125,7 +131,7 @@ export default function SalesActionPlan({
                     <Link
                       href={`/leads/${action.leadId}`}
                       aria-label={`View details for ${action.leadName} from ${action.companyName}`}
-                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate"
+                      className="text-sm font-bold text-zinc-900 dark:text-zinc-100 hover:text-red-600 dark:hover:text-red-400 truncate focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:outline-none rounded"
                     >
                       {action.title}
                     </Link>
@@ -135,7 +141,7 @@ export default function SalesActionPlan({
                     {action.reason}
                   </p>
                   <div className="group/recommendation relative flex items-start gap-2 bg-white dark:bg-zinc-900/40 p-2.5 rounded-lg border border-zinc-100 dark:border-zinc-800 transition-colors hover:border-zinc-200 dark:hover:border-zinc-700">
-                    <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" />
+                    <Zap className="h-3.5 w-3.5 text-amber-500 mt-0.5 shrink-0" aria-hidden="true" />
                     <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic flex-1 pr-8">{action.recommendedAction}</p>
                     <CopyButton
                       value={action.recommendedAction}
@@ -157,7 +163,8 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Run AI Research"
                     aria-label={isLeadProcessing ? `Researching ${action.leadName}` : `Run AI research for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+                    aria-busy={isLeadProcessing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-emerald-500/20 focus-visible:outline-none"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                     {isLeadProcessing ? 'Researching...' : 'Research'}
@@ -174,7 +181,8 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Generate Battle Card"
                     aria-label={isLeadProcessing ? `Preparing for ${action.leadName}` : `Generate battle card for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+                    aria-busy={isLeadProcessing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-purple-500/20 focus-visible:outline-none"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
                     {isLeadProcessing ? 'Prepping...' : 'Prep'}
@@ -191,7 +199,8 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Generate Investor Memo"
                     aria-label={isLeadProcessing ? `Generating investor memo for ${action.leadName}` : `Generate investor memo for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+                    aria-busy={isLeadProcessing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50 focus-visible:ring-2 focus-visible:ring-indigo-500/20 focus-visible:outline-none"
                   >
                     {isLeadProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileText className="h-3.5 w-3.5" />}
                     {isLeadProcessing ? 'Writing...' : 'Memo'}
@@ -208,7 +217,8 @@ export default function SalesActionPlan({
                     disabled={hasActiveAction}
                     title="Magic Draft"
                     aria-label={isLeadProcessing ? `Drafting next step for ${action.leadName}...` : `Magic draft next step for ${action.leadName}`}
-                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center"
+                    aria-busy={isLeadProcessing}
+                    className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-100 dark:border-amber-800 disabled:opacity-50 min-w-[84px] justify-center focus-visible:ring-2 focus-visible:ring-amber-500/20 focus-visible:outline-none"
                   >
                     {isLeadProcessing ? (
                       <>
@@ -226,7 +236,7 @@ export default function SalesActionPlan({
 
                 <Link
                   href={action.ctaHref}
-                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20"
+                  className="flex items-center gap-1.5 px-3 py-2 text-[11px] font-bold text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors shadow-sm shadow-red-600/20 focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:outline-none"
                 >
                   {action.ctaLabel}
                   <ArrowRight className="h-3.5 w-3.5" />
@@ -238,7 +248,7 @@ export default function SalesActionPlan({
       </div>
 
       <div className="mt-4 flex items-center justify-center">
-        <Link href="/follow-ups" className="text-[11px] font-semibold text-zinc-500 hover:text-red-600 transition-colors flex items-center gap-1">
+        <Link href="/follow-ups" className="text-[11px] font-semibold text-zinc-500 hover:text-red-600 transition-colors flex items-center gap-1 focus-visible:outline-none focus-visible:underline">
           View full action queue <ExternalLink className="h-3 w-3" />
         </Link>
       </div>
