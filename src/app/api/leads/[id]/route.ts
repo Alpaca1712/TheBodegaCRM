@@ -85,12 +85,14 @@ export async function GET(
       .from('lead_emails')
       .select('*')
       .eq('lead_id', id)
+      .eq('user_id', user.id)
       .order('created_at', { ascending: true })
 
     const { data: interactions } = await supabase
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', id)
+      .eq('user_id', user.id)
       .order('occurred_at', { ascending: true })
 
     // Fetch related leads at the same company (by domain)

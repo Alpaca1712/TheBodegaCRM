@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { createClient } from '@/lib/supabase/server'
+import { rateLimitResponse } from '@/lib/api/auth-guard'
 import {
   refreshAccessToken,
   GmailTokenExpiredError,
@@ -65,6 +66,12 @@ export async function POST() {
       console.error('[Sync] Auth failed:', authError?.message)
       return NextResponse.json({ error: 'Unauthorized', detail: authError?.message }, { status: 401 })
     }
+
+    const limited = rateLimitResponse(user.id, 'gmail:sync', {
+      limit: 5,
+      windowMs: 60_000,
+    })
+    if (limited) return limited
 
     console.log('[Sync] User authenticated:', user.id, user.email)
 
@@ -149,6 +156,7 @@ export async function POST() {
               token_expires_at: new Date(Date.now() + newTokens.expires_in * 1000).toISOString(),
             })
             .eq('id', account.id)
+            .eq('user_id', user.id)
           console.log('[Sync] Token refreshed successfully')
         }
 
@@ -187,6 +195,7 @@ export async function POST() {
           .from('email_accounts')
           .update({ last_synced_at: new Date().toISOString() })
           .eq('id', account.id)
+          .eq('user_id', user.id)
 
       } catch (accountError) {
         console.error('[Sync] Account error:', account.email_address, accountError)
@@ -397,7 +406,11 @@ async function processLead(
           })
         }
 
-        const { error: updateError } = await supabase.from('leads').update(updatePayload).eq('id', lead.id)
+        const { error: updateError } = await supabase
+          .from('leads')
+          .update(updatePayload)
+          .eq('id', lead.id)
+          .eq('user_id', userId)
         if (updateError) {
           console.error('[Sync] Lead update error:', updateError.message, '| lead:', lead.contact_name)
         } else {
@@ -411,6 +424,7 @@ async function processLead(
             .from('lead_emails')
             .update({ email_type: c.email_type })
             .eq('lead_id', lead.id)
+            .eq('user_id', userId)
             .eq('gmail_message_id', c.gmail_message_id)
             .then(({ error }) => {
               if (error) console.error('[Sync] Email classify error:', error.message, '| msg:', c.gmail_message_id)
@@ -424,6 +438,7 @@ async function processLead(
                   ? `${dl.notes}\n\n[Auto] Domain intel: ${analysis.domain_insights}`
                   : `[Auto] Domain intel: ${analysis.domain_insights}`,
               }).eq('id', dl.id)
+                .eq('user_id', userId)
             )
           : []
 
