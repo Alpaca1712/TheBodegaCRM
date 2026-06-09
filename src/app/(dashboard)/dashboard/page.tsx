@@ -415,7 +415,8 @@ export default function DashboardPage() {
                         disabled={isProcessing !== null}
                         className="p-1.5 rounded-lg bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 hover:bg-red-100 dark:hover:bg-red-900/40 transition-colors disabled:opacity-50"
                         title="Magic Draft"
-                        aria-label="Magic Draft"
+                        aria-label={isProcessing === lead.id ? `Drafting next step for ${lead.contact_name}...` : `Magic draft next step for ${lead.contact_name}`}
+                        aria-busy={isProcessing === lead.id}
                       >
                         {isProcessing === lead.id ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -490,7 +491,10 @@ function KPICard({
           <div className={iconColor}>{icon}</div>
         </div>
         {trend !== undefined && trend !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
+          <span
+            aria-label={`${trend > 0 ? 'Increase' : 'Decrease'} of ${Math.abs(Math.round(trend))}%`}
+            className={`flex items-center gap-0.5 text-[11px] font-semibold ${trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}
+          >
             {trend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
             {Math.abs(Math.round(trend))}%
           </span>
