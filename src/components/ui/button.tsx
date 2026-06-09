@@ -38,6 +38,7 @@ export function Button({
     <button
       className={`${baseStyles} ${variantStyles[variant]} ${sizeStyles[size]} ${className || ''}`}
       disabled={isLoading || disabled}
+      aria-busy={isLoading}
       {...props}
     >
       {isLoading && <Loader2 className={`${children ? 'mr-2' : ''} h-4 w-4 animate-spin text-current`} />}

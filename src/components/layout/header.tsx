@@ -58,6 +58,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
 
           <button
             onClick={() => setIsSearchOpen(true)}
+            aria-label="Search leads and commands (Press ⌘K or / to open)"
             aria-haspopup="dialog"
             className="hidden md:flex items-center gap-2 rounded-lg bg-zinc-100/80 dark:bg-zinc-800/80 px-3 py-1.5 text-sm text-zinc-500 dark:text-zinc-400 hover:bg-zinc-200/80 dark:hover:bg-zinc-700/80 transition-colors"
           >
