@@ -42,6 +42,7 @@ import {
   ChevronRight,
   Network,
   User,
+  Zap,
 } from 'lucide-react';
 import {
   STAGE_LABELS, STAGE_DESCRIPTIONS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS,
@@ -58,7 +59,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
-import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
+import { getLeadBestAction, mostRecentDate, type SalesAction } from '@/lib/dashboard/sales-actions';
 import {
   leadDetailQueryKey,
   leadMemoriesQueryKey,
@@ -72,6 +73,8 @@ import {
 type TabId = 'overview' | 'emails' | 'conversation' | 'company' | 'memory';
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const [isMagicDrafting, setIsMagicDrafting] = useState(false);
+  const [isResearching, setIsResearching] = useState(false);
   const { id } = use(params);
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -308,7 +311,68 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   if (!lead) return null;
 
   const orgChartCount = lead.org_chart?.length || 0;
-  const nextBestAction = buildNextBestAction({ lead, emails, interactions });
+
+  const latestInboundAt = mostRecentDate([
+    lead.last_inbound_at,
+    ...emails.filter(e => e.direction === 'inbound').map(e => e.created_at)
+  ]);
+  const latestOutboundAt = mostRecentDate([
+    lead.last_outbound_at,
+    lead.last_contacted_at,
+    ...emails.filter(e => e.direction === 'outbound').map(e => e.sent_at || e.created_at)
+  ]);
+  const outboundCount = lead.total_emails_out || emails.filter(e => e.direction === 'outbound').length;
+
+  const nextBestAction = getLeadBestAction({
+    lead,
+    latestInboundAt,
+    latestOutboundAt,
+    outboundCount
+  });
+
+  const handleMagicDraft = async () => {
+    setIsMagicDrafting(true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/draft-next-step', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id }),
+      });
+      if (!res.ok) throw new Error('Magic drafting failed');
+      await fetchLead();
+      setActiveTab('emails');
+    })();
+
+    toast.promise(promise, {
+      loading: `Magic drafting for ${lead.contact_name}...`,
+      success: `Draft ready for ${lead.contact_name}`,
+      error: 'Drafting failed',
+    });
+
+    promise.finally(() => setIsMagicDrafting(false)).catch(() => undefined);
+  };
+
+  const handleResearch = async () => {
+    setIsResearching(true);
+    const promise = (async () => {
+      const res = await fetch('/api/ai/research-lead', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ leadId: id, type: lead.type }),
+      });
+      if (!res.ok) throw new Error('Research failed');
+      await fetchLead();
+    })();
+
+    toast.promise(promise, {
+      loading: `Researching ${lead.contact_name}...`,
+      success: `Research complete for ${lead.contact_name}`,
+      error: 'Research failed',
+    });
+
+    promise.finally(() => setIsResearching(false)).catch(() => undefined);
+  };
+
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
@@ -528,7 +592,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Sidebar */}
         <div className="space-y-4">
           <ContactCard lead={lead} />
-          <NextBestActionCard plan={nextBestAction} onOpenTab={setActiveTab} />
+        <NextBestActionCard
+          plan={nextBestAction}
+          onOpenTab={setActiveTab}
+          onMagicDraft={handleMagicDraft}
+          onResearch={handleResearch}
+          onPrep={generateBattleCard}
+          onMemo={generateMemo}
+          isProcessing={isMagicDrafting || isResearching || battleCardLoading || memoLoading}
+          loadingStates={{
+            magicDraft: isMagicDrafting,
+            research: isResearching,
+            prep: battleCardLoading,
+            memo: memoLoading
+          }}
+        />
           <LogInteractionCard leadId={id} onLogged={fetchLead} />
           <DetailsCard lead={lead} />
           {(lead.total_emails_in > 0 || lead.total_emails_out > 0) && <EmailStatsCard lead={lead} />}
@@ -541,18 +619,45 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 }
 
 // --- Next Best Action Card ---
-function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onOpenTab: (tab: TabId) => void }) {
-  const urgencyStyles: Record<NextBestActionPlan['urgency'], string> = {
+function NextBestActionCard({
+  plan,
+  onOpenTab,
+  onMagicDraft,
+  onResearch,
+  onPrep,
+  onMemo,
+  isProcessing,
+  loadingStates
+}: {
+  plan: SalesAction | null;
+  onOpenTab: (tab: TabId) => void;
+  onMagicDraft: () => void;
+  onResearch: () => void;
+  onPrep: () => void;
+  onMemo: () => void;
+  isProcessing: boolean;
+  loadingStates: { magicDraft: boolean; research: boolean; prep: boolean; memo: boolean };
+}) {
+  if (!plan) {
+    return (
+      <div className="rounded-xl border border-zinc-200 dark:border-zinc-700 p-4 bg-zinc-50/50 dark:bg-zinc-800/30 text-center">
+        <CheckCircle2 className="h-5 w-5 text-emerald-500 mx-auto mb-2" />
+        <p className="text-xs font-semibold text-zinc-900 dark:text-zinc-100">Next best action clear</p>
+      </div>
+    );
+  }
+
+  const priorityStyles: Record<SalesAction['priority'], string> = {
     critical: 'bg-red-50 dark:bg-red-950/30 text-red-700 dark:text-red-300 border-red-200 dark:border-red-900/60',
     high: 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-900/60',
     medium: 'bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-900/60',
     low: 'bg-zinc-50 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-300 border-zinc-200 dark:border-zinc-700',
-    none: 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-300 border-emerald-200 dark:border-emerald-900/60',
   };
-  const ctaLabel = plan.targetTab === 'emails' ? 'Open email workspace' :
-    plan.targetTab === 'conversation' ? 'Open conversation' :
-    plan.targetTab === 'company' ? 'Open company intel' :
-    plan.targetTab === 'memory' ? 'Open memory' : 'Open overview';
+
+  const targetTab = plan.ctaHref.includes('tab=emails') ? 'emails' :
+                   plan.ctaHref.includes('tab=conversation') ? 'conversation' :
+                   plan.ctaHref.includes('tab=company') ? 'company' :
+                   plan.ctaHref.includes('tab=memory') ? 'memory' : 'overview';
 
   return (
     <div className="rounded-xl border border-red-200/70 dark:border-red-900/40 bg-gradient-to-br from-red-50/80 via-white to-white dark:from-red-950/20 dark:via-zinc-900/80 dark:to-zinc-900/60 p-4 space-y-3 shadow-sm shadow-red-900/5">
@@ -561,15 +666,19 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
           <Target className="h-4 w-4 text-red-500" />
           <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Next Best Action</h3>
         </div>
-        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${urgencyStyles[plan.urgency]}`}>
-          {plan.dueLabel}
+        <span className={`shrink-0 rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${priorityStyles[plan.priority]}`}>
+          {plan.priority}
         </span>
       </div>
       <div>
-        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{plan.primaryAction}</p>
+        <p className="text-sm font-semibold leading-snug text-zinc-900 dark:text-zinc-100">{plan.title}</p>
         <p className="mt-1 text-xs leading-relaxed text-zinc-500 dark:text-zinc-400">{plan.reason}</p>
       </div>
-      {plan.supportingSignals.length > 0 && (
+      <div className="group/recommendation relative flex items-start gap-2 bg-white/60 dark:bg-zinc-900/40 p-2 rounded-lg border border-red-100 dark:border-red-900/20">
+        <Zap className="h-3 w-3 text-amber-500 mt-0.5 shrink-0" />
+        <p className="text-[11px] text-zinc-700 dark:text-zinc-300 leading-relaxed italic">{plan.recommendedAction}</p>
+      </div>
+      {plan.supportingSignals && plan.supportingSignals.length > 0 && (
         <div className="flex flex-wrap gap-1.5">
           {plan.supportingSignals.map((signal) => (
             <span key={signal} className="rounded-md bg-white/80 dark:bg-zinc-800/80 px-2 py-1 text-[10px] font-medium text-zinc-600 dark:text-zinc-300 border border-zinc-200/70 dark:border-zinc-700/70">
@@ -578,16 +687,56 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
           ))}
         </div>
       )}
-      {plan.urgency !== 'none' && (
+      <div className="flex flex-col gap-2">
+        {plan.category === 'research' && (
+          <button
+            onClick={(e) => { e.preventDefault(); onResearch(); }}
+            disabled={isProcessing}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 rounded-lg transition-colors border border-emerald-100 dark:border-emerald-800 disabled:opacity-50"
+          >
+            {loadingStates.research ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
+            {loadingStates.research ? 'Researching...' : 'Run Research'}
+          </button>
+        )}
+        {plan.category === 'meeting_prep' && (
+          <button
+            onClick={(e) => { e.preventDefault(); onPrep(); }}
+            disabled={isProcessing}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-purple-600 dark:text-purple-400 bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 rounded-lg transition-colors border border-purple-100 dark:border-purple-800 disabled:opacity-50"
+          >
+            {loadingStates.prep ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Swords className="h-3.5 w-3.5" />}
+            {loadingStates.prep ? 'Prepping...' : 'Generate Battle Card'}
+          </button>
+        )}
+        {plan.category === 'investor_memo' && (
+          <button
+            onClick={(e) => { e.preventDefault(); onMemo(); }}
+            disabled={isProcessing}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-indigo-600 dark:text-indigo-400 bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 rounded-lg transition-colors border border-indigo-100 dark:border-indigo-800 disabled:opacity-50"
+          >
+            {loadingStates.memo ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <BookOpen className="h-3.5 w-3.5" />}
+            {loadingStates.memo ? 'Writing...' : 'Generate Investor Memo'}
+          </button>
+        )}
+        {['reply', 'follow_up', 'prospecting'].includes(plan.category) && (
+          <button
+            onClick={(e) => { e.preventDefault(); onMagicDraft(); }}
+            disabled={isProcessing}
+            className="flex items-center justify-center gap-1.5 px-3 py-2 text-xs font-bold text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-950/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 rounded-lg transition-colors border border-amber-200 dark:border-amber-900/40 disabled:opacity-50"
+          >
+            {loadingStates.magicDraft ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5 fill-current" />}
+            {loadingStates.magicDraft ? 'Drafting...' : 'Magic Draft'}
+          </button>
+        )}
         <button
           type="button"
-          onClick={() => onOpenTab(plan.targetTab)}
+          onClick={() => onOpenTab(targetTab)}
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
         >
-          {ctaLabel}
+          {plan.ctaLabel}
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
-      )}
+      </div>
     </div>
   );
 }
