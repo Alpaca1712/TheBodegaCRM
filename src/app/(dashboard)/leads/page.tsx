@@ -8,7 +8,7 @@ import { toast } from 'sonner';
 import type { LeadType, PipelineStage, Priority } from '@/types/leads';
 import { PIPELINE_STAGES, STAGE_LABELS, PRIORITIES } from '@/types/leads';
 import { exportLeadsToCsv } from '@/lib/csv-export';
-import { useLeads } from '@/hooks/use-leads';
+import { useLeads, fetchAllLeadsForExport } from '@/hooks/use-leads';
 import { getLeadFocusItems, type LeadFocusItem } from '@/lib/leads/focus';
 import { getDealScore, getDealScoreBadge } from '@/lib/leads/deal-score';
 
@@ -22,6 +22,7 @@ export default function LeadsPage() {
   const [selectionMode, setSelectionMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [bulkBusy, setBulkBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [page, setPage] = useState(0);
   const searchInputRef = useRef<HTMLInputElement>(null);
 
@@ -99,14 +100,40 @@ export default function LeadsPage() {
 
   const clearSelection = () => setSelectedIds(new Set());
 
-  const handleExport = () => {
-    const rows = selectedIds.size > 0 ? selectedLeads : leads;
-    if (rows.length === 0) {
+  const handleExport = async () => {
+    if (selectedIds.size > 0) {
+      if (selectedLeads.length === 0) {
+        toast.error('No selected leads are visible to export');
+        return;
+      }
+      exportLeadsToCsv(selectedLeads, 'selected-leads');
+      toast.success(`Exported ${selectedLeads.length} selected lead${selectedLeads.length !== 1 ? 's' : ''} to CSV`);
+      return;
+    }
+
+    if (count === 0) {
       toast.error('No leads to export');
       return;
     }
-    exportLeadsToCsv(rows);
-    toast.success(`Exported ${rows.length} lead${rows.length !== 1 ? 's' : ''} to CSV`);
+
+    setExportBusy(true);
+    try {
+      const rows = await fetchAllLeadsForExport({
+        type: typeFilter,
+        stage: stageFilter,
+        search: debouncedSearch,
+      });
+      if (rows.length === 0) {
+        toast.error('No leads to export');
+        return;
+      }
+      exportLeadsToCsv(rows, isFiltered ? 'filtered-leads' : 'all-leads');
+      toast.success(`Exported ${rows.length} ${isFiltered ? 'matching ' : ''}lead${rows.length !== 1 ? 's' : ''} to CSV`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : 'Failed to export leads');
+    } finally {
+      setExportBusy(false);
+    }
   };
 
   const bulkRequest = async (body: Record<string, unknown>, successMsg: (n: number) => string) => {
@@ -178,11 +205,12 @@ export default function LeadsPage() {
             {selectionMode ? 'Done' : 'Select'}
           </button>
           <button
-            onClick={handleExport}
-            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 rounded-lg transition-colors"
+            onClick={() => void handleExport()}
+            disabled={exportBusy}
+            className="flex items-center gap-1.5 px-3 py-2 text-xs font-medium text-zinc-600 dark:text-zinc-400 bg-white dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700 hover:bg-zinc-50 dark:hover:bg-zinc-700 disabled:cursor-not-allowed disabled:opacity-60 rounded-lg transition-colors"
           >
             <Download className="h-3.5 w-3.5" />
-            Export CSV
+            {exportBusy ? 'Exporting…' : selectedIds.size > 0 ? `Export ${selectedIds.size}` : isFiltered ? 'Export Matching' : 'Export All'}
           </button>
           <Link
             href="/leads/import"

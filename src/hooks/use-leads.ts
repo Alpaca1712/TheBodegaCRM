@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import type { Lead, LeadType, PipelineStage } from '@/types/leads'
 
 export const LEADS_QUERY_STALE_TIME_MS = 15_000
+export const LEADS_EXPORT_PAGE_SIZE = 200
 
 export interface LeadFilters {
   type?: LeadType | ''
@@ -44,6 +45,30 @@ export async function fetchLeads(filters: LeadFilters): Promise<LeadsResponse> {
     data: Array.isArray(payload?.data) ? payload.data : [],
     count: Number(payload?.count ?? 0),
   }
+}
+
+export type LeadExportFilters = Omit<LeadFilters, 'page' | 'pageSize' | 'view'>
+
+export async function fetchAllLeadsForExport(filters: LeadExportFilters): Promise<Lead[]> {
+  const firstPage = await fetchLeads({ ...filters, page: 0, pageSize: LEADS_EXPORT_PAGE_SIZE })
+  const total = Math.max(firstPage.count, firstPage.data.length)
+  const totalPages = Math.max(1, Math.ceil(total / LEADS_EXPORT_PAGE_SIZE))
+
+  if (totalPages === 1) return firstPage.data
+
+  const remainingPages = await Promise.all(
+    Array.from({ length: totalPages - 1 }, (_, index) =>
+      fetchLeads({
+        ...filters,
+        page: index + 1,
+        pageSize: LEADS_EXPORT_PAGE_SIZE,
+      }),
+    ),
+  )
+
+  return [firstPage, ...remainingPages]
+    .flatMap((page) => page.data)
+    .slice(0, total)
 }
 
 export function useLeads(filters: LeadFilters) {
