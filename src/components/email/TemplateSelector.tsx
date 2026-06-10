@@ -2,10 +2,11 @@
 'use client'
 
 import { useState } from 'react'
-import { Search, Copy, Check, Star } from 'lucide-react'
+import { Search, X, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
+import { CopyButton } from '@/components/ui/copy-button'
 import { useEmailTemplates, usePopularTemplates } from '@/hooks/use-email-templates'
 type EmailTemplate = {
   id: string
@@ -50,7 +51,6 @@ export function TemplateSelector({
   const [search, setSearch] = useState('')
   const [selectedCategory, setSelectedCategory] = useState<'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter' | undefined>()
   const [isOpen, setIsOpen] = useState(false)
-  const [copiedId, setCopiedId] = useState<string | null>(null)
 
   const { data: templatesData } = useEmailTemplates({ category: selectedCategory })
   const { data: popularData } = usePopularTemplates(5)
@@ -71,17 +71,6 @@ export function TemplateSelector({
     setIsOpen(false)
     setSearch('')
     setSelectedCategory(undefined)
-  }
-
-  const handleCopy = async (template: EmailTemplate) => {
-    try {
-      const text = `Subject: ${template.subject}\n\n${template.body}`
-      await navigator.clipboard.writeText(text)
-      setCopiedId(template.id)
-      setTimeout(() => setCopiedId(null), 2000)
-    } catch (err) {
-      console.error('Failed to copy:', err)
-    }
   }
 
   const getCategoryColor = (category: string) => {
@@ -123,8 +112,9 @@ export function TemplateSelector({
                 size="sm" 
                 onClick={() => setIsOpen(false)}
                 className="h-8 w-8 p-0"
+                aria-label="Close dialog"
               >
-                ×
+                <X className="h-4 w-4" />
               </Button>
             </div>
 
@@ -138,6 +128,7 @@ export function TemplateSelector({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-9"
+                aria-label="Search templates"
               />
             </div>
             
@@ -173,8 +164,17 @@ export function TemplateSelector({
                 {popularTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                     onClick={() => handleSelect(template)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelect(template)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Select template: ${template.name}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -189,21 +189,13 @@ export function TemplateSelector({
                     </div>
                     <div className="text-xs text-zinc-400 flex items-center justify-between">
                       <span>{template.usage_count} uses</span>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCopy(template)
-                        }}
-                      >
-                        {copiedId === template.id ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CopyButton
+                          label="Template"
+                          value={`Subject: ${template.subject}\n\n${template.body}`}
+                          className="h-6 w-6"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -235,8 +227,17 @@ export function TemplateSelector({
                 {filteredTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                     onClick={() => handleSelect(template)}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelect(template)
+                      }
+                    }}
+                    role="button"
+                    tabIndex={0}
+                    aria-label={`Select template: ${template.name}`}
                   >
                     <div className="flex justify-between items-start mb-2">
                       <div>
@@ -269,21 +270,13 @@ export function TemplateSelector({
                           </span>
                         )}
                       </div>
-                      <Button
-                        size="sm"
-                        variant="ghost"
-                        className="h-6 px-2"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleCopy(template)
-                        }}
-                      >
-                        {copiedId === template.id ? (
-                          <Check className="h-3 w-3" />
-                        ) : (
-                          <Copy className="h-3 w-3" />
-                        )}
-                      </Button>
+                      <div onClick={(e) => e.stopPropagation()}>
+                        <CopyButton
+                          label="Template"
+                          value={`Subject: ${template.subject}\n\n${template.body}`}
+                          className="h-6 w-6"
+                        />
+                      </div>
                     </div>
                   </div>
                 ))}
