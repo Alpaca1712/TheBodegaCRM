@@ -57,6 +57,11 @@ const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: strin
     label: 'Medium',
     dot: 'bg-blue-500',
   },
+  low: {
+    color: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400',
+    label: 'Low',
+    dot: 'bg-zinc-400',
+  },
 };
 
 export default function SalesActionPlan({
@@ -143,6 +148,15 @@ export default function SalesActionPlan({
                       className="absolute top-1.5 right-1.5 opacity-0 group-hover/recommendation:opacity-100 focus:opacity-100 transition-opacity"
                     />
                   </div>
+                  {action.supportingSignals && action.supportingSignals.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5 mt-2">
+                      {action.supportingSignals.map((signal) => (
+                        <span key={signal} className="rounded-md bg-zinc-100/50 dark:bg-zinc-800/50 px-1.5 py-0.5 text-[9px] font-medium text-zinc-500 dark:text-zinc-400 border border-zinc-200/50 dark:border-zinc-700/50">
+                          {signal}
+                        </span>
+                      ))}
+                    </div>
+                  )}
                 </div>
               </div>
 
