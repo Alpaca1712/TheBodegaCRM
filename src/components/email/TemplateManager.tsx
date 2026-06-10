@@ -143,6 +143,7 @@ export function TemplateManager({
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="pl-8"
+                aria-label="Search templates"
               />
             </div>
             <DropdownMenu>
@@ -199,8 +200,17 @@ export function TemplateManager({
               {filteredTemplates.map((template) => (
                 <div
                   key={template.id}
-                  className="grid grid-cols-6 gap-4 p-4 items-center cursor-pointer hover:bg-zinc-50"
+                  className="grid grid-cols-6 gap-4 p-4 items-center cursor-pointer hover:bg-zinc-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20"
                   onClick={() => handleSelect(template)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' || e.key === ' ') {
+                      e.preventDefault()
+                      handleSelect(template)
+                    }
+                  }}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Manage template: ${template.name}`}
                 >
                   <div className="font-medium">
                     <div className="flex items-center gap-2">
@@ -239,6 +249,7 @@ export function TemplateManager({
                           e.stopPropagation()
                           handleEdit(template)
                         }}
+                        aria-label="Edit template"
                       >
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -249,6 +260,7 @@ export function TemplateManager({
                           e.stopPropagation()
                           handleDuplicate(template)
                         }}
+                        aria-label="Duplicate template"
                       >
                         <Copy className="h-4 w-4" />
                       </Button>
@@ -260,6 +272,7 @@ export function TemplateManager({
                           e.stopPropagation()
                           handleDelete(template.id)
                         }}
+                        aria-label="Delete template"
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
