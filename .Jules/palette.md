@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2026-06-11 - [A11y: Robust Dialog Patterns]
+**Learning:** For global dialogs (like Keyboard Shortcuts), toggling the open state via a single custom event is more intuitive than having separate 'show'/'hide' events. Pairing this with conditional 'Escape' key listeners and proper ARIA labeling (`aria-labelledby`) ensures a standard-compliant and accessible experience.
+**Action:** Implement modal dialogs with `role="dialog"`, `aria-modal="true"`, and `aria-labelledby`. Conditionally register 'Escape' listeners only when the modal is active.
