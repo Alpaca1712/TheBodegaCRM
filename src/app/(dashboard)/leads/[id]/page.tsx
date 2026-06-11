@@ -59,6 +59,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { buildNextBestAction, type NextBestActionPlan } from '@/lib/sales/next-best-action';
+import { getDealReadiness, type DealReadinessSummary } from '@/lib/sales/deal-readiness';
 import {
   leadDetailQueryKey,
   leadMemoriesQueryKey,
@@ -309,6 +310,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   const orgChartCount = lead.org_chart?.length || 0;
   const nextBestAction = buildNextBestAction({ lead, emails, interactions });
+  const dealReadiness = getDealReadiness(lead);
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
@@ -529,6 +531,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <div className="space-y-4">
           <ContactCard lead={lead} />
           <NextBestActionCard plan={nextBestAction} onOpenTab={setActiveTab} />
+          <DealReadinessCard summary={dealReadiness} onOpenTab={setActiveTab} />
           <LogInteractionCard leadId={id} onLogged={fetchLead} />
           <DetailsCard lead={lead} />
           {(lead.total_emails_in > 0 || lead.total_emails_out > 0) && <EmailStatsCard lead={lead} />}
@@ -585,6 +588,86 @@ function NextBestActionCard({ plan, onOpenTab }: { plan: NextBestActionPlan; onO
           className="inline-flex w-full items-center justify-center gap-1.5 rounded-lg bg-red-600 px-3 py-2 text-xs font-semibold text-white transition-colors hover:bg-red-500"
         >
           {ctaLabel}
+          <ArrowRight className="h-3.5 w-3.5" />
+        </button>
+      )}
+    </div>
+  );
+}
+
+// --- Deal Readiness Card ---
+function DealReadinessCard({ summary, onOpenTab }: { summary: DealReadinessSummary; onOpenTab: (tab: TabId) => void }) {
+  const verdictStyles: Record<DealReadinessSummary['verdict'], string> = {
+    ready: 'text-emerald-700 bg-emerald-50 border-emerald-200 dark:text-emerald-300 dark:bg-emerald-950/30 dark:border-emerald-900/60',
+    almost: 'text-amber-700 bg-amber-50 border-amber-200 dark:text-amber-300 dark:bg-amber-950/30 dark:border-amber-900/60',
+    blocked: 'text-red-700 bg-red-50 border-red-200 dark:text-red-300 dark:bg-red-950/30 dark:border-red-900/60',
+  };
+  const nextTab: TabId = summary.nextMissingItem?.id === 'account-context'
+    ? 'company'
+    : summary.nextMissingItem?.id === 'engagement-intel'
+      ? 'conversation'
+      : summary.nextMissingItem?.id === 'outreach-motion'
+        ? 'emails'
+        : 'overview';
+  const ctaLabel = nextTab === 'company'
+    ? 'Open company intel'
+    : nextTab === 'conversation'
+      ? 'Open conversation'
+      : nextTab === 'emails'
+        ? 'Open email workspace'
+        : 'Open overview';
+
+  return (
+    <div className="rounded-xl border border-zinc-200/80 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/60">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-red-500" />
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Deal Readiness</h3>
+            <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Pitch quality checklist</p>
+          </div>
+        </div>
+        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide ${verdictStyles[summary.verdict]}`}>
+          {summary.score}%
+        </span>
+      </div>
+
+      <div className="mt-3">
+        <div className="mb-1 flex items-center justify-between text-[11px] text-zinc-500 dark:text-zinc-400">
+          <span>{summary.headline}</span>
+          <span>{summary.completed}/{summary.total} ready</span>
+        </div>
+        <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800" aria-label={`Deal readiness ${summary.score}%`}>
+          <div
+            className={`h-full rounded-full ${summary.verdict === 'ready' ? 'bg-emerald-500' : summary.verdict === 'almost' ? 'bg-amber-500' : 'bg-red-500'}`}
+            style={{ width: `${summary.score}%` }}
+          />
+        </div>
+      </div>
+
+      <ul className="mt-3 space-y-2">
+        {summary.items.map((item) => (
+          <li key={item.id} className="flex items-start gap-2 text-xs">
+            {item.met ? (
+              <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0 text-emerald-500" />
+            ) : (
+              <AlertCircle className="mt-0.5 h-3.5 w-3.5 shrink-0 text-amber-500" />
+            )}
+            <div className="min-w-0">
+              <p className={item.met ? 'text-zinc-700 dark:text-zinc-300' : 'font-medium text-zinc-900 dark:text-zinc-100'}>{item.label}</p>
+              {!item.met && <p className="mt-0.5 leading-relaxed text-zinc-500 dark:text-zinc-400">{item.fix}</p>}
+            </div>
+          </li>
+        ))}
+      </ul>
+
+      {summary.nextMissingItem && (
+        <button
+          type="button"
+          onClick={() => onOpenTab(nextTab)}
+          className="mt-3 inline-flex w-full items-center justify-center gap-1.5 rounded-lg border border-zinc-200 bg-zinc-50 px-3 py-2 text-xs font-semibold text-zinc-700 transition-colors hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-200 dark:hover:bg-zinc-700"
+        >
+          Fix next gap: {ctaLabel}
           <ArrowRight className="h-3.5 w-3.5" />
         </button>
       )}
