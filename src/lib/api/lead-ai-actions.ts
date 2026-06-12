@@ -13,11 +13,15 @@ async function parseErrorBody(response: Response): Promise<ApiErrorBody> {
   }
 }
 
-export async function postLeadAiAction<TResponse>(endpoint: string, leadId: string): Promise<TResponse> {
+export async function postLeadAiAction<TResponse>(
+  endpoint: string,
+  leadId: string,
+  extraBody?: Record<string, unknown>
+): Promise<TResponse> {
   const response = await fetch(endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ leadId }),
+    body: JSON.stringify({ leadId, ...extraBody }),
   });
 
   if (!response.ok) {
