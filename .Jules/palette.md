@@ -53,3 +53,11 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2025-05-22 - [UX: Progressive Disclosure in Chat Inputs]
+**Learning:** AI chat inputs often receive variable-length text. Using an auto-resizing textarea that grows with content (progressive disclosure of space) prevents the "tiny window" scroll trap and improves the drafting experience for complex prompts.
+**Action:** Replaced raw `textarea` in `CopilotChat` with the shared `Textarea` component using `autoResize` and `min-h-[40px]`.
+
+## 2025-05-22 - [A11y: Escape Key Parity for Overlays]
+**Learning:** For floating UI panels (like CopilotChat), it's not enough to handle Escape on the input itself. A global window listener ensures the panel can be closed from anywhere, providing a consistent exit hatch for keyboard users.
+**Action:** Implemented a `useEffect` based window listener for `Escape` in `CopilotChat`.
