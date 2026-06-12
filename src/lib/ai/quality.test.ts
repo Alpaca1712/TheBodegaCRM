@@ -75,6 +75,36 @@ describe('Email Quality Check', () => {
       expect(result.issues).toContain('Contains unsupported traction claim. Only the Mason pilot may be referenced as a real result.');
     });
 
+    it('should flag invented assessment findings that are not grounded in Mason or lead research', () => {
+      const body = [
+        "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto.",
+        'Your support agent caught my eye because customers can reach it through chat and email.',
+        'We just wrapped an assessment for a similar AI company and found 3 critical issues in their support agent.',
+        'I put together a short breakdown of what we would test first in your agent. Want me to send it?',
+        'Best,',
+        'Daniel Chalco',
+      ].join('\n')
+
+      const result = checkEmailQuality('Support agent risk', body, 'initial');
+
+      expect(result.issues).toContain('Contains unsupported finding claim. Specific vulnerabilities or assessment results must come from lead research or the Mason pilot.');
+    });
+
+    it('should allow specific finding claims when they explicitly reference the Mason pilot', () => {
+      const body = [
+        "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto.",
+        'Your resident support agent caught my eye because customers can reach it through chat and email.',
+        'In the Mason pilot, we took over their property management agent through its normal customer channels, then helped them fix the issues.',
+        'I put together a short walkthrough of what we would test first in your agent. Want me to send it?',
+        'Best,',
+        'Daniel Chalco',
+      ].join('\n')
+
+      const result = checkEmailQuality('Resident agent risk', body, 'initial');
+
+      expect(result.issues).not.toContain('Contains unsupported finding claim. Specific vulnerabilities or assessment results must come from lead research or the Mason pilot.');
+    });
+
     it('should flag security jargon when the email is not explicitly allowed to mirror technical language', () => {
       const body = [
         "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto.",

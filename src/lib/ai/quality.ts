@@ -47,6 +47,12 @@ const UNSUPPORTED_TRACTION_PATTERNS = [
   /\b\d+\s*(?:x|times)\b.{0,50}\b(?:faster|better|more|less)\b/i,
 ]
 
+const UNSUPPORTED_FINDING_PATTERNS = [
+  /\b(?:found|discovered|uncovered|identified|caught)\b.{0,40}\b(?:critical|high-risk|serious|major)\b.{0,40}\b(?:issues?|vulnerabilities|vulnerability|flaws?|risks?|bugs?)\b/i,
+  /\b(?:found|discovered|uncovered|identified|caught)\b.{0,25}\b\d+\b.{0,25}\b(?:issues?|vulnerabilities|vulnerability|flaws?|risks?|bugs?)\b/i,
+  /\b(?:took over|compromised|stole|extracted private data from|pulled private data from)\b.{0,60}\b(?:their|a|an|similar|another)\b/i,
+]
+
 const AVOIDABLE_SECURITY_JARGON = [
   'agentic pentesting',
   'adversarial inputs',
@@ -127,6 +133,12 @@ export function checkEmailQuality(
   const hasUnsupportedTraction = UNSUPPORTED_TRACTION_PATTERNS.some(pattern => pattern.test(body))
   if (hasUnsupportedTraction && !mentionsMason) {
     issues.push('Contains unsupported traction claim. Only the Mason pilot may be referenced as a real result.')
+    score -= 20
+  }
+
+  const hasUnsupportedFinding = UNSUPPORTED_FINDING_PATTERNS.some(pattern => pattern.test(body))
+  if (hasUnsupportedFinding && !mentionsMason) {
+    issues.push('Contains unsupported finding claim. Specific vulnerabilities or assessment results must come from lead research or the Mason pilot.')
     score -= 20
   }
 

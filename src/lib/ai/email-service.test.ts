@@ -9,7 +9,7 @@ vi.mock('./anthropic', () => ({
   generateJSON: mockGenerateJSON,
 }))
 
-import { generateInitialOutreach } from './email-service'
+import { buildFollowupUserPrompt, generateInitialOutreach } from './email-service'
 
 const baseLead: Lead = {
   id: 'lead-1',
@@ -91,5 +91,20 @@ describe('generateInitialOutreach', () => {
     expect(result.mckenna.quality.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
     expect(result.mckenna.wordCount).toBe(result.mckenna.body.trim().split(/\s+/).length)
     expect(result.hormozi.quality.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
+  })
+})
+
+describe('buildFollowupUserPrompt', () => {
+  it('keeps channel-switch follow-ups grounded instead of encouraging invented findings', () => {
+    const prompt = buildFollowupUserPrompt({
+      lead: baseLead,
+      emailThread: [],
+      followUpNumber: 3,
+    })
+
+    expect(prompt).toContain('Drop grounded proof only')
+    expect(prompt).toContain('Never invent a completed assessment, client result, or specific vulnerability count')
+    expect(prompt).not.toContain('Just wrapped an assessment for a [similar company type]')
+    expect(prompt).not.toContain('found 3 critical issues')
   })
 })

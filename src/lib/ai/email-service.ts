@@ -404,7 +404,8 @@ ${typeSpecific}
 Write for LinkedIn DM or Twitter DM. NOT email.
 ${hasStrategy ? 'Keep it short but let the strategy breathe. DMs are casual.' : '20-40 words. Two to three sentences max. DMs are SHORT.'}
 - Acknowledge you emailed. Don't apologize for it.
-${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle.' : `- Drop social proof: mention a similar company you helped, a result you got, or a relevant finding. "Just wrapped an assessment for a [similar company type], found 3 critical issues in their [agent type]. Made me think of your setup."
+${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle.' : `- Drop grounded proof only. You may reference the Mason pilot if it is clearly relevant. Otherwise share a general risk pattern you would test, without claiming you already found issues for another unnamed company.
+- Never invent a completed assessment, client result, or specific vulnerability count. Say "we would test" or "I can send a checklist" unless the fact appears in the thread or lead research.
 - One SMYKM hook that proves you're not mass-blasting.`}
 - Offer value, not a meeting. Even the DM should give them something.
 - Tone: casual, like you're DMing someone you met at a conference`
