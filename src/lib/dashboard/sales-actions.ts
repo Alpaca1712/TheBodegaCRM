@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -195,6 +196,9 @@ export function buildSalesActionPlan({
     }
 
     if (lead.stage === 'meeting_held') {
+      const daysSinceMeeting = daysSinceInbound ?? daysSinceOutbound
+      const isFreshMeeting = daysSinceMeeting === 0
+
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
           id: `${lead.id}:investor-memo`,
@@ -203,14 +207,14 @@ export function buildSalesActionPlan({
           leadType: lead.type,
           leadStage: lead.stage,
           companyName: lead.company_name,
-          priority: 'high',
+          priority: isFreshMeeting ? 'critical' : 'high',
           category: 'investor_memo',
           title: `Draft memo for ${lead.contact_name}`,
           reason: `${lead.company_name} meeting is complete and needs a tailored investor memo.`,
           recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: (isFreshMeeting ? 920 : 880) + icp + recencyBoost(daysSinceMeeting),
         })
         continue
       }
@@ -222,14 +226,14 @@ export function buildSalesActionPlan({
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
+        priority: isFreshMeeting ? 'critical' : 'high',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: (isFreshMeeting ? 920 : 780) + icp + recencyBoost(daysSinceMeeting),
       })
       continue
     }
@@ -258,7 +262,7 @@ export function buildSalesActionPlan({
 
     if (needsFollowUp) {
       const outboundCount = lead.total_emails_out ?? outboundCountByLead.get(lead.id) ?? 0
-      const followUp = followUpPlay(outboundCount)
+      const followUp = followUpPlay(outboundCount, lead.type)
 
       actions.push({
         id: `${lead.id}:follow-up`,
@@ -359,7 +363,7 @@ function emailCountByLead(emails: ActionEmail[]) {
   return map
 }
 
-function followUpPlay(outboundCount: number) {
+function followUpPlay(outboundCount: number, leadType: LeadType) {
   if (outboundCount === 1) {
     return {
       label: 'Bump',
@@ -368,6 +372,12 @@ function followUpPlay(outboundCount: number) {
   }
 
   if (outboundCount === 2) {
+    if (leadType === 'investor') {
+      return {
+        label: 'Memo Drop',
+        recommendedAction: 'Send the personalized investor memo with a short note on recent momentum.',
+      }
+    }
     return {
       label: 'Value Drop',
       recommendedAction: 'Use the Hormozi approach: deliver value with a free resource, teardown, or breakdown.',
