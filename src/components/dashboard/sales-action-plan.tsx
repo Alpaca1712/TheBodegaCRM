@@ -37,6 +37,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
+  meeting_recap: <MessageSquare className="h-4 w-4 text-red-500" />,
   review: <ClipboardCheck className="h-4 w-4 text-emerald-500" />,
   investor_memo: <FileText className="h-4 w-4 text-indigo-500" />,
 };
@@ -91,7 +92,7 @@ export default function SalesActionPlan({
         {actions.map((action) => {
           const isLeadProcessing = isProcessing === action.leadId;
           const hasActiveAction = !!isProcessing;
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';

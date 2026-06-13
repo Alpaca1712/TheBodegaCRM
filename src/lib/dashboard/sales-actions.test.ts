@@ -190,6 +190,29 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
+  it('elevates fresh meeting recaps to critical priority', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-meeting-held',
+          stage: 'meeting_held',
+          last_contacted_at: '2026-05-06T10:00:00Z',
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-meeting-held',
+      category: 'meeting_recap',
+      priority: 'critical',
+      score: 920 + 85 + 50,
+    })
+  })
+
   it('surfaces investor memo actions for outreach-ready investors', () => {
     const actions = buildSalesActionPlan({
       leads: [
@@ -273,7 +296,7 @@ describe('buildSalesActionPlan', () => {
     expect(actions[1]).toMatchObject({ category: 'prospecting', priority: 'high' })
   })
 
-  it('differentiates follow-up plays by outbound count', () => {
+  it('differentiates follow-up plays by outbound count and lead type', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -286,6 +309,14 @@ describe('buildSalesActionPlan', () => {
         {
           ...baseLead,
           id: 'lead-value',
+          stage: 'email_sent',
+          total_emails_out: 2,
+          last_outbound_at: '2026-05-01T12:00:00Z',
+        },
+        {
+          ...baseLead,
+          id: 'lead-investor-memo',
+          type: 'investor',
           stage: 'email_sent',
           total_emails_out: 2,
           last_outbound_at: '2026-05-01T12:00:00Z',
@@ -305,6 +336,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions.find((action) => action.leadId === 'lead-bump')?.ctaLabel).toBe('Bump')
     expect(actions.find((action) => action.leadId === 'lead-value')?.ctaLabel).toBe('Value Drop')
+    expect(actions.find((action) => action.leadId === 'lead-investor-memo')?.ctaLabel).toBe('Memo Drop')
     expect(actions.find((action) => action.leadId === 'lead-switch')?.ctaLabel).toBe('Channel Switch')
   })
 
