@@ -53,3 +53,7 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
+
+## 2025-05-22 - [A11y: Standardized Modal/Dialog Implementation]
+**Learning:** Standard accessible dialogs require more than just a visibility toggle. They must include role="dialog", aria-modal="true", proper labelling via aria-labelledby, an Escape key listener for closure, and active focus management (focusing the primary action or close button on open) to provide a predictable and accessible experience for all users.
+**Action:** When implementing or refining modals, always ensure the container has the correct ARIA roles and labels, and use a useRef with a short timeout to handle initial focus.
