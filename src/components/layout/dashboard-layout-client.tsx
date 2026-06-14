@@ -24,6 +24,12 @@ import MobileBottomNav from '@/components/layout/mobile-bottom-nav';
 import KeyboardShortcutsDialog from '@/components/ui/keyboard-shortcuts-dialog';
 import { useGlobalShortcuts } from '@/hooks/use-keyboard-shortcuts';
 import CopilotChat from '@/components/ai/copilot-chat';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 interface DashboardLayoutClientProps {
   children: React.ReactNode;
@@ -129,35 +135,34 @@ export default function DashboardLayoutClient({
 
           {/* Quick Create */}
           <div className="px-3 pb-2">
-            <div className="relative">
-              <button
-                onClick={() => setIsQuickCreateOpen(!isQuickCreateOpen)}
-                className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg transition-all shadow-sm shadow-red-600/20 hover:shadow-red-500/30"
-              >
-                <Plus className="h-3.5 w-3.5" />
-                New Lead
-                <ChevronDown className={`h-3 w-3 ml-auto transition-transform ${isQuickCreateOpen ? 'rotate-180' : ''}`} />
-              </button>
-              {isQuickCreateOpen && (
-                <div className="absolute top-full left-0 right-0 mt-1 bg-white dark:bg-zinc-800 rounded-lg border border-zinc-200 dark:border-zinc-700 shadow-lg shadow-black/5 dark:shadow-black/30 py-1 z-50 animate-scale-in">
-                  {quickCreateItems.map((item) => {
-                    const Icon = item.icon;
-                    return (
+            <DropdownMenu open={isQuickCreateOpen} onOpenChange={setIsQuickCreateOpen}>
+              <DropdownMenuTrigger asChild>
+                <button className="w-full flex items-center justify-center gap-2 px-3 py-2 text-xs font-medium text-white bg-gradient-to-r from-red-600 to-red-500 hover:from-red-500 hover:to-red-400 rounded-lg transition-all shadow-sm shadow-red-600/20 hover:shadow-red-500/30 outline-none focus-visible:ring-2 focus-visible:ring-red-500/50">
+                  <Plus className="h-3.5 w-3.5" />
+                  New Lead
+                  <ChevronDown
+                    className={`h-3 w-3 ml-auto transition-transform ${isQuickCreateOpen ? 'rotate-180' : ''}`}
+                  />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="start" className="w-[208px] animate-scale-in">
+                {quickCreateItems.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <DropdownMenuItem key={item.href} asChild>
                       <Link
-                        key={item.href}
                         href={item.href}
-                        onClick={() => setIsQuickCreateOpen(false)}
                         aria-current={pathname === item.href ? 'page' : undefined}
-                        className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400 hover:bg-zinc-50 dark:hover:bg-zinc-700/50 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors"
+                        className="flex items-center gap-2.5 px-3 py-2 text-xs text-zinc-600 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-zinc-200 transition-colors cursor-pointer"
                       >
                         <Icon className="h-3.5 w-3.5 text-zinc-400 dark:text-zinc-500" />
                         {item.label}
                       </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
+                    </DropdownMenuItem>
+                  );
+                })}
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
 
           {/* Navigation */}
