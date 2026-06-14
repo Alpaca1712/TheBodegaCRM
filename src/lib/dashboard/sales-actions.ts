@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -195,6 +196,30 @@ export function buildSalesActionPlan({
     }
 
     if (lead.stage === 'meeting_held') {
+      const momentumDate = mostRecentDate([lead.last_contacted_at, lead.updated_at])
+      const daysSinceMomentum = daysSince(momentumDate, now)
+
+      // 1. Meeting Recap (Critical on Day 0)
+      actions.push({
+        id: `${lead.id}:meeting-recap`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: daysSinceMomentum === 0 ? 'critical' : 'high',
+        category: 'meeting_recap',
+        title: `Send recap to ${lead.contact_name}`,
+        reason: momentumDate
+          ? `Meeting completed with ${lead.company_name} ${formatDaysAgo(daysSinceMomentum)}.`
+          : `Meeting completed with ${lead.company_name}.`,
+        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        ctaLabel: 'Send recap',
+        ctaHref: `/leads/${lead.id}`,
+        score: 920 + icp + recencyBoost(daysSinceMomentum),
+      })
+
+      // 2. Investor Memo (Prioritize after day 0 or if recap is done)
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
           id: `${lead.id}:investor-memo`,
@@ -210,27 +235,9 @@ export function buildSalesActionPlan({
           recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 880 + icp + recencyBoost(daysSinceMomentum),
         })
-        continue
       }
-
-      actions.push({
-        id: `${lead.id}:meeting-recap`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
-        title: `Send recap to ${lead.contact_name}`,
-        reason: `Meeting completed with ${lead.company_name}.`,
-        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Send recap',
-        ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-      })
       continue
     }
 

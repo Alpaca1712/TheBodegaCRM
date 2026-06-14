@@ -176,6 +176,7 @@ describe('buildSalesActionPlan', () => {
           type: 'investor',
           stage: 'meeting_held',
           investor_memo: null,
+          updated_at: '2026-05-01T12:00:00Z',
         },
       ],
       outboundEmails: [],
@@ -183,10 +184,13 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
+    // On day 5, both recap and memo are suggested.
+    // Recap (920 base) is prioritized over investor memo (880 base).
+
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
     })
   })
 
