@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -195,6 +196,8 @@ export function buildSalesActionPlan({
     }
 
     if (lead.stage === 'meeting_held') {
+      const daysSinceMeeting = daysSinceInbound ?? daysSinceOutbound
+
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
           id: `${lead.id}:investor-memo`,
@@ -210,9 +213,8 @@ export function buildSalesActionPlan({
           recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 880 + icp + recencyBoost(daysSinceMeeting),
         })
-        continue
       }
 
       actions.push({
@@ -222,14 +224,14 @@ export function buildSalesActionPlan({
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
+        priority: daysSinceMeeting === 0 ? 'critical' : 'high',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 920 + icp + recencyBoost(daysSinceMeeting),
       })
       continue
     }
