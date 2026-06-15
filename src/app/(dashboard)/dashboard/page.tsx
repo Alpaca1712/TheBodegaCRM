@@ -490,8 +490,15 @@ function KPICard({
           <div className={iconColor}>{icon}</div>
         </div>
         {trend !== undefined && trend !== 0 && (
-          <span className={`flex items-center gap-0.5 text-[11px] font-semibold ${trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}>
-            {trend > 0 ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+          <span
+            className={`flex items-center gap-0.5 text-[11px] font-semibold ${trend > 0 ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}`}
+            aria-label={`${trend > 0 ? 'Increase' : 'Decrease'} of ${Math.abs(Math.round(trend))}%`}
+          >
+            {trend > 0 ? (
+              <ArrowUpRight className="h-3 w-3" aria-hidden="true" />
+            ) : (
+              <ArrowDownRight className="h-3 w-3" aria-hidden="true" />
+            )}
             {Math.abs(Math.round(trend))}%
           </span>
         )}

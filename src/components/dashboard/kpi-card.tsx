@@ -38,8 +38,11 @@ export default function KpiCard({
           <Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
         </div>
         {trend !== 'neutral' && trendValue && (
-          <div className={`text-xs font-medium px-2 py-1 rounded-full ${trendColors[trend]}`}>
-            {trendIcons[trend]} {trendValue}
+          <div
+            className={`text-xs font-medium px-2 py-1 rounded-full ${trendColors[trend]}`}
+            aria-label={`${trend === 'up' ? 'Increase' : 'Decrease'} of ${trendValue}`}
+          >
+            <span aria-hidden="true">{trendIcons[trend]}</span> {trendValue}
           </div>
         )}
       </div>
