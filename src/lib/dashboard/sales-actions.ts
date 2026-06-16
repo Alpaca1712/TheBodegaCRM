@@ -5,6 +5,7 @@ export type SalesActionCategory =
   | 'reply'
   | 'follow_up'
   | 'meeting'
+  | 'meeting_recap'
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
@@ -195,6 +196,26 @@ export function buildSalesActionPlan({
     }
 
     if (lead.stage === 'meeting_held') {
+      const meetingDate = mostRecentDate([lead.last_contacted_at, lead.updated_at])
+      const daysSinceMeeting = daysSince(meetingDate, now)
+
+      actions.push({
+        id: `${lead.id}:meeting-recap`,
+        leadId: lead.id,
+        leadName: lead.contact_name,
+        leadType: lead.type,
+        leadStage: lead.stage,
+        companyName: lead.company_name,
+        priority: daysSinceMeeting === 0 ? 'critical' : 'high',
+        category: 'meeting_recap',
+        title: `Send recap to ${lead.contact_name}`,
+        reason: `Meeting completed with ${lead.company_name}${daysSinceMeeting === 0 ? ' today' : ''}.`,
+        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
+        ctaLabel: 'Send recap',
+        ctaHref: `/leads/${lead.id}`,
+        score: 920 + icp + recencyBoost(daysSinceMeeting),
+      })
+
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
           id: `${lead.id}:investor-memo`,
@@ -210,27 +231,9 @@ export function buildSalesActionPlan({
           recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 880 + icp + recencyBoost(daysSinceMeeting),
         })
-        continue
       }
-
-      actions.push({
-        id: `${lead.id}:meeting-recap`,
-        leadId: lead.id,
-        leadName: lead.contact_name,
-        leadType: lead.type,
-        leadStage: lead.stage,
-        companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
-        title: `Send recap to ${lead.contact_name}`,
-        reason: `Meeting completed with ${lead.company_name}.`,
-        recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
-        ctaLabel: 'Send recap',
-        ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
-      })
       continue
     }
 
@@ -387,7 +390,7 @@ function followUpPlay(outboundCount: number) {
   }
 }
 
-function mostRecentDate(values: Array<string | null | undefined>) {
+export function mostRecentDate(values: Array<string | null | undefined>) {
   const timestamps = values
     .map((value) => value ? new Date(value).getTime() : Number.NaN)
     .filter(Number.isFinite)

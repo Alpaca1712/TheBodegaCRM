@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('prioritizes meeting recaps over investor memos after meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -176,6 +176,7 @@ describe('buildSalesActionPlan', () => {
           type: 'investor',
           stage: 'meeting_held',
           investor_memo: null,
+          last_contacted_at: '2026-05-06T10:00:00Z',
         },
       ],
       outboundEmails: [],
@@ -185,9 +186,10 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
     })
+    expect(actions[0].priority).toBe('critical')
   })
 
   it('surfaces investor memo actions for outreach-ready investors', () => {
