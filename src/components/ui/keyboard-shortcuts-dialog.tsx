@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 const shortcutGroups = [
@@ -30,22 +30,68 @@ const shortcutGroups = [
 
 export default function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false)
+  const previousFocusRef = useRef<HTMLElement | null>(null)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const handler = () => setOpen(true)
-    document.addEventListener('show-keyboard-shortcuts', handler)
-    return () => document.removeEventListener('show-keyboard-shortcuts', handler)
-  }, [])
+    const handleToggle = () => {
+      if (!open) {
+        previousFocusRef.current = document.activeElement as HTMLElement
+      }
+      setOpen((prev) => !prev)
+    }
+
+    const handleShow = () => {
+      if (!open) {
+        previousFocusRef.current = document.activeElement as HTMLElement
+        setOpen(true)
+      }
+    }
+
+    document.addEventListener('toggle-keyboard-shortcuts', handleToggle)
+    document.addEventListener('show-keyboard-shortcuts', handleShow)
+
+    return () => {
+      document.removeEventListener('toggle-keyboard-shortcuts', handleToggle)
+      document.removeEventListener('show-keyboard-shortcuts', handleShow)
+    }
+  }, [open])
+
+  useEffect(() => {
+    if (open) {
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setOpen(false)
+      }
+      document.addEventListener('keydown', handleEscape)
+      // Focus close button for screen readers
+      setTimeout(() => closeButtonRef.current?.focus(), 100)
+
+      return () => document.removeEventListener('keydown', handleEscape)
+    } else if (previousFocusRef.current) {
+      previousFocusRef.current.focus()
+    }
+  }, [open])
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-title"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+        onClick={() => setOpen(false)}
+      />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
+          <h2 id="shortcuts-title" className="font-semibold text-zinc-900 dark:text-white">
+            Keyboard Shortcuts
+          </h2>
           <button
+            ref={closeButtonRef}
             onClick={() => setOpen(false)}
             className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
             aria-label="Close shortcuts"
