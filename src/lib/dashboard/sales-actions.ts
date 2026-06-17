@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -222,14 +223,14 @@ export function buildSalesActionPlan({
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
+        priority: (daysSinceInbound ?? daysSinceOutbound) === 0 ? 'critical' : 'high',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 920 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
       continue
     }
