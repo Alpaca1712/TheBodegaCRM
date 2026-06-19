@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('suggests meeting recaps and investor memos after investor meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -176,6 +176,7 @@ describe('buildSalesActionPlan', () => {
           type: 'investor',
           stage: 'meeting_held',
           investor_memo: null,
+          updated_at: '2026-05-06T11:00:00Z',
         },
       ],
       outboundEmails: [],
@@ -183,9 +184,20 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
+    // Both should be generated now because we deduplicate by action.id
+    expect(actions).toHaveLength(2)
+
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
+      category: 'meeting_recap',
+      priority: 'critical',
+      ctaLabel: 'Send recap',
+    })
+
+    expect(actions[1]).toMatchObject({
+      leadId: 'lead-investor',
       category: 'investor_memo',
+      priority: 'critical',
       ctaLabel: 'Generate memo',
     })
   })
@@ -308,7 +320,9 @@ describe('buildSalesActionPlan', () => {
     expect(actions.find((action) => action.leadId === 'lead-switch')?.ctaLabel).toBe('Channel Switch')
   })
 
-  it('deduplicates actions for the same lead by strongest score', () => {
+  it('deduplicates identical actions for the same lead', () => {
+    // This test ensures that the same category/id isn't added twice if logic overlaps
+    // For example, investor_memo is added in two places for investors
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -328,8 +342,10 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
-    expect(actions).toHaveLength(1)
-    expect(actions[0].category).toBe('follow_up')
+    // It gets follow_up (score 820 + 90 + boost) and investor_memo (score 840 + 90)
+    expect(actions).toHaveLength(2)
+    expect(actions.map(a => a.category)).toContain('follow_up')
+    expect(actions.map(a => a.category)).toContain('investor_memo')
   })
 
   it('limits the action plan to the strongest five actions', () => {
