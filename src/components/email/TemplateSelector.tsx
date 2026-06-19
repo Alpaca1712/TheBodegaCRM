@@ -1,8 +1,8 @@
 // src/components/email/TemplateSelector.tsx
 'use client'
 
-import { useState } from 'react'
-import { Search, Copy, Check, Star } from 'lucide-react'
+import { useState, useEffect, useRef } from 'react'
+import { Search, Copy, Check, Star, X as CloseIcon } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -32,9 +32,18 @@ type TemplateSelectorProps = {
 }
 
 // Dialog component not available, using custom modal implementation
-const ModalWrapper = ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) => (
-  <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-    <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden">
+const ModalWrapper = ({ children, isOpen, onClose }: { children: React.ReactNode, isOpen: boolean, onClose: () => void }) => (
+  <div
+    className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[2px] transition-opacity animate-fade-in ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+    onClick={onClose}
+  >
+    <div
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden animate-scale-in border border-zinc-200 dark:border-zinc-800"
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="template-selector-title"
+    >
       {children}
     </div>
   </div>
@@ -51,6 +60,23 @@ export function TemplateSelector({
   const [selectedCategory, setSelectedCategory] = useState<'general' | 'follow_up' | 'intro' | 'pitch' | 'meeting_followup' | 'deal_update' | 'newsletter' | undefined>()
   const [isOpen, setIsOpen] = useState(false)
   const [copiedId, setCopiedId] = useState<string | null>(null)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (isOpen) {
+      document.body.style.overflow = 'hidden'
+      const handleKeyDown = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setIsOpen(false)
+      }
+      window.addEventListener('keydown', handleKeyDown)
+      const timer = setTimeout(() => searchInputRef.current?.focus(), 100)
+      return () => {
+        document.body.style.overflow = 'auto'
+        window.removeEventListener('keydown', handleKeyDown)
+        clearTimeout(timer)
+      }
+    }
+  }, [isOpen])
 
   const { data: templatesData } = useEmailTemplates({ category: selectedCategory })
   const { data: popularData } = usePopularTemplates(5)
@@ -109,12 +135,12 @@ export function TemplateSelector({
       </Button>
       
       {isOpen && (
-        <ModalWrapper isOpen={isOpen}>
+        <ModalWrapper isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="p-6 overflow-y-auto max-h-[80vh]">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-2xl font-bold">Select Email Template</h2>
-                <p className="text-zinc-500">
+                <h2 id="template-selector-title" className="text-2xl font-bold text-zinc-900 dark:text-zinc-100">Select Email Template</h2>
+                <p className="text-zinc-500 dark:text-zinc-400">
                   Choose from your saved templates or create a new one
                 </p>
               </div>
@@ -122,9 +148,10 @@ export function TemplateSelector({
                 variant="ghost" 
                 size="sm" 
                 onClick={() => setIsOpen(false)}
-                className="h-8 w-8 p-0"
+                className="h-8 w-8 p-0 text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-300"
+                aria-label="Close template selector"
               >
-                ×
+                <CloseIcon className="h-5 w-5" />
               </Button>
             </div>
 
@@ -134,6 +161,7 @@ export function TemplateSelector({
             <div className="relative">
               <Search className="absolute left-3 top-2.5 h-4 w-4 text-zinc-500" />
               <Input
+                ref={searchInputRef}
                 placeholder="Search templates..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
@@ -173,7 +201,15 @@ export function TemplateSelector({
                 {popularTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelect(template)
+                      }
+                    }}
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/20"
                     onClick={() => handleSelect(template)}
                   >
                     <div className="flex justify-between items-start mb-2">
@@ -235,7 +271,15 @@ export function TemplateSelector({
                 {filteredTemplates.map((template) => (
                   <div
                     key={template.id}
-                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors"
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault()
+                        handleSelect(template)
+                      }
+                    }}
+                    className="rounded-lg border p-4 hover:border-zinc-300 hover:bg-zinc-50 cursor-pointer transition-colors focus:outline-none focus:ring-2 focus:ring-red-500/20"
                     onClick={() => handleSelect(template)}
                   >
                     <div className="flex justify-between items-start mb-2">
