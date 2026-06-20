@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('prioritizes meeting recaps over investor memos after meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -176,6 +176,7 @@ describe('buildSalesActionPlan', () => {
           type: 'investor',
           stage: 'meeting_held',
           investor_memo: null,
+          last_outbound_at: '2026-05-06T10:00:00Z',
         },
       ],
       outboundEmails: [],
@@ -183,7 +184,19 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
+    // Both actions should be surfaced because they have different categories
+    expect(actions).toHaveLength(2)
+
+    // Meeting recap should be first (score 920+)
     expect(actions[0]).toMatchObject({
+      leadId: 'lead-investor',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
+      priority: 'critical', // because it's same-day
+    })
+
+    // Investor memo should be second (score 880+)
+    expect(actions[1]).toMatchObject({
       leadId: 'lead-investor',
       category: 'investor_memo',
       ctaLabel: 'Generate memo',
@@ -308,7 +321,7 @@ describe('buildSalesActionPlan', () => {
     expect(actions.find((action) => action.leadId === 'lead-switch')?.ctaLabel).toBe('Channel Switch')
   })
 
-  it('deduplicates actions for the same lead by strongest score', () => {
+  it('surfaces multiple distinct action categories for the same lead', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -328,8 +341,10 @@ describe('buildSalesActionPlan', () => {
       now: new Date('2026-05-06T12:00:00Z'),
     })
 
-    expect(actions).toHaveLength(1)
-    expect(actions[0].category).toBe('follow_up')
+    // Should have both follow-up and investor memo
+    expect(actions).toHaveLength(2)
+    expect(actions.map(a => a.category)).toContain('follow_up')
+    expect(actions.map(a => a.category)).toContain('investor_memo')
   })
 
   it('limits the action plan to the strongest five actions', () => {

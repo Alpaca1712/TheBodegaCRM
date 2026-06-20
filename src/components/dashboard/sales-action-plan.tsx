@@ -34,6 +34,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   reply: <MessageSquare className="h-4 w-4 text-red-500" />,
   follow_up: <Clock className="h-4 w-4 text-amber-500" />,
   meeting: <CalendarCheck className="h-4 w-4 text-purple-500" />,
+  meeting_recap: <MessageSquare className="h-4 w-4 text-purple-500" />,
   prospecting: <Target className="h-4 w-4 text-blue-500" />,
   research: <Sparkles className="h-4 w-4 text-emerald-500" />,
   meeting_prep: <Swords className="h-4 w-4 text-purple-500" />,
@@ -56,6 +57,11 @@ const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: strin
     color: 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-400',
     label: 'Medium',
     dot: 'bg-blue-500',
+  },
+  low: {
+    color: 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800/40 dark:text-zinc-400',
+    label: 'Low',
+    dot: 'bg-zinc-400',
   },
 };
 
@@ -91,7 +97,7 @@ export default function SalesActionPlan({
         {actions.map((action) => {
           const isLeadProcessing = isProcessing === action.leadId;
           const hasActiveAction = !!isProcessing;
-          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting'].includes(action.category);
+          const canMagicDraft = onMagicDraft && ['reply', 'follow_up', 'prospecting', 'meeting_recap'].includes(action.category);
           const canResearch = onResearch && action.category === 'research';
           const canPrep = onPrep && action.category === 'meeting_prep';
           const canInvestorMemo = onInvestorMemo && action.category === 'investor_memo';

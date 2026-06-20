@@ -1,10 +1,11 @@
 import type { Lead, LeadType, PipelineStage } from '@/types/leads'
 
-export type SalesActionPriority = 'critical' | 'high' | 'medium'
+export type SalesActionPriority = 'critical' | 'high' | 'medium' | 'low'
 export type SalesActionCategory =
   | 'reply'
   | 'follow_up'
   | 'meeting'
+  | 'meeting_recap'
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
@@ -66,6 +67,79 @@ export interface SalesActionPlanInput {
 
 const DAY_MS = 24 * 60 * 60 * 1000
 const ACTION_LIMIT = 5
+
+function mostRecentDate(values: Array<string | null | undefined>) {
+  const timestamps = values
+    .map((value) => (value ? new Date(value).getTime() : Number.NaN))
+    .filter(Number.isFinite)
+
+  if (timestamps.length === 0) return null
+  return new Date(Math.max(...timestamps))
+}
+
+function daysSince(date: Date | null, now: Date) {
+  if (!date) return null
+  return Math.max(0, Math.floor((now.getTime() - date.getTime()) / DAY_MS))
+}
+
+function recencyBoost(days: number | null) {
+  if (days === null) return 0
+  return Math.max(0, 50 - days * 10)
+}
+
+function formatDaysAgo(days: number | null) {
+  if (days === null) return 'recently'
+  if (days === 0) return 'today'
+  if (days === 1) return '1 day ago'
+  return `${days} days ago`
+}
+
+function latestEmailByLead(emails: ActionEmail[]) {
+  const map = new Map<string, ActionEmail>()
+  for (const email of emails) {
+    const current = map.get(email.lead_id)
+    if (!current || new Date(email.created_at).getTime() > new Date(current.created_at).getTime()) {
+      map.set(email.lead_id, email)
+    }
+  }
+  return map
+}
+
+function emailCountByLead(emails: ActionEmail[]) {
+  const map = new Map<string, number>()
+  for (const email of emails) {
+    map.set(email.lead_id, (map.get(email.lead_id) ?? 0) + 1)
+  }
+  return map
+}
+
+function followUpPlay(outboundCount: number) {
+  if (outboundCount === 1) {
+    return {
+      label: 'Bump',
+      recommendedAction: 'Send a short 2-3 sentence bump with a new SMYKM hook.',
+    }
+  }
+
+  if (outboundCount === 2) {
+    return {
+      label: 'Value Drop',
+      recommendedAction: 'Use the Hormozi approach: deliver value with a free resource, teardown, or breakdown.',
+    }
+  }
+
+  if (outboundCount >= 3) {
+    return {
+      label: 'Channel Switch',
+      recommendedAction: 'Move to LinkedIn or Twitter DM with a short, casual opener.',
+    }
+  }
+
+  return {
+    label: 'Follow up',
+    recommendedAction: 'Send the next concise, value-led follow-up and add a clear low-friction CTA.',
+  }
+}
 
 export function buildSalesActionPlan({
   leads,
@@ -134,10 +208,11 @@ export function buildSalesActionPlan({
 
     if (lead.stage === 'meeting_booked') {
       const hasBattleCard = !!lead.battle_card
+      const recencyDays = daysSinceInbound ?? daysSinceOutbound
 
       if (!hasBattleCard) {
         actions.push({
-          id: `${lead.id}:meeting-prep`,
+          id: `${lead.id}:meeting_prep`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
@@ -150,14 +225,13 @@ export function buildSalesActionPlan({
           recommendedAction: 'Generate a battle card to identify attack surface, pitch angles, and objections.',
           ctaLabel: 'Run Prep',
           ctaHref: `/leads/${lead.id}`,
-          score: 950 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 950 + icp + recencyBoost(recencyDays),
         })
-        continue
       }
 
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
-          id: `${lead.id}:investor-memo`,
+          id: `${lead.id}:investor_memo`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
@@ -170,9 +244,8 @@ export function buildSalesActionPlan({
           recommendedAction: 'Create an Amazon-style one-page memo to share with the investor.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 880 + icp + recencyBoost(recencyDays),
         })
-        continue
       }
 
       actions.push({
@@ -189,60 +262,63 @@ export function buildSalesActionPlan({
         recommendedAction: 'Review battle card, SMYKM hooks, and objection handlers before the call.',
         ctaLabel: 'Prep deal',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 780 + icp + recencyBoost(recencyDays),
       })
       continue
     }
 
     if (lead.stage === 'meeting_held') {
+      const isToday = daysSinceOutbound === 0
+
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
-          id: `${lead.id}:investor-memo`,
+          id: `${lead.id}:investor_memo`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
           leadStage: lead.stage,
           companyName: lead.company_name,
-          priority: 'high',
+          priority: isToday ? 'critical' : 'high',
           category: 'investor_memo',
           title: `Draft memo for ${lead.contact_name}`,
           reason: `${lead.company_name} meeting is complete and needs a tailored investor memo.`,
           recommendedAction: 'Generate the investor memo while the conversation context is fresh.',
           ctaLabel: 'Generate memo',
           ctaHref: `/leads/${lead.id}`,
-          score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+          score: 880 + icp + recencyBoost(daysSinceOutbound),
         })
-        continue
       }
 
       actions.push({
-        id: `${lead.id}:meeting-recap`,
+        id: `${lead.id}:meeting_recap`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: 'high',
-        category: 'meeting',
+        priority: isToday ? 'critical' : 'high',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
-        reason: `Meeting completed with ${lead.company_name}.`,
+        reason: isToday
+          ? `Meeting completed with ${lead.company_name} today.`
+          : `Meeting completed with ${lead.company_name} ${formatDaysAgo(daysSinceOutbound)}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 920 + icp + recencyBoost(daysSinceOutbound),
       })
       continue
     }
 
     if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
       actions.push({
-        id: `${lead.id}:investor-memo`,
+        id: `${lead.id}:investor_memo`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: icp >= 80 ? 'high' : 'medium',
+        priority: icp >= 85 ? 'high' : icp >= 70 ? 'medium' : 'low',
         category: 'investor_memo',
         title: `Generate memo for ${lead.contact_name}`,
         reason: `${lead.contact_name} is an investor lead missing a personalized memo.`,
@@ -261,13 +337,13 @@ export function buildSalesActionPlan({
       const followUp = followUpPlay(outboundCount)
 
       actions.push({
-        id: `${lead.id}:follow-up`,
+        id: `${lead.id}:follow_up`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
-        priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : 'medium',
+        priority: daysSinceOutbound === null || daysSinceOutbound >= 5 || icp >= 80 ? 'high' : icp >= 60 ? 'medium' : 'low',
         category: 'follow_up',
         title: `${followUp.label} with ${lead.contact_name}`,
         reason: daysSinceOutbound === null
@@ -297,7 +373,7 @@ export function buildSalesActionPlan({
           leadType: lead.type,
           leadStage: lead.stage,
           companyName: lead.company_name,
-          priority: icp >= 80 ? 'high' : 'medium',
+          priority: icp >= 85 ? 'high' : icp >= 70 ? 'medium' : 'low',
           category: 'research',
           title: `Research ${lead.contact_name}`,
           reason: `${lead.company_name} needs deep SMYKM hooks or company context.`,
@@ -314,7 +390,7 @@ export function buildSalesActionPlan({
           leadType: lead.type,
           leadStage: lead.stage,
           companyName: lead.company_name,
-          priority: hasPositiveSignal || icp >= 90 ? 'high' : 'medium',
+          priority: hasPositiveSignal || icp >= 90 ? 'high' : icp >= 82 ? 'medium' : 'low',
           category: 'prospecting',
           title: `Draft outreach to ${lead.contact_name}`,
           reason: `${lead.company_name} is a strong ICP fit (${icp}/100) and has not entered outreach.`,
@@ -329,86 +405,13 @@ export function buildSalesActionPlan({
 
   const uniqueActions = new Map<string, SalesAction>()
   for (const action of actions) {
-    const existing = uniqueActions.get(action.leadId)
+    const existing = uniqueActions.get(action.id)
     if (!existing || action.score > existing.score) {
-      uniqueActions.set(action.leadId, action)
+      uniqueActions.set(action.id, action)
     }
   }
 
   return Array.from(uniqueActions.values())
     .sort((a, b) => b.score - a.score || a.companyName.localeCompare(b.companyName))
     .slice(0, ACTION_LIMIT)
-}
-
-function latestEmailByLead(emails: ActionEmail[]) {
-  const map = new Map<string, ActionEmail>()
-  for (const email of emails) {
-    const current = map.get(email.lead_id)
-    if (!current || new Date(email.created_at).getTime() > new Date(current.created_at).getTime()) {
-      map.set(email.lead_id, email)
-    }
-  }
-  return map
-}
-
-function emailCountByLead(emails: ActionEmail[]) {
-  const map = new Map<string, number>()
-  for (const email of emails) {
-    map.set(email.lead_id, (map.get(email.lead_id) ?? 0) + 1)
-  }
-  return map
-}
-
-function followUpPlay(outboundCount: number) {
-  if (outboundCount === 1) {
-    return {
-      label: 'Bump',
-      recommendedAction: 'Send a short 2-3 sentence bump with a new SMYKM hook.',
-    }
-  }
-
-  if (outboundCount === 2) {
-    return {
-      label: 'Value Drop',
-      recommendedAction: 'Use the Hormozi approach: deliver value with a free resource, teardown, or breakdown.',
-    }
-  }
-
-  if (outboundCount >= 3) {
-    return {
-      label: 'Channel Switch',
-      recommendedAction: 'Move to LinkedIn or Twitter DM with a short, casual opener.',
-    }
-  }
-
-  return {
-    label: 'Follow up',
-    recommendedAction: 'Send the next concise, value-led follow-up and add a clear low-friction CTA.',
-  }
-}
-
-function mostRecentDate(values: Array<string | null | undefined>) {
-  const timestamps = values
-    .map((value) => value ? new Date(value).getTime() : Number.NaN)
-    .filter(Number.isFinite)
-
-  if (timestamps.length === 0) return null
-  return new Date(Math.max(...timestamps))
-}
-
-function daysSince(date: Date | null, now: Date) {
-  if (!date) return null
-  return Math.max(0, Math.floor((now.getTime() - date.getTime()) / DAY_MS))
-}
-
-function recencyBoost(days: number | null) {
-  if (days === null) return 0
-  return Math.max(0, 50 - days * 10)
-}
-
-function formatDaysAgo(days: number | null) {
-  if (days === null) return 'recently'
-  if (days === 0) return 'today'
-  if (days === 1) return '1 day ago'
-  return `${days} days ago`
 }
