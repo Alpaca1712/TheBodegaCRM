@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { MessageCircle, X, Send, Loader2, Bot, User, Sparkles } from 'lucide-react';
 import { useParams } from 'next/navigation';
+import { Textarea } from '@/components/ui/textarea';
+import { CopyButton } from '@/components/ui/copy-button';
 
 interface Message {
   role: 'user' | 'assistant';
@@ -60,6 +62,19 @@ export default function CopilotChat() {
       window.addEventListener('keydown', handleEscape);
       return () => window.removeEventListener('keydown', handleEscape);
     }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsOpen(false);
+      }
+    };
+
+    window.addEventListener('keydown', handleEscape);
+    return () => window.removeEventListener('keydown', handleEscape);
   }, [isOpen]);
 
   const sendMessage = async () => {
@@ -175,13 +190,19 @@ export default function CopilotChat() {
             <button
               onClick={() => setIsOpen(false)}
               className="h-7 w-7 rounded-lg hover:bg-zinc-100 dark:hover:bg-zinc-800 flex items-center justify-center transition-colors"
+              aria-label="Close"
             >
               <X className="h-4 w-4 text-zinc-500" />
             </button>
           </div>
 
           {/* Messages */}
-          <div className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]">
+          <div
+            className="flex-1 overflow-y-auto p-4 space-y-3 min-h-[300px] max-h-[400px]"
+            role="log"
+            aria-live="polite"
+            aria-label="Chat messages"
+          >
             {messages.length === 0 && (
               <div className="flex flex-col items-center justify-center h-full text-center py-6">
                 <div className="h-10 w-10 rounded-xl bg-zinc-100 dark:bg-zinc-800 flex items-center justify-center mb-3">
@@ -213,13 +234,20 @@ export default function CopilotChat() {
                   </div>
                 )}
                 <div
-                  className={`max-w-[280px] px-3 py-2 rounded-xl text-[13px] leading-relaxed ${
+                  className={`group relative max-w-[280px] px-3 py-2 rounded-xl text-[13px] leading-relaxed ${
                     msg.role === 'user'
                       ? 'bg-red-600 text-white rounded-br-md'
                       : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-800 dark:text-zinc-200 rounded-bl-md'
                   }`}
                 >
                   <p className="whitespace-pre-wrap">{msg.content}</p>
+                  {msg.role === 'assistant' && (
+                    <CopyButton
+                      value={msg.content}
+                      label="Response"
+                      className="absolute -top-2 -right-2 opacity-0 group-hover:opacity-100 focus:opacity-100 bg-white dark:bg-zinc-900 shadow-sm border border-zinc-200 dark:border-zinc-700"
+                    />
+                  )}
                 </div>
                 {msg.role === 'user' && (
                   <div className="h-6 w-6 rounded-md bg-zinc-200 dark:bg-zinc-700 flex items-center justify-center flex-shrink-0 mt-0.5">
@@ -259,16 +287,32 @@ export default function CopilotChat() {
           {/* Input */}
           <div className="p-3 border-t border-zinc-100 dark:border-zinc-800">
             <div className="flex items-end gap-2">
-              <textarea
-                ref={inputRef}
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={handleKeyDown}
-                placeholder="Ask the co-pilot..."
-                aria-label="Ask the co-pilot"
-                rows={1}
-                className="flex-1 resize-none rounded-xl border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500/50 transition-all"
-              />
+              <div className="relative flex-1">
+                <Textarea
+                  ref={inputRef}
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={handleKeyDown}
+                  placeholder="Ask the co-pilot..."
+                  aria-label="Ask the co-pilot"
+                  rows={1}
+                  autoResize
+                  className="flex-1 min-h-0 pr-8 rounded-xl border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-[13px] text-zinc-900 dark:text-zinc-100 placeholder:text-zinc-400 focus:ring-red-500/20 focus:border-red-500/50"
+                />
+                {input && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setInput('');
+                      inputRef.current?.focus();
+                    }}
+                    className="absolute right-2.5 bottom-2.5 p-0.5 rounded-md hover:bg-zinc-200 dark:hover:bg-zinc-700 text-zinc-400 hover:text-zinc-600 dark:hover:text-zinc-300 transition-colors"
+                    aria-label="Clear input"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
               <button
                 onClick={sendMessage}
                 disabled={!input.trim() || isLoading}
