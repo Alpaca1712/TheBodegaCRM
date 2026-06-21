@@ -53,11 +53,3 @@
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.
 **Action:** Use an 'isProcessing' state to dynamically update both the button text and its 'aria-label' during long-running tasks.
-
-## 2025-05-22 - [A11y: Keyboard Support for Custom Interactive Elements]
-**Learning:** When using divs or other non-semantic elements as interactive cards or rows (common in grid/table layouts), they are invisible to keyboard users. Adding 'role="button"', 'tabIndex={0}', and 'onKeyDown' handlers (for Enter/Space) is essential for parity.
-**Action:** Always verify keyboard accessibility for clickable cards and ensure they have visible focus states like 'focus-visible:ring-red-500/20'.
-
-## 2025-05-22 - [UX: Event Propagation in Nested Actions]
-**Learning:** Refactoring nested actions (like a 'Copy' button inside a 'Select' card) can lead to regressions if event propagation isn't carefully controlled. Using a wrapper with 'e.stopPropagation()' ensures secondary actions don't trigger the primary parent action.
-**Action:** Wrap nested interactive components in a propagation-stopping container to preserve independent interaction logic.
