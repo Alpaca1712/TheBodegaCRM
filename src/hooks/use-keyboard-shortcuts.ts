@@ -55,7 +55,7 @@ export function useGlobalShortcuts() {
 
     if (key === '?' && !meta) {
       e.preventDefault()
-      const event = new CustomEvent('show-keyboard-shortcuts')
+      const event = new CustomEvent('toggle-keyboard-shortcuts')
       document.dispatchEvent(event)
     }
   }, [router])

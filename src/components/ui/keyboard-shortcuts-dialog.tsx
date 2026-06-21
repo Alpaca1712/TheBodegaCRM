@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { X } from 'lucide-react'
 
 const shortcutGroups = [
@@ -30,24 +30,52 @@ const shortcutGroups = [
 
 export default function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false)
+  const closeButtonRef = useRef<HTMLButtonElement>(null)
 
   useEffect(() => {
-    const handler = () => setOpen(true)
+    const handler = () => setOpen(prev => !prev)
+    document.addEventListener('toggle-keyboard-shortcuts', handler)
+    // Keep supporting the old event just in case
     document.addEventListener('show-keyboard-shortcuts', handler)
-    return () => document.removeEventListener('show-keyboard-shortcuts', handler)
+    return () => {
+      document.removeEventListener('toggle-keyboard-shortcuts', handler)
+      document.removeEventListener('show-keyboard-shortcuts', handler)
+    }
   }, [])
+
+  useEffect(() => {
+    if (open) {
+      // Focus close button when dialog opens
+      const timer = setTimeout(() => closeButtonRef.current?.focus(), 100)
+
+      const handleEscape = (e: KeyboardEvent) => {
+        if (e.key === 'Escape') setOpen(false)
+      }
+      document.addEventListener('keydown', handleEscape)
+      return () => {
+        clearTimeout(timer)
+        document.removeEventListener('keydown', handleEscape)
+      }
+    }
+  }, [open])
 
   if (!open) return null
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden">
+      <div
+        className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden animate-scale-in"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="shortcuts-title"
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
+          <h2 id="shortcuts-title" className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
           <button
+            ref={closeButtonRef}
             onClick={() => setOpen(false)}
-            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
+            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 focus-visible:ring-2 focus-visible:ring-red-500/20 focus-visible:outline-none"
             aria-label="Close shortcuts"
           >
             <X size={16} />
