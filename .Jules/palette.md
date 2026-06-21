@@ -26,10 +26,6 @@
 **Learning:** Consolidating repeated "copy to clipboard" logic into a single, accessible `CopyButton` component ensures consistent styling, keyboard accessibility, and feedback across the app. Using `stopPropagation` and `preventDefault` in the shared component prevents conflicts when nested inside other interactive elements like links or cards.
 **Action:** Always reach for the shared `CopyButton` instead of reimplementing clipboard logic. Ensure `focus:opacity-100` is used when the button is hidden by default to maintain keyboard accessibility.
 
-## 2026-05-26 - [A11y: Holistic Focus states for Composite Components]
-**Learning:** For components where multiple interactive elements are grouped (like SalesAction cards), adding `focus-within` styles to the container ensures that the visual "active" state is maintained when navigating via keyboard, not just hover. Pairing this with `aria-busy` and high-contrast `focus-visible` rings on specific action buttons creates a predictable and accessible experience for power users.
-**Action:** Use `focus-within` on group containers and `aria-busy` on async buttons to provide state feedback that reaches all users.
-
 ## 2025-05-19 - [Reusable Pattern: Just-in-Time Copy Actions]
 **Learning:** A reusable 'CopyButton' component that appears only on hover or focus reduces visual clutter while maintaining high utility. Combining it with 'stopPropagation' prevents accidental navigation when the button is nested in clickable elements like table rows or cards.
 **Action:** Implement clipboard actions using a shared 'CopyButton' with icon feedback, sonner toasts, and 'focus:opacity-100' to ensure keyboard accessibility for hidden-by-default elements.
