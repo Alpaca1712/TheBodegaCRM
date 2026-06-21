@@ -1,8 +1,8 @@
 // src/components/email/TemplateSelector.tsx
 'use client'
 
-import { useState } from 'react'
-import { Search, Copy, Check, Star } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Search, Copy, Check, Star, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -32,9 +32,18 @@ type TemplateSelectorProps = {
 }
 
 // Dialog component not available, using custom modal implementation
-const ModalWrapper = ({ children, isOpen }: { children: React.ReactNode, isOpen: boolean }) => (
-  <div className={`fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-    <div className="bg-white rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden">
+const ModalWrapper = ({ children, isOpen, onClose }: { children: React.ReactNode, isOpen: boolean, onClose: () => void }) => (
+  <div
+    className={`fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-[2px] transition-opacity ${isOpen ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+    onClick={onClose}
+  >
+    <div
+      className="bg-white dark:bg-zinc-900 rounded-lg shadow-xl max-w-4xl max-h-[80vh] w-full overflow-hidden animate-scale-in"
+      onClick={(e) => e.stopPropagation()}
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="template-selector-title"
+    >
       {children}
     </div>
   </div>
@@ -73,6 +82,15 @@ export function TemplateSelector({
     setSelectedCategory(undefined)
   }
 
+  useEffect(() => {
+    if (!isOpen) return
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setIsOpen(false)
+    }
+    window.addEventListener('keydown', handleKeyDown)
+    return () => window.removeEventListener('keydown', handleKeyDown)
+  }, [isOpen])
+
   const handleCopy = async (template: EmailTemplate) => {
     try {
       const text = `Subject: ${template.subject}\n\n${template.body}`
@@ -109,11 +127,11 @@ export function TemplateSelector({
       </Button>
       
       {isOpen && (
-        <ModalWrapper isOpen={isOpen}>
+        <ModalWrapper isOpen={isOpen} onClose={() => setIsOpen(false)}>
           <div className="p-6 overflow-y-auto max-h-[80vh]">
             <div className="flex justify-between items-center mb-4">
               <div>
-                <h2 className="text-2xl font-bold">Select Email Template</h2>
+                <h2 id="template-selector-title" className="text-2xl font-bold">Select Email Template</h2>
                 <p className="text-zinc-500">
                   Choose from your saved templates or create a new one
                 </p>
@@ -123,8 +141,9 @@ export function TemplateSelector({
                 size="sm" 
                 onClick={() => setIsOpen(false)}
                 className="h-8 w-8 p-0"
+                aria-label="Close"
               >
-                ×
+                <X className="h-4 w-4" />
               </Button>
             </div>
 
