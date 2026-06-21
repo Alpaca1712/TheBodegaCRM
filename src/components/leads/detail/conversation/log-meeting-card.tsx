@@ -1,3 +1,4 @@
+import { useEffect, useRef } from 'react';
 import { Plus, Brain } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,6 +9,13 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
   type: 'call' | 'meeting' | 'demo'; setType: (v: 'call' | 'meeting' | 'demo') => void;
   loading: boolean; onSubmit: () => void;
 }) {
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => textareaRef.current?.focus(), 50);
+    }
+  }, [open]);
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
       if (!loading && notes.trim()) {
@@ -27,7 +35,7 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Meeting / Call</h3>
       </button>
       {open && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 animate-scale-in origin-top">
           <select
             value={type}
             onChange={(e) => setType(e.target.value as 'call' | 'meeting' | 'demo')}
@@ -39,6 +47,7 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
             <option value="demo">Demo</option>
           </select>
           <Textarea
+            ref={textareaRef}
             value={notes}
             onChange={(e) => setNotes(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -53,8 +62,14 @@ export function LogMeetingCard({ open, setOpen, notes, setNotes, type, setType, 
             isLoading={loading}
             className="w-full h-8 text-xs"
           >
-            {!loading && <Brain className="h-3.5 w-3.5 mr-1.5" />}
-            {loading ? 'Summarizing...' : 'Summarize with AI'}
+            {!loading && (
+              <>
+                <Brain className="h-3.5 w-3.5 mr-1.5" />
+                Summarize with AI
+                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-white/20 text-white/80 rounded border border-white/30">⌘↵</kbd>
+              </>
+            )}
+            {loading && 'Summarizing...'}
           </Button>
         </div>
       )}
