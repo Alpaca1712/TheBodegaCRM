@@ -91,6 +91,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const [activeTab, setActiveTab] = useState<TabId>(
     urlTab === 'emails' || urlTab === 'conversation' || urlTab === 'company' || urlTab === 'memory' ? urlTab : 'overview'
   );
+  const tabListRef = useRef<HTMLDivElement>(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [snapshotLoading, setSnapshotLoading] = useState(false);
@@ -373,6 +374,33 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     { id: 'memory', label: 'Memory', count: memories.length },
   ];
 
+  const handleTabKeyDown = (e: React.KeyboardEvent) => {
+    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
+    let nextIndex = currentIndex;
+
+    if (e.key === 'ArrowRight') {
+      nextIndex = (currentIndex + 1) % tabs.length;
+    } else if (e.key === 'ArrowLeft') {
+      nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+    } else if (e.key === 'Home') {
+      nextIndex = 0;
+    } else if (e.key === 'End') {
+      nextIndex = tabs.length - 1;
+    } else {
+      return;
+    }
+
+    e.preventDefault();
+    const nextTab = tabs[nextIndex];
+    setActiveTab(nextTab.id);
+
+    // Focus the next tab button after state update
+    setTimeout(() => {
+      const tabButton = tabListRef.current?.querySelector(`[id="tab-${nextTab.id}"]`) as HTMLButtonElement;
+      tabButton?.focus();
+    }, 0);
+  };
+
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -506,12 +534,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
+      <div
+        ref={tabListRef}
+        role="tablist"
+        aria-label="Lead details tabs"
+        onKeyDown={handleTabKeyDown}
+        className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700"
+      >
         {tabs.map((tab) => (
           <button
             key={tab.id}
+            id={`tab-${tab.id}`}
+            role="tab"
+            aria-selected={activeTab === tab.id}
+            aria-controls={`panel-${tab.id}`}
+            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 focus-visible:ring-offset-2 ${
               activeTab === tab.id
                 ? 'border-red-600 text-red-600 dark:text-red-400'
                 : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
@@ -519,7 +558,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           >
             {tab.label}
             {tab.count != null && tab.count > 0 && (
-              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 tabular-nums">{tab.count}</span>
+              <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 text-zinc-500 tabular-nums">
+                {tab.count}
+              </span>
             )}
           </button>
         ))}
@@ -529,56 +570,73 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Main Content */}
         <div className="lg:col-span-2 space-y-5">
           {/* Snapshot Panel */}
-          {snapshot && activeTab === 'overview' && (
-            <SnapshotPanel snapshot={snapshot} />
-          )}
+          {snapshot && activeTab === 'overview' && <SnapshotPanel snapshot={snapshot} />}
 
           {/* Coaching Panel */}
-          {coaching && activeTab === 'emails' && (
-            <CoachingPanel coaching={coaching} />
-          )}
+          {coaching && activeTab === 'emails' && <CoachingPanel coaching={coaching} />}
 
           {/* Tab Content */}
-          {activeTab === 'overview' && (
-            <div className="space-y-4">
-              {lead.conversation_summary && <EnhancedAISummary lead={lead} onRefresh={fetchLead} />}
-              {memo && <MemoPanel memo={memo} />}
-              {battleCard && <BattleCardPanel card={battleCard} />}
-              <ResearchSection lead={lead} />
-            </div>
-          )}
+          <div
+            key={activeTab}
+            role="tabpanel"
+            id={`panel-${activeTab}`}
+            aria-labelledby={`tab-${activeTab}`}
+            tabIndex={0}
+            className="focus-visible:outline-none animate-fade-in space-y-5"
+          >
+            {activeTab === 'overview' && (
+              <div className="space-y-4">
+                {lead.conversation_summary && (
+                  <EnhancedAISummary lead={lead} onRefresh={fetchLead} />
+                )}
+                {memo && <MemoPanel memo={memo} />}
+                {battleCard && <BattleCardPanel card={battleCard} />}
+                <ResearchSection lead={lead} />
+              </div>
+            )}
 
-          {activeTab === 'emails' && (
-            <div className="space-y-5">
-              <EmailGenerator
+            {activeTab === 'emails' && (
+              <div className="space-y-5">
+                <EmailGenerator
+                  lead={lead}
+                  emails={emails}
+                  followUpType={urlFollowup}
+                  onEmailSaved={handleEmailSaved}
+                />
+                <EmailThread emails={emails} />
+              </div>
+            )}
+
+            {activeTab === 'conversation' && (
+              <ConversationIntel
                 lead={lead}
                 emails={emails}
-                followUpType={urlFollowup}
-                onEmailSaved={handleEmailSaved}
+                interactions={interactions}
+                onRefresh={fetchLead}
               />
-              <EmailThread emails={emails} />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'conversation' && (
-            <ConversationIntel lead={lead} emails={emails} interactions={interactions} onRefresh={fetchLead} />
-          )}
+            {activeTab === 'company' && (
+              <div className="space-y-5">
+                <CompanyTab
+                  lead={lead}
+                  relatedLeads={relatedLeads}
+                  onEnrich={enrichOrgChart}
+                  isEnriching={orgChartLoading}
+                />
+                {battleCard && <BattleCardPanel card={battleCard} />}
+              </div>
+            )}
 
-          {activeTab === 'company' && (
-            <div className="space-y-5">
-              <CompanyTab
-                lead={lead}
-                relatedLeads={relatedLeads}
-                onEnrich={enrichOrgChart}
-                isEnriching={orgChartLoading}
+            {activeTab === 'memory' && (
+              <MemoryTab
+                memories={memories}
+                onDelete={deleteMemory}
+                leadId={id}
+                onRefresh={fetchMemories}
               />
-              {battleCard && <BattleCardPanel card={battleCard} />}
-            </div>
-          )}
-
-          {activeTab === 'memory' && (
-            <MemoryTab memories={memories} onDelete={deleteMemory} leadId={id} onRefresh={fetchMemories} />
-          )}
+            )}
+          </div>
         </div>
 
         {/* Sidebar */}
