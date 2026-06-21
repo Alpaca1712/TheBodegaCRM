@@ -35,11 +35,14 @@ export default function KpiCard({
     <div className="bg-white dark:bg-zinc-900 rounded-xl shadow dark:shadow-zinc-800/50 p-6 hover:shadow-md transition-shadow duration-200">
       <div className="flex items-start justify-between mb-4">
         <div className="p-2 bg-indigo-50 dark:bg-indigo-950 rounded-lg">
-          <Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" />
+          <Icon className="h-6 w-6 text-indigo-600 dark:text-indigo-400" aria-hidden="true" />
         </div>
         {trend !== 'neutral' && trendValue && (
-          <div className={`text-xs font-medium px-2 py-1 rounded-full ${trendColors[trend]}`}>
-            {trendIcons[trend]} {trendValue}
+          <div
+            className={`text-xs font-medium px-2 py-1 rounded-full ${trendColors[trend]}`}
+            aria-label={`${trend === 'up' ? 'Increase' : 'Decrease'} of ${trendValue}`}
+          >
+            <span aria-hidden="true">{trendIcons[trend]}</span> {trendValue}
           </div>
         )}
       </div>

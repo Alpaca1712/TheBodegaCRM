@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -130,7 +131,7 @@ export function getLeadBestAction({
 
     if (!hasBattleCard) {
       actions.push({
-        id: `${lead.id}:meeting-prep`,
+        id: `${lead.id}:meeting_prep`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
@@ -147,7 +148,7 @@ export function getLeadBestAction({
       })
     } else if (lead.type === 'investor' && !lead.investor_memo) {
       actions.push({
-        id: `${lead.id}:investor-memo`,
+        id: `${lead.id}:investor_memo`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
@@ -185,7 +186,7 @@ export function getLeadBestAction({
   if (lead.stage === 'meeting_held') {
     if (lead.type === 'investor' && !lead.investor_memo) {
       actions.push({
-        id: `${lead.id}:investor-memo`,
+        id: `${lead.id}:investor_memo`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
@@ -202,19 +203,19 @@ export function getLeadBestAction({
       })
     }
 
-    const meetingDate = lead.last_contacted_at || lead.updated_at;
-    const hoursSinceMeeting = meetingDate ? Math.floor((now.getTime() - new Date(meetingDate).getTime()) / (60 * 60 * 1000)) : null;
-    const isCritical = hoursSinceMeeting !== null && hoursSinceMeeting <= 24;
+    const meetingDate = mostRecentDate([lead.last_contacted_at, lead.updated_at])
+    const hoursSinceMeeting = meetingDate ? Math.floor((now.getTime() - meetingDate.getTime()) / (60 * 60 * 1000)) : null
+    const isCritical = hoursSinceMeeting !== null && hoursSinceMeeting <= 24
 
     actions.push({
-      id: `${lead.id}:meeting-recap`,
+      id: `${lead.id}:meeting_recap`,
       leadId: lead.id,
       leadName: lead.contact_name,
       leadType: lead.type,
       leadStage: lead.stage,
       companyName: lead.company_name,
       priority: isCritical ? 'critical' : 'high',
-      category: 'meeting',
+      category: 'meeting_recap',
       title: `Send recap to ${lead.contact_name}`,
       reason: isCritical
         ? `Meeting happened within 24 hours; recap now while momentum is highest.`
@@ -222,14 +223,14 @@ export function getLeadBestAction({
       recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
       ctaLabel: 'Send recap',
       ctaHref: `/leads/${lead.id}`,
-      score: (isCritical ? 920 : 780) + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+      score: 920 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound) + (isCritical ? 100 : 0),
     })
   }
 
   // Investor memo action for other stages
   if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
     actions.push({
-      id: `${lead.id}:investor-memo`,
+      id: `${lead.id}:investor_memo`,
       leadId: lead.id,
       leadName: lead.contact_name,
       leadType: lead.type,
@@ -253,7 +254,7 @@ export function getLeadBestAction({
     const followUp = followUpPlay(outboundCount)
 
     actions.push({
-      id: `${lead.id}:follow-up`,
+      id: `${lead.id}:follow_up`,
       leadId: lead.id,
       leadName: lead.contact_name,
       leadType: lead.type,

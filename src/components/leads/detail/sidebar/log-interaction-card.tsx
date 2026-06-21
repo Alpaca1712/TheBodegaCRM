@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { toast } from 'sonner';
 import { Plus, Send, Brain, ArrowRight, Linkedin, Twitter, Phone, MapPin, Hash } from 'lucide-react';
 import {
@@ -25,10 +25,17 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
   const [submitting, setSubmitting] = useState(false);
   const [lastResult, setLastResult] = useState<{ analysis: Record<string, unknown> | null } | null>(null);
   const availableTypes = CHANNEL_INTERACTION_TYPES[channel];
+  const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (!availableTypes.includes(interactionType)) setInteractionType(availableTypes[0]);
   }, [channel, availableTypes, interactionType]);
+
+  useEffect(() => {
+    if (open) {
+      setTimeout(() => inputRef.current?.focus(), 50);
+    }
+  }, [open]);
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -68,7 +75,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Log Interaction</h3>
       </button>
       {open && (
-        <div className="mt-3 space-y-3">
+        <div className="mt-3 space-y-3 animate-scale-in origin-top">
           <div className="flex flex-wrap gap-1.5" role="radiogroup" aria-label="Select interaction channel">
             {INTERACTION_CHANNELS.map((ch) => (
               <button
@@ -91,6 +98,7 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
             {availableTypes.map((t) => <option key={t} value={t}>{INTERACTION_TYPE_LABELS[t]}</option>)}
           </select>
           <Input
+            ref={inputRef}
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             onKeyDown={handleKeyDown}
@@ -113,8 +121,14 @@ export function LogInteractionCard({ leadId, onLogged }: { leadId: string; onLog
             isLoading={submitting}
             className="w-full h-8 text-xs"
           >
-            {!submitting && <Send className="h-3.5 w-3.5 mr-1.5" />}
-            {submitting ? 'Analyzing...' : 'Log & Analyze'}
+            {!submitting && (
+              <>
+                <Send className="h-3.5 w-3.5 mr-1.5" />
+                Log & Analyze
+                <kbd className="ml-2 px-1.5 py-0.5 text-[10px] font-mono font-medium bg-zinc-100 dark:bg-zinc-800 text-zinc-600 dark:text-zinc-400 rounded border border-zinc-200 dark:border-zinc-700">⌘↵</kbd>
+              </>
+            )}
+            {submitting && 'Analyzing...'}
           </Button>
         </div>
       )}

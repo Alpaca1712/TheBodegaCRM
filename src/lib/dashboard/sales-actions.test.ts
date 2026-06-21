@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings (if not critical recap window)', () => {
+  it('prioritizes meeting recaps over investor memos after investor meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -186,8 +186,8 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
     })
   })
 
@@ -210,7 +210,7 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor-recent',
-      category: 'meeting',
+      category: 'meeting_recap',
       priority: 'critical',
       ctaLabel: 'Send recap',
     })
