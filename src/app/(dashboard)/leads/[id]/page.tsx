@@ -317,19 +317,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     { id: 'memory', label: 'Memory', count: memories.length },
   ];
 
-  const handleTabKeyDown = (e: React.KeyboardEvent) => {
-    const currentIndex = tabs.findIndex((t) => t.id === activeTab);
-    if (e.key === 'ArrowRight') {
-      const nextIndex = (currentIndex + 1) % tabs.length;
-      setActiveTab(tabs[nextIndex].id);
-      (e.currentTarget.querySelectorAll('[role="tab"]')[nextIndex] as HTMLElement).focus();
-    } else if (e.key === 'ArrowLeft') {
-      const nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
-      setActiveTab(tabs[nextIndex].id);
-      (e.currentTarget.querySelectorAll('[role="tab"]')[nextIndex] as HTMLElement).focus();
-    }
-  };
-
   return (
     <div className="space-y-5">
       {/* Header */}
@@ -463,22 +450,12 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </div>
 
       {/* Tabs */}
-      <div
-        role="tablist"
-        aria-label="Lead details tabs"
-        onKeyDown={handleTabKeyDown}
-        className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700"
-      >
+      <div className="flex gap-1 border-b border-zinc-200 dark:border-zinc-700">
         {tabs.map((tab) => (
           <button
             key={tab.id}
-            id={`tab-${tab.id}`}
-            role="tab"
-            aria-selected={activeTab === tab.id}
-            aria-controls={`panel-${tab.id}`}
-            tabIndex={activeTab === tab.id ? 0 : -1}
             onClick={() => setActiveTab(tab.id)}
-            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 rounded-t-lg ${
+            className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors flex items-center gap-1.5 ${
               activeTab === tab.id
                 ? 'border-red-600 text-red-600 dark:text-red-400'
                 : 'border-transparent text-zinc-500 dark:text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-300'
@@ -494,12 +471,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Main Content */}
-        <div
-          id={`panel-${activeTab}`}
-          role="tabpanel"
-          aria-labelledby={`tab-${activeTab}`}
-          className="lg:col-span-2 space-y-5"
-        >
+        <div className="lg:col-span-2 space-y-5">
           {/* Snapshot Panel */}
           {snapshot && activeTab === 'overview' && (
             <SnapshotPanel snapshot={snapshot} />

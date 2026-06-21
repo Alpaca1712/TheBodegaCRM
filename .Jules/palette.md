@@ -50,9 +50,9 @@
 **Learning:** Helper text placed below an input is not automatically read by screen readers when the input is focused. Linking them via 'aria-describedby' ensures the context is available.
 **Action:** Use 'aria-describedby' to link inputs to their associated helper text or validation hints.
 
-## 2025-05-22 - [Reusable Pattern: Accessible Tabs with Keyboard Navigation]
-**Learning:** Standard tabbed interfaces often lack proper keyboard navigation, forcing users to tab through every sub-element. Implementing the WAI-ARIA Tabs pattern with roving tabIndex and arrow key navigation provides a much more fluid experience for keyboard users and clear semantic structure for screen readers.
-**Action:** Use `role="tablist"`, `role="tab"`, and `role="tabpanel"` linked via `aria-controls` and `aria-labelledby`. Implement `onKeyDown` to handle `ArrowLeft`/`ArrowRight` for immediate tab switching and focus management.
+## 2025-05-22 - [Reusable Pattern: Accessible Dialogs with Scroll Locking]
+**Learning:** Implementing manual dialogs requires more than just a fixed overlay. Proper accessibility requires `role="dialog"`, `aria-modal="true"`, and `Escape` key handling. Additionally, locking body scroll when the modal is open prevents "scroll-under" which can be disorienting for users.
+**Action:** Always add semantic ARIA roles to modals. Implement a `useEffect` that toggles `document.body.style.overflow = 'hidden'` based on the open state. Ensure `Escape` key and click-outside listeners are properly cleaned up.
 
 ## 2025-05-21 - [UX: Dynamic Feedback for Async Actions]
 **Learning:** Replacing static button text with active progressive labels (e.g., "Draft" to "Drafting...") during background AI processes provides immediate feedback and reduces double-click frustration. Pairing this with a specific 'aria-label' update ensures screen reader users are aware of the state transition.

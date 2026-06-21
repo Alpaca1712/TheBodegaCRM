@@ -32,22 +32,45 @@ export default function KeyboardShortcutsDialog() {
   const [open, setOpen] = useState(false)
 
   useEffect(() => {
-    const handler = () => setOpen(true)
-    document.addEventListener('show-keyboard-shortcuts', handler)
-    return () => document.removeEventListener('show-keyboard-shortcuts', handler)
-  }, [])
+    const handleOpen = () => setOpen(true)
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && open) setOpen(false)
+    }
+    document.addEventListener('show-keyboard-shortcuts', handleOpen)
+    window.addEventListener('keydown', handleKeyDown)
+
+    if (open) {
+      document.body.style.overflow = 'hidden'
+    } else {
+      document.body.style.overflow = ''
+    }
+
+    return () => {
+      document.removeEventListener('show-keyboard-shortcuts', handleOpen)
+      window.removeEventListener('keydown', handleKeyDown)
+      document.body.style.overflow = ''
+    }
+  }, [open])
 
   if (!open) return null
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
-      <div className="absolute inset-0 bg-black/40 backdrop-blur-sm" onClick={() => setOpen(false)} />
-      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="shortcuts-title"
+    >
+      <div
+        className="absolute inset-0 bg-black/40 backdrop-blur-sm animate-fade-in"
+        onClick={() => setOpen(false)}
+      />
+      <div className="relative bg-white dark:bg-zinc-900 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-xl w-full max-w-md overflow-hidden animate-scale-in">
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-100 dark:border-zinc-800">
-          <h2 className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
+          <h2 id="shortcuts-title" className="font-semibold text-zinc-900 dark:text-white">Keyboard Shortcuts</h2>
           <button
             onClick={() => setOpen(false)}
-            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400"
+            className="p-1 rounded-md hover:bg-zinc-100 dark:hover:bg-zinc-800 text-zinc-400 transition-colors"
             aria-label="Close shortcuts"
           >
             <X size={16} />
