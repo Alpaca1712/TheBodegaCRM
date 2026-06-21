@@ -8,6 +8,7 @@ export type SalesActionCategory =
   | 'prospecting'
   | 'research'
   | 'meeting_prep'
+  | 'meeting_recap'
   | 'review'
   | 'investor_memo'
 
@@ -137,7 +138,7 @@ export function buildSalesActionPlan({
 
       if (!hasBattleCard) {
         actions.push({
-          id: `${lead.id}:meeting-prep`,
+          id: `${lead.id}:meeting_prep`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
@@ -157,7 +158,7 @@ export function buildSalesActionPlan({
 
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
-          id: `${lead.id}:investor-memo`,
+          id: `${lead.id}:investor_memo`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
@@ -197,7 +198,7 @@ export function buildSalesActionPlan({
     if (lead.stage === 'meeting_held') {
       if (lead.type === 'investor' && !lead.investor_memo) {
         actions.push({
-          id: `${lead.id}:investor-memo`,
+          id: `${lead.id}:investor_memo`,
           leadId: lead.id,
           leadName: lead.contact_name,
           leadType: lead.type,
@@ -212,31 +213,30 @@ export function buildSalesActionPlan({
           ctaHref: `/leads/${lead.id}`,
           score: 880 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
         })
-        continue
       }
 
       actions.push({
-        id: `${lead.id}:meeting-recap`,
+        id: `${lead.id}:meeting_recap`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
         leadStage: lead.stage,
         companyName: lead.company_name,
         priority: 'high',
-        category: 'meeting',
+        category: 'meeting_recap',
         title: `Send recap to ${lead.contact_name}`,
         reason: `Meeting completed with ${lead.company_name}.`,
         recommendedAction: 'Send a recap with agreed pains, next milestone, owner, and deadline.',
         ctaLabel: 'Send recap',
         ctaHref: `/leads/${lead.id}`,
-        score: 780 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
+        score: 920 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
       continue
     }
 
     if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
       actions.push({
-        id: `${lead.id}:investor-memo`,
+        id: `${lead.id}:investor_memo`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
@@ -261,7 +261,7 @@ export function buildSalesActionPlan({
       const followUp = followUpPlay(outboundCount)
 
       actions.push({
-        id: `${lead.id}:follow-up`,
+        id: `${lead.id}:follow_up`,
         leadId: lead.id,
         leadName: lead.contact_name,
         leadType: lead.type,
