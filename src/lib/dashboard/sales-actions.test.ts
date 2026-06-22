@@ -167,7 +167,7 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
-  it('suggests investor memos after investor meetings', () => {
+  it('prioritizes meeting recaps over investor memos after investor meetings', () => {
     const actions = buildSalesActionPlan({
       leads: [
         {
@@ -176,6 +176,7 @@ describe('buildSalesActionPlan', () => {
           type: 'investor',
           stage: 'meeting_held',
           investor_memo: null,
+          updated_at: '2026-05-04T12:00:00Z', // 2 days ago
         },
       ],
       outboundEmails: [],
@@ -185,8 +186,33 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions[0]).toMatchObject({
       leadId: 'lead-investor',
-      category: 'investor_memo',
-      ctaLabel: 'Generate memo',
+      category: 'meeting_recap',
+      ctaLabel: 'Send recap',
+    })
+  })
+
+  it('prioritizes meeting recaps within 24h window', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-investor-recent',
+          type: 'investor',
+          stage: 'meeting_held',
+          investor_memo: null,
+          updated_at: '2026-05-06T11:00:00Z', // 1 hour ago
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-investor-recent',
+      category: 'meeting_recap',
+      priority: 'critical',
+      ctaLabel: 'Send recap',
     })
   })
 
@@ -330,6 +356,20 @@ describe('buildSalesActionPlan', () => {
 
     expect(actions).toHaveLength(1)
     expect(actions[0].category).toBe('follow_up')
+  })
+
+  it('returns no action for closed stages', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        { ...baseLead, id: 'lead-won', stage: 'closed_won' },
+        { ...baseLead, id: 'lead-lost', stage: 'closed_lost' },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+    })
+
+    expect(actions).toHaveLength(0)
   })
 
   it('limits the action plan to the strongest five actions', () => {
