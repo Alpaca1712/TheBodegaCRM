@@ -9,6 +9,9 @@ const {
   mockUpdate,
   mockIn,
   mockEq,
+  mockProfileSelect,
+  mockProfileEqUser,
+  mockProfileSingle,
 } = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
   mockGetUser: vi.fn(),
@@ -17,6 +20,9 @@ const {
   mockUpdate: vi.fn(),
   mockIn: vi.fn(),
   mockEq: vi.fn(),
+  mockProfileSelect: vi.fn(),
+  mockProfileEqUser: vi.fn(),
+  mockProfileSingle: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
@@ -26,6 +32,7 @@ vi.mock('@/lib/supabase/server', () => ({
 import { POST } from './route'
 
 const USER_ID = '11111111-1111-4111-8111-111111111111'
+const ORG_ID = '99999999-9999-4999-8999-999999999999'
 const LEAD_IDS = [
   '22222222-2222-4222-8222-222222222222',
   '33333333-3333-4333-8333-333333333333',
@@ -49,7 +56,14 @@ describe('POST /api/leads/bulk', () => {
       auth: { getUser: mockGetUser },
       from: mockFrom,
     })
-    mockFrom.mockReturnValue({ delete: mockDelete, update: mockUpdate })
+    mockFrom.mockImplementation((table: string) => {
+      if (table === 'profiles') return { select: mockProfileSelect }
+      if (table === 'leads') return { delete: mockDelete, update: mockUpdate }
+      throw new Error(`Unexpected table: ${table}`)
+    })
+    mockProfileSelect.mockReturnValue({ eq: mockProfileEqUser })
+    mockProfileEqUser.mockReturnValue({ single: mockProfileSingle })
+    mockProfileSingle.mockResolvedValue({ data: { active_org_id: ORG_ID }, error: null })
     mockDelete.mockReturnValue({ in: mockIn })
     mockUpdate.mockReturnValue({ in: mockIn })
     mockIn.mockReturnValue({ eq: mockEq })
@@ -76,7 +90,7 @@ describe('POST /api/leads/bulk', () => {
     expect(mockFrom).toHaveBeenCalledWith('leads')
     expect(mockDelete).toHaveBeenCalledWith({ count: 'exact' })
     expect(mockIn).toHaveBeenCalledWith('id', LEAD_IDS)
-    expect(mockEq).toHaveBeenCalledWith('user_id', USER_ID)
+    expect(mockEq).toHaveBeenCalledWith('org_id', ORG_ID)
     expect(mockUpdate).not.toHaveBeenCalled()
   })
 
@@ -104,7 +118,7 @@ describe('POST /api/leads/bulk', () => {
       { count: 'exact' },
     )
     expect(mockIn).toHaveBeenCalledWith('id', LEAD_IDS)
-    expect(mockEq).toHaveBeenCalledWith('user_id', USER_ID)
+    expect(mockEq).toHaveBeenCalledWith('org_id', ORG_ID)
     expect(mockDelete).not.toHaveBeenCalled()
   })
 

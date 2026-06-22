@@ -129,7 +129,7 @@ describe('POST /api/lead-emails', () => {
     expect(payload).toEqual({ error: 'Lead not found' })
     expect(mockFrom).toHaveBeenCalledWith('leads')
     expect(mockLeadEqId).toHaveBeenCalledWith('id', LEAD_ID)
-    expect(mockLeadEqUser).toHaveBeenCalledWith('user_id', USER_ID)
+    expect(mockLeadEqUser).toHaveBeenCalledWith('org_id', ORG_ID)
     expect(mockEmailInsert).not.toHaveBeenCalled()
   })
 

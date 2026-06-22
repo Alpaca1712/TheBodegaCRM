@@ -13,6 +13,8 @@ import {
   PIPELINE_STAGES,
   STAGE_LABELS,
   PRIORITIES,
+  LEAD_SOURCE_TYPES,
+  LEAD_SOURCE_TYPE_LABELS,
 } from '@/types/leads';
 import { Loader2, Sparkles, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -38,6 +40,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
       type: 'customer',
       stage: 'researched',
       priority: 'medium',
+      source_type: 'manual',
       smykm_hooks: [],
       ...defaultValues,
     },
@@ -317,7 +320,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
             <label htmlFor="stage" className={labelClass}>Stage</label>
             <select id="stage" {...form.register('stage')} className={inputClass}>
@@ -331,6 +334,14 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
             <select id="priority" {...form.register('priority')} className={inputClass}>
               {PRIORITIES.map((p) => (
                 <option key={p} value={p}>{p.charAt(0).toUpperCase() + p.slice(1)}</option>
+              ))}
+            </select>
+          </div>
+          <div>
+            <label htmlFor="source_type" className={labelClass}>Origin</label>
+            <select id="source_type" {...form.register('source_type')} className={inputClass}>
+              {LEAD_SOURCE_TYPES.map((sourceType) => (
+                <option key={sourceType} value={sourceType}>{LEAD_SOURCE_TYPE_LABELS[sourceType]}</option>
               ))}
             </select>
           </div>

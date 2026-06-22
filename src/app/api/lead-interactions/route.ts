@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { INTERACTION_CHANNELS, INTERACTION_TYPES } from '@/types/leads'
 import type { PipelineStage, ConversationSignal } from '@/types/leads'
@@ -141,9 +141,9 @@ Current Stage: ${lead.stage}`)
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const leadId = request.nextUrl.searchParams.get('lead_id')
     if (!leadId) return NextResponse.json({ error: 'lead_id required' }, { status: 400 })
@@ -153,7 +153,7 @@ export async function GET(request: NextRequest) {
       .from('leads')
       .select('id')
       .eq('id', leadId)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
     if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
@@ -161,7 +161,7 @@ export async function GET(request: NextRequest) {
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', leadId)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .order('occurred_at', { ascending: true })
 
     if (error) throw error
@@ -177,9 +177,9 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const body = await request.json()
     const validation = createSchema.safeParse(body)
@@ -192,22 +192,16 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .select('id')
       .eq('id', validation.data.lead_id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
     if (!leadOwnership) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('active_org_id')
-      .eq('user_id', user.id)
-      .single()
 
     const { data: interaction, error: insertError } = await supabase
       .from('lead_interactions')
       .insert({
         ...validation.data,
         user_id: user.id,
-        org_id: profile?.active_org_id || null,
+        org_id: orgId,
         occurred_at: validation.data.occurred_at || new Date().toISOString(),
       })
       .select()
@@ -217,9 +211,9 @@ export async function POST(request: NextRequest) {
 
     // Fetch full lead + all emails + all interactions for AI analysis
     const [leadRes, emailsRes, interactionsRes] = await Promise.all([
-      supabase.from('leads').select('*').eq('id', validation.data.lead_id).eq('user_id', user.id).single(),
-      supabase.from('lead_emails').select('*').eq('lead_id', validation.data.lead_id).eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('*').eq('lead_id', validation.data.lead_id).eq('user_id', user.id).order('occurred_at', { ascending: true }),
+      supabase.from('leads').select('*').eq('id', validation.data.lead_id).eq('org_id', orgId).single(),
+      supabase.from('lead_emails').select('*').eq('lead_id', validation.data.lead_id).eq('org_id', orgId).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('*').eq('lead_id', validation.data.lead_id).eq('org_id', orgId).order('occurred_at', { ascending: true }),
     ])
 
     if (leadRes.error || !leadRes.data) {
@@ -266,7 +260,7 @@ export async function POST(request: NextRequest) {
         updatePayload.auto_stage_reason = analysis.stage_reason
       }
 
-      await supabase.from('leads').update(updatePayload).eq('id', lead.id).eq('user_id', user.id)
+      await supabase.from('leads').update(updatePayload).eq('id', lead.id).eq('org_id', orgId)
     }
 
     // Re-fetch the updated lead
@@ -274,7 +268,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .select('*')
       .eq('id', validation.data.lead_id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     return NextResponse.json({ interaction, lead: updatedLead, analysis })

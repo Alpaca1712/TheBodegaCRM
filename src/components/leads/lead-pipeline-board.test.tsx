@@ -23,6 +23,7 @@ function lead(id: string, stage: Lead['stage']): Lead {
     personal_details: null,
     smykm_hooks: [],
     research_sources: [],
+    source_type: 'manual',
     source: null,
     priority: 'medium',
     notes: null,

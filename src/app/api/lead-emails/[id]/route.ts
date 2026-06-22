@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
 const updateSchema = z.object({
   subject: z.string().optional(),
@@ -16,9 +16,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const body = await request.json()
     const validation = updateSchema.safeParse(body)
@@ -29,9 +29,9 @@ export async function PATCH(
     // Verify email ownership before updating
     const { data: email, error: fetchError } = await supabase
       .from('lead_emails')
-      .select('id, user_id')
+      .select('id, org_id')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (fetchError || !email) {
@@ -42,7 +42,7 @@ export async function PATCH(
       .from('lead_emails')
       .update(validation.data)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .select()
       .single()
 

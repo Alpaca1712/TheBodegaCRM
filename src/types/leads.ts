@@ -92,6 +92,20 @@ export interface ResearchSource {
 export const PRIORITIES = ['high', 'medium', 'low'] as const
 export type Priority = (typeof PRIORITIES)[number]
 
+export const LEAD_SOURCE_TYPES = ['manual', 'website', 'import', 'outreach', 'gmail', 'referral', 'api', 'other'] as const
+export type LeadSourceType = (typeof LEAD_SOURCE_TYPES)[number]
+
+export const LEAD_SOURCE_TYPE_LABELS: Record<LeadSourceType, string> = {
+  manual: 'Manual',
+  website: 'Website',
+  import: 'Import',
+  outreach: 'Outreach',
+  gmail: 'Gmail',
+  referral: 'Referral',
+  api: 'API',
+  other: 'Other',
+}
+
 export const EMAIL_TYPES = [
   'initial',
   'follow_up_1',
@@ -154,6 +168,7 @@ export interface Lead {
   smykm_hooks: string[]
   research_sources: ResearchSource[]
   stage: PipelineStage
+  source_type: LeadSourceType
   source: string | null
   priority: Priority
   notes: string | null
@@ -220,6 +235,7 @@ export interface LeadEmail {
 
 export type LeadInsert = Omit<Lead,
   'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' | 'research_sources' |
+  'source_type' |
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
   'last_inbound_at' | 'last_outbound_at' |
@@ -229,6 +245,7 @@ export type LeadInsert = Omit<Lead,
   'investor_memo' | 'investor_memo_generated_at'
 > & {
   id?: string
+  source_type?: LeadSourceType
   contact_phone?: string | null
   research_sources?: ResearchSource[]
   last_contacted_at?: string | null
@@ -273,6 +290,7 @@ export const leadFormSchema = z.object({
     detail: z.string(),
   })).default([]),
   stage: z.enum(PIPELINE_STAGES).default('researched'),
+  source_type: z.enum(LEAD_SOURCE_TYPES).default('manual'),
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).default('medium'),
   notes: z.string().optional().nullable(),
@@ -282,16 +300,20 @@ export type LeadFormValues = z.infer<typeof leadFormSchema>
 
 // --- Interaction tracking (LinkedIn, calls, etc.) ---
 
-export const INTERACTION_CHANNELS = ['linkedin', 'twitter', 'phone', 'in_person', 'other'] as const
+export const INTERACTION_CHANNELS = ['web', 'linkedin', 'twitter', 'phone', 'in_person', 'other'] as const
 export type InteractionChannel = (typeof INTERACTION_CHANNELS)[number]
 
 export const INTERACTION_TYPES = [
+  'form_submission',
+  'lead_magnet_requested',
+  'qualification_completed',
   'dm_sent', 'dm_received', 'connection_request', 'connection_accepted',
   'comment', 'post_like', 'post_share', 'call', 'meeting', 'other',
 ] as const
 export type InteractionType = (typeof INTERACTION_TYPES)[number]
 
 export const CHANNEL_LABELS: Record<InteractionChannel, string> = {
+  web: 'Website',
   linkedin: 'LinkedIn',
   twitter: 'Twitter/X',
   phone: 'Phone',
@@ -300,6 +322,9 @@ export const CHANNEL_LABELS: Record<InteractionChannel, string> = {
 }
 
 export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
+  form_submission: 'Form Submission',
+  lead_magnet_requested: 'Lead Magnet Requested',
+  qualification_completed: 'Qualification Completed',
   dm_sent: 'DM Sent',
   dm_received: 'DM Received',
   connection_request: 'Connection Request',
@@ -313,6 +338,7 @@ export const INTERACTION_TYPE_LABELS: Record<InteractionType, string> = {
 }
 
 export const CHANNEL_INTERACTION_TYPES: Record<InteractionChannel, InteractionType[]> = {
+  web: ['form_submission', 'lead_magnet_requested', 'qualification_completed'],
   linkedin: ['dm_sent', 'dm_received', 'connection_request', 'connection_accepted', 'comment', 'post_like', 'post_share'],
   twitter: ['dm_sent', 'dm_received', 'comment', 'post_like', 'post_share'],
   phone: ['call'],

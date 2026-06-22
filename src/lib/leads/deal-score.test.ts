@@ -25,6 +25,7 @@ function lead(overrides: Partial<Lead>): Lead {
     smykm_hooks: [],
     research_sources: [],
     stage: 'researched',
+    source_type: 'manual',
     source: null,
     priority: 'medium',
     notes: null,

@@ -1,7 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
+import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const createSchema = z.object({
   type: z.enum(LEAD_TYPES),
@@ -19,6 +20,7 @@ const createSchema = z.object({
   personal_details: z.string().optional().nullable(),
   smykm_hooks: z.array(z.string()).optional().default([]),
   stage: z.enum(PIPELINE_STAGES).optional().default('researched'),
+  source_type: z.enum(LEAD_SOURCE_TYPES).optional().default('manual'),
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).optional().default('medium'),
   notes: z.string().optional().nullable(),
@@ -39,9 +41,9 @@ const createSchema = z.object({
 
 export async function GET(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const url = new URL(request.url)
     const type = url.searchParams.get('type')
@@ -59,7 +61,7 @@ export async function GET(request: NextRequest) {
     let query = supabase
       .from('leads')
       .select(selectColumns, { count: 'exact' })
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .order('updated_at', { ascending: false })
 
     if (type) query = query.eq('type', type)
@@ -90,25 +92,14 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const body = await request.json()
     const validation = createSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
-    }
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('active_org_id')
-      .eq('user_id', user.id)
-      .single()
-
-    const orgId = profile?.active_org_id
-    if (!orgId) {
-      return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
     }
 
     // Duplicate lead detection by contact_email
@@ -117,7 +108,7 @@ export async function POST(request: NextRequest) {
       const { data: existing } = await supabase
         .from('leads')
         .select('id')
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
         .eq('contact_email', contactEmail)
         .limit(1)
         .single()
@@ -134,11 +125,21 @@ export async function POST(request: NextRequest) {
       insertData.email_domain = (insertData.contact_email as string).split('@')[1]?.toLowerCase()
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('leads')
       .insert(insertData)
       .select()
       .single()
+
+    if (isMissingColumn(error, 'source_type')) {
+      const retry = await supabase
+        .from('leads')
+        .insert(omitColumn(insertData, 'source_type'))
+        .select()
+        .single()
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) throw error
     return NextResponse.json(data, { status: 201 })

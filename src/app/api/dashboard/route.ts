@@ -1,4 +1,4 @@
-import { createClient } from '@/lib/supabase/server'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { buildSalesActionPlan } from '@/lib/dashboard/sales-actions'
 import { NextResponse } from 'next/server'
 
@@ -12,24 +12,24 @@ export async function GET(req: Request) {
     const { searchParams } = new URL(req.url)
     const type = searchParams.get('type')
 
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const now = new Date()
     const fortyEightHoursAgo = new Date(now.getTime() - 48 * 60 * 60 * 1000)
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    let leadsQuery = supabase.from('leads').select('*').eq('user_id', user.id)
+    let leadsQuery = supabase.from('leads').select('*').eq('org_id', orgId)
     if (type) {
       leadsQuery = leadsQuery.eq('type', type)
     }
 
     const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
       leadsQuery,
-      supabase.from('lead_emails').select('*').eq('user_id', user.id).order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('id, lead_id, channel, interaction_type, occurred_at').eq('user_id', user.id),
+      supabase.from('lead_emails').select('*').eq('org_id', orgId).order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('id, lead_id, channel, interaction_type, occurred_at').eq('org_id', orgId),
     ])
 
     const leads = leadsRes.data || []

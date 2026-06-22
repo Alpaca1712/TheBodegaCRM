@@ -75,6 +75,7 @@ export default function ImportLeadsPage() {
               contact_twitter: row.contact_twitter || row.twitter || null,
               contact_linkedin: row.contact_linkedin || row.linkedin || null,
               company_description: row.company_description || null,
+              source_type: 'import',
               source: row.source || 'csv_import',
               priority: row.priority || 'medium',
               notes: row.notes || null,

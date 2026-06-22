@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
 const createSchema = z.object({
   lead_id: z.string().uuid(),
@@ -13,37 +13,31 @@ const createSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const body = await request.json()
     const validation = createSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
+    const { supabase, user, orgId } = await getOrgScopedClient()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+
     // Verify lead ownership before saving email
     const { data: leadOwnership } = await supabase
       .from('leads')
       .select('id')
       .eq('id', validation.data.lead_id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
     if (!leadOwnership) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
-
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('active_org_id')
-      .eq('user_id', user.id)
-      .single()
 
     const { data, error } = await supabase
       .from('lead_emails')
       .insert({
         ...validation.data,
         user_id: user.id,
-        org_id: profile?.active_org_id || null,
+        org_id: orgId,
       })
       .select()
       .single()
