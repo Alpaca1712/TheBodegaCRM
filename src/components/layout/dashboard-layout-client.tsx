@@ -17,6 +17,7 @@ import {
   Target,
   Handshake,
   HeartPulse,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import Header from '@/components/layout/header';
 import DashboardClientWrapper from '@/components/layout/dashboard-client-wrapper';
@@ -85,6 +86,12 @@ export default function DashboardLayoutClient({
         { href: '/leads', label: 'Leads', icon: Target },
         { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
         { href: '/follow-ups', label: 'Follow-ups', icon: Bell },
+      ],
+    },
+    {
+      label: 'Revenue',
+      items: [
+        { href: '/deals', label: 'Deal Flow', icon: BriefcaseBusiness },
       ],
     },
     {

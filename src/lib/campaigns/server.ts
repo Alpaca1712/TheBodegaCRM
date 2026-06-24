@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { ensureOpportunityForCampaignMeeting } from '@/lib/deals/server'
 import {
   CAMPAIGN_TEMPLATES,
   DEFAULT_TEMPLATE_BY_CAMPAIGN_TYPE,
@@ -32,18 +33,34 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
 
   const directOffer = template?.key === 'email_outbound_direct_offer'
   const inboundPlaybook = template?.key === 'linkedin_inbound_playbook'
+  const conference = template?.key === 'conference_in_person_hormozi'
 
   const stageKey = (() => {
     switch (eventType) {
       case 'research_completed':
-        return 'researched'
+        return conference ? 'pre_event_research' : 'researched'
       case 'email_drafted':
         return directOffer ? 'offer_email_drafted' : 'initial_email_drafted'
       case 'email_sent':
-        return directOffer ? 'offer_email_sent' : 'initial_email_sent'
+        return conference ? 'pre_event_outreach_sent' : directOffer ? 'offer_email_sent' : 'initial_email_sent'
+      case 'pre_event_outreach_sent':
+        return 'pre_event_outreach_sent'
+      case 'conference_targeted':
+        return 'target_account_list'
+      case 'meeting_scheduled':
+        return 'meeting_scheduled'
+      case 'in_person_conversation':
+      case 'badge_scanned':
+        return 'in_person_conversation'
+      case 'diagnostic_offered':
+        return 'diagnostic_offered'
+      case 'post_event_follow_up_sent':
+        return 'post_event_follow_up_sent'
+      case 'meeting_booked':
+        return conference ? 'discovery_booked' : 'meeting_booked'
       case 'email_replied':
       case 'lead_magnet_requested':
-        return inboundPlaybook ? 'playbook_opt_in' : 'replied_interested'
+        return conference ? 'meeting_scheduled' : inboundPlaybook ? 'playbook_opt_in' : 'replied_interested'
       case 'lead_magnet_sent':
         return 'lead_magnet_sent'
       case 'challenge_link_clicked':
@@ -52,8 +69,6 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
         return 'application_started'
       case 'application_completed':
         return 'application_completed'
-      case 'meeting_booked':
-        return 'meeting_booked'
       case 'no_response':
         return 'no_response'
       case 'not_interested':
@@ -270,6 +285,32 @@ export async function recordCampaignEvent({
     .single()
 
   if (error) throw error
+  if (
+    leadId &&
+    resolvedEnrollmentId &&
+    (eventType === 'meeting_booked' || nextStageKey === 'meeting_booked' || nextStageKey === 'discovery_booked')
+  ) {
+    await supabase
+      .from('leads')
+      .update({ stage: 'meeting_booked' })
+      .eq('id', leadId)
+      .eq('org_id', orgId)
+      .not('stage', 'in', '(closed_won,closed_lost)')
+
+    await ensureOpportunityForCampaignMeeting({
+      supabase,
+      orgId,
+      userId,
+      leadId,
+      campaignId,
+      campaignEnrollmentId: resolvedEnrollmentId,
+      metadata: {
+        campaign_event_id: data.id,
+        campaign_stage_key: nextStageKey,
+        ...metadata,
+      },
+    })
+  }
   return data
 }
 
@@ -292,11 +333,11 @@ export function campaignMetricsFromRows(
   const metrics = emptyCampaignMetrics()
   const campaignEnrollments = enrollments.filter((row) => row.campaign_id === campaignId)
   metrics.leads_enrolled = campaignEnrollments.length
-  metrics.meetings_booked = campaignEnrollments.filter((row) => row.stage_key === 'meeting_booked').length
+  metrics.meetings_booked = campaignEnrollments.filter((row) => row.stage_key === 'meeting_booked' || row.stage_key === 'discovery_booked').length
 
   for (const event of events) {
     if (event.campaign_id !== campaignId) continue
-    if (event.event_type === 'email_sent') metrics.initial_emails_sent += 1
+    if (event.event_type === 'email_sent' || event.event_type === 'pre_event_outreach_sent') metrics.initial_emails_sent += 1
     if (event.event_type === 'email_replied') metrics.replies += 1
     if (event.event_type === 'lead_magnet_sent') metrics.lead_magnets_sent += 1
     if (event.event_type === 'application_completed') metrics.applications_completed += 1

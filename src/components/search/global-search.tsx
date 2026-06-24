@@ -16,6 +16,7 @@ import {
   Upload,
   Megaphone,
   Send,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { searchAll } from '@/lib/api/search';
@@ -50,6 +51,7 @@ const quickActions: QuickAction[] = [
   { id: 'import-leads', label: 'Import Leads', description: 'Upload CSV', icon: Upload, route: '/leads/import', group: 'create' },
   { id: 'nav-leads', label: 'Leads', description: 'View all leads', icon: Users, route: '/leads', group: 'navigate' },
   { id: 'nav-campaigns', label: 'Campaigns', description: 'Funnel workspace', icon: Megaphone, route: '/campaigns', group: 'navigate' },
+  { id: 'nav-deals', label: 'Deal Flow', description: 'Revenue pipeline', icon: BriefcaseBusiness, route: '/deals', group: 'navigate' },
   { id: 'nav-followups', label: 'Follow-ups', description: 'Pending follow-ups', icon: Send, route: '/follow-ups', group: 'navigate' },
   { id: 'nav-analytics', label: 'Analytics', description: 'Outreach metrics', icon: BarChart3, route: '/analytics', group: 'navigate' },
   { id: 'nav-email', label: 'Gmail Sync', description: 'Email integration', icon: Mail, route: '/email', group: 'navigate' },

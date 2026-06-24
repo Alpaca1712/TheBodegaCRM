@@ -11,6 +11,7 @@
 
 const GMAIL_SCOPES = [
   'https://www.googleapis.com/auth/gmail.readonly',
+  'https://www.googleapis.com/auth/gmail.send',
   'https://www.googleapis.com/auth/userinfo.email',
 ].join(' ')
 
@@ -118,6 +119,52 @@ export async function refreshAccessToken(refreshToken: string): Promise<{
     }
     throw new Error(`Token refresh failed: ${body}`)
   }
+  return await res.json()
+}
+
+export async function sendGmailMessage(
+  accessToken: string,
+  input: {
+    from: string
+    to: string
+    subject: string
+    body: string
+    threadId?: string | null
+  },
+): Promise<{ id: string; threadId: string }> {
+  const sanitizeHeader = (value: string) => value.replace(/[\r\n]+/g, ' ').trim()
+  const raw = [
+    `From: ${sanitizeHeader(input.from)}`,
+    `To: ${sanitizeHeader(input.to)}`,
+    `Subject: ${sanitizeHeader(input.subject)}`,
+    'MIME-Version: 1.0',
+    'Content-Type: text/plain; charset="UTF-8"',
+    '',
+    input.body,
+  ].join('\r\n')
+
+  const encoded = Buffer.from(raw)
+    .toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=+$/g, '')
+
+  const res = await fetch(`${GMAIL_API}/messages/send`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      raw: encoded,
+      ...(input.threadId ? { threadId: input.threadId } : {}),
+    }),
+  })
+
+  if (!res.ok) {
+    throw new Error(`Gmail send failed: ${await res.text()}`)
+  }
+
   return await res.json()
 }
 

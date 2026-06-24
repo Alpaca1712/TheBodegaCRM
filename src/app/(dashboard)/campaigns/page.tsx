@@ -33,7 +33,6 @@ export default function CampaignsPage() {
   const [name, setName] = useState('')
   const [templateKey, setTemplateKey] = useState<CampaignTemplateKey>('email_outbound_lead_magnet')
   const [leadMagnetName, setLeadMagnetName] = useState('Free Pentest Challenge')
-  const [landingSlug, setLandingSlug] = useState('')
 
   const selectedTemplate = CAMPAIGN_TEMPLATES[templateKey]
   const totals = useMemo(() => {
@@ -91,19 +90,26 @@ export default function CampaignsPage() {
           campaign_type: selectedTemplate.campaignType,
           template_key: templateKey,
           lead_magnet_name: leadMagnetName.trim() || null,
-          landing_slug: landingSlug.trim() || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to create campaign')
       toast.success('Campaign created')
       setName('')
-      setLandingSlug('')
       await loadCampaigns()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign')
     } finally {
       setCreating(false)
+    }
+  }
+
+  const handleTemplateChange = (nextTemplateKey: CampaignTemplateKey) => {
+    setTemplateKey(nextTemplateKey)
+    if (nextTemplateKey === 'conference_in_person_hormozi') {
+      setLeadMagnetName('Free AI Security Diagnostic')
+    } else if (!leadMagnetName.trim() || leadMagnetName === 'Free AI Security Diagnostic') {
+      setLeadMagnetName('Free Pentest Challenge')
     }
   }
 
@@ -154,7 +160,7 @@ export default function CampaignsPage() {
               <select
                 id="campaign-template"
                 value={templateKey}
-                onChange={(event) => setTemplateKey(event.target.value as CampaignTemplateKey)}
+                onChange={(event) => handleTemplateChange(event.target.value as CampaignTemplateKey)}
                 className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
               >
                 {CAMPAIGN_TEMPLATE_OPTIONS.map((option) => (
@@ -162,20 +168,12 @@ export default function CampaignsPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Asset" htmlFor="lead-magnet">
+            <Field label={templateKey === 'conference_in_person_hormozi' ? 'Value Offer' : 'Offer'} htmlFor="lead-magnet">
               <Input
                 id="lead-magnet"
                 value={leadMagnetName}
                 onChange={(event) => setLeadMagnetName(event.target.value)}
                 placeholder="Free Pentest Challenge"
-              />
-            </Field>
-            <Field label="Landing Slug" htmlFor="landing-slug">
-              <Input
-                id="landing-slug"
-                value={landingSlug}
-                onChange={(event) => setLandingSlug(event.target.value)}
-                placeholder="ai-playbook"
               />
             </Field>
           </div>

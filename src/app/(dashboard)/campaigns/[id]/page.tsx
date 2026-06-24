@@ -289,16 +289,6 @@ function EnrollmentCard({
           ))}
         </select>
         <div className="flex flex-wrap gap-1.5">
-          {lead?.lead_token && (
-            <span className="rounded bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700 dark:bg-red-950/40 dark:text-red-300">
-              token
-            </span>
-          )}
-          {lead?.icp_score != null && (
-            <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              ICP {lead.icp_score}
-            </span>
-          )}
           {enrollment.status !== 'active' && (
             <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
               {enrollment.status}

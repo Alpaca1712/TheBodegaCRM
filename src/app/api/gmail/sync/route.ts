@@ -8,11 +8,11 @@ import {
   fetchThreadsByDomain,
   fetchFullThread,
   extractEmailAddress,
-  extractDomain,
   type GmailThread,
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
 import type { PipelineStage } from '@/types/leads'
+import { recordCampaignEvent } from '@/lib/campaigns/server'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
@@ -264,6 +264,7 @@ async function processLead(
       .eq('user_id', userId)
       .in('gmail_message_id', allMessageIds)
     const existingIds = new Set(existingRows?.map(e => e.gmail_message_id) || [])
+    const activeEnrollment = orgId ? await findActiveCampaignEnrollment(supabase, lead.id, orgId) : null
 
     let newMessageCount = 0
     for (const thread of directThreads) {
@@ -298,9 +299,11 @@ async function processLead(
         }
 
         const emailBody = msg.bodyPlainText || msg.snippet
-        const { error: leadEmailError } = await supabase.from('lead_emails').insert({
+        const { data: leadEmail, error: leadEmailError } = await supabase.from('lead_emails').insert({
           lead_id: lead.id,
           user_id: userId,
+          org_id: orgId,
+          campaign_id: activeEnrollment?.campaign_id || null,
           email_type: isFromMe ? 'initial' : 'reply_response',
           subject: msg.subject || '(no subject)',
           body: emailBody,
@@ -309,13 +312,31 @@ async function processLead(
           gmail_thread_id: msg.threadId,
           from_address: msgFromEmail || undefined,
           to_address: msg.to?.[0] || undefined,
+          sent_via: 'gmail',
           ...(isFromMe
             ? { sent_at: new Date(msg.date).toISOString() }
             : { replied_at: new Date(msg.date).toISOString(), reply_content: emailBody }),
-        })
+        }).select('id').single()
 
         if (leadEmailError) {
           console.error('[Sync] lead_emails insert error:', leadEmailError.message)
+        } else if (activeEnrollment && orgId) {
+          await recordCampaignEvent({
+            supabase,
+            campaignId: activeEnrollment.campaign_id,
+            enrollmentId: activeEnrollment.id,
+            leadId: lead.id,
+            orgId,
+            userId,
+            eventType: isFromMe ? 'email_sent' : 'email_replied',
+            metadata: {
+              source: 'gmail_sync',
+              lead_email_id: leadEmail.id,
+              gmail_message_id: msg.id,
+              gmail_thread_id: msg.threadId,
+              direction: isFromMe ? 'outbound' : 'inbound',
+            },
+          })
         }
       }
     }
@@ -404,6 +425,22 @@ async function processLead(
             to: analysis.suggested_stage,
             reason: analysis.stage_reason,
           })
+
+          if (activeEnrollment && orgId && analysis.suggested_stage === 'meeting_booked') {
+            await recordCampaignEvent({
+              supabase,
+              campaignId: activeEnrollment.campaign_id,
+              enrollmentId: activeEnrollment.id,
+              leadId: lead.id,
+              orgId,
+              userId,
+              eventType: 'meeting_booked',
+              metadata: {
+                source: 'gmail_sync_ai',
+                stage_reason: analysis.stage_reason,
+              },
+            })
+          }
         }
 
         const { error: updateError } = await supabase
@@ -507,6 +544,34 @@ interface LeadRow {
   attack_surface_notes: string | null
   investment_thesis_notes: string | null
   notes: string | null
+}
+
+interface ActiveCampaignEnrollment {
+  id: string
+  campaign_id: string
+}
+
+async function findActiveCampaignEnrollment(
+  supabase: SupabaseClient,
+  leadId: string,
+  orgId: string,
+): Promise<ActiveCampaignEnrollment | null> {
+  const { data, error } = await supabase
+    .from('campaign_enrollments')
+    .select('id,campaign_id')
+    .eq('lead_id', leadId)
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[Sync] Campaign enrollment lookup skipped:', error.message)
+    return null
+  }
+
+  return data as ActiveCampaignEnrollment | null
 }
 
 async function analyzeConversation(

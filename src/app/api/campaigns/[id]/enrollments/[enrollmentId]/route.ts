@@ -12,10 +12,19 @@ const updateEnrollmentSchema = z.object({
 
 function defaultEventForStage(stageKey: string): CampaignEventType {
   if (stageKey === 'meeting_booked') return 'meeting_booked'
+  if (stageKey === 'discovery_booked') return 'meeting_booked'
   if (stageKey === 'application_completed') return 'application_completed'
   if (stageKey === 'application_started') return 'application_started'
   if (stageKey === 'lead_magnet_sent') return 'lead_magnet_sent'
+  if (stageKey === 'target_account_list') return 'conference_targeted'
+  if (stageKey === 'pre_event_research') return 'research_completed'
+  if (stageKey === 'pre_event_outreach_sent') return 'pre_event_outreach_sent'
+  if (stageKey === 'meeting_scheduled') return 'meeting_scheduled'
+  if (stageKey === 'in_person_conversation') return 'in_person_conversation'
+  if (stageKey === 'diagnostic_offered') return 'diagnostic_offered'
+  if (stageKey === 'post_event_follow_up_sent') return 'post_event_follow_up_sent'
   if (stageKey === 'no_response') return 'no_response'
+  if (stageKey === 'not_a_fit') return 'not_interested'
   if (stageKey === 'not_interested') return 'not_interested'
   return 'stage_changed'
 }
@@ -88,11 +97,7 @@ export async function PATCH(
           contact_title,
           stage,
           source,
-          source_type,
-          lead_token,
-          icp_score,
           last_contacted_at,
-          last_outbound_at,
           updated_at
         )
       `)

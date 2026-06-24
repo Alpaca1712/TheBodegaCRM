@@ -11,7 +11,10 @@ import {
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { rateLimitResponse } from '@/lib/api/auth-guard'
+import { recordCampaignEvent } from '@/lib/campaigns/server'
 import type { PipelineStage } from '@/types/leads'
+
+type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
 interface ConversationAnalysis {
   suggested_stage: PipelineStage
@@ -60,6 +63,34 @@ function shouldUpdateStage(
   const suggestedIdx = STAGE_ORDER.indexOf(suggested)
   if (suggestedIdx > currentIdx) return confidence !== 'low'
   return confidence === 'high'
+}
+
+interface ActiveCampaignEnrollment {
+  id: string
+  campaign_id: string
+}
+
+async function findActiveCampaignEnrollment(
+  supabase: SupabaseClient,
+  leadId: string,
+  orgId: string,
+): Promise<ActiveCampaignEnrollment | null> {
+  const { data, error } = await supabase
+    .from('campaign_enrollments')
+    .select('id,campaign_id')
+    .eq('lead_id', leadId)
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+    .order('updated_at', { ascending: false })
+    .limit(1)
+    .maybeSingle()
+
+  if (error) {
+    console.warn('[SyncLead] Campaign enrollment lookup skipped:', error.message)
+    return null
+  }
+
+  return data as ActiveCampaignEnrollment | null
 }
 
 export async function POST(request: NextRequest) {
@@ -167,6 +198,7 @@ export async function POST(request: NextRequest) {
       .eq('user_id', user.id)
       .in('gmail_message_id', allMessageIds)
     const existingIds = new Set(existingRows?.map(e => e.gmail_message_id) || [])
+    const activeEnrollment = orgId ? await findActiveCampaignEnrollment(supabase, lead.id, orgId) : null
 
     // Insert new emails
     for (const thread of directThreads) {
@@ -194,6 +226,8 @@ export async function POST(request: NextRequest) {
           supabase.from('lead_emails').insert({
             lead_id: lead.id,
             user_id: user.id,
+            org_id: orgId,
+            campaign_id: activeEnrollment?.campaign_id || null,
             email_type: isFromMe ? 'initial' : 'reply_response',
             subject: msg.subject || '(no subject)',
             body: msg.bodyPlainText || msg.snippet,
@@ -202,14 +236,33 @@ export async function POST(request: NextRequest) {
             gmail_thread_id: msg.threadId,
             from_address: msgFromEmail || undefined,
             to_address: msg.to?.[0] || undefined,
+            sent_via: 'gmail',
             ...(isFromMe
               ? { sent_at: new Date(msg.date).toISOString() }
               : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.bodyPlainText || msg.snippet }),
-          }),
+          }).select('id').single(),
         ])
 
         if (!summaryResult.error && !leadEmailResult.error) {
           syncResult.newEmails++
+          if (activeEnrollment && orgId) {
+            await recordCampaignEvent({
+              supabase,
+              campaignId: activeEnrollment.campaign_id,
+              enrollmentId: activeEnrollment.id,
+              leadId: lead.id,
+              orgId,
+              userId: user.id,
+              eventType: isFromMe ? 'email_sent' : 'email_replied',
+              metadata: {
+                source: 'gmail_sync_lead',
+                lead_email_id: leadEmailResult.data.id,
+                gmail_message_id: msg.id,
+                gmail_thread_id: msg.threadId,
+                direction: isFromMe ? 'outbound' : 'inbound',
+              },
+            })
+          }
         }
       }
     }
@@ -354,6 +407,22 @@ JSON response:
             syncResult.stageChanged = true
             syncResult.newStage = analysis.suggested_stage
             syncResult.stageReason = analysis.stage_reason
+
+            if (activeEnrollment && orgId && analysis.suggested_stage === 'meeting_booked') {
+              await recordCampaignEvent({
+                supabase,
+                campaignId: activeEnrollment.campaign_id,
+                enrollmentId: activeEnrollment.id,
+                leadId: lead.id,
+                orgId,
+                userId: user.id,
+                eventType: 'meeting_booked',
+                metadata: {
+                  source: 'gmail_sync_lead_ai',
+                  stage_reason: analysis.stage_reason,
+                },
+              })
+            }
           }
 
           await supabase.from('leads').update(updatePayload).eq('id', lead.id).eq('user_id', user.id)

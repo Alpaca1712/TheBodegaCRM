@@ -8,15 +8,13 @@ interface DashboardLayoutProps {
 
 export default async function DashboardLayout({ children }: DashboardLayoutProps) {
   const supabase = createClient()
-  
-  const { data: { session } } = await supabase.auth.getSession()
-  
-  if (!session) {
+
+  const { data: { user } } = await supabase.auth.getUser()
+
+  if (!user) {
     redirect('/login')
   }
-  
-  // Get user details from session
-  const user = session.user
+
   const userEmail = user.email || undefined
   const userName = user.user_metadata?.name || undefined
   
@@ -29,4 +27,3 @@ export default async function DashboardLayout({ children }: DashboardLayoutProps
     </DashboardLayoutClient>
   )
 }
-
