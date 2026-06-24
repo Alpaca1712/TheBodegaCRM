@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { enrollLeadInCampaign, recordCampaignEvent } from '@/lib/campaigns/server'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignEventType } from '@/types/campaigns'
 
 const corsHeaders = {
@@ -128,43 +129,90 @@ export async function POST(request: NextRequest) {
 
     if (!lead) {
       const companyName = input.company_name?.trim() || emailDomain || input.contact_name
-      const { data: insertedLead, error: insertError } = await supabase
+      const leadInsertPayload = {
+        org_id: orgId,
+        user_id: userId,
+        type: 'customer',
+        company_name: companyName,
+        contact_name: input.contact_name,
+        contact_email: normalizedEmail,
+        contact_title: input.contact_title || null,
+        company_website: input.company_website || null,
+        email_domain: emailDomain,
+        stage: stageForIntent(input.intent),
+        source_type: input.intent === 'conference_scan' ? 'outreach' : 'website',
+        source,
+        lead_token: leadToken,
+        priority: input.intent === 'discovery' ? 'high' : 'medium',
+        notes: input.notes || null,
+      }
+
+      let { data: insertedLead, error: insertError } = await supabase
         .from('leads')
-        .insert({
-          org_id: orgId,
-          user_id: userId,
-          type: 'customer',
-          company_name: companyName,
-          contact_name: input.contact_name,
-          contact_email: normalizedEmail,
-          contact_title: input.contact_title || null,
-          company_website: input.company_website || null,
-          email_domain: emailDomain,
-          stage: stageForIntent(input.intent),
-          source_type: input.intent === 'conference_scan' ? 'outreach' : 'website',
-          source,
-          lead_token: leadToken,
-          priority: input.intent === 'discovery' ? 'high' : 'medium',
-          notes: input.notes || null,
-        })
+        .insert(leadInsertPayload)
         .select()
         .single()
+
+      if (isMissingColumn(insertError, 'source_type')) {
+        const retry = await supabase
+          .from('leads')
+          .insert(omitColumn(leadInsertPayload, 'source_type'))
+          .select()
+          .single()
+        insertedLead = retry.data
+        insertError = retry.error
+      }
+
+      if (isMissingColumn(insertError, 'lead_token')) {
+        const retry = await supabase
+          .from('leads')
+          .insert(omitColumn(omitColumn(leadInsertPayload, 'source_type'), 'lead_token'))
+          .select()
+          .single()
+        insertedLead = retry.data
+        insertError = retry.error
+      }
 
       if (insertError) throw insertError
       lead = insertedLead
       leadWasCreated = true
     } else {
-      await supabase
+      let leadUpdatePayload: Record<string, unknown> = {
+        lead_token: existingLead.lead_token || leadToken,
+        source: existingLead.source || source,
+        source_type: existingLead.source_type || (input.intent === 'conference_scan' ? 'outreach' : 'website'),
+        company_website: existingLead.company_website || input.company_website || null,
+        contact_title: existingLead.contact_title || input.contact_title || null,
+      }
+      let { error: updateError } = await supabase
         .from('leads')
-        .update({
-          lead_token: existingLead.lead_token || leadToken,
-          source: existingLead.source || source,
-          source_type: existingLead.source_type || (input.intent === 'conference_scan' ? 'outreach' : 'website'),
-          company_website: existingLead.company_website || input.company_website || null,
-          contact_title: existingLead.contact_title || input.contact_title || null,
-        })
+        .update(leadUpdatePayload)
         .eq('id', existingLead.id)
         .eq('org_id', orgId)
+
+      if (isMissingColumn(updateError, 'source_type')) {
+        leadUpdatePayload = omitColumn(leadUpdatePayload, 'source_type')
+        const retry = await supabase
+          .from('leads')
+          .update(leadUpdatePayload)
+          .eq('id', existingLead.id)
+          .eq('org_id', orgId)
+        updateError = retry.error
+      }
+
+      if (isMissingColumn(updateError, 'lead_token')) {
+        leadUpdatePayload = omitColumn(leadUpdatePayload, 'lead_token')
+        const retry = await supabase
+          .from('leads')
+          .update(leadUpdatePayload)
+          .eq('id', existingLead.id)
+          .eq('org_id', orgId)
+        updateError = retry.error
+      }
+
+      if (updateError) {
+        throw updateError
+      }
     }
 
     const enrollment = await enrollLeadInCampaign({

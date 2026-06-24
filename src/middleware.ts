@@ -19,15 +19,15 @@ function isPublicPath(pathname: string): boolean {
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createMiddlewareClient(request)
 
-  // Refresh session if available
+  // Authenticate the cookie-backed session against Supabase Auth.
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
   const { pathname } = request.nextUrl
 
   // Auth enforcement: redirect unauthenticated users away from protected routes
-  if (!session && !isPublicPath(pathname)) {
+  if (!user && !isPublicPath(pathname)) {
     if (pathname.startsWith('/api/')) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Redirect authenticated users away from login/signup
-  if (session && (pathname === '/login' || pathname.startsWith('/signup'))) {
+  if (user && (pathname === '/login' || pathname.startsWith('/signup'))) {
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

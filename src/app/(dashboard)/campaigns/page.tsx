@@ -33,7 +33,6 @@ export default function CampaignsPage() {
   const [name, setName] = useState('')
   const [templateKey, setTemplateKey] = useState<CampaignTemplateKey>('email_outbound_lead_magnet')
   const [leadMagnetName, setLeadMagnetName] = useState('Free Pentest Challenge')
-  const [landingSlug, setLandingSlug] = useState('')
 
   const selectedTemplate = CAMPAIGN_TEMPLATES[templateKey]
   const totals = useMemo(() => {
@@ -91,14 +90,12 @@ export default function CampaignsPage() {
           campaign_type: selectedTemplate.campaignType,
           template_key: templateKey,
           lead_magnet_name: leadMagnetName.trim() || null,
-          landing_slug: landingSlug.trim() || null,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to create campaign')
       toast.success('Campaign created')
       setName('')
-      setLandingSlug('')
       await loadCampaigns()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign')
@@ -111,7 +108,6 @@ export default function CampaignsPage() {
     setTemplateKey(nextTemplateKey)
     if (nextTemplateKey === 'conference_in_person_hormozi') {
       setLeadMagnetName('Free AI Security Diagnostic')
-      setLandingSlug('')
     } else if (!leadMagnetName.trim() || leadMagnetName === 'Free AI Security Diagnostic') {
       setLeadMagnetName('Free Pentest Challenge')
     }
@@ -172,20 +168,12 @@ export default function CampaignsPage() {
                 ))}
               </select>
             </Field>
-            <Field label={templateKey === 'conference_in_person_hormozi' ? 'Diagnostic Offer' : 'Asset'} htmlFor="lead-magnet">
+            <Field label={templateKey === 'conference_in_person_hormozi' ? 'Value Offer' : 'Offer'} htmlFor="lead-magnet">
               <Input
                 id="lead-magnet"
                 value={leadMagnetName}
                 onChange={(event) => setLeadMagnetName(event.target.value)}
                 placeholder="Free Pentest Challenge"
-              />
-            </Field>
-            <Field label="Landing Slug" htmlFor="landing-slug">
-              <Input
-                id="landing-slug"
-                value={landingSlug}
-                onChange={(event) => setLandingSlug(event.target.value)}
-                placeholder="ai-playbook"
               />
             </Field>
           </div>

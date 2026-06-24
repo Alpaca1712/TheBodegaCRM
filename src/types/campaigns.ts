@@ -254,11 +254,7 @@ export interface CampaignEnrollmentWithLead extends CampaignEnrollment {
     | 'contact_title'
     | 'stage'
     | 'source'
-    | 'source_type'
-    | 'lead_token'
-    | 'icp_score'
     | 'last_contacted_at'
-    | 'last_outbound_at'
     | 'updated_at'
   > | null
 }
