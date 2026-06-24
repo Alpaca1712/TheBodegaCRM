@@ -170,6 +170,7 @@ export interface Lead {
   stage: PipelineStage
   source_type: LeadSourceType
   source: string | null
+  lead_token: string | null
   priority: Priority
   notes: string | null
   last_contacted_at: string | null
@@ -217,6 +218,7 @@ export interface LeadEmail {
   id: string
   lead_id: string
   user_id: string
+  campaign_id: string | null
   email_type: EmailType
   cta_type: CtaType | null
   subject: string
@@ -235,7 +237,7 @@ export interface LeadEmail {
 
 export type LeadInsert = Omit<Lead,
   'id' | 'created_at' | 'updated_at' | 'last_contacted_at' | 'contact_phone' | 'research_sources' |
-  'source_type' |
+  'source_type' | 'lead_token' |
   'email_domain' | 'conversation_summary' | 'conversation_next_step' | 'conversation_signals' |
   'auto_stage_reason' | 'thread_count' | 'total_emails_in' | 'total_emails_out' |
   'last_inbound_at' | 'last_outbound_at' |
@@ -246,6 +248,7 @@ export type LeadInsert = Omit<Lead,
 > & {
   id?: string
   source_type?: LeadSourceType
+  lead_token?: string | null
   contact_phone?: string | null
   research_sources?: ResearchSource[]
   last_contacted_at?: string | null
@@ -263,8 +266,9 @@ export type LeadInsert = Omit<Lead,
 
 export type LeadUpdate = Partial<Omit<Lead, 'id' | 'user_id' | 'created_at' | 'updated_at'>>
 
-export type LeadEmailInsert = Omit<LeadEmail, 'id' | 'created_at' | 'updated_at'> & {
+export type LeadEmailInsert = Omit<LeadEmail, 'id' | 'created_at' | 'updated_at' | 'campaign_id'> & {
   id?: string
+  campaign_id?: string | null
 }
 
 // Zod schemas for form validation
@@ -292,6 +296,12 @@ export const leadFormSchema = z.object({
   stage: z.enum(PIPELINE_STAGES).default('researched'),
   source_type: z.enum(LEAD_SOURCE_TYPES).default('manual'),
   source: z.string().optional().nullable(),
+  lead_token: z.string().optional().nullable(),
+  campaign_id: z.string().optional().nullable(),
+  campaign_slug: z.string().optional().nullable(),
+  utm_source: z.string().optional().nullable(),
+  utm_medium: z.string().optional().nullable(),
+  utm_campaign: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).default('medium'),
   notes: z.string().optional().nullable(),
 })

@@ -1,9 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import { enrollLeadInCampaign, getCampaignByIdOrSlug, recordCampaignEvent } from '@/lib/campaigns/server'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { INTERACTION_CHANNELS, INTERACTION_TYPES } from '@/types/leads'
 import type { PipelineStage, ConversationSignal } from '@/types/leads'
+import type { CampaignEventType } from '@/types/campaigns'
 
 const createSchema = z.object({
   lead_id: z.string().uuid(),
@@ -12,7 +14,18 @@ const createSchema = z.object({
   content: z.string().optional().nullable(),
   summary: z.string().optional().nullable(),
   occurred_at: z.string().optional(),
+  campaign_id: z.string().uuid().optional().nullable(),
+  campaign_slug: z.string().optional().nullable(),
 })
+
+function campaignEventForInteraction(interactionType: string): CampaignEventType | null {
+  if (interactionType === 'lead_magnet_requested') return 'lead_magnet_requested'
+  if (interactionType === 'qualification_completed') return 'application_completed'
+  if (interactionType === 'form_submission') return 'application_started'
+  if (interactionType === 'meeting') return 'meeting_booked'
+  if (interactionType === 'dm_received' || interactionType === 'connection_accepted' || interactionType === 'comment') return 'email_replied'
+  return null
+}
 
 interface MultiChannelAnalysis {
   conversation_summary: string
@@ -196,10 +209,32 @@ export async function POST(request: NextRequest) {
       .single()
     if (!leadOwnership) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
+    const {
+      campaign_id,
+      campaign_slug,
+      ...interactionPayload
+    } = validation.data
+
+    const campaign = await getCampaignByIdOrSlug(supabase, orgId, {
+      campaignId: campaign_id,
+      campaignSlug: campaign_slug,
+    })
+
+    if (campaign) {
+      await enrollLeadInCampaign({
+        supabase,
+        campaign,
+        leadId: validation.data.lead_id,
+        userId: user.id,
+        orgId,
+        metadata: { source: 'lead_interaction', interaction_type: validation.data.interaction_type },
+      })
+    }
+
     const { data: interaction, error: insertError } = await supabase
       .from('lead_interactions')
       .insert({
-        ...validation.data,
+        ...interactionPayload,
         user_id: user.id,
         org_id: orgId,
         occurred_at: validation.data.occurred_at || new Date().toISOString(),
@@ -208,6 +243,23 @@ export async function POST(request: NextRequest) {
       .single()
 
     if (insertError) throw insertError
+
+    const campaignEvent = campaignEventForInteraction(validation.data.interaction_type)
+    if (campaign && campaignEvent) {
+      await recordCampaignEvent({
+        supabase,
+        campaignId: campaign.id,
+        leadId: validation.data.lead_id,
+        orgId,
+        userId: user.id,
+        eventType: campaignEvent,
+        metadata: {
+          lead_interaction_id: interaction.id,
+          interaction_type: validation.data.interaction_type,
+          channel: validation.data.channel,
+        },
+      })
+    }
 
     // Fetch full lead + all emails + all interactions for AI analysis
     const [leadRes, emailsRes, interactionsRes] = await Promise.all([

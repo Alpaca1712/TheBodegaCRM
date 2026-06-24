@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import type { Lead, LeadEmail, PipelineStage, Priority } from '@/types/leads';
+import type { Lead, LeadEmail } from '@/types/leads';
 import {
   computeFollowUp,
   filterFollowUps,
@@ -37,6 +37,7 @@ function makeLead(overrides: Partial<Lead> = {}): Lead {
     stage: 'researched',
     source_type: 'manual',
     source: null,
+    lead_token: null,
     priority: 'medium',
     notes: null,
     last_contacted_at: null,
@@ -76,6 +77,7 @@ function makeEmail(overrides: Partial<LeadEmail> = {}): LeadEmail {
     id: overrides.id ?? 'email-1',
     lead_id: overrides.lead_id ?? 'lead-1',
     user_id: 'user-1',
+    campaign_id: null,
     email_type: overrides.email_type ?? 'initial',
     cta_type: null,
     subject: 'Quick idea',

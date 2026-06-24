@@ -25,6 +25,7 @@ function lead(id: string, stage: Lead['stage']): Lead {
     research_sources: [],
     source_type: 'manual',
     source: null,
+    lead_token: null,
     priority: 'medium',
     notes: null,
     last_contacted_at: null,

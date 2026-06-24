@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { recordCampaignEvent } from '@/lib/campaigns/server'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import type { CampaignEventType } from '@/types/campaigns'
 
 const updateSchema = z.object({
   subject: z.string().optional(),
@@ -9,6 +11,17 @@ const updateSchema = z.object({
   email_type: z.string().optional(),
   cta_type: z.enum(['mckenna', 'hormozi']).optional().nullable(),
 })
+
+function campaignEventForPatchedEmail(email: {
+  direction: string
+  email_type: string
+  sent_at: string | null
+}): CampaignEventType {
+  if (email.direction === 'inbound') return 'email_replied'
+  if (email.email_type === 'lead_magnet' && email.sent_at) return 'lead_magnet_sent'
+  if (email.sent_at) return 'email_sent'
+  return 'email_drafted'
+}
 
 export async function PATCH(
   request: NextRequest,
@@ -29,7 +42,7 @@ export async function PATCH(
     // Verify email ownership before updating
     const { data: email, error: fetchError } = await supabase
       .from('lead_emails')
-      .select('id, org_id')
+      .select('id, org_id, campaign_id, lead_id, email_type, direction, sent_at')
       .eq('id', id)
       .eq('org_id', orgId)
       .single()
@@ -47,6 +60,27 @@ export async function PATCH(
       .single()
 
     if (error) throw error
+
+    if (data.campaign_id && validation.data.sent_at && !email.sent_at) {
+      await recordCampaignEvent({
+        supabase,
+        campaignId: data.campaign_id,
+        leadId: data.lead_id,
+        orgId,
+        userId: user.id,
+        eventType: campaignEventForPatchedEmail({
+          direction: data.direction,
+          email_type: data.email_type,
+          sent_at: data.sent_at,
+        }),
+        metadata: {
+          lead_email_id: data.id,
+          email_type: data.email_type,
+          direction: data.direction,
+        },
+      })
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('PATCH /api/lead-emails/[id] error:', error)

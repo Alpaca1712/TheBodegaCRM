@@ -205,6 +205,13 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
 
   return (
     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+      <input type="hidden" {...form.register('campaign_id')} />
+      <input type="hidden" {...form.register('campaign_slug')} />
+      <input type="hidden" {...form.register('utm_source')} />
+      <input type="hidden" {...form.register('utm_medium')} />
+      <input type="hidden" {...form.register('utm_campaign')} />
+      <input type="hidden" {...form.register('lead_token')} />
+
       {/* Type & Basic Info */}
       <div className="space-y-4">
         <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Basic Information</h3>

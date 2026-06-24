@@ -27,6 +27,7 @@ function lead(overrides: Partial<Lead>): Lead {
     stage: 'researched',
     source_type: 'manual',
     source: null,
+    lead_token: null,
     priority: 'medium',
     notes: null,
     last_contacted_at: null,
