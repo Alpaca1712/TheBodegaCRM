@@ -12,7 +12,6 @@ import {
   Settings,
   Plus,
   ChevronDown,
-  Kanban,
   Megaphone,
   Bell,
   Target,
@@ -85,7 +84,6 @@ export default function DashboardLayoutClient({
       items: [
         { href: '/leads', label: 'Leads', icon: Target },
         { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
-        { href: '/pipeline', label: 'Pipeline', icon: Kanban },
         { href: '/follow-ups', label: 'Follow-ups', icon: Bell },
       ],
     },

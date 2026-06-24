@@ -24,7 +24,7 @@ export function useGlobalShortcuts() {
     const shortcuts: ShortcutMap = {
       'g+d': () => router.push('/dashboard'),
       'g+l': () => router.push('/leads'),
-      'g+p': () => router.push('/pipeline'),
+      'g+m': () => router.push('/campaigns'),
       'g+f': () => router.push('/follow-ups'),
       'g+e': () => router.push('/email'),
       'g+a': () => router.push('/analytics'),

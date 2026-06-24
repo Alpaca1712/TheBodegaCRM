@@ -241,7 +241,7 @@ export default function DashboardPage() {
           value={data.outreachThisWeek}
           trend={outreachTrend}
           subtext={`${data.totalOutbound} total sent`}
-          href="/pipeline"
+          href="/campaigns"
         />
         <KPICard
           icon={<MessageSquare className="h-4 w-4" />}
@@ -268,7 +268,7 @@ export default function DashboardPage() {
           label="Active Pipeline"
           value={data.activePipeline}
           subtext={`${data.closedWon} closed won`}
-          href="/pipeline"
+          href="/leads"
         />
       </div>
 
@@ -291,12 +291,12 @@ export default function DashboardPage() {
       />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Pipeline Overview */}
+        {/* Lifecycle Overview */}
         <div className="lg:col-span-2 rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pipeline</h2>
-            <Link href="/pipeline" className="text-xs text-red-600 dark:text-red-400 hover:text-red-500 flex items-center gap-1 font-medium">
-              Board view <ArrowRight className="h-3 w-3" />
+            <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Lead Lifecycle</h2>
+            <Link href="/leads" className="text-xs text-red-600 dark:text-red-400 hover:text-red-500 flex items-center gap-1 font-medium">
+              Lead list <ArrowRight className="h-3 w-3" />
             </Link>
           </div>
           <div className="space-y-2">

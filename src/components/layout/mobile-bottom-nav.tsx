@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import {
   Home,
   Users,
-  Kanban,
   Mail,
   BarChart,
   Settings,
@@ -31,8 +30,6 @@ export default function MobileBottomNav({
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/leads', label: 'Leads', icon: Users },
-    { href: '/campaigns', label: 'Campaigns', icon: Megaphone },
-    { href: '/pipeline', label: 'Pipeline', icon: Kanban },
     { href: '/follow-ups', label: 'Follow-ups', icon: Send },
     { href: '/email', label: 'Email', icon: Mail },
     { href: '/analytics', label: 'Analytics', icon: BarChart },
@@ -99,16 +96,16 @@ export default function MobileBottomNav({
           </div>
           
           <Link 
-            href="/pipeline" 
-            aria-current={isActive('/pipeline') ? 'page' : undefined}
+            href="/campaigns" 
+            aria-current={isActive('/campaigns') ? 'page' : undefined}
             className={`flex flex-col items-center justify-center p-1.5 rounded-lg transition-colors ${
-              isActive('/pipeline') 
+              isActive('/campaigns') 
                 ? 'text-red-600 dark:text-red-400' 
                 : 'text-zinc-500 dark:text-zinc-400'
             }`}
           >
-            <Kanban className="h-5 w-5" />
-            <span className="text-[10px] mt-0.5">Pipeline</span>
+            <Megaphone className="h-5 w-5" />
+            <span className="text-[10px] mt-0.5">Campaigns</span>
           </Link>
           
           <button

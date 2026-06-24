@@ -26,6 +26,15 @@ const createCampaignSchema = z.object({
   landing_slug: z.string().optional().nullable(),
 })
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) return message
+  }
+  return fallback
+}
+
 export async function GET() {
   try {
     const { supabase, user, orgId } = await getOrgScopedClient()
@@ -82,7 +91,7 @@ export async function GET() {
     return NextResponse.json({ data })
   } catch (error) {
     console.error('GET /api/campaigns failed', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to load campaigns' }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(error, 'Failed to load campaigns') }, { status: 500 })
   }
 }
 
@@ -179,6 +188,6 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ data: campaign }, { status: 201 })
   } catch (error) {
     console.error('POST /api/campaigns failed', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to create campaign' }, { status: 500 })
+    return NextResponse.json({ error: getErrorMessage(error, 'Failed to create campaign') }, { status: 500 })
   }
 }

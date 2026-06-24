@@ -9,7 +9,7 @@ const shortcutGroups = [
     shortcuts: [
       { keys: ['G', 'D'], description: 'Go to Dashboard' },
       { keys: ['G', 'L'], description: 'Go to Leads' },
-      { keys: ['G', 'P'], description: 'Go to Pipeline' },
+      { keys: ['G', 'M'], description: 'Go to Campaigns' },
       { keys: ['G', 'F'], description: 'Go to Follow-ups' },
       { keys: ['G', 'E'], description: 'Go to Email' },
       { keys: ['G', 'A'], description: 'Go to Analytics' },

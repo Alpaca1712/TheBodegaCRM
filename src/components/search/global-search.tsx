@@ -14,7 +14,7 @@ import {
   Settings,
   Mail,
   Upload,
-  Kanban,
+  Megaphone,
   Send,
 } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -49,7 +49,7 @@ const quickActions: QuickAction[] = [
   { id: 'new-investor', label: 'New Investor Lead', description: 'Add a potential investor', icon: Landmark, route: '/leads/new?type=investor', group: 'create' },
   { id: 'import-leads', label: 'Import Leads', description: 'Upload CSV', icon: Upload, route: '/leads/import', group: 'create' },
   { id: 'nav-leads', label: 'Leads', description: 'View all leads', icon: Users, route: '/leads', group: 'navigate' },
-  { id: 'nav-pipeline', label: 'Pipeline', description: 'Kanban board', icon: Kanban, route: '/pipeline', group: 'navigate' },
+  { id: 'nav-campaigns', label: 'Campaigns', description: 'Funnel workspace', icon: Megaphone, route: '/campaigns', group: 'navigate' },
   { id: 'nav-followups', label: 'Follow-ups', description: 'Pending follow-ups', icon: Send, route: '/follow-ups', group: 'navigate' },
   { id: 'nav-analytics', label: 'Analytics', description: 'Outreach metrics', icon: BarChart3, route: '/analytics', group: 'navigate' },
   { id: 'nav-email', label: 'Gmail Sync', description: 'Email integration', icon: Mail, route: '/email', group: 'navigate' },
