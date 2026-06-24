@@ -285,8 +285,8 @@ export default function CampaignDetailPage() {
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
       </div>
 
-      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
-        <section className="space-y-3">
+      <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
+        <section className="min-w-0 space-y-3">
           <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
             <div>
               <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
@@ -303,8 +303,8 @@ export default function CampaignDetailPage() {
             </Link>
           </div>
 
-          <div className="overflow-x-auto pb-2">
-            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, minmax(250px, 1fr))` }}>
+          <div className="min-w-0 overflow-x-auto rounded-lg pb-2">
+            <div className="grid w-max gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, 260px)` }}>
               {campaign.stages.map((stage) => (
                 <StageColumn
                   key={stage.id}
@@ -320,7 +320,7 @@ export default function CampaignDetailPage() {
           </div>
         </section>
 
-        <aside className="space-y-4">
+        <aside className="min-w-0 space-y-4">
           <LeadOnboardingPanel
             campaign={campaign}
             leadSearch={leadSearch}
