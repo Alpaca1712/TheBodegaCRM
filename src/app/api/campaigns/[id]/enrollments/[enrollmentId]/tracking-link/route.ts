@@ -14,7 +14,7 @@ export async function POST(
 
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
-      .select('id,slug,org_id')
+      .select('id,org_id')
       .eq('id', id)
       .eq('org_id', orgId)
       .single()
@@ -50,7 +50,6 @@ export async function POST(
     const url = buildChallengeTrackingUrl({
       leadToken,
       campaignId: campaign.id,
-      campaignSlug: campaign.slug,
     })
 
     return NextResponse.json({ data: { url, lead_token: leadToken } })

@@ -55,19 +55,13 @@ export function getRocotoLandingBaseUrl() {
 export function buildChallengeTrackingUrl({
   leadToken,
   campaignId,
-  campaignSlug,
 }: {
   leadToken: string
   campaignId: string
-  campaignSlug: string
 }) {
   const params = new URLSearchParams({
     lead: leadToken,
     campaign_id: campaignId,
-    campaign: campaignSlug,
-    utm_source: 'bodega',
-    utm_medium: 'email',
-    utm_campaign: campaignSlug,
   })
 
   return `${getRocotoLandingBaseUrl()}/free-pentest-challenge?${params.toString()}#claim`
