@@ -140,3 +140,29 @@ export async function PATCH(
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update campaign' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string }> },
+) {
+  try {
+    const { id } = await params
+    const { supabase, user, orgId } = await getOrgScopedClient()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+
+    const { error, count } = await supabase
+      .from('campaigns')
+      .delete({ count: 'exact' })
+      .eq('id', id)
+      .eq('org_id', orgId)
+
+    if (error) throw error
+    if (count === 0) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
+
+    return NextResponse.json({ data: { id }, success: true })
+  } catch (error) {
+    console.error('DELETE /api/campaigns/[id] failed', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to delete campaign' }, { status: 500 })
+  }
+}

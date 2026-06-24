@@ -1,24 +1,53 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import Link from 'next/link'
-import { useParams } from 'next/navigation'
-import { ArrowLeft, CheckCircle2, Loader2, RefreshCw, UserPlus } from 'lucide-react'
+import { useParams, useRouter } from 'next/navigation'
+import {
+  ArrowLeft,
+  CalendarCheck,
+  CheckCircle2,
+  Clock3,
+  Loader2,
+  Mail,
+  Plus,
+  RefreshCw,
+  Search,
+  Send,
+  Trash2,
+  UserPlus,
+  Users,
+  X,
+} from 'lucide-react'
 import { toast } from 'sonner'
-import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignStage } from '@/types/campaigns'
+import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignEvent, CampaignStage } from '@/types/campaigns'
 import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
 import type { Lead } from '@/types/leads'
+import { STAGE_LABELS } from '@/types/leads'
 import { Button } from '@/components/ui/button'
+
+const metricTones = {
+  red: 'bg-red-50 text-red-600 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50',
+  amber: 'bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-900/50',
+  blue: 'bg-blue-50 text-blue-600 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50',
+  emerald: 'bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50',
+  zinc: 'bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700',
+}
+
+type MetricTone = keyof typeof metricTones
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>()
+  const router = useRouter()
   const campaignId = params.id
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null)
   const [leads, setLeads] = useState<Lead[]>([])
-  const [selectedLeadId, setSelectedLeadId] = useState('')
+  const [leadSearch, setLeadSearch] = useState('')
+  const [selectedLeadIds, setSelectedLeadIds] = useState<Set<string>>(new Set())
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
+  const [deleting, setDeleting] = useState(false)
 
   const load = async () => {
     setLoading(true)
@@ -55,22 +84,82 @@ export default function CampaignDetailPage() {
     [leads, enrolledLeadIds],
   )
 
-  const enrollSelectedLead = async () => {
-    if (!selectedLeadId) return
+  const filteredAvailableLeads = useMemo(() => {
+    const query = leadSearch.trim().toLowerCase()
+    const filtered = query
+      ? availableLeads.filter((lead) => {
+          return [
+            lead.contact_name,
+            lead.company_name,
+            lead.contact_email,
+            lead.contact_title,
+          ]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(query)
+        })
+      : availableLeads
+
+    return filtered.slice(0, 14)
+  }, [availableLeads, leadSearch])
+
+  const selectedLeads = useMemo(
+    () => availableLeads.filter((lead) => selectedLeadIds.has(lead.id)),
+    [availableLeads, selectedLeadIds],
+  )
+
+  const stageCounts = useMemo(() => {
+    return campaign?.stages.reduce<Record<string, number>>((acc, stage) => {
+      acc[stage.stage_key] = campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key).length
+      return acc
+    }, {}) || {}
+  }, [campaign])
+
+  const toggleLead = (leadId: string) => {
+    setSelectedLeadIds((current) => {
+      const next = new Set(current)
+      if (next.has(leadId)) next.delete(leadId)
+      else next.add(leadId)
+      return next
+    })
+  }
+
+  const selectVisibleLeads = () => {
+    setSelectedLeadIds((current) => {
+      const next = new Set(current)
+      filteredAvailableLeads.forEach((lead) => next.add(lead.id))
+      return next
+    })
+  }
+
+  const clearSelectedLeads = () => setSelectedLeadIds(new Set())
+
+  const enrollSelectedLeads = async () => {
+    const leadIds = Array.from(selectedLeadIds)
+    if (leadIds.length === 0) {
+      toast.error('Select at least one lead')
+      return
+    }
+
     setEnrolling(true)
     try {
       const res = await fetch(`/api/campaigns/${campaignId}/enrollments`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lead_ids: [selectedLeadId] }),
+        body: JSON.stringify({
+          lead_ids: leadIds,
+          metadata: { enrolled_from: 'campaign_detail' },
+        }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to enroll lead')
-      toast.success('Lead enrolled')
-      setSelectedLeadId('')
+      if (!res.ok) throw new Error(data?.error || 'Failed to add leads')
+      toast.success(`Added ${leadIds.length} lead${leadIds.length !== 1 ? 's' : ''}`)
+      clearSelectedLeads()
+      setLeadSearch('')
       await load()
     } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to enroll lead')
+      toast.error(error instanceof Error ? error.message : 'Failed to add leads')
     } finally {
       setEnrolling(false)
     }
@@ -96,6 +185,24 @@ export default function CampaignDetailPage() {
     }
   }
 
+  const deleteCampaign = async () => {
+    if (!campaign) return
+    if (!window.confirm(`Delete "${campaign.name}"? Leads will stay in the CRM, but this campaign funnel and its events will be removed.`)) return
+
+    setDeleting(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete campaign')
+      toast.success('Campaign deleted')
+      router.push('/campaigns')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete campaign')
+    } finally {
+      setDeleting(false)
+    }
+  }
+
   if (loading && !campaign) {
     return (
       <div className="flex min-h-[420px] items-center justify-center text-sm text-zinc-500">
@@ -117,114 +224,335 @@ export default function CampaignDetailPage() {
     )
   }
 
+  const cta = campaign.lead_magnet_name || 'Discovery call'
+  const meetingRate = campaign.metrics.leads_enrolled > 0
+    ? Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100)
+    : 0
+  const replyRate = campaign.metrics.initial_emails_sent > 0
+    ? Math.round((campaign.metrics.replies / campaign.metrics.initial_emails_sent) * 100)
+    : 0
+
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
-        <div>
-          <Link href="/campaigns" className="mb-3 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
-            <ArrowLeft className="h-4 w-4" />
-            Campaigns
-          </Link>
-          <div className="flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold tracking-tight text-zinc-900 dark:text-zinc-100">{campaign.name}</h1>
-            <span className="rounded-full bg-zinc-100 px-2 py-0.5 text-[10px] font-medium uppercase tracking-wide text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              {campaign.status}
-            </span>
-          </div>
-          <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-            {CAMPAIGN_TYPE_LABELS[campaign.campaign_type]} · {campaign.slug}
-          </p>
-        </div>
-        <div className="flex flex-wrap items-end gap-2">
-          <div>
-            <label htmlFor="enroll-lead" className="mb-1 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-              Enroll Lead
-            </label>
-            <select
-              id="enroll-lead"
-              value={selectedLeadId}
-              onChange={(event) => setSelectedLeadId(event.target.value)}
-              className="h-10 min-w-[260px] rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
-            >
-              <option value="">Select lead</option>
-              {availableLeads.map((lead) => (
-                <option key={lead.id} value={lead.id}>{lead.contact_name} · {lead.company_name}</option>
-              ))}
-            </select>
-          </div>
-          <Button type="button" variant="destructive" disabled={!selectedLeadId} isLoading={enrolling} onClick={() => void enrollSelectedLead()}>
-            <UserPlus className="mr-2 h-4 w-4" />
-            Enroll
-          </Button>
-          <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
-            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-            Refresh
-          </Button>
-        </div>
-      </div>
-
-      <div className="grid gap-3 sm:grid-cols-5">
-        <Metric label="Enrolled" value={campaign.metrics.leads_enrolled} />
-        <Metric label="Initial Sent" value={campaign.metrics.initial_emails_sent} />
-        <Metric label="Replies" value={campaign.metrics.replies} />
-        <Metric label="Applications" value={campaign.metrics.applications_completed} />
-        <Metric label="Meetings" value={campaign.metrics.meetings_booked} />
-      </div>
-
-      <div className="overflow-x-auto pb-2">
-        <div className="grid min-w-[1100px] gap-3" style={{ gridTemplateColumns: `repeat(${campaign.stages.length}, minmax(220px, 1fr))` }}>
-          {campaign.stages.map((stage) => (
-            <StageColumn
-              key={stage.id}
-              stage={stage}
-              stages={campaign.stages}
-              enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
-              movingId={movingId}
-              onMove={moveEnrollment}
-            />
-          ))}
-        </div>
-      </div>
-
-      <div className="border-t border-zinc-200 pt-4 dark:border-zinc-800">
-        <h2 className="mb-3 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Recent Events</h2>
-        <div className="space-y-2">
-          {campaign.events.slice(0, 12).map((event) => (
-            <div key={event.id} className="flex items-center justify-between gap-3 text-xs">
-              <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                {CAMPAIGN_EVENT_LABELS[event.event_type] || event.event_type}
-              </span>
-              <span className="text-zinc-400">{new Date(event.occurred_at).toLocaleString()}</span>
+    <div className="mx-auto max-w-[1600px] space-y-6">
+      <header className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+          <div className="min-w-0">
+            <Link href="/campaigns" className="mb-3 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+              <ArrowLeft className="h-4 w-4" />
+              Campaigns
+            </Link>
+            <div className="flex flex-wrap items-center gap-2">
+              <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">{campaign.name}</h1>
+              <StatusBadge status={campaign.status} />
             </div>
-          ))}
-          {campaign.events.length === 0 && <p className="text-sm text-zinc-500">No events yet.</p>}
+            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+              <span>{CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}</span>
+              <span className="hidden text-zinc-300 sm:inline">/</span>
+              <span>{campaign.slug}</span>
+              {campaign.template_key && (
+                <>
+                  <span className="hidden text-zinc-300 sm:inline">/</span>
+                  <span>{campaign.template_key.replaceAll('_', ' ')}</span>
+                </>
+              )}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2">
+            <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
+              {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+              Refresh
+            </Button>
+            <Button type="button" variant="outline" onClick={() => void deleteCampaign()} isLoading={deleting} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Delete
+            </Button>
+          </div>
         </div>
+
+        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-3">
+          <HeaderFact label="Primary CTA" value={cta} />
+          <HeaderFact label="Available leads" value={`${availableLeads.length} not enrolled`} />
+          <HeaderFact label="Funnel stages" value={`${campaign.stages.length} steps`} />
+        </div>
+      </header>
+
+      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+        <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
+        <MetricCard icon={Send} label="Initial sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
+        <MetricCard icon={Mail} label="Reply rate" value={`${replyRate}%`} tone="blue" />
+        <MetricCard icon={CalendarCheck} label="Meetings" value={campaign.metrics.meetings_booked} tone="emerald" />
+        <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
+      </div>
+
+      <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_390px] xl:items-start">
+        <section className="space-y-3">
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+            <div>
+              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+                {campaign.metrics.leads_enrolled} enrolled lead{campaign.metrics.leads_enrolled !== 1 ? 's' : ''} moving toward {cta.toLowerCase()}.
+              </p>
+            </div>
+            <Link
+              href={`/leads/new?type=customer&campaign_id=${campaign.id}&campaign_slug=${campaign.slug}`}
+              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-sm font-medium text-white shadow-sm shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+            >
+              <Plus className="h-4 w-4" />
+              New Lead
+            </Link>
+          </div>
+
+          <div className="overflow-x-auto pb-2">
+            <div className="grid gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, minmax(250px, 1fr))` }}>
+              {campaign.stages.map((stage) => (
+                <StageColumn
+                  key={stage.id}
+                  stage={stage}
+                  stages={campaign.stages}
+                  count={stageCounts[stage.stage_key] || 0}
+                  enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
+                  movingId={movingId}
+                  onMove={moveEnrollment}
+                />
+              ))}
+            </div>
+          </div>
+        </section>
+
+        <aside className="space-y-4">
+          <LeadOnboardingPanel
+            campaign={campaign}
+            leadSearch={leadSearch}
+            setLeadSearch={setLeadSearch}
+            availableLeads={availableLeads}
+            filteredLeads={filteredAvailableLeads}
+            selectedLeadIds={selectedLeadIds}
+            selectedLeads={selectedLeads}
+            enrolling={enrolling}
+            onToggleLead={toggleLead}
+            onSelectVisible={selectVisibleLeads}
+            onClearSelected={clearSelectedLeads}
+            onEnrollSelected={enrollSelectedLeads}
+          />
+          <EventFeed events={campaign.events} />
+        </aside>
       </div>
     </div>
+  )
+}
+
+function HeaderFact({ label, value }: { label: string; value: string }) {
+  return (
+    <div>
+      <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{label}</p>
+      <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{value}</p>
+    </div>
+  )
+}
+
+function StatusBadge({ status }: { status: CampaignDetail['status'] }) {
+  const className = status === 'active'
+    ? 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
+    : status === 'paused'
+      ? 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-900/50'
+      : 'bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700'
+
+  return (
+    <span className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${className}`}>
+      {status}
+    </span>
+  )
+}
+
+function MetricCard({
+  icon: Icon,
+  label,
+  value,
+  tone,
+}: {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  value: number | string
+  tone: MetricTone
+}) {
+  return (
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex items-center justify-between gap-3">
+        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
+        <div className={`flex h-8 w-8 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
+          <Icon className="h-4 w-4" />
+        </div>
+      </div>
+      <p className="mt-3 text-2xl font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
+    </div>
+  )
+}
+
+function LeadOnboardingPanel({
+  campaign,
+  leadSearch,
+  setLeadSearch,
+  availableLeads,
+  filteredLeads,
+  selectedLeadIds,
+  selectedLeads,
+  enrolling,
+  onToggleLead,
+  onSelectVisible,
+  onClearSelected,
+  onEnrollSelected,
+}: {
+  campaign: CampaignDetail
+  leadSearch: string
+  setLeadSearch: (value: string) => void
+  availableLeads: Lead[]
+  filteredLeads: Lead[]
+  selectedLeadIds: Set<string>
+  selectedLeads: Lead[]
+  enrolling: boolean
+  onToggleLead: (leadId: string) => void
+  onSelectVisible: () => void
+  onClearSelected: () => void
+  onEnrollSelected: () => Promise<void>
+}) {
+  return (
+    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex items-start justify-between gap-3">
+        <div>
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-red-50 text-red-600 ring-1 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50">
+              <UserPlus className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Lead onboarding</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">{availableLeads.length} CRM leads available</p>
+            </div>
+          </div>
+        </div>
+        <Link
+          href={`/leads/new?type=customer&campaign_id=${campaign.id}&campaign_slug=${campaign.slug}`}
+          className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-zinc-900 px-3 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        >
+          <Plus className="h-3.5 w-3.5" />
+          New
+        </Link>
+      </div>
+
+      <div className="mt-4 flex items-center gap-2">
+        <div className="relative min-w-0 flex-1">
+          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
+          <input
+            value={leadSearch}
+            onChange={(event) => setLeadSearch(event.target.value)}
+            placeholder="Search CRM leads"
+            className="h-10 w-full rounded-md border border-zinc-200 bg-white pl-9 pr-8 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
+          />
+          {leadSearch && (
+            <button
+              type="button"
+              onClick={() => setLeadSearch('')}
+              className="absolute right-2 top-1/2 flex h-6 w-6 -translate-y-1/2 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700 dark:hover:bg-zinc-700 dark:hover:text-zinc-200"
+              aria-label="Clear lead search"
+            >
+              <X className="h-3.5 w-3.5" />
+            </button>
+          )}
+        </div>
+        <button
+          type="button"
+          onClick={onSelectVisible}
+          disabled={filteredLeads.length === 0}
+          className="h-10 rounded-md border border-zinc-200 px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          Select
+        </button>
+      </div>
+
+      <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+        {filteredLeads.map((lead) => {
+          const selected = selectedLeadIds.has(lead.id)
+          return (
+            <button
+              key={lead.id}
+              type="button"
+              onClick={() => onToggleLead(lead.id)}
+              className={`flex w-full items-start gap-3 rounded-md border p-3 text-left transition ${
+                selected
+                  ? 'border-red-200 bg-red-50/60 dark:border-red-900/50 dark:bg-red-950/20'
+                  : 'border-zinc-200 bg-white hover:border-zinc-300 hover:bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:border-zinc-700 dark:hover:bg-zinc-800/60'
+              }`}
+            >
+              <span className={`mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded border ${selected ? 'border-red-600 bg-red-600' : 'border-zinc-300 bg-white dark:border-zinc-700 dark:bg-zinc-900'}`}>
+                {selected && <CheckCircle2 className="h-3 w-3 text-white" />}
+              </span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate text-sm font-semibold text-zinc-900 dark:text-zinc-100">{lead.contact_name}</span>
+                <span className="block truncate text-xs text-zinc-500 dark:text-zinc-400">{lead.company_name}</span>
+                <span className="mt-1 block truncate text-[11px] text-zinc-400">{lead.contact_email || STAGE_LABELS[lead.stage]}</span>
+              </span>
+            </button>
+          )
+        })}
+        {filteredLeads.length === 0 && (
+          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No available leads</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Create a lead or import a CSV, then attach it to this campaign.</p>
+          </div>
+        )}
+      </div>
+
+      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+        <div className="text-xs text-zinc-500 dark:text-zinc-400">
+          {selectedLeads.length} selected
+        </div>
+        <div className="flex items-center gap-2">
+          {selectedLeads.length > 0 && (
+            <button type="button" onClick={onClearSelected} className="text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+              Clear
+            </button>
+          )}
+          <Button type="button" size="sm" variant="destructive" isLoading={enrolling} disabled={selectedLeads.length === 0} onClick={() => void onEnrollSelected()}>
+            <UserPlus className="mr-1.5 h-3.5 w-3.5" />
+            Add selected
+          </Button>
+        </div>
+      </div>
+    </section>
   )
 }
 
 function StageColumn({
   stage,
   stages,
+  count,
   enrollments,
   movingId,
   onMove,
 }: {
   stage: CampaignStage
   stages: CampaignStage[]
+  count: number
   enrollments: CampaignEnrollmentWithLead[]
   movingId: string | null
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
 }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-zinc-50/80 p-3 dark:border-zinc-800 dark:bg-zinc-900/40">
-      <div className="mb-3 flex items-center justify-between gap-2">
-        <h2 className="text-xs font-semibold uppercase tracking-wide text-zinc-600 dark:text-zinc-300">{stage.label}</h2>
-        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800">
-          {enrollments.length}
+    <section className={`min-h-[420px] rounded-lg border p-3 shadow-sm ${
+      stage.is_goal
+        ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/15'
+        : 'border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40'
+    }`}>
+      <div className="mb-3 flex items-start justify-between gap-2">
+        <div className="min-w-0">
+          <h2 className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-200">{stage.label}</h2>
+          {stage.is_goal && <p className="mt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Goal stage</p>}
+        </div>
+        <span className="rounded-full bg-white px-2 py-0.5 text-[10px] font-semibold tabular-nums text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:ring-zinc-800">
+          {count}
         </span>
       </div>
+
       <div className="space-y-2">
         {enrollments.map((enrollment) => (
           <EnrollmentCard
@@ -235,6 +563,11 @@ function StageColumn({
             onMove={onMove}
           />
         ))}
+        {enrollments.length === 0 && (
+          <div className="flex min-h-[120px] items-center justify-center rounded-md border border-dashed border-zinc-200 bg-white/70 px-4 text-center text-xs text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/30">
+            No leads in this stage
+          </div>
+        )}
       </div>
     </section>
   )
@@ -252,46 +585,90 @@ function EnrollmentCard({
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
 }) {
   const lead = enrollment.lead
+
   return (
-    <div className="rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <article className="rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
-          <Link href={lead ? `/leads/${lead.id}` : '#'} className="block truncate text-sm font-semibold text-zinc-900 hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
+          <Link href={lead ? `/leads/${lead.id}` : '#'} className="block truncate text-sm font-semibold text-zinc-950 hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
             {lead?.contact_name || 'Unknown lead'}
           </Link>
-          <p className="truncate text-xs text-zinc-500">{lead?.company_name || enrollment.lead_id}</p>
+          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{lead?.company_name || enrollment.lead_id}</p>
+          {lead?.contact_email && <p className="mt-1 truncate text-[11px] text-zinc-400">{lead.contact_email}</p>}
         </div>
         {enrollment.status === 'completed' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
       </div>
-      <div className="mt-3 space-y-2">
-        <select
-          value={enrollment.stage_key}
-          onChange={(event) => void onMove(enrollment, event.target.value)}
-          disabled={moving}
-          aria-label={`Move ${lead?.contact_name || 'lead'} to campaign stage`}
-          className="h-8 w-full rounded-md border border-zinc-200 bg-zinc-50 px-2 text-xs text-zinc-900 focus:outline-none focus:ring-2 focus:ring-red-500 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-        >
-          {stages.map((stage) => (
-            <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
-          ))}
-        </select>
-        <div className="flex flex-wrap gap-1.5">
-          {enrollment.status !== 'active' && (
-            <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300">
-              {enrollment.status}
-            </span>
-          )}
-        </div>
+
+      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+        {lead?.stage && (
+          <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+            {STAGE_LABELS[lead.stage]}
+          </span>
+        )}
+        {enrollment.last_event_at && (
+          <span className="inline-flex items-center gap-1 rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+            <Clock3 className="h-3 w-3" />
+            {formatShortDate(enrollment.last_event_at)}
+          </span>
+        )}
       </div>
-    </div>
+
+      <select
+        value={enrollment.stage_key}
+        onChange={(event) => void onMove(enrollment, event.target.value)}
+        disabled={moving}
+        aria-label={`Move ${lead?.contact_name || 'lead'} to campaign stage`}
+        className="mt-3 h-8 w-full rounded-md border border-zinc-200 bg-zinc-50 px-2 text-xs text-zinc-900 outline-none transition focus:ring-2 focus:ring-red-500/25 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+      >
+        {stages.map((stage) => (
+          <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
+        ))}
+      </select>
+    </article>
   )
 }
 
-function Metric({ label, value }: { label: string; value: number }) {
+function EventFeed({ events }: { events: CampaignEvent[] }) {
   return (
-    <div className="border-y border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-900/40">
-      <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-      <p className="mt-1 text-2xl font-semibold tabular-nums text-zinc-900 dark:text-zinc-100">{value}</p>
-    </div>
+    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Recent events</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{events.length} tracked touch{events.length !== 1 ? 'es' : ''}</p>
+        </div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700">
+          <Clock3 className="h-4 w-4" />
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {events.slice(0, 12).map((event) => (
+          <div key={event.id} className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800">
+            <div className="min-w-0">
+              <p className="truncate text-xs font-semibold text-zinc-800 dark:text-zinc-200">
+                {CAMPAIGN_EVENT_LABELS[event.event_type] || event.event_type}
+              </p>
+              {event.stage_key && <p className="mt-0.5 truncate text-[11px] text-zinc-400">{event.stage_key.replaceAll('_', ' ')}</p>}
+            </div>
+            <time className="shrink-0 text-[11px] text-zinc-400" dateTime={event.occurred_at}>
+              {formatShortDate(event.occurred_at)}
+            </time>
+          </div>
+        ))}
+        {events.length === 0 && (
+          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No activity yet</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Lead adds, email events, replies, and booked calls will appear here.</p>
+          </div>
+        )}
+      </div>
+    </section>
   )
+}
+
+function formatShortDate(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+  }).format(new Date(value))
 }

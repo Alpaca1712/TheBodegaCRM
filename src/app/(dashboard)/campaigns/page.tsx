@@ -12,6 +12,7 @@ import {
   Plus,
   RefreshCw,
   Send,
+  Trash2,
   Users,
 } from 'lucide-react'
 import { toast } from 'sonner'
@@ -104,6 +105,20 @@ export default function CampaignsPage() {
     }
   }
 
+  const deleteCampaign = async (campaign: CampaignListItem) => {
+    if (!window.confirm(`Delete "${campaign.name}"? Leads will stay in the CRM, but the campaign funnel and events will be removed.`)) return
+
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}`, { method: 'DELETE' })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete campaign')
+      setCampaigns((current) => current.filter((item) => item.id !== campaign.id))
+      toast.success('Campaign deleted')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete campaign')
+    }
+  }
+
   const handleTemplateChange = (nextTemplateKey: CampaignTemplateKey) => {
     setTemplateKey(nextTemplateKey)
     if (nextTemplateKey === 'conference_in_person_hormozi') {
@@ -135,11 +150,11 @@ export default function CampaignsPage() {
       <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_420px]">
         <form
           onSubmit={createCampaign}
-          className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70"
+          className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70"
         >
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Launch Campaign</h2>
+              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Create Campaign</h2>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{selectedTemplate.name}</p>
             </div>
             <span className="inline-flex w-fit items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
@@ -168,12 +183,12 @@ export default function CampaignsPage() {
                 ))}
               </select>
             </Field>
-            <Field label={templateKey === 'conference_in_person_hormozi' ? 'Value Offer' : 'Offer'} htmlFor="lead-magnet">
+            <Field label="Primary call to action" htmlFor="lead-magnet">
               <Input
                 id="lead-magnet"
                 value={leadMagnetName}
                 onChange={(event) => setLeadMagnetName(event.target.value)}
-                placeholder="Free Pentest Challenge"
+                placeholder="Discovery call, free diagnostic, or challenge"
               />
             </Field>
           </div>
@@ -201,7 +216,7 @@ export default function CampaignsPage() {
         </div>
       </div>
 
-      <section className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
           <div>
             <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Active Campaigns</h2>
@@ -229,7 +244,7 @@ export default function CampaignsPage() {
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {campaigns.map((campaign) => (
-              <CampaignRow key={campaign.id} campaign={campaign} />
+              <CampaignRow key={campaign.id} campaign={campaign} onDelete={deleteCampaign} />
             ))}
           </div>
         )}
@@ -268,7 +283,7 @@ function Metric({
   }
 
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-center justify-between gap-3">
         <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
         <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tones[tone]}`}>
@@ -280,7 +295,13 @@ function Metric({
   )
 }
 
-function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
+function CampaignRow({
+  campaign,
+  onDelete,
+}: {
+  campaign: CampaignListItem
+  onDelete: (campaign: CampaignListItem) => void
+}) {
   const progress = campaign.metrics.leads_enrolled > 0
     ? Math.min(100, Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100))
     : 0
@@ -288,7 +309,7 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
   return (
     <Link
       href={`/campaigns/${campaign.id}`}
-      className="grid gap-4 px-5 py-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-800/50 lg:grid-cols-[minmax(0,1fr)_96px_96px_96px_96px_28px] lg:items-center"
+      className="grid gap-4 px-5 py-4 transition hover:bg-zinc-50 dark:hover:bg-zinc-800/50 lg:grid-cols-[minmax(0,1fr)_96px_96px_96px_96px_72px] lg:items-center"
     >
       <div className="min-w-0">
         <div className="flex flex-wrap items-center gap-2">
@@ -309,7 +330,21 @@ function CampaignRow({ campaign }: { campaign: CampaignListItem }) {
       <CampaignNumber label="Sent" value={campaign.metrics.initial_emails_sent} />
       <CampaignNumber label="Replies" value={campaign.metrics.replies} />
       <CampaignNumber label="Meetings" value={campaign.metrics.meetings_booked} />
-      <ArrowRight className="hidden h-4 w-4 text-zinc-400 lg:block" />
+      <div className="flex items-center justify-start gap-1 lg:justify-end">
+        <button
+          type="button"
+          onClick={(event) => {
+            event.preventDefault()
+            event.stopPropagation()
+            onDelete(campaign)
+          }}
+          className="inline-flex h-8 w-8 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/25 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+          aria-label={`Delete ${campaign.name}`}
+        >
+          <Trash2 className="h-4 w-4" />
+        </button>
+        <ArrowRight className="hidden h-4 w-4 text-zinc-400 lg:block" />
+      </div>
     </Link>
   )
 }
