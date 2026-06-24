@@ -1,6 +1,6 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const MAX_BULK = 500
@@ -19,12 +19,6 @@ const bulkSchema = z.object({
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-
     const body = await request.json()
     const validation = bulkSchema.safeParse(body)
     if (!validation.success) {
@@ -34,6 +28,10 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    const { supabase, user, orgId } = await getOrgScopedClient()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+
     const { action, ids, updates } = validation.data
 
     if (action === 'delete') {
@@ -41,7 +39,7 @@ export async function POST(request: NextRequest) {
         .from('leads')
         .delete({ count: 'exact' })
         .in('id', ids)
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
       if (error) throw error
       return NextResponse.json({ success: true, affected: count ?? 0 })
     }
@@ -56,7 +54,7 @@ export async function POST(request: NextRequest) {
       .from('leads')
       .update(patch, { count: 'exact' })
       .in('id', ids)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
 
     if (error) throw error
     return NextResponse.json({ success: true, affected: count ?? 0 })

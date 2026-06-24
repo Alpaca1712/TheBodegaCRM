@@ -28,6 +28,7 @@ const makeLead = (overrides: Partial<Lead> = {}): Lead =>
     personal_details: null,
     smykm_hooks: [],
     research_sources: [],
+    source_type: 'manual',
     source: null,
     notes: 'Multi\nline\nnote',
     last_contacted_at: null,

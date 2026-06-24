@@ -31,7 +31,9 @@ const baseLead: Lead = {
   smykm_hooks: ['Alex wrote about making property management feel more human.'],
   research_sources: [],
   stage: 'researched',
+  source_type: 'manual',
   source: null,
+  lead_token: null,
   priority: 'high',
   notes: null,
   last_contacted_at: null,
@@ -88,9 +90,11 @@ describe('generateInitialOutreach', () => {
 
     expect(result.mckenna.subject).toBe('resident repair agent, trust')
     expect(result.mckenna.body).toContain('tricked, and how to fix each one')
-    expect(result.mckenna.quality.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
+    expect(result.mckenna.quality).toBeDefined()
+    expect(result.mckenna.quality?.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
     expect(result.mckenna.wordCount).toBe(result.mckenna.body.trim().split(/\s+/).length)
-    expect(result.hormozi.quality.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
+    expect(result.hormozi.quality).toBeDefined()
+    expect(result.hormozi.quality?.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
   })
 })
 

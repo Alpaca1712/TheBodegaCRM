@@ -85,7 +85,7 @@ describe('importLeadsFromCSV', () => {
   it('imports valid rows successfully', async () => {
     const rows = [
       { company_name: 'Acme', contact_name: 'John', contact_email: 'john@acme.com' },
-      { company_name: 'BotCo', contact_name: 'Jane' },
+      { company_name: 'BotCo', contact_name: 'Jane', contact_email: '' },
     ]
     const result = await importLeadsFromCSV(rows, 'user-1')
     expect(result.imported).toBe(2)

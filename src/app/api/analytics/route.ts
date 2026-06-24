@@ -1,26 +1,26 @@
 import { buildAnalyticsSummary } from '@/lib/analytics/summary'
-import { createClient } from '@/lib/supabase/server'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { NextResponse } from 'next/server'
 
 export async function GET() {
   try {
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
       supabase
         .from('leads')
         .select('id,type,stage,source')
-        .eq('user_id', user.id),
+        .eq('org_id', orgId),
       supabase
         .from('lead_emails')
         .select('lead_id,direction,cta_type,sent_at,created_at')
-        .eq('user_id', user.id),
+        .eq('org_id', orgId),
       supabase
         .from('lead_interactions')
         .select('lead_id,channel,occurred_at')
-        .eq('user_id', user.id),
+        .eq('org_id', orgId),
     ])
 
     if (leadsRes.error) throw leadsRes.error

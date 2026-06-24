@@ -65,7 +65,7 @@ describe('useLeads query helpers', () => {
 
     const result = await fetchAllLeadsForExport({
       type: 'customer',
-      stage: 'drafted',
+      stage: 'email_drafted',
       search: ' Rocoto ',
     })
 
@@ -73,11 +73,11 @@ describe('useLeads query helpers', () => {
     expect(result.at(-1)?.id).toBe('page-2-1')
     expect(fetchMock).toHaveBeenNthCalledWith(
       1,
-      '/api/leads?type=customer&stage=drafted&search=Rocoto&limit=200&offset=0',
+      '/api/leads?type=customer&stage=email_drafted&search=Rocoto&limit=200&offset=0',
     )
     expect(fetchMock).toHaveBeenNthCalledWith(
       2,
-      '/api/leads?type=customer&stage=drafted&search=Rocoto&limit=200&offset=200',
+      '/api/leads?type=customer&stage=email_drafted&search=Rocoto&limit=200&offset=200',
     )
   })
 

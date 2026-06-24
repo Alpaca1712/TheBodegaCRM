@@ -235,6 +235,7 @@ export async function importLeadsFromCSV(
         personal_details: row.personal_details || null,
         smykm_hooks: row.smykm_hooks ? row.smykm_hooks.split('|') : [],
         stage: 'researched',
+        source_type: 'import',
         source: row.source || 'csv_import',
         priority: (row.priority as Priority) || 'medium',
         notes: row.notes || null,

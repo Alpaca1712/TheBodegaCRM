@@ -25,7 +25,9 @@ function lead(overrides: Partial<Lead>): Lead {
     smykm_hooks: [],
     research_sources: [],
     stage: 'researched',
+    source_type: 'manual',
     source: null,
+    lead_token: null,
     priority: 'medium',
     notes: null,
     last_contacted_at: null,
@@ -80,7 +82,7 @@ describe('getLeadFocusItems', () => {
         conversation_signals: [{
           type: 'action_needed',
           signal: 'Asked for next steps',
-          source: 'gmail',
+        source: 'gmail',
           detected_at: '2026-05-21T09:05:00Z',
         }],
       }),

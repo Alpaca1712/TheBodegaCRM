@@ -1,7 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
+import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const updateSchema = z.object({
   type: z.enum(LEAD_TYPES).optional(),
@@ -25,6 +26,7 @@ const updateSchema = z.object({
     detail: z.string(),
   })).optional(),
   stage: z.enum(PIPELINE_STAGES).optional(),
+  source_type: z.enum(LEAD_SOURCE_TYPES).optional(),
   source: z.string().optional().nullable(),
   priority: z.enum(PRIORITIES).optional(),
   notes: z.string().optional().nullable(),
@@ -67,15 +69,15 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const { data: lead, error } = await supabase
       .from('leads')
       .select('*')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (error) throw error
@@ -85,14 +87,14 @@ export async function GET(
       .from('lead_emails')
       .select('*')
       .eq('lead_id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .order('created_at', { ascending: true })
 
     const { data: interactions } = await supabase
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .order('occurred_at', { ascending: true })
 
     // Fetch related leads at the same company (by domain)
@@ -103,7 +105,7 @@ export async function GET(
         .from('leads')
         .select('id, contact_name, contact_email, contact_title, contact_photo_url, stage, type')
         .eq('email_domain', domain)
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
         .neq('id', id)
         .limit(10)
       relatedLeads = related || []
@@ -127,9 +129,9 @@ export async function PATCH(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const body = await request.json()
     const validation = updateSchema.safeParse(body)
@@ -142,13 +144,25 @@ export async function PATCH(
       updateData.email_domain = (updateData.contact_email as string).split('@')[1]?.toLowerCase()
     }
 
-    const { data, error } = await supabase
+    let { data, error } = await supabase
       .from('leads')
       .update(updateData)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .select()
       .single()
+
+    if (isMissingColumn(error, 'source_type')) {
+      const retry = await supabase
+        .from('leads')
+        .update(omitColumn(updateData, 'source_type'))
+        .eq('id', id)
+        .eq('org_id', orgId)
+        .select()
+        .single()
+      data = retry.data
+      error = retry.error
+    }
 
     if (error) throw error
     return NextResponse.json(data)
@@ -167,15 +181,15 @@ export async function DELETE(
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const { error, count } = await supabase
       .from('leads')
       .delete({ count: 'exact' })
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
 
     if (error) throw error
     if (count === 0) return NextResponse.json({ error: 'Not found' }, { status: 404 })

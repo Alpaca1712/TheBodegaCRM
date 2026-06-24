@@ -1,0 +1,7 @@
+import { CAMPAIGN_TEMPLATES, type CampaignTemplateKey } from '@/types/campaigns'
+
+export const CAMPAIGN_TEMPLATE_OPTIONS: Array<{ key: CampaignTemplateKey; label: string }> = [
+  { key: 'email_outbound_lead_magnet', label: CAMPAIGN_TEMPLATES.email_outbound_lead_magnet.name },
+  { key: 'email_outbound_direct_offer', label: CAMPAIGN_TEMPLATES.email_outbound_direct_offer.name },
+  { key: 'linkedin_inbound_playbook', label: CAMPAIGN_TEMPLATES.linkedin_inbound_playbook.name },
+]

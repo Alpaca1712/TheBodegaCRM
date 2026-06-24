@@ -1,6 +1,8 @@
-import { createClient } from '@/lib/supabase/server'
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
+import { recordCampaignEvent } from '@/lib/campaigns/server'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import type { CampaignEventType } from '@/types/campaigns'
 
 const updateSchema = z.object({
   subject: z.string().optional(),
@@ -10,15 +12,26 @@ const updateSchema = z.object({
   cta_type: z.enum(['mckenna', 'hormozi']).optional().nullable(),
 })
 
+function campaignEventForPatchedEmail(email: {
+  direction: string
+  email_type: string
+  sent_at: string | null
+}): CampaignEventType {
+  if (email.direction === 'inbound') return 'email_replied'
+  if (email.email_type === 'lead_magnet' && email.sent_at) return 'lead_magnet_sent'
+  if (email.sent_at) return 'email_sent'
+  return 'email_drafted'
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
     const { id } = await params
-    const supabase = await createClient()
-    const { data: { user } } = await supabase.auth.getUser()
+    const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
     const body = await request.json()
     const validation = updateSchema.safeParse(body)
@@ -29,9 +42,9 @@ export async function PATCH(
     // Verify email ownership before updating
     const { data: email, error: fetchError } = await supabase
       .from('lead_emails')
-      .select('id, user_id')
+      .select('id, org_id, campaign_id, lead_id, email_type, direction, sent_at')
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .single()
 
     if (fetchError || !email) {
@@ -42,11 +55,32 @@ export async function PATCH(
       .from('lead_emails')
       .update(validation.data)
       .eq('id', id)
-      .eq('user_id', user.id)
+      .eq('org_id', orgId)
       .select()
       .single()
 
     if (error) throw error
+
+    if (data.campaign_id && validation.data.sent_at && !email.sent_at) {
+      await recordCampaignEvent({
+        supabase,
+        campaignId: data.campaign_id,
+        leadId: data.lead_id,
+        orgId,
+        userId: user.id,
+        eventType: campaignEventForPatchedEmail({
+          direction: data.direction,
+          email_type: data.email_type,
+          sent_at: data.sent_at,
+        }),
+        metadata: {
+          lead_email_id: data.id,
+          email_type: data.email_type,
+          direction: data.direction,
+        },
+      })
+    }
+
     return NextResponse.json(data)
   } catch (error) {
     console.error('PATCH /api/lead-emails/[id] error:', error)
