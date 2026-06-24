@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock3,
+  Link2,
   Loader2,
   Mail,
   Plus,
@@ -310,6 +311,8 @@ export default function CampaignDetailPage() {
                   key={stage.id}
                   stage={stage}
                   stages={campaign.stages}
+                  campaignId={campaign.id}
+                  campaignSlug={campaign.slug}
                   count={stageCounts[stage.stage_key] || 0}
                   enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
                   movingId={movingId}
@@ -525,6 +528,8 @@ function LeadOnboardingPanel({
 function StageColumn({
   stage,
   stages,
+  campaignId,
+  campaignSlug,
   count,
   enrollments,
   movingId,
@@ -532,6 +537,8 @@ function StageColumn({
 }: {
   stage: CampaignStage
   stages: CampaignStage[]
+  campaignId: string
+  campaignSlug: string
   count: number
   enrollments: CampaignEnrollmentWithLead[]
   movingId: string | null
@@ -559,6 +566,8 @@ function StageColumn({
             key={enrollment.id}
             enrollment={enrollment}
             stages={stages}
+            campaignId={campaignId}
+            campaignSlug={campaignSlug}
             moving={movingId === enrollment.id}
             onMove={onMove}
           />
@@ -576,11 +585,15 @@ function StageColumn({
 function EnrollmentCard({
   enrollment,
   stages,
+  campaignId,
+  campaignSlug,
   moving,
   onMove,
 }: {
   enrollment: CampaignEnrollmentWithLead
   stages: CampaignStage[]
+  campaignId: string
+  campaignSlug: string
   moving: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
 }) {
@@ -624,7 +637,58 @@ function EnrollmentCard({
           <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
         ))}
       </select>
+
+      <CopyChallengeLinkButton
+        campaignId={campaignId}
+        enrollmentId={enrollment.id}
+        campaignSlug={campaignSlug}
+        leadName={lead?.contact_name || 'lead'}
+      />
     </article>
+  )
+}
+
+function CopyChallengeLinkButton({
+  campaignId,
+  enrollmentId,
+  campaignSlug,
+  leadName,
+}: {
+  campaignId: string
+  enrollmentId: string
+  campaignSlug: string
+  leadName: string
+}) {
+  const [copying, setCopying] = useState(false)
+
+  const copyLink = async () => {
+    setCopying(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/enrollments/${enrollmentId}/tracking-link`, {
+        method: 'POST',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to create tracking link')
+      await navigator.clipboard.writeText(data.data.url)
+      toast.success(`Challenge link copied for ${leadName}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to copy challenge link')
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void copyLink()}
+      disabled={copying}
+      title={`Creates a ${campaignSlug} challenge URL with this lead's token`}
+      className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 disabled:cursor-not-allowed disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+    >
+      {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
+      Copy challenge link
+    </button>
   )
 }
 
