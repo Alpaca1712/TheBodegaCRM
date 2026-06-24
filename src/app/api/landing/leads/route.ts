@@ -7,7 +7,7 @@ import type { Campaign, CampaignEventType } from '@/types/campaigns'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'POST, OPTIONS',
+  'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
   'Access-Control-Allow-Headers': 'Content-Type',
 }
 
@@ -38,6 +38,68 @@ function json(data: unknown, init?: ResponseInit) {
 
 export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders })
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const token = (
+      request.nextUrl.searchParams.get('lead_token') ||
+      request.nextUrl.searchParams.get('leadToken') ||
+      request.nextUrl.searchParams.get('lead') ||
+      ''
+    ).trim()
+    const campaignId = request.nextUrl.searchParams.get('campaign_id')?.trim() || ''
+
+    if (!token) return json({ success: false, error: 'lead_token is required' }, { status: 400 })
+
+    const supabase = createAdminClient()
+    let campaign: Pick<Campaign, 'id' | 'org_id'> | null = null
+
+    if (campaignId) {
+      const { data, error } = await supabase
+        .from('campaigns')
+        .select('id,org_id')
+        .eq('id', campaignId)
+        .maybeSingle()
+
+      if (error) throw error
+      if (!data) return json({ success: false, error: 'Campaign not found' }, { status: 404 })
+      campaign = data as Pick<Campaign, 'id' | 'org_id'>
+    }
+
+    let leadQuery = supabase
+      .from('leads')
+      .select('id,org_id,contact_name,contact_email,company_name,contact_phone,lead_token')
+      .eq('lead_token', token)
+      .limit(1)
+
+    if (campaign) leadQuery = leadQuery.eq('org_id', campaign.org_id)
+
+    const { data: lead, error: leadError } = await leadQuery.maybeSingle()
+
+    if (isMissingColumn(leadError, 'lead_token')) {
+      return json({ success: false, error: 'Lead tokens are not enabled' }, { status: 500 })
+    }
+    if (leadError) throw leadError
+    if (!lead) return json({ success: false, error: 'Lead not found' }, { status: 404 })
+
+    return json({
+      success: true,
+      leadToken: lead.lead_token || token,
+      lead: {
+        name: lead.contact_name || '',
+        email: lead.contact_email || '',
+        company: lead.company_name || '',
+        phone: lead.contact_phone || '',
+      },
+    })
+  } catch (error) {
+    console.error('GET /api/landing/leads error:', error)
+    return json(
+      { success: false, error: error instanceof Error ? error.message : 'Failed to lookup landing lead' },
+      { status: 500 },
+    )
+  }
 }
 
 function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['intent']): CampaignEventType {
