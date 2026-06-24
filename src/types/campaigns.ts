@@ -197,10 +197,7 @@ export interface Campaign {
   campaign_type: CampaignType
   status: CampaignStatus
   description: string | null
-  target_channel: string | null
-  success_goal: string
   lead_magnet_name: string | null
-  landing_slug: string | null
   created_at: string
   updated_at: string
 }
@@ -272,19 +269,6 @@ export interface CampaignEvent {
   metadata: Record<string, unknown>
 }
 
-export interface CampaignAsset {
-  id: string
-  campaign_id: string
-  org_id: string
-  user_id: string
-  asset_type: 'landing_page' | 'lead_magnet' | 'email_template' | 'tracking_url' | 'playbook' | 'conference_list' | 'calendar_link'
-  name: string
-  slug: string | null
-  url: string | null
-  metadata: Record<string, unknown>
-  created_at: string
-}
-
 export interface CampaignMetrics {
   leads_enrolled: number
   initial_emails_sent: number
@@ -304,5 +288,4 @@ export interface CampaignDetail extends CampaignListItem {
   stages: CampaignStage[]
   enrollments: CampaignEnrollmentWithLead[]
   events: CampaignEvent[]
-  assets: CampaignAsset[]
 }

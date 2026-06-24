@@ -21,9 +21,7 @@ const createCampaignSchema = z.object({
   campaign_type: z.enum(CAMPAIGN_TYPES),
   template_key: z.enum(Object.keys(CAMPAIGN_TEMPLATES) as [CampaignTemplateKey, ...CampaignTemplateKey[]]).optional(),
   description: z.string().optional().nullable(),
-  target_channel: z.string().optional().nullable(),
   lead_magnet_name: z.string().optional().nullable(),
-  landing_slug: z.string().optional().nullable(),
 })
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -130,10 +128,7 @@ export async function POST(request: NextRequest) {
         campaign_type: validation.data.campaign_type,
         status: 'active',
         description: validation.data.description || template.description,
-        target_channel: validation.data.target_channel || template.targetChannel,
-        success_goal: 'first_meeting_booked',
         lead_magnet_name: validation.data.lead_magnet_name || null,
-        landing_slug: validation.data.landing_slug || null,
       })
       .select()
       .single()
@@ -168,22 +163,6 @@ export async function POST(request: NextRequest) {
       })))
 
     if (stagesError) throw stagesError
-
-    if (validation.data.landing_slug) {
-      const landingUrl = `/${validation.data.landing_slug}?campaign=${finalSlug}`
-      await supabase
-        .from('campaign_assets')
-        .insert({
-          campaign_id: campaign.id,
-          org_id: orgId,
-          user_id: user.id,
-          asset_type: 'tracking_url',
-          name: 'Campaign landing URL',
-          slug: validation.data.landing_slug,
-          url: landingUrl,
-          metadata: { campaign_slug: finalSlug },
-        })
-    }
 
     return NextResponse.json({ data: campaign }, { status: 201 })
   } catch (error) {

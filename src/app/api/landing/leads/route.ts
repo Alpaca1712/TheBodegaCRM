@@ -69,10 +69,8 @@ export async function POST(request: NextRequest) {
       campaignQuery = campaignQuery.eq('id', input.campaign_id)
     } else if (input.campaign_slug || input.utm_campaign) {
       campaignQuery = campaignQuery.eq('slug', input.campaign_slug || input.utm_campaign)
-    } else if (input.landing_slug) {
-      campaignQuery = campaignQuery.eq('landing_slug', input.landing_slug)
     } else {
-      return json({ error: 'campaign_id, campaign_slug, utm_campaign, or landing_slug is required' }, { status: 400 })
+      return json({ error: 'campaign_id, campaign_slug, or utm_campaign is required' }, { status: 400 })
     }
 
     const { data: campaign, error: campaignError } = await campaignQuery.maybeSingle()
@@ -91,7 +89,7 @@ export async function POST(request: NextRequest) {
       intent: input.intent,
       campaign_id: resolvedCampaign.id,
       campaign_slug: resolvedCampaign.slug,
-      landing_slug: input.landing_slug || resolvedCampaign.landing_slug,
+      landing_slug: input.landing_slug || null,
       lead_token: leadToken,
       utm_source: input.utm_source,
       utm_medium: input.utm_medium,
@@ -104,7 +102,7 @@ export async function POST(request: NextRequest) {
       org_id: orgId,
       user_id: userId,
       event_type: input.intent === 'conference_scan' ? 'conference_scan' : 'landing_form_submission',
-      landing_slug: input.landing_slug || resolvedCampaign.landing_slug,
+      landing_slug: input.landing_slug || null,
       lead_token: leadToken,
       source,
       medium: input.utm_medium || (input.intent === 'conference_scan' ? 'in_person' : 'landing'),
@@ -242,7 +240,7 @@ export async function POST(request: NextRequest) {
       org_id: orgId,
       user_id: userId,
       event_type: leadWasCreated ? 'lead_created' : 'lead_matched',
-      landing_slug: input.landing_slug || resolvedCampaign.landing_slug,
+      landing_slug: input.landing_slug || null,
       lead_token: lead.lead_token || leadToken,
       source,
       medium: input.utm_medium || (input.intent === 'conference_scan' ? 'in_person' : 'landing'),

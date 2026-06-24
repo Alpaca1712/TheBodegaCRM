@@ -171,19 +171,6 @@ export default function CampaignDetailPage() {
         <Metric label="Meetings" value={campaign.metrics.meetings_booked} />
       </div>
 
-      {campaign.assets.length > 0 && (
-        <div className="border-y border-zinc-200 bg-white py-4 dark:border-zinc-800 dark:bg-zinc-900/40">
-          <p className="mb-2 text-xs font-medium uppercase tracking-wide text-zinc-400">Tracking</p>
-          <div className="flex flex-wrap gap-2">
-            {campaign.assets.map((asset) => (
-              <span key={asset.id} className="rounded-md bg-zinc-100 px-2.5 py-1 text-xs text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300">
-                {asset.url || asset.slug || asset.name}
-              </span>
-            ))}
-          </div>
-        </div>
-      )}
-
       <div className="overflow-x-auto pb-2">
         <div className="grid min-w-[1100px] gap-3" style={{ gridTemplateColumns: `repeat(${campaign.stages.length}, minmax(220px, 1fr))` }}>
           {campaign.stages.map((stage) => (

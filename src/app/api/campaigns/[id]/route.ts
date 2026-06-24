@@ -4,7 +4,6 @@ import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { campaignMetricsFromRows } from '@/lib/campaigns/server'
 import type {
   Campaign,
-  CampaignAsset,
   CampaignDetail,
   CampaignEnrollmentWithLead,
   CampaignEvent,
@@ -19,9 +18,7 @@ const updateCampaignSchema = z.object({
   name: z.string().min(2).optional(),
   status: z.enum(['draft', 'active', 'paused', 'completed', 'archived']).optional(),
   description: z.string().optional().nullable(),
-  target_channel: z.string().optional().nullable(),
   lead_magnet_name: z.string().optional().nullable(),
-  landing_slug: z.string().optional().nullable(),
 })
 
 export async function GET(
@@ -43,7 +40,7 @@ export async function GET(
 
     if (campaignError || !campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, assetsRes] = await Promise.all([
+    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes] = await Promise.all([
       supabase
         .from('campaign_pipelines')
         .select('*')
@@ -82,19 +79,12 @@ export async function GET(
         .eq('org_id', orgId)
         .order('occurred_at', { ascending: false })
         .limit(100),
-      supabase
-        .from('campaign_assets')
-        .select('*')
-        .eq('campaign_id', id)
-        .eq('org_id', orgId)
-        .order('created_at', { ascending: false }),
     ])
 
     if (pipelineRes.error) throw pipelineRes.error
     if (stagesRes.error) throw stagesRes.error
     if (enrollmentsRes.error) throw enrollmentsRes.error
     if (eventsRes.error) throw eventsRes.error
-    if (assetsRes.error) throw assetsRes.error
 
     const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
@@ -105,7 +95,6 @@ export async function GET(
       stages: (stagesRes.data || []) as CampaignStage[],
       enrollments,
       events,
-      assets: (assetsRes.data || []) as CampaignAsset[],
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({ campaign_id: event.campaign_id, event_type: event.event_type as CampaignEventType })),
