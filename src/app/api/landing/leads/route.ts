@@ -16,7 +16,7 @@ const landingLeadSchema = z.object({
   campaign_slug: z.string().optional().nullable(),
   landing_slug: z.string().optional().nullable(),
   lead_token: z.string().optional().nullable(),
-  intent: z.enum(['lead_magnet', 'application', 'discovery', 'conference_scan']).default('lead_magnet'),
+  intent: z.enum(['lead_magnet', 'application', 'application_completed', 'discovery', 'conference_scan']).default('lead_magnet'),
   contact_name: z.string().min(1),
   contact_email: z.string().email(),
   contact_title: z.string().optional().nullable(),
@@ -42,6 +42,7 @@ export async function OPTIONS() {
 
 function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['intent']): CampaignEventType {
   if (intent === 'application') return 'application_started'
+  if (intent === 'application_completed') return 'application_completed'
   if (intent === 'discovery') return 'meeting_booked'
   if (intent === 'conference_scan') return 'badge_scanned'
   return 'lead_magnet_requested'
@@ -50,6 +51,7 @@ function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['inten
 function stageForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
   if (intent === 'discovery') return 'meeting_booked'
   if (intent === 'conference_scan') return 'replied'
+  if (intent === 'application_completed') return 'follow_up'
   return 'researched'
 }
 
