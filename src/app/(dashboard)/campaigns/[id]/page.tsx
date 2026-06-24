@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ComponentType } from 'react'
+import { useEffect, useMemo, useState, type ComponentType, type DragEvent } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock3,
+  GripVertical,
   Link2,
   Loader2,
   Mail,
@@ -48,6 +49,8 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
+  const [draggingEnrollmentId, setDraggingEnrollmentId] = useState<string | null>(null)
+  const [dragOverStageKey, setDragOverStageKey] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
 
   const load = async () => {
@@ -186,6 +189,45 @@ export default function CampaignDetailPage() {
     }
   }
 
+  const startDraggingEnrollment = (event: DragEvent<HTMLElement>, enrollment: CampaignEnrollmentWithLead) => {
+    const target = event.target instanceof HTMLElement ? event.target : null
+    if (target?.closest('a,button,input,select,textarea')) {
+      event.preventDefault()
+      return
+    }
+
+    event.dataTransfer.effectAllowed = 'move'
+    event.dataTransfer.setData('text/plain', enrollment.id)
+    setDraggingEnrollmentId(enrollment.id)
+  }
+
+  const stopDraggingEnrollment = () => {
+    setDraggingEnrollmentId(null)
+    setDragOverStageKey(null)
+  }
+
+  const dragOverStage = (event: DragEvent<HTMLElement>, stageKey: string) => {
+    if (!draggingEnrollmentId) return
+    event.preventDefault()
+    event.dataTransfer.dropEffect = 'move'
+    setDragOverStageKey(stageKey)
+  }
+
+  const leaveStageDropTarget = (event: DragEvent<HTMLElement>, stageKey: string) => {
+    const nextTarget = event.relatedTarget instanceof Node ? event.relatedTarget : null
+    if (nextTarget && event.currentTarget.contains(nextTarget)) return
+    setDragOverStageKey((current) => (current === stageKey ? null : current))
+  }
+
+  const dropEnrollmentOnStage = async (event: DragEvent<HTMLElement>, stageKey: string) => {
+    event.preventDefault()
+    const enrollmentId = event.dataTransfer.getData('text/plain') || draggingEnrollmentId
+    const enrollment = campaign?.enrollments.find((item) => item.id === enrollmentId)
+    stopDraggingEnrollment()
+    if (!enrollment || enrollment.stage_key === stageKey) return
+    await moveEnrollment(enrollment, stageKey)
+  }
+
   const deleteCampaign = async () => {
     if (!campaign) return
     if (!window.confirm(`Delete "${campaign.name}"? Leads will stay in the CRM, but this campaign funnel and its events will be removed.`)) return
@@ -315,7 +357,14 @@ export default function CampaignDetailPage() {
                   count={stageCounts[stage.stage_key] || 0}
                   enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
                   movingId={movingId}
+                  draggingEnrollmentId={draggingEnrollmentId}
+                  isDropTarget={dragOverStageKey === stage.stage_key}
                   onMove={moveEnrollment}
+                  onDragStart={startDraggingEnrollment}
+                  onDragEnd={stopDraggingEnrollment}
+                  onDragOverStage={dragOverStage}
+                  onDragLeaveStage={leaveStageDropTarget}
+                  onDropStage={dropEnrollmentOnStage}
                 />
               ))}
             </div>
@@ -531,7 +580,14 @@ function StageColumn({
   count,
   enrollments,
   movingId,
+  draggingEnrollmentId,
+  isDropTarget,
   onMove,
+  onDragStart,
+  onDragEnd,
+  onDragOverStage,
+  onDragLeaveStage,
+  onDropStage,
 }: {
   stage: CampaignStage
   stages: CampaignStage[]
@@ -539,14 +595,28 @@ function StageColumn({
   count: number
   enrollments: CampaignEnrollmentWithLead[]
   movingId: string | null
+  draggingEnrollmentId: string | null
+  isDropTarget: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
+  onDragStart: (event: DragEvent<HTMLElement>, enrollment: CampaignEnrollmentWithLead) => void
+  onDragEnd: () => void
+  onDragOverStage: (event: DragEvent<HTMLElement>, stageKey: string) => void
+  onDragLeaveStage: (event: DragEvent<HTMLElement>, stageKey: string) => void
+  onDropStage: (event: DragEvent<HTMLElement>, stageKey: string) => Promise<void>
 }) {
   return (
-    <section className={`min-h-[420px] rounded-lg border p-3 shadow-sm ${
-      stage.is_goal
-        ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/15'
-        : 'border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40'
-    }`}>
+    <section
+      onDragOver={(event) => onDragOverStage(event, stage.stage_key)}
+      onDragLeave={(event) => onDragLeaveStage(event, stage.stage_key)}
+      onDrop={(event) => void onDropStage(event, stage.stage_key)}
+      className={`min-h-[420px] rounded-lg border p-3 shadow-sm transition ${
+        isDropTarget
+          ? 'border-red-300 bg-red-50/60 ring-2 ring-red-500/15 dark:border-red-900/60 dark:bg-red-950/20'
+          : stage.is_goal
+            ? 'border-emerald-200 bg-emerald-50/40 dark:border-emerald-900/60 dark:bg-emerald-950/15'
+            : 'border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40'
+      }`}
+    >
       <div className="mb-3 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-200">{stage.label}</h2>
@@ -565,7 +635,10 @@ function StageColumn({
             stages={stages}
             campaignId={campaignId}
             moving={movingId === enrollment.id}
+            dragging={draggingEnrollmentId === enrollment.id}
             onMove={onMove}
+            onDragStart={onDragStart}
+            onDragEnd={onDragEnd}
           />
         ))}
         {enrollments.length === 0 && (
@@ -583,18 +656,36 @@ function EnrollmentCard({
   stages,
   campaignId,
   moving,
+  dragging,
   onMove,
+  onDragStart,
+  onDragEnd,
 }: {
   enrollment: CampaignEnrollmentWithLead
   stages: CampaignStage[]
   campaignId: string
   moving: boolean
+  dragging: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
+  onDragStart: (event: DragEvent<HTMLElement>, enrollment: CampaignEnrollmentWithLead) => void
+  onDragEnd: () => void
 }) {
   const lead = enrollment.lead
 
   return (
-    <article className="rounded-md border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-950">
+    <article
+      draggable={!moving}
+      onDragStart={(event) => onDragStart(event, enrollment)}
+      onDragEnd={onDragEnd}
+      aria-grabbed={dragging}
+      className={`rounded-md border border-zinc-200 bg-white p-3 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950 ${
+        moving
+          ? 'opacity-60'
+          : dragging
+            ? 'cursor-grabbing opacity-55 ring-2 ring-red-500/20'
+            : 'cursor-grab hover:border-zinc-300 hover:shadow-md dark:hover:border-zinc-700'
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <div className="min-w-0">
           <Link href={lead ? `/leads/${lead.id}` : '#'} className="block truncate text-sm font-semibold text-zinc-950 hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
@@ -603,7 +694,10 @@ function EnrollmentCard({
           <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{lead?.company_name || enrollment.lead_id}</p>
           {lead?.contact_email && <p className="mt-1 truncate text-[11px] text-zinc-400">{lead.contact_email}</p>}
         </div>
-        {enrollment.status === 'completed' && <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-500" />}
+        <div className="flex shrink-0 items-center gap-1 text-zinc-300 dark:text-zinc-600">
+          {enrollment.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          <GripVertical className="h-4 w-4" aria-hidden="true" />
+        </div>
       </div>
 
       <div className="mt-3 flex flex-wrap items-center gap-1.5">
