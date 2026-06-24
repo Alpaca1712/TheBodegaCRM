@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { enrollLeadInCampaign, recordCampaignEvent } from '@/lib/campaigns/server'
+import { recordChallengeLinkClick } from '@/lib/campaigns/challenge-click'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignEventType } from '@/types/campaigns'
@@ -84,68 +85,12 @@ export async function GET(request: NextRequest) {
     if (!lead) return json({ success: false, error: 'Lead not found' }, { status: 404 })
 
     if (campaign) {
-      const metadata = {
-        source: 'free_pentest_challenge',
-        landing_slug: 'free-pentest-challenge',
-        lead_token: token,
-        user_agent: request.headers.get('user-agent'),
-      }
-      const enrollment = await enrollLeadInCampaign({
+      await recordChallengeLinkClick({
         supabase,
         campaign,
-        leadId: lead.id,
-        userId: campaign.user_id,
-        orgId: campaign.org_id,
-        stageKey: 'challenge_link_clicked',
-        metadata,
-      })
-      const { data: stages } = await supabase
-        .from('campaign_stages')
-        .select('stage_key,position')
-        .eq('campaign_id', campaign.id)
-        .eq('org_id', campaign.org_id)
-
-      const stagePositions = new Map((stages || []).map((stage) => [stage.stage_key, stage.position]))
-      const currentPosition = stagePositions.get(enrollment.stage_key)
-      const clickedPosition = stagePositions.get('challenge_link_clicked')
-      const shouldAdvance =
-        enrollment.status !== 'completed' &&
-        (
-          currentPosition === undefined ||
-          clickedPosition === undefined ||
-          currentPosition <= clickedPosition
-        )
-      const event = await recordCampaignEvent({
-        supabase,
-        campaignId: campaign.id,
-        enrollmentId: enrollment.id,
-        leadId: lead.id,
-        orgId: campaign.org_id,
-        userId: campaign.user_id,
-        eventType: 'challenge_link_clicked',
-        stageKey: 'challenge_link_clicked',
-        metadata,
-        advance: shouldAdvance,
-      })
-
-      await supabase.from('campaign_attribution_events').insert({
-        campaign_id: campaign.id,
-        lead_id: lead.id,
-        campaign_enrollment_id: enrollment.id,
-        org_id: campaign.org_id,
-        user_id: campaign.user_id,
-        event_type: 'email_click',
-        landing_slug: 'free-pentest-challenge',
-        lead_token: lead.lead_token || token,
-        source: 'bodega',
-        medium: 'email',
-        campaign_slug: campaign.slug,
-        user_agent: request.headers.get('user-agent'),
-        metadata: {
-          ...metadata,
-          campaign_event_id: event.id,
-          advanced_stage: shouldAdvance,
-        },
+        lead,
+        leadToken: token,
+        userAgent: request.headers.get('user-agent'),
       })
     }
 
