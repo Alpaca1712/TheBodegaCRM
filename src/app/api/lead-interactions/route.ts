@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { enrollLeadInCampaign, getCampaignByIdOrSlug, recordCampaignEvent } from '@/lib/campaigns/server'
+import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { INTERACTION_CHANNELS, INTERACTION_TYPES } from '@/types/leads'
 import type { PipelineStage, ConversationSignal } from '@/types/leads'
@@ -231,16 +232,29 @@ export async function POST(request: NextRequest) {
       })
     }
 
-    const { data: interaction, error: insertError } = await supabase
+    const insertPayload = {
+      ...interactionPayload,
+      user_id: user.id,
+      org_id: orgId,
+      campaign_id: campaign?.id || null,
+      occurred_at: validation.data.occurred_at || new Date().toISOString(),
+    }
+
+    let { data: interaction, error: insertError } = await supabase
       .from('lead_interactions')
-      .insert({
-        ...interactionPayload,
-        user_id: user.id,
-        org_id: orgId,
-        occurred_at: validation.data.occurred_at || new Date().toISOString(),
-      })
+      .insert(insertPayload)
       .select()
       .single()
+
+    if (isMissingColumn(insertError, 'campaign_id')) {
+      const retry = await supabase
+        .from('lead_interactions')
+        .insert(omitColumn(insertPayload, 'campaign_id'))
+        .select()
+        .single()
+      interaction = retry.data
+      insertError = retry.error
+    }
 
     if (insertError) throw insertError
 

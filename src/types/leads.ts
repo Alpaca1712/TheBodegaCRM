@@ -233,6 +233,8 @@ export interface LeadEmail {
   gmail_thread_id: string | null
   from_address: string | null
   to_address: string | null
+  sent_via?: 'manual' | 'gmail'
+  gmail_error?: string | null
 }
 
 export type LeadInsert = Omit<Lead,

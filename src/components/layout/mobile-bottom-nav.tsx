@@ -12,6 +12,7 @@ import {
   Menu,
   Send,
   Megaphone,
+  BriefcaseBusiness,
 } from 'lucide-react';
 import { useNotificationBadges } from '@/hooks/use-notification-badges';
 
@@ -30,6 +31,7 @@ export default function MobileBottomNav({
   const navItems = [
     { href: '/dashboard', label: 'Dashboard', icon: Home },
     { href: '/leads', label: 'Leads', icon: Users },
+    { href: '/deals', label: 'Deal Flow', icon: BriefcaseBusiness },
     { href: '/follow-ups', label: 'Follow-ups', icon: Send },
     { href: '/email', label: 'Email', icon: Mail },
     { href: '/analytics', label: 'Analytics', icon: BarChart },

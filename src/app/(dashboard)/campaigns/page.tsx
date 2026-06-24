@@ -107,6 +107,16 @@ export default function CampaignsPage() {
     }
   }
 
+  const handleTemplateChange = (nextTemplateKey: CampaignTemplateKey) => {
+    setTemplateKey(nextTemplateKey)
+    if (nextTemplateKey === 'conference_in_person_hormozi') {
+      setLeadMagnetName('Free AI Security Diagnostic')
+      setLandingSlug('')
+    } else if (!leadMagnetName.trim() || leadMagnetName === 'Free AI Security Diagnostic') {
+      setLeadMagnetName('Free Pentest Challenge')
+    }
+  }
+
   return (
     <div className="mx-auto max-w-[1500px] space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
@@ -154,7 +164,7 @@ export default function CampaignsPage() {
               <select
                 id="campaign-template"
                 value={templateKey}
-                onChange={(event) => setTemplateKey(event.target.value as CampaignTemplateKey)}
+                onChange={(event) => handleTemplateChange(event.target.value as CampaignTemplateKey)}
                 className="h-10 w-full rounded-md border border-zinc-300 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-800 dark:text-zinc-100"
               >
                 {CAMPAIGN_TEMPLATE_OPTIONS.map((option) => (
@@ -162,7 +172,7 @@ export default function CampaignsPage() {
                 ))}
               </select>
             </Field>
-            <Field label="Asset" htmlFor="lead-magnet">
+            <Field label={templateKey === 'conference_in_person_hormozi' ? 'Diagnostic Offer' : 'Asset'} htmlFor="lead-magnet">
               <Input
                 id="lead-magnet"
                 value={leadMagnetName}

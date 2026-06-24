@@ -25,6 +25,7 @@ export function useGlobalShortcuts() {
       'g+d': () => router.push('/dashboard'),
       'g+l': () => router.push('/leads'),
       'g+m': () => router.push('/campaigns'),
+      'g+o': () => router.push('/deals'),
       'g+f': () => router.push('/follow-ups'),
       'g+e': () => router.push('/email'),
       'g+a': () => router.push('/analytics'),

@@ -6,6 +6,7 @@ export const CAMPAIGN_TYPES = [
   'linkedin_outbound',
   'website_inbound',
   'direct_offer_outbound',
+  'conference_in_person',
 ] as const
 export type CampaignType = (typeof CAMPAIGN_TYPES)[number]
 
@@ -15,6 +16,7 @@ export const CAMPAIGN_TYPE_LABELS: Record<CampaignType, string> = {
   linkedin_outbound: 'LinkedIn Outbound',
   website_inbound: 'Website Inbound',
   direct_offer_outbound: 'Direct Offer Outbound',
+  conference_in_person: 'Conference / In Person',
 }
 
 export const CAMPAIGN_STATUSES = ['draft', 'active', 'paused', 'completed', 'archived'] as const
@@ -36,6 +38,13 @@ export const CAMPAIGN_EVENT_TYPES = [
   'bounced',
   'no_response',
   'stage_changed',
+  'conference_targeted',
+  'pre_event_outreach_sent',
+  'meeting_scheduled',
+  'in_person_conversation',
+  'badge_scanned',
+  'diagnostic_offered',
+  'post_event_follow_up_sent',
 ] as const
 export type CampaignEventType = (typeof CAMPAIGN_EVENT_TYPES)[number]
 
@@ -55,12 +64,20 @@ export const CAMPAIGN_EVENT_LABELS: Record<CampaignEventType, string> = {
   bounced: 'Bounced',
   no_response: 'No Response',
   stage_changed: 'Stage Changed',
+  conference_targeted: 'Conference Targeted',
+  pre_event_outreach_sent: 'Pre-event Outreach Sent',
+  meeting_scheduled: 'Meeting Scheduled',
+  in_person_conversation: 'In-person Conversation',
+  badge_scanned: 'Badge Scanned',
+  diagnostic_offered: 'Diagnostic Offered',
+  post_event_follow_up_sent: 'Post-event Follow-up Sent',
 }
 
 export type CampaignTemplateKey =
   | 'email_outbound_lead_magnet'
   | 'email_outbound_direct_offer'
   | 'linkedin_inbound_playbook'
+  | 'conference_in_person_hormozi'
 
 export interface CampaignStageTemplate {
   key: string
@@ -140,6 +157,26 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'nurture', label: 'Nurture' },
     ],
   },
+  conference_in_person_hormozi: {
+    key: 'conference_in_person_hormozi',
+    name: 'Conference Value-First Playbook',
+    campaignType: 'conference_in_person',
+    description: 'In-person conference flow: pre-book targets, lead with free diagnostic value, then convert to discovery.',
+    initialStageKey: 'target_account_list',
+    targetChannel: 'in_person',
+    stages: [
+      { key: 'target_account_list', label: 'Target Account List' },
+      { key: 'pre_event_research', label: 'Pre-event Research' },
+      { key: 'pre_event_outreach_sent', label: 'Pre-event Outreach Sent' },
+      { key: 'meeting_scheduled', label: 'Meeting Scheduled' },
+      { key: 'in_person_conversation', label: 'In-person Conversation' },
+      { key: 'diagnostic_offered', label: 'Diagnostic Offered' },
+      { key: 'post_event_follow_up_sent', label: 'Post-event Follow-up Sent' },
+      { key: 'discovery_booked', label: 'Discovery Booked', terminal: true, goal: true },
+      { key: 'nurture', label: 'Nurture' },
+      { key: 'not_a_fit', label: 'Not a Fit', terminal: true },
+    ],
+  },
 }
 
 export const DEFAULT_TEMPLATE_BY_CAMPAIGN_TYPE: Record<CampaignType, CampaignTemplateKey> = {
@@ -148,6 +185,7 @@ export const DEFAULT_TEMPLATE_BY_CAMPAIGN_TYPE: Record<CampaignType, CampaignTem
   linkedin_outbound: 'email_outbound_lead_magnet',
   website_inbound: 'linkedin_inbound_playbook',
   direct_offer_outbound: 'email_outbound_direct_offer',
+  conference_in_person: 'conference_in_person_hormozi',
 }
 
 export interface Campaign {
@@ -243,7 +281,7 @@ export interface CampaignAsset {
   campaign_id: string
   org_id: string
   user_id: string
-  asset_type: 'landing_page' | 'lead_magnet' | 'email_template' | 'tracking_url' | 'playbook'
+  asset_type: 'landing_page' | 'lead_magnet' | 'email_template' | 'tracking_url' | 'playbook' | 'conference_list' | 'calendar_link'
   name: string
   slug: string | null
   url: string | null

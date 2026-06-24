@@ -73,10 +73,11 @@ interface EmailGeneratorProps {
   lead: Lead;
   emails?: LeadEmail[];
   followUpType?: string | null;
+  campaignId?: string | null;
   onEmailSaved?: (variant: EmailVariant, ctaType: 'mckenna' | 'hormozi') => void;
 }
 
-export default function EmailGenerator({ lead, emails = [], followUpType, onEmailSaved }: EmailGeneratorProps) {
+export default function EmailGenerator({ lead, emails = [], followUpType, campaignId, onEmailSaved }: EmailGeneratorProps) {
   const detectedMode = useMemo(() => detectBestMode(emails, lead), [emails, lead]);
   const availableModes = useMemo(() => getAvailableModes(emails, lead), [emails, lead]);
 
@@ -245,23 +246,31 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
         : mode === 'post_meeting' ? 'reply_response'
         : mode;
 
-      if (existingDraft) {
-        // Update the existing draft and mark as sent
-        await fetch(`/api/lead-emails/${existingDraft.id}`, {
-          method: 'PATCH',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            subject: variant.subject,
-            body: variant.body,
-            sent_at: new Date().toISOString(),
-          }),
-        });
-      } else {
-        await fetch('/api/lead-emails', {
+      const resolvedCampaignId = campaignId || existingDraft?.campaign_id || null;
+      const saveWithoutGmail = async () => {
+        if (existingDraft) {
+          const manualRes = await fetch(`/api/lead-emails/${existingDraft.id}`, {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              subject: variant.subject,
+              body: variant.body,
+              sent_at: new Date().toISOString(),
+            }),
+          });
+          if (!manualRes.ok) {
+            const data = await manualRes.json().catch(() => null);
+            throw new Error(data?.error || 'Failed to save email');
+          }
+          return;
+        }
+
+        const manualRes = await fetch('/api/lead-emails', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             lead_id: lead.id,
+            campaign_id: resolvedCampaignId,
             email_type: emailType,
             cta_type: side,
             subject: variant.subject,
@@ -270,13 +279,43 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
             sent_at: new Date().toISOString(),
           }),
         });
+        if (!manualRes.ok) {
+          const data = await manualRes.json().catch(() => null);
+          throw new Error(data?.error || 'Failed to save email');
+        }
+      };
+
+      const gmailRes = await fetch('/api/gmail/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          lead_id: lead.id,
+          lead_email_id: existingDraft?.id || null,
+          campaign_id: resolvedCampaignId,
+          email_type: emailType,
+          cta_type: side,
+          subject: variant.subject,
+          body: variant.body,
+        }),
+      });
+      const gmailData = await gmailRes.json().catch(() => null);
+
+      if (!gmailRes.ok) {
+        if (gmailData?.code === 'NO_GMAIL_ACCOUNT') {
+          await saveWithoutGmail();
+          toast.success('Email saved. Connect Gmail to send directly.');
+        } else {
+          throw new Error(gmailData?.error || 'Failed to send email');
+        }
+      } else {
+        toast.success('Email sent via Gmail');
       }
 
       // Only update stage if it makes sense
       // Don't regress from advanced stages, don't override replied/meeting_held
       const noStageUpdate = ['replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'];
       if (!noStageUpdate.includes(lead.stage)) {
-        const newStage = mode === 'initial' ? 'email_drafted' : 'follow_up';
+        const newStage = mode === 'initial' || mode === 'review_draft' ? 'email_sent' : 'follow_up';
         await fetch(`/api/leads/${lead.id}`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
@@ -285,9 +324,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, onEmai
       }
 
       onEmailSaved?.(variant, side);
-      toast.success('Email saved');
-    } catch {
-      toast.error('Failed to save email');
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to send email');
     } finally {
       setSendingSide(null);
     }
