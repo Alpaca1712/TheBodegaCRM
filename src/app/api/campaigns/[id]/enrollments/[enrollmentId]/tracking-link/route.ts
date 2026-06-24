@@ -3,7 +3,7 @@ import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { buildChallengeTrackingUrl, ensureLeadToken } from '@/lib/landing-links/server'
 
 export async function POST(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string; enrollmentId: string }> },
 ) {
   try {
@@ -50,7 +50,6 @@ export async function POST(
     const url = buildChallengeTrackingUrl({
       leadToken,
       campaignId: campaign.id,
-      requestOrigin: request.nextUrl.origin,
     })
 
     return NextResponse.json({ data: { url, lead_token: leadToken } })

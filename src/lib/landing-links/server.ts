@@ -52,17 +52,6 @@ export function getRocotoLandingBaseUrl() {
   ).replace(/\/$/, '')
 }
 
-export function getBodegaBaseUrl(requestOrigin?: string) {
-  return (
-    process.env.BODEGA_CRM_URL ||
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    process.env.SITE_URL ||
-    (process.env.NEXT_PUBLIC_VERCEL_URL ? `https://${process.env.NEXT_PUBLIC_VERCEL_URL}` : '') ||
-    requestOrigin ||
-    'http://localhost:3000'
-  ).replace(/\/$/, '')
-}
-
 export function buildChallengeDestinationUrl({
   leadToken,
   campaignId,
@@ -78,19 +67,9 @@ export function buildChallengeDestinationUrl({
   return `${getRocotoLandingBaseUrl()}/free-pentest-challenge?${params.toString()}#claim`
 }
 
-export function buildChallengeTrackingUrl({
-  leadToken,
-  campaignId,
-  requestOrigin,
-}: {
+export function buildChallengeTrackingUrl(input: {
   leadToken: string
   campaignId: string
-  requestOrigin?: string
 }) {
-  const params = new URLSearchParams({
-    lead: leadToken,
-    campaign_id: campaignId,
-  })
-
-  return `${getBodegaBaseUrl(requestOrigin)}/api/landing/challenge-click?${params.toString()}`
+  return buildChallengeDestinationUrl(input)
 }

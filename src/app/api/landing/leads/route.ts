@@ -1,7 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { enrollLeadInCampaign, recordCampaignEvent } from '@/lib/campaigns/server'
-import { recordChallengeLinkClick } from '@/lib/campaigns/challenge-click'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignEventType } from '@/types/campaigns'
@@ -83,16 +82,6 @@ export async function GET(request: NextRequest) {
     }
     if (leadError) throw leadError
     if (!lead) return json({ success: false, error: 'Lead not found' }, { status: 404 })
-
-    if (campaign) {
-      await recordChallengeLinkClick({
-        supabase,
-        campaign,
-        lead,
-        leadToken: token,
-        userAgent: request.headers.get('user-agent'),
-      })
-    }
 
     return json({
       success: true,
