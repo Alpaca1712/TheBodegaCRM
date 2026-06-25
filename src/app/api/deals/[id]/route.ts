@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordOpportunityEvent, statusForDealStage } from '@/lib/deals/server'
+import { getErrorMessage, hydrateOpportunityRelations, recordOpportunityEvent, statusForDealStage } from '@/lib/deals/server'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
-import { DEAL_STAGE_PROBABILITY, DEAL_STAGES, type DealStage } from '@/types/deals'
+import { DEAL_STAGE_PROBABILITY, DEAL_STAGES, type DealStage, type Opportunity } from '@/types/deals'
 
 const updateDealSchema = z.object({
   name: z.string().min(1).optional(),
@@ -77,26 +77,15 @@ export async function PATCH(
       .update(updatePayload)
       .eq('id', id)
       .eq('org_id', orgId)
-      .select(`
-        *,
-        lead:leads (
-          id,
-          contact_name,
-          company_name,
-          contact_email,
-          contact_title,
-          lead_token
-        ),
-        campaign:campaigns (
-          id,
-          name,
-          slug,
-          campaign_type
-        )
-      `)
+      .select('*')
       .single()
 
     if (error) throw error
+    const [hydratedDeal] = await hydrateOpportunityRelations({
+      supabase,
+      orgId,
+      opportunities: [data as Opportunity],
+    })
 
     if (stageChanged) {
       await recordOpportunityEvent({
@@ -145,11 +134,11 @@ export async function PATCH(
       })
     }
 
-    return NextResponse.json({ data })
+    return NextResponse.json({ data: hydratedDeal })
   } catch (error) {
     console.error('PATCH /api/deals/[id] error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to update deal' },
+      { error: getErrorMessage(error, 'Failed to update deal') },
       { status: 500 },
     )
   }

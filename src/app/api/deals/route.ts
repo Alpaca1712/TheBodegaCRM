@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { recordOpportunityEvent, statusForDealStage } from '@/lib/deals/server'
+import { getErrorMessage, hydrateOpportunityRelations, recordOpportunityEvent, statusForDealStage } from '@/lib/deals/server'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
-import { DEAL_STAGE_PROBABILITY, DEAL_STAGES, type DealStage, type OpportunityWithRelations } from '@/types/deals'
+import { DEAL_STAGE_PROBABILITY, DEAL_STAGES, type DealStage, type Opportunity } from '@/types/deals'
 
 const createDealSchema = z.object({
   lead_id: z.string().uuid(),
@@ -30,23 +31,7 @@ export async function GET(request: NextRequest) {
 
     let query = supabase
       .from('opportunities')
-      .select(`
-        *,
-        lead:leads (
-          id,
-          contact_name,
-          company_name,
-          contact_email,
-          contact_title,
-          lead_token
-        ),
-        campaign:campaigns (
-          id,
-          name,
-          slug,
-          campaign_type
-        )
-      `)
+      .select('*')
       .eq('org_id', orgId)
       .order('updated_at', { ascending: false })
       .limit(limit)
@@ -55,13 +40,22 @@ export async function GET(request: NextRequest) {
     if (status) query = query.eq('status', status)
 
     const { data, error } = await query
+    if (error && isMissingRelation(error, 'opportunities')) {
+      return NextResponse.json({ data: [], setup_required: true })
+    }
     if (error) throw error
 
-    return NextResponse.json({ data: (data || []) as OpportunityWithRelations[] })
+    const deals = await hydrateOpportunityRelations({
+      supabase,
+      orgId,
+      opportunities: (data || []) as Opportunity[],
+    })
+
+    return NextResponse.json({ data: deals })
   } catch (error) {
     console.error('GET /api/deals error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to load deals' },
+      { error: getErrorMessage(error, 'Failed to load deals') },
       { status: 500 },
     )
   }
@@ -141,7 +135,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('POST /api/deals error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create deal' },
+      { error: getErrorMessage(error, 'Failed to create deal') },
       { status: 500 },
     )
   }

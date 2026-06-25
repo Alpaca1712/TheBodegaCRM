@@ -1,13 +1,90 @@
 import { createClient } from '@/lib/supabase/server'
-import { DEAL_STAGE_PROBABILITY, type DealStage, type Opportunity } from '@/types/deals'
+import { isMissingColumn } from '@/lib/supabase/missing-column'
+import { DEAL_STAGE_PROBABILITY, type DealStage, type Opportunity, type OpportunityWithRelations } from '@/types/deals'
 
 export type DealSupabaseClient = Awaited<ReturnType<typeof createClient>>
+
+export function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error && 'message' in error) {
+    const message = (error as { message?: unknown }).message
+    if (typeof message === 'string' && message.trim()) return message
+  }
+  return fallback
+}
 
 export function statusForDealStage(stage: DealStage) {
   if (stage === 'closed_won') return 'won'
   if (stage === 'closed_lost') return 'lost'
   if (stage === 'no_show_nurture') return 'nurture'
   return 'open'
+}
+
+export async function hydrateOpportunityRelations({
+  supabase,
+  orgId,
+  opportunities,
+}: {
+  supabase: DealSupabaseClient
+  orgId: string
+  opportunities: Opportunity[]
+}): Promise<OpportunityWithRelations[]> {
+  if (opportunities.length === 0) return []
+
+  const leadIds = Array.from(new Set(opportunities.map((opportunity) => opportunity.lead_id).filter(Boolean)))
+  const campaignIds = Array.from(new Set(opportunities.map((opportunity) => opportunity.campaign_id).filter(Boolean))) as string[]
+
+  const [leadsRes, campaignsRes] = await Promise.all([
+    leadIds.length > 0
+      ? supabase
+          .from('leads')
+          .select('id,contact_name,company_name,contact_email,contact_title,lead_token')
+          .eq('org_id', orgId)
+          .in('id', leadIds)
+      : Promise.resolve({ data: [], error: null }),
+    campaignIds.length > 0
+      ? supabase
+          .from('campaigns')
+          .select('id,name,slug,campaign_type')
+          .eq('org_id', orgId)
+          .in('id', campaignIds)
+      : Promise.resolve({ data: [], error: null }),
+  ])
+
+  let leads = leadsRes.data || []
+  if (isMissingColumn(leadsRes.error, 'lead_token')) {
+    const retry = await supabase
+      .from('leads')
+      .select('id,contact_name,company_name,contact_email,contact_title')
+      .eq('org_id', orgId)
+      .in('id', leadIds)
+    if (retry.error) throw retry.error
+    leads = (retry.data || []).map((lead) => ({ ...lead, lead_token: null }))
+  } else if (leadsRes.error) {
+    throw leadsRes.error
+  }
+
+  let campaigns = campaignsRes.data || []
+  if (isMissingColumn(campaignsRes.error, 'slug')) {
+    const retry = await supabase
+      .from('campaigns')
+      .select('id,name,campaign_type')
+      .eq('org_id', orgId)
+      .in('id', campaignIds)
+    if (retry.error) throw retry.error
+    campaigns = (retry.data || []).map((campaign) => ({ ...campaign, slug: '' }))
+  } else if (campaignsRes.error) {
+    throw campaignsRes.error
+  }
+
+  const leadsById = new Map((leads || []).map((lead) => [lead.id, lead]))
+  const campaignsById = new Map((campaigns || []).map((campaign) => [campaign.id, campaign]))
+
+  return opportunities.map((opportunity) => ({
+    ...opportunity,
+    lead: leadsById.get(opportunity.lead_id) || null,
+    campaign: opportunity.campaign_id ? campaignsById.get(opportunity.campaign_id) || null : null,
+  })) as OpportunityWithRelations[]
 }
 
 export async function recordOpportunityEvent({
