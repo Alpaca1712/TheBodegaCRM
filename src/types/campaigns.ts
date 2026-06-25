@@ -86,6 +86,14 @@ export interface CampaignStageTemplate {
   goal?: boolean
 }
 
+export interface CampaignSequenceStep {
+  key: string
+  label: string
+  timing: string
+  channel: 'email' | 'linkedin' | 'in_person' | 'landing'
+  goal: string
+}
+
 export interface CampaignTemplate {
   key: CampaignTemplateKey
   name: string
@@ -94,6 +102,7 @@ export interface CampaignTemplate {
   initialStageKey: string
   targetChannel: string
   stages: CampaignStageTemplate[]
+  sequenceSteps: CampaignSequenceStep[]
 }
 
 export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> = {
@@ -102,20 +111,24 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     name: 'Outbound Lead Magnet',
     campaignType: 'email_outbound',
     description: 'Cold email flow that asks permission, sends the lead magnet, then moves prospects into the challenge and discovery call.',
-    initialStageKey: 'research_needed',
+    initialStageKey: 'to_send',
     targetChannel: 'email',
     stages: [
-      { key: 'research_needed', label: 'Research Needed' },
-      { key: 'researched', label: 'Researched' },
-      { key: 'initial_email_drafted', label: 'Initial Email Drafted' },
-      { key: 'initial_email_sent', label: 'Email Sent' },
-      { key: 'replied_interested', label: 'Replied / Interested' },
+      { key: 'to_send', label: 'To Send' },
+      { key: 'sent_waiting', label: 'Sent / Waiting' },
+      { key: 'replied', label: 'Replied' },
       { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'no_response', label: 'No Response', terminal: true },
-      { key: 'not_interested', label: 'Not Interested', terminal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'initial', label: 'Personalized opener', timing: 'Day 0', channel: 'email', goal: 'Send a SMYKM email that asks permission to share the free challenge.' },
+      { key: 'follow_up_1', label: 'Short bump', timing: 'Day 4', channel: 'email', goal: 'Use a second hook, no long recap.' },
+      { key: 'follow_up_2', label: 'Value drop', timing: 'Day 9', channel: 'email', goal: 'Send or offer the lead magnet with one clear next step.' },
+      { key: 'follow_up_3', label: 'Channel switch', timing: 'Day 14', channel: 'linkedin', goal: 'Move to LinkedIn with the same campaign attribution.' },
+      { key: 'break_up', label: 'Break-up', timing: 'Day 21+', channel: 'email', goal: 'Give them an easy out and move non-responders to nurture.' },
     ],
   },
   email_outbound_direct_offer: {
@@ -123,19 +136,23 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     name: 'Outbound Direct Offer',
     campaignType: 'direct_offer_outbound',
     description: 'Cold email flow that sends the prospect directly to a tracked challenge application link.',
-    initialStageKey: 'research_needed',
+    initialStageKey: 'to_send',
     targetChannel: 'email',
     stages: [
-      { key: 'research_needed', label: 'Research Needed' },
-      { key: 'researched', label: 'Researched' },
-      { key: 'offer_email_drafted', label: 'Offer Email Drafted' },
-      { key: 'offer_email_sent', label: 'Offer Sent' },
-      { key: 'replied_interested', label: 'Replied / Interested' },
+      { key: 'to_send', label: 'To Send' },
+      { key: 'sent_waiting', label: 'Sent / Waiting' },
+      { key: 'replied', label: 'Replied' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'no_response', label: 'No Response', terminal: true },
-      { key: 'not_interested', label: 'Not Interested', terminal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'initial', label: 'Direct offer', timing: 'Day 0', channel: 'email', goal: 'Send the tracked challenge link for this specific lead.' },
+      { key: 'follow_up_1', label: 'Proof bump', timing: 'Day 4', channel: 'email', goal: 'Add one relevant proof point or risk observation.' },
+      { key: 'follow_up_2', label: 'Objection breaker', timing: 'Day 9', channel: 'email', goal: 'Reduce friction and point back to the challenge.' },
+      { key: 'follow_up_3', label: 'Channel switch', timing: 'Day 14', channel: 'linkedin', goal: 'Use LinkedIn when email is quiet.' },
+      { key: 'break_up', label: 'Break-up', timing: 'Day 21+', channel: 'email', goal: 'Close the loop cleanly or move to nurture.' },
     ],
   },
   linkedin_inbound_playbook: {
@@ -143,15 +160,22 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     name: 'Inbound Playbook Landing',
     campaignType: 'linkedin_inbound',
     description: 'Tracked landing-page flow: playbook opt-in, challenge click, application completion, then booked discovery.',
-    initialStageKey: 'playbook_opt_in',
+    initialStageKey: 'opted_in',
     targetChannel: 'linkedin',
     stages: [
-      { key: 'playbook_opt_in', label: 'Playbook Opt-in' },
+      { key: 'opted_in', label: 'Opted In' },
       { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture', label: 'Nurture' },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'opt_in', label: 'Landing opt-in', timing: 'Instant', channel: 'landing', goal: 'Capture the lead from the campaign landing page.' },
+      { key: 'deliver', label: 'Deliver playbook', timing: 'Instant', channel: 'email', goal: 'Send the lead magnet and preserve campaign attribution.' },
+      { key: 'challenge', label: 'Challenge CTA', timing: 'Same day', channel: 'landing', goal: 'Move them to the tracked challenge page.' },
+      { key: 'nudge', label: 'Application nudge', timing: 'Day 1', channel: 'email', goal: 'Remind them to complete the challenge application.' },
+      { key: 'book', label: 'Book discovery', timing: 'After application', channel: 'email', goal: 'Convert qualified applications to discovery.' },
     ],
   },
   conference_in_person_hormozi: {
@@ -159,19 +183,23 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     name: 'Conference Value-First Playbook',
     campaignType: 'conference_in_person',
     description: 'In-person conference flow: pre-book targets, lead with free diagnostic value, then convert to discovery.',
-    initialStageKey: 'target_account_list',
+    initialStageKey: 'target_list',
     targetChannel: 'in_person',
     stages: [
-      { key: 'target_account_list', label: 'Target Account List' },
-      { key: 'pre_event_research', label: 'Pre-event Research' },
-      { key: 'pre_event_outreach_sent', label: 'Pre-event Outreach Sent' },
-      { key: 'meeting_scheduled', label: 'Meeting Scheduled' },
-      { key: 'in_person_conversation', label: 'In-person Conversation' },
+      { key: 'target_list', label: 'Target List' },
+      { key: 'outreach_sent', label: 'Outreach Sent' },
+      { key: 'meeting_scheduled', label: 'Scheduled' },
+      { key: 'in_person_conversation', label: 'Met In Person' },
       { key: 'diagnostic_offered', label: 'Diagnostic Offered' },
-      { key: 'post_event_follow_up_sent', label: 'Post-event Follow-up Sent' },
       { key: 'discovery_booked', label: 'Discovery Booked', terminal: true, goal: true },
-      { key: 'nurture', label: 'Nurture' },
-      { key: 'not_a_fit', label: 'Not a Fit', terminal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'target', label: 'Dream 100 list', timing: '2 weeks before', channel: 'in_person', goal: 'Pick target accounts and reasons to meet.' },
+      { key: 'pre_event', label: 'Pre-event outreach', timing: '1 week before', channel: 'email', goal: 'Book or warm up the in-person conversation.' },
+      { key: 'conversation', label: 'Value-first conversation', timing: 'Event day', channel: 'in_person', goal: 'Lead with the diagnostic, not a pitch.' },
+      { key: 'diagnostic', label: 'Diagnostic follow-up', timing: '24 hours after', channel: 'email', goal: 'Send the promised value while the meeting is fresh.' },
+      { key: 'discovery', label: 'Discovery ask', timing: '2-3 days after', channel: 'email', goal: 'Convert the diagnostic into a booked discovery call.' },
     ],
   },
 }

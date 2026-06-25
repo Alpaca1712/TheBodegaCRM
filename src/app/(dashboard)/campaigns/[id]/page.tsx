@@ -10,6 +10,7 @@ import {
   Clock3,
   GripVertical,
   Link2,
+  ListChecks,
   Loader2,
   Mail,
   Plus,
@@ -22,7 +23,7 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignEvent, CampaignStage } from '@/types/campaigns'
+import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignEvent, CampaignSequenceStep, CampaignStage } from '@/types/campaigns'
 import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TEMPLATES, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
 import type { Lead } from '@/types/leads'
 import { STAGE_LABELS } from '@/types/leads'
@@ -269,6 +270,7 @@ export default function CampaignDetailPage() {
 
   const cta = campaign.lead_magnet_name || 'Discovery call'
   const templateName = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].name : campaign.pipeline?.name || 'Campaign funnel'
+  const sequenceSteps = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].sequenceSteps : []
   const meetingRate = campaign.metrics.leads_enrolled > 0
     ? Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100)
     : 0
@@ -314,7 +316,7 @@ export default function CampaignDetailPage() {
         <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-4">
           <HeaderFact label="Primary CTA" value={cta} />
           <HeaderFact label="Available leads" value={`${availableLeads.length} not enrolled`} />
-          <HeaderFact label="Funnel stages" value={`${campaign.stages.length} steps`} />
+          <HeaderFact label="Board columns" value={`${campaign.stages.length} stages`} />
           <HeaderFact label="Landing page" value={formatLandingLinkLabel(campaign.landing_url)} />
         </div>
       </header>
@@ -346,7 +348,7 @@ export default function CampaignDetailPage() {
           </div>
 
           <div className="min-w-0 overflow-x-auto rounded-lg pb-2">
-            <div className="grid w-max gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, 260px)` }}>
+            <div className="grid w-max gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, 240px)` }}>
               {campaign.stages.map((stage) => (
                 <StageColumn
                   key={stage.id}
@@ -385,6 +387,7 @@ export default function CampaignDetailPage() {
             onClearSelected={clearSelectedLeads}
             onEnrollSelected={enrollSelectedLeads}
           />
+          <SequencePanel steps={sequenceSteps} />
           <EventFeed events={campaign.events} />
         </aside>
       </div>
@@ -599,6 +602,47 @@ function LeadOnboardingPanel({
             Add selected
           </Button>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function SequencePanel({ steps }: { steps: CampaignSequenceStep[] }) {
+  if (steps.length === 0) return null
+
+  return (
+    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Sequence</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{steps.length} planned touch{steps.length !== 1 ? 'es' : ''}</p>
+        </div>
+        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+          <ListChecks className="h-4 w-4" />
+        </span>
+      </div>
+
+      <div className="mt-4 space-y-3">
+        {steps.map((step, index) => (
+          <div key={step.key} className="grid grid-cols-[26px_minmax(0,1fr)] gap-3">
+            <div className="flex flex-col items-center">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700">
+                {index + 1}
+              </span>
+              {index < steps.length - 1 && <span className="mt-1 h-full min-h-4 w-px bg-zinc-200 dark:bg-zinc-800" />}
+            </div>
+            <div className="min-w-0 pb-2">
+              <div className="flex flex-wrap items-center gap-1.5">
+                <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.label}</p>
+                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                  {step.channel.replace('_', ' ')}
+                </span>
+              </div>
+              <p className="mt-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{step.timing}</p>
+              <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">{step.goal}</p>
+            </div>
+          </div>
+        ))}
       </div>
     </section>
   )

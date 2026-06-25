@@ -32,22 +32,21 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
     ? CAMPAIGN_TEMPLATES[templateKey as CampaignTemplateKey]
     : null
 
-  const directOffer = template?.key === 'email_outbound_direct_offer'
   const inboundPlaybook = template?.key === 'linkedin_inbound_playbook'
   const conference = template?.key === 'conference_in_person_hormozi'
 
   const stageKey = (() => {
     switch (eventType) {
       case 'research_completed':
-        return conference ? 'pre_event_research' : 'researched'
+        return conference ? 'target_list' : 'to_send'
       case 'email_drafted':
-        return directOffer ? 'offer_email_drafted' : 'initial_email_drafted'
+        return 'to_send'
       case 'email_sent':
-        return conference ? 'pre_event_outreach_sent' : directOffer ? 'offer_email_sent' : 'initial_email_sent'
+        return conference ? 'outreach_sent' : 'sent_waiting'
       case 'pre_event_outreach_sent':
-        return 'pre_event_outreach_sent'
+        return 'outreach_sent'
       case 'conference_targeted':
-        return 'target_account_list'
+        return 'target_list'
       case 'meeting_scheduled':
         return 'meeting_scheduled'
       case 'in_person_conversation':
@@ -56,12 +55,12 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
       case 'diagnostic_offered':
         return 'diagnostic_offered'
       case 'post_event_follow_up_sent':
-        return 'post_event_follow_up_sent'
+        return 'diagnostic_offered'
       case 'meeting_booked':
         return conference ? 'discovery_booked' : 'meeting_booked'
       case 'email_replied':
       case 'lead_magnet_requested':
-        return conference ? 'meeting_scheduled' : inboundPlaybook ? 'playbook_opt_in' : 'replied_interested'
+        return conference ? 'meeting_scheduled' : inboundPlaybook ? 'opted_in' : 'replied'
       case 'lead_magnet_sent':
         return 'lead_magnet_sent'
       case 'challenge_link_clicked':
@@ -71,9 +70,9 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
       case 'application_completed':
         return 'application_completed'
       case 'no_response':
-        return 'no_response'
+        return 'nurture_lost'
       case 'not_interested':
-        return 'not_interested'
+        return 'nurture_lost'
       default:
         return null
     }
@@ -180,7 +179,7 @@ export async function enrollLeadInCampaign({
     lead_id: leadId,
     org_id: orgId,
     user_id: userId,
-    stage_key: stageKey || firstStage?.stage_key || 'research_needed',
+    stage_key: stageKey || firstStage?.stage_key || 'to_send',
     metadata: metadata || {},
     last_event_at: new Date().toISOString(),
   }
