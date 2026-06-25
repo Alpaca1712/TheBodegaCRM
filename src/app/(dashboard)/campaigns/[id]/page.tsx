@@ -412,7 +412,9 @@ export default function CampaignDetailPage() {
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)_minmax(260px,320px)]">
+      <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />
+
+      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
         <LeadOnboardingPanel
           campaign={campaign}
           leadSearch={leadSearch}
@@ -427,7 +429,6 @@ export default function CampaignDetailPage() {
           onClearSelected={clearSelectedLeads}
           onEnrollSelected={enrollSelectedLeads}
         />
-        <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />
         <EventFeed events={campaign.events} />
       </section>
     </div>
@@ -815,32 +816,40 @@ function SequencePanel({
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex items-start justify-between gap-2">
+    <section className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
         <div className="min-w-0">
-          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Sequence</h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
-            {sortedSteps.filter((step) => step.active).length} active / {sortedSteps.length} step{sortedSteps.length !== 1 ? 's' : ''}
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+              <ListChecks className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign sequences</h2>
+              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                {sortedSteps.filter((step) => step.active).length} active / {sortedSteps.length} automation step{sortedSteps.length !== 1 ? 's' : ''}
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 max-w-3xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            Trigger templated Gmail touches from a campaign stage, stop when a lead replies, and optionally move the lead to the next board column.
           </p>
         </div>
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
-          <ListChecks className="h-4 w-4" />
-        </span>
+        <div className="flex shrink-0 gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
+            Run due
+          </Button>
+          <Button type="button" size="sm" onClick={beginCreate} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            New step
+          </Button>
+        </div>
       </div>
 
-      <div className="mt-3 flex gap-2">
-        <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running} className="flex-1 text-xs">
-          Run due
-        </Button>
-        <Button type="button" size="sm" onClick={beginCreate} className="bg-zinc-900 text-xs hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-          <Plus className="mr-1.5 h-3.5 w-3.5" />
-          Step
-        </Button>
-      </div>
-
-      <div className="mt-3 space-y-2">
+      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
+        <div className="min-w-0">
+          <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
         {sortedSteps.map((step, index) => (
-          <div key={step.id} className="rounded-md border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div key={step.id} className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
             <button type="button" onClick={() => beginEdit(step)} className="w-full text-left">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
@@ -880,15 +889,16 @@ function SequencePanel({
         ))}
 
         {sortedSteps.length === 0 && (
-          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40 md:col-span-2 2xl:col-span-3">
             <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No sequence yet</p>
             <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add a step to automate this campaign stage.</p>
           </div>
         )}
+          </div>
       </div>
 
       {editingStepId && (
-        <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <div className="h-fit rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
               {editingStepId === 'new' ? 'New step' : 'Edit step'}
@@ -1035,6 +1045,7 @@ function SequencePanel({
           </div>
         </div>
       )}
+      </div>
     </section>
   )
 }
