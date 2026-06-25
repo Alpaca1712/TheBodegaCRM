@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'next/navigation'
 import { Mail, Sparkles, ArrowRight, AlertCircle, CheckCircle2, Inbox, ExternalLink, Copy, X, RefreshCw, Loader2 } from 'lucide-react'
 import { createClient } from '@/lib/supabase/client'
 import { toast } from 'sonner'
@@ -22,17 +23,12 @@ const SENTIMENT_STYLES: Record<string, string> = {
 }
 
 export default function EmailPage() {
+  const searchParams = useSearchParams()
   const [accounts, setAccounts] = useState<EmailAccount[]>([])
   const [emails, setEmails] = useState<EmailSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [syncing, setSyncing] = useState(false)
   const [expandedFollowUp, setExpandedFollowUp] = useState<string | null>(null)
-  const [searchParams] = useState(() => {
-    if (typeof window !== 'undefined') {
-      return new URLSearchParams(window.location.search)
-    }
-    return new URLSearchParams()
-  })
 
   const connected = searchParams.get('connected') === 'true'
   const error = searchParams.get('error')
