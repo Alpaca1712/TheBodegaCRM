@@ -47,6 +47,7 @@ import {
 } from 'lucide-react';
 import {
   STAGE_LABELS, STAGE_DESCRIPTIONS, STAGE_NEXT_ACTIONS, LEAD_TYPE_LABELS, LEAD_TYPE_COLORS,
+  LEAD_SOURCE_TYPE_LABELS,
   CHANNEL_LABELS, INTERACTION_TYPE_LABELS, CHANNEL_INTERACTION_TYPES,
   INTERACTION_CHANNELS,
   type Lead, type LeadEmail, type LeadInteraction, type PipelineStage, type InteractionChannel, type InteractionType,
@@ -61,6 +62,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { CopyButton } from '@/components/ui/copy-button';
 import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { getLeadBestAction, mostRecentDate, type SalesAction, type ActionLead } from '@/lib/dashboard/sales-actions';
+import { getLeadChallengeProfile, type ChallengeProfile } from '@/lib/leads/challenge-profile';
 import { getDealReadiness, type DealReadinessSummary } from '@/lib/sales/deal-readiness';
 import {
   leadDetailQueryKey,
@@ -394,6 +396,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     outboundCount,
   });
   const dealReadiness = getDealReadiness(lead);
+  const challengeProfile = getLeadChallengeProfile(lead);
   const tabs: Array<{ id: TabId; label: string; count?: number }> = [
     { id: 'overview', label: 'Overview' },
     { id: 'emails', label: 'Emails', count: emails.length },
@@ -534,10 +537,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         </div>
       </div>
 
-      {/* Pipeline Stage */}
+      {/* Lead Status */}
       <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
         <div className="flex items-center justify-between mb-3">
-          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Pipeline Stage</h3>
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Lead Status</h3>
           <span className="text-xs text-zinc-500 dark:text-zinc-400">
             Next: {STAGE_NEXT_ACTIONS[lead.stage]}
           </span>
@@ -618,6 +621,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   <EnhancedAISummary lead={lead} onRefresh={fetchLead} />
                 )}
                 {memo && <MemoPanel memo={memo} />}
+                {challengeProfile && <ChallengeProfilePanel profile={challengeProfile} />}
                 {battleCard && <BattleCardPanel card={battleCard} />}
                 <ResearchSection lead={lead} />
               </div>
@@ -671,6 +675,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {/* Sidebar */}
         <div className="space-y-4">
           <ContactCard lead={lead} />
+          {challengeProfile && <CampaignProfileCard lead={lead} profile={challengeProfile} />}
           <NextBestActionCard
             action={action}
             onOpenTab={setActiveTab}
@@ -691,6 +696,149 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
           <InlineNotes leadId={id} initialNotes={lead.notes} onSaved={(notes) => setLead(prev => prev ? { ...prev, notes } : prev)} />
         </div>
       </div>
+    </div>
+  );
+}
+
+function scoreTone(score: number | null) {
+  if (score == null) return 'bg-zinc-100 text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400';
+  if (score >= 80) return 'bg-emerald-100 text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-300';
+  if (score >= 60) return 'bg-blue-100 text-blue-700 dark:bg-blue-950/40 dark:text-blue-300';
+  if (score >= 40) return 'bg-amber-100 text-amber-700 dark:bg-amber-950/40 dark:text-amber-300';
+  return 'bg-red-100 text-red-700 dark:bg-red-950/40 dark:text-red-300';
+}
+
+function scoreBarTone(score: number | null) {
+  if (score == null) return 'bg-zinc-300 dark:bg-zinc-600';
+  if (score >= 80) return 'bg-emerald-500';
+  if (score >= 60) return 'bg-blue-500';
+  if (score >= 40) return 'bg-amber-500';
+  return 'bg-red-500';
+}
+
+function formatSourceLabel(value: string | null | undefined) {
+  if (!value) return 'Not set';
+  return value.replace(/[_-]/g, ' ');
+}
+
+function formatProfileDate(value: string | null) {
+  if (!value) return null;
+  return value.split('T')[0] || value;
+}
+
+function ChallengeProfilePanel({ profile }: { profile: ChallengeProfile }) {
+  const facts = [
+    { label: 'Need', value: profile.requirements },
+    { label: 'Use case', value: profile.useCase },
+    { label: 'Authority', value: profile.authority },
+    { label: 'Timeline', value: profile.timeline },
+    { label: 'Budget', value: profile.budget },
+  ].filter((fact) => fact.value);
+  const updatedAt = formatProfileDate(profile.updatedAt || profile.submittedAt);
+
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-5 space-y-4">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex items-start gap-2.5">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300">
+            <Target className="h-4 w-4" />
+          </div>
+          <div>
+            <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Challenge Profile</h3>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+              {updatedAt ? `Last application signal: ${updatedAt}` : 'Application context from Rocoto Landing'}
+            </p>
+          </div>
+        </div>
+        {profile.score != null && (
+          <span className={`rounded-full px-2.5 py-1 text-xs font-bold tabular-nums ${scoreTone(profile.score)}`}>
+            ICP {profile.score}/100
+          </span>
+        )}
+      </div>
+
+      {profile.companyDescription && (
+        <p className="text-sm leading-relaxed text-zinc-700 dark:text-zinc-300">{profile.companyDescription}</p>
+      )}
+
+      {facts.length > 0 && (
+        <div className="grid gap-3 sm:grid-cols-2">
+          {facts.map((fact) => (
+            <div key={fact.label} className="min-w-0">
+              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">{fact.label}</p>
+              <p className="mt-1 text-sm leading-relaxed text-zinc-800 dark:text-zinc-200">{fact.value}</p>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {profile.reasons.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Fit reasons</p>
+          <div className="mt-2 flex flex-wrap gap-1.5">
+            {profile.reasons.slice(0, 8).map((reason) => (
+              <span key={reason} className="rounded-full bg-zinc-100 px-2 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {reason}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {profile.hooks.length > 0 && (
+        <div>
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400 dark:text-zinc-500">Email angles</p>
+          <ul className="mt-2 space-y-1.5">
+            {profile.hooks.slice(0, 4).map((hook) => (
+              <li key={hook} className="flex items-start gap-2 text-xs leading-relaxed text-zinc-600 dark:text-zinc-400">
+                <Sparkles className="mt-0.5 h-3 w-3 shrink-0 text-red-500" />
+                <span>{hook}</span>
+              </li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </div>
+  );
+}
+
+function CampaignProfileCard({ lead, profile }: { lead: Lead; profile: ChallengeProfile }) {
+  const score = profile.score;
+  return (
+    <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4 space-y-3">
+      <div className="flex items-start justify-between gap-2">
+        <div className="flex items-center gap-2">
+          <Target className="h-4 w-4 text-red-500" />
+          <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Campaign Fit</h3>
+        </div>
+        {score != null && (
+          <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold tabular-nums ${scoreTone(score)}`}>
+            {score}
+          </span>
+        )}
+      </div>
+
+      {score != null && (
+        <div>
+          <div className="h-2 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800" aria-label={`ICP score ${score}`}>
+            <div className={`h-full rounded-full ${scoreBarTone(score)}`} style={{ width: `${score}%` }} />
+          </div>
+          {profile.scoreLabel && <p className="mt-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{profile.scoreLabel}</p>}
+        </div>
+      )}
+
+      <div className="space-y-2">
+        <InfoRow label="Origin" value={LEAD_SOURCE_TYPE_LABELS[lead.source_type] || formatSourceLabel(lead.source_type)} />
+        {lead.source && <InfoRow label="Campaign" value={formatSourceLabel(lead.source)} />}
+        <InfoRow label="Status" value={STAGE_LABELS[lead.stage]} />
+      </div>
+
+      {(profile.requirements || profile.authority) && (
+        <div className="border-t border-zinc-100 pt-3 dark:border-zinc-800">
+          {profile.requirements && <p className="text-xs leading-relaxed text-zinc-700 dark:text-zinc-300">{profile.requirements}</p>}
+          {profile.authority && <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">Authority: {profile.authority}</p>}
+        </div>
+      )}
     </div>
   );
 }
@@ -1210,6 +1358,7 @@ function DetailsCard({ lead }: { lead: Lead }) {
       {lead.product_name && <InfoRow label="Product" value={lead.product_name} />}
       {lead.fund_name && <InfoRow label="Fund" value={lead.fund_name} />}
       <InfoRow label="Priority" value={lead.priority} />
+      <InfoRow label="Origin" value={LEAD_SOURCE_TYPE_LABELS[lead.source_type] || formatSourceLabel(lead.source_type)} />
       {lead.source && <InfoRow label="Source" value={lead.source} />}
       <InfoRow label="Stage" value={STAGE_LABELS[lead.stage]} />
     </div>
@@ -1335,14 +1484,14 @@ function InlineNotes({ leadId, initialNotes, onSaved }: { leadId: string; initia
   return (
     <div className="rounded-xl border border-zinc-200/80 dark:border-zinc-700/80 bg-white dark:bg-zinc-900/50 p-4">
       <div className="flex items-center justify-between mb-2">
-        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Notes</h3>
+        <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Manual Notes</h3>
         {saving && <span className="text-[10px] text-zinc-400 animate-pulse">Saving...</span>}
       </div>
       <Textarea
         value={notes}
         onChange={(e) => handleChange(e.target.value)}
         onBlur={() => { if (timeoutRef.current) { clearTimeout(timeoutRef.current); save(notes); } }}
-        placeholder="Paste LinkedIn DMs, call notes, or any context..."
+        placeholder="Paste call notes, LinkedIn DMs, or context that was not captured by the campaign application..."
         className="w-full bg-zinc-50 dark:bg-zinc-800 border-zinc-200 dark:border-zinc-700"
         autoResize
       />

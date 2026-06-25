@@ -1,6 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { enrollLeadInCampaign, recordCampaignEvent } from '@/lib/campaigns/server'
+import {
+  buildLeadProfilePatchFromChallenge,
+  hasChallengeProfile,
+  normalizeLandingChallengeProfile,
+  shouldTreatNotesAsChallengeProfile,
+} from '@/lib/leads/challenge-profile'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignEventType } from '@/types/campaigns'
@@ -28,7 +34,7 @@ const landingLeadSchema = z.object({
   utm_campaign: z.string().optional().nullable(),
   referrer: z.string().optional().nullable(),
   metadata: z.record(z.string(), z.unknown()).optional(),
-})
+}).passthrough()
 
 function json(data: unknown, init?: ResponseInit) {
   const response = NextResponse.json(data, init)
@@ -148,6 +154,9 @@ export async function POST(request: NextRequest) {
     const leadToken = input.lead_token || crypto.randomUUID()
     const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() || null
     const source = input.campaign_slug || resolvedCampaign.slug
+    const challengeProfile = normalizeLandingChallengeProfile(input as Record<string, unknown>)
+    const hasStructuredChallengeProfile = hasChallengeProfile(challengeProfile)
+    const manualNotes = shouldTreatNotesAsChallengeProfile(input.notes) ? null : input.notes || null
     const attributionMetadata = {
       ...input.metadata,
       intent: input.intent,
@@ -155,6 +164,7 @@ export async function POST(request: NextRequest) {
       campaign_slug: resolvedCampaign.slug,
       landing_slug: input.landing_slug || null,
       lead_token: leadToken,
+      challenge_profile: hasStructuredChallengeProfile ? challengeProfile : null,
       utm_source: input.utm_source,
       utm_medium: input.utm_medium,
       utm_campaign: input.utm_campaign,
@@ -191,6 +201,9 @@ export async function POST(request: NextRequest) {
 
     if (!lead) {
       const companyName = input.company_name?.trim() || emailDomain || input.contact_name
+      const challengeLeadPatch = hasStructuredChallengeProfile
+        ? buildLeadProfilePatchFromChallenge(challengeProfile)
+        : {}
       const leadInsertPayload = {
         org_id: orgId,
         user_id: userId,
@@ -206,8 +219,10 @@ export async function POST(request: NextRequest) {
         source,
         lead_token: leadToken,
         priority: input.intent === 'discovery' ? 'high' : 'medium',
-        notes: input.notes || null,
+        notes: manualNotes,
+        ...challengeLeadPatch,
       }
+      if (input.intent === 'discovery') leadInsertPayload.priority = 'high'
 
       let { data: insertedLead, error: insertError } = await supabase
         .from('leads')
@@ -239,13 +254,21 @@ export async function POST(request: NextRequest) {
       lead = insertedLead
       leadWasCreated = true
     } else {
+      const challengeLeadPatch = hasStructuredChallengeProfile
+        ? buildLeadProfilePatchFromChallenge(challengeProfile, existingLead)
+        : {}
       let leadUpdatePayload: Record<string, unknown> = {
         lead_token: existingLead.lead_token || leadToken,
         source: existingLead.source || source,
         source_type: existingLead.source_type || (input.intent === 'conference_scan' ? 'outreach' : 'website'),
         company_website: existingLead.company_website || input.company_website || null,
         contact_title: existingLead.contact_title || input.contact_title || null,
+        ...challengeLeadPatch,
       }
+      if (input.intent === 'discovery') leadUpdatePayload.priority = 'high'
+      if (manualNotes && !existingLead.notes) leadUpdatePayload.notes = manualNotes
+      if (hasStructuredChallengeProfile && !manualNotes && shouldTreatNotesAsChallengeProfile(existingLead.notes)) leadUpdatePayload.notes = null
+
       let { error: updateError } = await supabase
         .from('leads')
         .update(leadUpdatePayload)
