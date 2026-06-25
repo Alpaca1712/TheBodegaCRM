@@ -279,19 +279,19 @@ export default function CampaignDetailPage() {
     : 0
 
   return (
-    <div className="mx-auto max-w-[1600px] space-y-6">
-      <header className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-        <div className="flex flex-col gap-4 xl:flex-row xl:items-start xl:justify-between">
+    <div className="w-full max-w-none space-y-4">
+      <header className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+        <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
-            <Link href="/campaigns" className="mb-3 inline-flex items-center gap-2 text-sm text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
+            <Link href="/campaigns" className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
               <ArrowLeft className="h-4 w-4" />
               Campaigns
             </Link>
             <div className="flex flex-wrap items-center gap-2">
-              <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">{campaign.name}</h1>
+              <h1 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">{campaign.name}</h1>
               <StatusBadge status={campaign.status} />
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
+            <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <span>{CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}</span>
               <span className="hidden text-zinc-300 sm:inline">/</span>
               <span>{templateName}</span>
@@ -311,7 +311,7 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="mt-4 flex flex-wrap gap-x-8 gap-y-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
           <HeaderFact label="Goal" value={cta} />
           <HeaderFact label="Available leads" value={`${availableLeads.length} not enrolled`} />
           <HeaderFact label="Funnel stages" value={`${campaign.stages.length} stages`} />
@@ -319,7 +319,7 @@ export default function CampaignDetailPage() {
         </div>
       </header>
 
-      <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
         <MetricCard icon={Send} label="Emails sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
         <MetricCard icon={Mail} label="Reply rate" value={`${replyRate}%`} tone="blue" />
@@ -327,7 +327,7 @@ export default function CampaignDetailPage() {
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
       </div>
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
@@ -344,7 +344,7 @@ export default function CampaignDetailPage() {
           </Link>
         </div>
 
-        <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-2">
+        <div className="-mx-3 mt-3 overflow-x-auto px-3 pb-2">
           <div className="flex w-max gap-3">
             {campaign.stages.map((stage) => (
               <StageColumn
@@ -369,7 +369,7 @@ export default function CampaignDetailPage() {
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_340px_340px]">
+      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_320px_320px]">
         <LeadOnboardingPanel
           campaign={campaign}
           leadSearch={leadSearch}
@@ -393,7 +393,7 @@ export default function CampaignDetailPage() {
 
 function HeaderFact({ label, value }: { label: string; value: string }) {
   return (
-    <div>
+    <div className="min-w-[140px] max-w-[260px]">
       <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{value}</p>
     </div>
@@ -458,14 +458,14 @@ function MetricCard({
   tone: MetricTone
 }) {
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div className="min-w-[168px] rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
-          <Icon className="h-4 w-4" />
+        <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{label}</p>
+        <div className={`flex h-7 w-7 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
+          <Icon className="h-3.5 w-3.5" />
         </div>
       </div>
-      <p className="mt-3 text-2xl font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
+      <p className="mt-2 text-xl font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
     </div>
   )
 }
@@ -498,7 +498,7 @@ function LeadOnboardingPanel({
   onEnrollSelected: () => Promise<void>
 }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-start justify-between gap-3">
         <div>
           <div className="flex items-center gap-2">
@@ -520,7 +520,7 @@ function LeadOnboardingPanel({
         </Link>
       </div>
 
-      <div className="mt-4 flex items-center gap-2">
+      <div className="mt-3 flex items-center gap-2">
         <div className="relative min-w-0 flex-1">
           <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" />
           <input
@@ -550,7 +550,7 @@ function LeadOnboardingPanel({
         </button>
       </div>
 
-      <div className="mt-3 max-h-[360px] space-y-2 overflow-y-auto pr-1">
+      <div className="mt-3 max-h-[300px] space-y-2 overflow-y-auto pr-1">
         {filteredLeads.map((lead) => {
           const selected = selectedLeadIds.has(lead.id)
           return (
@@ -583,7 +583,7 @@ function LeadOnboardingPanel({
         )}
       </div>
 
-      <div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+      <div className="mt-3 flex flex-wrap items-center justify-between gap-2 border-t border-zinc-100 pt-3 dark:border-zinc-800">
         <div className="text-xs text-zinc-500 dark:text-zinc-400">
           {selectedLeads.length} selected
         </div>
@@ -607,7 +607,7 @@ function SequencePanel({ steps }: { steps: CampaignSequenceStep[] }) {
   if (steps.length === 0) return null
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Sequence</h2>
@@ -618,7 +618,7 @@ function SequencePanel({ steps }: { steps: CampaignSequenceStep[] }) {
         </span>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-3">
         {steps.map((step, index) => (
           <div key={step.key} className="grid grid-cols-[26px_minmax(0,1fr)] gap-3">
             <div className="flex flex-col items-center">
@@ -680,7 +680,7 @@ function StageColumn({
       onDragOver={(event) => onDragOverStage(event, stage.stage_key)}
       onDragLeave={(event) => onDragLeaveStage(event, stage.stage_key)}
       onDrop={(event) => void onDropStage(event, stage.stage_key)}
-      className={`flex min-h-[320px] w-[280px] max-w-[82vw] shrink-0 flex-col rounded-lg border p-3 shadow-sm transition ${
+      className={`flex min-h-[300px] w-[248px] max-w-[82vw] shrink-0 flex-col rounded-lg border p-2.5 shadow-sm transition ${
         isDropTarget
           ? 'border-red-300 bg-red-50/60 ring-2 ring-red-500/15 dark:border-red-900/60 dark:bg-red-950/20'
           : stage.is_goal
@@ -688,7 +688,7 @@ function StageColumn({
             : 'border-zinc-200 bg-zinc-50/80 dark:border-zinc-800 dark:bg-zinc-900/40'
       }`}
     >
-      <div className="mb-3 flex items-start justify-between gap-2">
+      <div className="mb-2.5 flex items-start justify-between gap-2">
         <div className="min-w-0">
           <h2 className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-200">{stage.label}</h2>
           {stage.is_goal && <p className="mt-1 text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Goal stage</p>}
@@ -713,7 +713,7 @@ function StageColumn({
           />
         ))}
         {enrollments.length === 0 && (
-          <div className="flex min-h-[120px] items-center justify-center rounded-md border border-dashed border-zinc-200 bg-white/70 px-4 text-center text-xs text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex min-h-[104px] items-center justify-center rounded-md border border-dashed border-zinc-200 bg-white/70 px-3 text-center text-xs text-zinc-400 dark:border-zinc-800 dark:bg-zinc-950/30">
             No leads in this stage
           </div>
         )}
@@ -749,7 +749,7 @@ function EnrollmentCard({
       onDragStart={(event) => onDragStart(event, enrollment)}
       onDragEnd={onDragEnd}
       aria-grabbed={dragging}
-      className={`rounded-md border border-zinc-200 bg-white p-3 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950 ${
+      className={`rounded-md border border-zinc-200 bg-white p-2.5 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950 ${
         moving
           ? 'opacity-60'
           : dragging
@@ -771,7 +771,7 @@ function EnrollmentCard({
         </div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-1.5">
+      <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
         {lead?.stage && (
           <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
             {STAGE_LABELS[lead.stage]}
@@ -882,7 +882,7 @@ function CopyChallengeLinkButton({
 
 function EventFeed({ events }: { events: CampaignEvent[] }) {
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-center justify-between gap-2">
         <div>
           <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Recent events</h2>
@@ -893,7 +893,7 @@ function EventFeed({ events }: { events: CampaignEvent[] }) {
         </span>
       </div>
 
-      <div className="mt-4 space-y-3">
+      <div className="mt-3 space-y-3">
         {events.slice(0, 12).map((event) => (
           <div key={event.id} className="flex items-start justify-between gap-3 border-b border-zinc-100 pb-3 last:border-0 last:pb-0 dark:border-zinc-800">
             <div className="min-w-0">
