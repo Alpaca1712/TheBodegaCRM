@@ -18,7 +18,6 @@ import {
   RefreshCw,
   Search,
   Send,
-  Settings2,
   Trash2,
   UserPlus,
   Users,
@@ -947,9 +946,9 @@ function SequencePanel({
           <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
             Run due
           </Button>
-          <Button type="button" size="sm" onClick={() => beginCreate()} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+          <Button type="button" size="sm" onClick={() => beginCreate()} className="whitespace-nowrap bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
-            New step
+            Add rule
           </Button>
         </div>
       </div>
@@ -980,28 +979,28 @@ function SequencePanel({
 
       <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
         <div className="min-w-0 space-y-3">
-          <section className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div className="flex min-w-0 items-center gap-2">
-                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700">
-                  <Settings2 className="h-4 w-4" />
+          <section className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="flex min-w-[140px] shrink-0 items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
+                  <Plus className="h-3.5 w-3.5" />
                 </span>
-                <div className="min-w-0">
-                  <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Add an automation rule</h3>
-                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Choose the stage that should trigger the next touch.</p>
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">New rule</h3>
+                  <p className="text-[11px] text-zinc-400">Trigger stage</p>
                 </div>
               </div>
-              <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto]">
+              <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(180px,360px)_auto]">
                 <select
                   value={newStepStageKey}
                   onChange={(event) => setNewStepStageKey(event.target.value)}
-                  className="h-9 min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  className="h-8 min-w-0 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 >
                   {campaign.stages.map((stage) => (
                     <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
                   ))}
                 </select>
-                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="h-8 whitespace-nowrap bg-zinc-900 px-3 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
                   <Plus className="mr-1.5 h-3.5 w-3.5" />
                   Add rule
                 </Button>
@@ -1108,7 +1107,7 @@ function SequencePanel({
         <div className="h-fit rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
           <div className="flex items-center justify-between gap-2">
             <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {editingStepId === 'new' ? 'New step' : 'Edit step'}
+              {editingStepId === 'new' ? 'New rule' : 'Edit rule'}
             </h3>
             {editingStepId !== 'new' && (
               <button
