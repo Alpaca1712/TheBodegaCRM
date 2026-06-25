@@ -23,7 +23,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignEvent, CampaignStage } from '@/types/campaigns'
-import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
+import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TEMPLATES, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
 import type { Lead } from '@/types/leads'
 import { STAGE_LABELS } from '@/types/leads'
 import { Button } from '@/components/ui/button'
@@ -268,6 +268,7 @@ export default function CampaignDetailPage() {
   }
 
   const cta = campaign.lead_magnet_name || 'Discovery call'
+  const templateName = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].name : campaign.pipeline?.name || 'Campaign funnel'
   const meetingRate = campaign.metrics.leads_enrolled > 0
     ? Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100)
     : 0
@@ -291,17 +292,14 @@ export default function CampaignDetailPage() {
             <div className="mt-2 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <span>{CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}</span>
               <span className="hidden text-zinc-300 sm:inline">/</span>
-              <span>{campaign.slug}</span>
-              {campaign.template_key && (
-                <>
-                  <span className="hidden text-zinc-300 sm:inline">/</span>
-                  <span>{campaign.template_key.replaceAll('_', ' ')}</span>
-                </>
-              )}
+              <span>{templateName}</span>
+              <span className="hidden text-zinc-300 sm:inline">/</span>
+              <span>campaign_id attribution</span>
             </div>
           </div>
 
           <div className="flex flex-wrap items-center gap-2">
+            {campaign.landing_url && <CopyLandingLinkButton url={campaign.landing_url} />}
             <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Refresh
@@ -313,16 +311,17 @@ export default function CampaignDetailPage() {
           </div>
         </div>
 
-        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-3">
+        <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-4">
           <HeaderFact label="Primary CTA" value={cta} />
           <HeaderFact label="Available leads" value={`${availableLeads.length} not enrolled`} />
           <HeaderFact label="Funnel stages" value={`${campaign.stages.length} steps`} />
+          <HeaderFact label="Landing page" value={formatLandingLinkLabel(campaign.landing_url)} />
         </div>
       </header>
 
       <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
-        <MetricCard icon={Send} label="Initial sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
+        <MetricCard icon={Send} label="Emails sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
         <MetricCard icon={Mail} label="Reply rate" value={`${replyRate}%`} tone="blue" />
         <MetricCard icon={CalendarCheck} label="Meetings" value={campaign.metrics.meetings_booked} tone="emerald" />
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
@@ -338,7 +337,7 @@ export default function CampaignDetailPage() {
               </p>
             </div>
             <Link
-              href={`/leads/new?type=customer&campaign_id=${campaign.id}&campaign_slug=${campaign.slug}`}
+              href={`/leads/new?type=customer&campaign_id=${campaign.id}`}
               className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-sm font-medium text-white shadow-sm shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
             >
               <Plus className="h-4 w-4" />
@@ -400,6 +399,38 @@ function HeaderFact({ label, value }: { label: string; value: string }) {
       <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{value}</p>
     </div>
   )
+}
+
+function CopyLandingLinkButton({ url }: { url: string }) {
+  const [copying, setCopying] = useState(false)
+
+  const copyLink = async () => {
+    setCopying(true)
+    try {
+      await navigator.clipboard.writeText(url)
+      toast.success('Campaign landing link copied')
+    } catch {
+      toast.error('Failed to copy landing link')
+    } finally {
+      setCopying(false)
+    }
+  }
+
+  return (
+    <Button type="button" variant="outline" onClick={() => void copyLink()} disabled={copying}>
+      {copying ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Link2 className="mr-2 h-4 w-4" />}
+      Landing link
+    </Button>
+  )
+}
+
+function formatLandingLinkLabel(url?: string | null) {
+  if (!url) return 'Per-lead challenge links'
+  try {
+    return new URL(url).pathname.replace(/^\//, '') || 'Campaign landing'
+  } catch {
+    return 'Campaign landing'
+  }
 }
 
 function StatusBadge({ status }: { status: CampaignDetail['status'] }) {
@@ -482,7 +513,7 @@ function LeadOnboardingPanel({
           </div>
         </div>
         <Link
-          href={`/leads/new?type=customer&campaign_id=${campaign.id}&campaign_slug=${campaign.slug}`}
+          href={`/leads/new?type=customer&campaign_id=${campaign.id}`}
           className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md bg-zinc-900 px-3 text-xs font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200"
         >
           <Plus className="h-3.5 w-3.5" />

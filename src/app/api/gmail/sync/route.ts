@@ -12,7 +12,7 @@ import {
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
 import type { PipelineStage } from '@/types/leads'
-import { recordCampaignEvent } from '@/lib/campaigns/server'
+import { campaignEventForPipelineStage, recordCampaignEvent } from '@/lib/campaigns/server'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
 
@@ -426,7 +426,8 @@ async function processLead(
             reason: analysis.stage_reason,
           })
 
-          if (activeEnrollment && orgId && analysis.suggested_stage === 'meeting_booked') {
+          const campaignEvent = campaignEventForPipelineStage(analysis.suggested_stage)
+          if (activeEnrollment && orgId && campaignEvent) {
             await recordCampaignEvent({
               supabase,
               campaignId: activeEnrollment.campaign_id,
@@ -434,10 +435,14 @@ async function processLead(
               leadId: lead.id,
               orgId,
               userId,
-              eventType: 'meeting_booked',
+              eventType: campaignEvent,
               metadata: {
                 source: 'gmail_sync_ai',
+                suggested_stage: analysis.suggested_stage,
+                stage_confidence: analysis.stage_confidence,
                 stage_reason: analysis.stage_reason,
+                conversation_summary: analysis.conversation_summary,
+                next_step: analysis.next_step,
               },
             })
           }

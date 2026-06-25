@@ -73,3 +73,15 @@ export function buildChallengeTrackingUrl(input: {
 }) {
   return buildChallengeDestinationUrl(input)
 }
+
+export function buildCampaignLandingUrl({
+  campaignId,
+}: {
+  campaignId: string
+}) {
+  const params = new URLSearchParams({
+    campaign_id: campaignId,
+  })
+
+  return `${getRocotoLandingBaseUrl()}/vertical-saas-ai-playbook?${params.toString()}`
+}

@@ -22,7 +22,7 @@ const createSchema = z.object({
 function campaignEventForInteraction(interactionType: string): CampaignEventType | null {
   if (interactionType === 'lead_magnet_requested') return 'lead_magnet_requested'
   if (interactionType === 'qualification_completed') return 'application_completed'
-  if (interactionType === 'form_submission') return 'application_started'
+  if (interactionType === 'form_submission') return 'lead_magnet_requested'
   if (interactionType === 'meeting') return 'meeting_booked'
   if (interactionType === 'dm_received' || interactionType === 'connection_accepted' || interactionType === 'comment') return 'email_replied'
   return null

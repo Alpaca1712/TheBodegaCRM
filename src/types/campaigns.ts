@@ -57,7 +57,7 @@ export const CAMPAIGN_EVENT_LABELS: Record<CampaignEventType, string> = {
   lead_magnet_requested: 'Lead Magnet Requested',
   lead_magnet_sent: 'Lead Magnet Sent',
   challenge_link_clicked: 'Challenge Link Clicked',
-  application_started: 'Application Started',
+  application_started: 'Challenge Link Clicked',
   application_completed: 'Application Completed',
   meeting_booked: 'Meeting Booked',
   not_interested: 'Not Interested',
@@ -101,15 +101,15 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     key: 'email_outbound_lead_magnet',
     name: 'Outbound Lead Magnet',
     campaignType: 'email_outbound',
-    description: 'Cold email flow that asks permission before sending the lead magnet.',
+    description: 'Cold email flow that asks permission, sends the lead magnet, then moves prospects into the challenge and discovery call.',
     initialStageKey: 'research_needed',
     targetChannel: 'email',
     stages: [
       { key: 'research_needed', label: 'Research Needed' },
       { key: 'researched', label: 'Researched' },
       { key: 'initial_email_drafted', label: 'Initial Email Drafted' },
-      { key: 'initial_email_sent', label: 'Initial Email Sent' },
-      { key: 'replied_interested', label: 'Replied Interested' },
+      { key: 'initial_email_sent', label: 'Email Sent' },
+      { key: 'replied_interested', label: 'Replied / Interested' },
       { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
@@ -122,15 +122,15 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
     key: 'email_outbound_direct_offer',
     name: 'Outbound Direct Offer',
     campaignType: 'direct_offer_outbound',
-    description: 'Cold email flow that sends the prospect straight to the challenge application.',
+    description: 'Cold email flow that sends the prospect directly to a tracked challenge application link.',
     initialStageKey: 'research_needed',
     targetChannel: 'email',
     stages: [
       { key: 'research_needed', label: 'Research Needed' },
       { key: 'researched', label: 'Researched' },
       { key: 'offer_email_drafted', label: 'Offer Email Drafted' },
-      { key: 'offer_email_sent', label: 'Offer Email Sent' },
-      { key: 'replied_interested', label: 'Replied Interested' },
+      { key: 'offer_email_sent', label: 'Offer Sent' },
+      { key: 'replied_interested', label: 'Replied / Interested' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
@@ -140,13 +140,12 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
   },
   linkedin_inbound_playbook: {
     key: 'linkedin_inbound_playbook',
-    name: 'LinkedIn Inbound Playbook',
+    name: 'Inbound Playbook Landing',
     campaignType: 'linkedin_inbound',
-    description: 'Tracked LinkedIn playbook landing link with opt-in and challenge follow-through.',
-    initialStageKey: 'campaign_link_created',
+    description: 'Tracked landing-page flow: playbook opt-in, challenge click, application completion, then booked discovery.',
+    initialStageKey: 'playbook_opt_in',
     targetChannel: 'linkedin',
     stages: [
-      { key: 'campaign_link_created', label: 'Campaign Link Created' },
       { key: 'playbook_opt_in', label: 'Playbook Opt-in' },
       { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
@@ -279,6 +278,7 @@ export interface CampaignMetrics {
 export interface CampaignListItem extends Campaign {
   template_key: CampaignTemplateKey | null
   metrics: CampaignMetrics
+  landing_url?: string | null
 }
 
 export interface CampaignDetail extends CampaignListItem {

@@ -103,7 +103,7 @@ export async function GET(request: NextRequest) {
 }
 
 function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['intent']): CampaignEventType {
-  if (intent === 'application') return 'application_started'
+  if (intent === 'application') return 'application_completed'
   if (intent === 'application_completed') return 'application_completed'
   if (intent === 'discovery') return 'meeting_booked'
   if (intent === 'conference_scan') return 'badge_scanned'
@@ -113,7 +113,7 @@ function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['inten
 function stageForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
   if (intent === 'discovery') return 'meeting_booked'
   if (intent === 'conference_scan') return 'replied'
-  if (intent === 'application_completed') return 'follow_up'
+  if (intent === 'application' || intent === 'application_completed') return 'follow_up'
   return 'researched'
 }
 

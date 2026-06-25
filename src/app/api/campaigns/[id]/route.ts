@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { campaignMetricsFromRows } from '@/lib/campaigns/server'
+import { buildCampaignLandingUrl } from '@/lib/landing-links/server'
 import type {
   Campaign,
   CampaignDetail,
@@ -88,9 +89,11 @@ export async function GET(
 
     const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
+    const templateKey = (pipelineRes.data?.template_key || null) as CampaignTemplateKey | null
     const detail: CampaignDetail = {
       ...(campaign as Campaign),
-      template_key: (pipelineRes.data?.template_key || null) as CampaignTemplateKey | null,
+      template_key: templateKey,
+      landing_url: templateKey ? buildCampaignLandingUrl({ campaignId: id }) : null,
       pipeline: (pipelineRes.data || null) as CampaignPipeline | null,
       stages: (stagesRes.data || []) as CampaignStage[],
       enrollments,

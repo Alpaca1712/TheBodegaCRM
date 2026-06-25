@@ -210,7 +210,7 @@ export default function CampaignsPage() {
 
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
           <Metric icon={Users} label="Enrolled" value={totals.enrolled} tone="red" />
-          <Metric icon={Send} label="Initial Sent" value={totals.sent} tone="amber" />
+          <Metric icon={Send} label="Emails Sent" value={totals.sent} tone="amber" />
           <Metric icon={MousePointerClick} label="Reply Rate" value={`${replyRate}%`} tone="blue" />
           <Metric icon={CalendarCheck} label="Meeting Rate" value={`${meetingRate}%`} tone="emerald" />
         </div>
@@ -305,6 +305,7 @@ function CampaignRow({
   const progress = campaign.metrics.leads_enrolled > 0
     ? Math.min(100, Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100))
     : 0
+  const templateName = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].name : 'Campaign funnel'
 
   return (
     <Link
@@ -320,7 +321,7 @@ function CampaignRow({
           {campaign.metrics.meetings_booked > 0 && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
         </div>
         <div className="mt-2 flex items-center gap-3">
-          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{campaign.slug}</p>
+          <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{campaign.lead_magnet_name || templateName}</p>
           <div className="hidden h-1.5 w-28 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800 sm:block">
             <div className="h-full rounded-full bg-red-500" style={{ width: `${progress}%` }} />
           </div>

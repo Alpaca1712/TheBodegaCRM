@@ -10,6 +10,7 @@ import {
   type CampaignTemplateKey,
   type CampaignType,
 } from '@/types/campaigns'
+import type { PipelineStage } from '@/types/leads'
 
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
@@ -66,7 +67,7 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
       case 'challenge_link_clicked':
         return 'challenge_link_clicked'
       case 'application_started':
-        return 'application_started'
+        return 'challenge_link_clicked'
       case 'application_completed':
         return 'application_completed'
       case 'no_response':
@@ -80,6 +81,29 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
 
   if (!stageKey || !template) return stageKey
   return template.stages.some((stage) => stage.key === stageKey) ? stageKey : null
+}
+
+export function campaignEventForPipelineStage(stage: PipelineStage | string | null | undefined): CampaignEventType | null {
+  switch (stage) {
+    case 'researched':
+      return 'research_completed'
+    case 'email_drafted':
+      return 'email_drafted'
+    case 'email_sent':
+      return 'email_sent'
+    case 'replied':
+    case 'follow_up':
+      return 'email_replied'
+    case 'meeting_booked':
+    case 'meeting_held':
+      return 'meeting_booked'
+    case 'closed_lost':
+      return 'not_interested'
+    case 'no_response':
+      return 'no_response'
+    default:
+      return null
+  }
 }
 
 export async function getCampaignByIdOrSlug(

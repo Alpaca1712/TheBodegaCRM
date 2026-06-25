@@ -11,7 +11,7 @@ import {
 } from '@/lib/api/gmail'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { rateLimitResponse } from '@/lib/api/auth-guard'
-import { recordCampaignEvent } from '@/lib/campaigns/server'
+import { campaignEventForPipelineStage, recordCampaignEvent } from '@/lib/campaigns/server'
 import type { PipelineStage } from '@/types/leads'
 
 type SupabaseClient = Awaited<ReturnType<typeof createClient>>
@@ -408,7 +408,8 @@ JSON response:
             syncResult.newStage = analysis.suggested_stage
             syncResult.stageReason = analysis.stage_reason
 
-            if (activeEnrollment && orgId && analysis.suggested_stage === 'meeting_booked') {
+            const campaignEvent = campaignEventForPipelineStage(analysis.suggested_stage)
+            if (activeEnrollment && orgId && campaignEvent) {
               await recordCampaignEvent({
                 supabase,
                 campaignId: activeEnrollment.campaign_id,
@@ -416,10 +417,14 @@ JSON response:
                 leadId: lead.id,
                 orgId,
                 userId: user.id,
-                eventType: 'meeting_booked',
+                eventType: campaignEvent,
                 metadata: {
                   source: 'gmail_sync_lead_ai',
+                  suggested_stage: analysis.suggested_stage,
+                  stage_confidence: analysis.stage_confidence,
                   stage_reason: analysis.stage_reason,
+                  conversation_summary: analysis.conversation_summary,
+                  next_step: analysis.next_step,
                 },
               })
             }
