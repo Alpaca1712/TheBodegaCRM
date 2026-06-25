@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { cookies } from 'next/headers'
 import type { CookieOptions } from '@supabase/ssr'
+import { fetchWithTimeout } from './fetch'
 
 export const createClient = () => {
   const cookieStore = cookies()
@@ -9,6 +10,9 @@ export const createClient = () => {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: {
+        fetch: fetchWithTimeout,
+      },
       cookies: {
         async getAll() {
           // cookies() returns a Promise, so we need to await it

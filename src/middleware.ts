@@ -17,8 +17,29 @@ function isPublicPath(pathname: string): boolean {
   )
 }
 
+function applySecurityHeaders(response: NextResponse) {
+  response.headers.set('X-Content-Type-Options', 'nosniff')
+  response.headers.set('X-Frame-Options', 'DENY')
+  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('X-DNS-Prefetch-Control', 'on')
+  response.headers.set(
+    'Strict-Transport-Security',
+    'max-age=63072000; includeSubDomains; preload'
+  )
+  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+}
+
+function isSelfAuthenticatingApiRoute(request: NextRequest): boolean {
+  return request.method === 'GET' && /^\/api\/leads\/[0-9a-fA-F-]{36}$/.test(request.nextUrl.pathname)
+}
+
 export async function middleware(request: NextRequest) {
   const { supabase, response } = createMiddlewareClient(request)
+
+  if (isSelfAuthenticatingApiRoute(request)) {
+    applySecurityHeaders(response)
+    return response
+  }
 
   // Authenticate the cookie-backed session against Supabase Auth.
   const {
@@ -47,16 +68,7 @@ export async function middleware(request: NextRequest) {
   }
 
   // Security headers (applied to all responses)
-  response.headers.set('X-Content-Type-Options', 'nosniff')
-  response.headers.set('X-Frame-Options', 'DENY')
-  response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
-  response.headers.set('X-DNS-Prefetch-Control', 'on')
-  response.headers.set(
-    'Strict-Transport-Security',
-    'max-age=63072000; includeSubDomains; preload'
-  )
-  // Prevent MIME sniffing and clickjacking
-  response.headers.set('Permissions-Policy', 'camera=(), microphone=(), geolocation=()')
+  applySecurityHeaders(response)
 
   return response
 }

@@ -1,6 +1,7 @@
 import { createServerClient } from '@supabase/ssr'
 import { NextRequest, NextResponse } from 'next/server'
 import type { CookieOptions } from '@supabase/ssr'
+import { fetchWithTimeout } from './fetch'
 
 export const createMiddlewareClient = (request: NextRequest) => {
   // Create an unmodified response
@@ -14,6 +15,9 @@ export const createMiddlewareClient = (request: NextRequest) => {
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
+      global: {
+        fetch: fetchWithTimeout,
+      },
       cookies: {
         getAll() {
           return request.cookies.getAll()

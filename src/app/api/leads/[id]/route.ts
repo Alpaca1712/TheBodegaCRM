@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { createClient } from '@/lib/supabase/server'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
@@ -70,16 +71,30 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const { user, orgId } = await getOrgScopedClient()
+    const supabase = await createClient()
+    const {
+      data: { user },
+      error: authError,
+    } = await supabase.auth.getUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (authError) throw authError
 
     const admin = createAdminClient()
-    const { data: memberships, error: membershipsError } = await admin
-      .from('org_members')
-      .select('org_id')
-      .eq('user_id', user.id)
+    const [membershipsRes, profileRes] = await Promise.all([
+      admin
+        .from('org_members')
+        .select('org_id')
+        .eq('user_id', user.id),
+      admin
+        .from('profiles')
+        .select('active_org_id')
+        .eq('user_id', user.id)
+        .maybeSingle(),
+    ])
 
+    const { data: memberships, error: membershipsError } = membershipsRes
     if (membershipsError) throw membershipsError
+    if (profileRes.error) throw profileRes.error
 
     const membershipOrgIds = (memberships || [])
       .map((membership) => membership.org_id as string | null)
@@ -89,6 +104,7 @@ export async function GET(
       return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
     }
 
+    const orgId = profileRes.data?.active_org_id as string | null
     const orderedOrgIds = [
       ...(orgId && membershipOrgIds.includes(orgId) ? [orgId] : []),
       ...membershipOrgIds.filter((membershipOrgId) => membershipOrgId !== orgId),
