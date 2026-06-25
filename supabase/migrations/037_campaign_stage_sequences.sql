@@ -58,30 +58,33 @@ CREATE INDEX IF NOT EXISTS idx_campaign_sequence_steps_active ON campaign_sequen
 CREATE INDEX IF NOT EXISTS idx_campaign_sequence_executions_campaign ON campaign_sequence_executions(campaign_id);
 CREATE INDEX IF NOT EXISTS idx_campaign_sequence_executions_due ON campaign_sequence_executions(due_at) WHERE status = 'scheduled';
 
-ALTER TABLE campaign_sequence_steps ENABLE ROW LEVEL SECURITY;
-ALTER TABLE campaign_sequence_executions ENABLE ROW LEVEL SECURITY;
+DO $$
+BEGIN
+  EXECUTE 'ALTER TABLE public.campaign_sequence_steps ENABLE ROW LEVEL SECURITY';
+  EXECUTE 'ALTER TABLE public.campaign_sequence_executions ENABLE ROW LEVEL SECURITY';
+END $$;
 
-DROP POLICY IF EXISTS "Org members can view campaign sequence steps" ON campaign_sequence_steps;
-CREATE POLICY "Org members can view campaign sequence steps" ON campaign_sequence_steps FOR SELECT
+DROP POLICY IF EXISTS "Org members can view campaign sequence steps" ON public.campaign_sequence_steps;
+CREATE POLICY "Org members can view campaign sequence steps" ON public.campaign_sequence_steps FOR SELECT
   USING (org_id IN (SELECT public.get_user_org_ids()));
-DROP POLICY IF EXISTS "Org members can insert campaign sequence steps" ON campaign_sequence_steps;
-CREATE POLICY "Org members can insert campaign sequence steps" ON campaign_sequence_steps FOR INSERT
+DROP POLICY IF EXISTS "Org members can insert campaign sequence steps" ON public.campaign_sequence_steps;
+CREATE POLICY "Org members can insert campaign sequence steps" ON public.campaign_sequence_steps FOR INSERT
   WITH CHECK (org_id IN (SELECT public.get_user_org_ids()));
-DROP POLICY IF EXISTS "Org members can update campaign sequence steps" ON campaign_sequence_steps;
-CREATE POLICY "Org members can update campaign sequence steps" ON campaign_sequence_steps FOR UPDATE
+DROP POLICY IF EXISTS "Org members can update campaign sequence steps" ON public.campaign_sequence_steps;
+CREATE POLICY "Org members can update campaign sequence steps" ON public.campaign_sequence_steps FOR UPDATE
   USING (org_id IN (SELECT public.get_user_org_ids()));
-DROP POLICY IF EXISTS "Org members can delete campaign sequence steps" ON campaign_sequence_steps;
-CREATE POLICY "Org members can delete campaign sequence steps" ON campaign_sequence_steps FOR DELETE
+DROP POLICY IF EXISTS "Org members can delete campaign sequence steps" ON public.campaign_sequence_steps;
+CREATE POLICY "Org members can delete campaign sequence steps" ON public.campaign_sequence_steps FOR DELETE
   USING (org_id IN (SELECT public.get_user_org_ids()));
 
-DROP POLICY IF EXISTS "Org members can view campaign sequence executions" ON campaign_sequence_executions;
-CREATE POLICY "Org members can view campaign sequence executions" ON campaign_sequence_executions FOR SELECT
+DROP POLICY IF EXISTS "Org members can view campaign sequence executions" ON public.campaign_sequence_executions;
+CREATE POLICY "Org members can view campaign sequence executions" ON public.campaign_sequence_executions FOR SELECT
   USING (org_id IN (SELECT public.get_user_org_ids()));
-DROP POLICY IF EXISTS "Org members can insert campaign sequence executions" ON campaign_sequence_executions;
-CREATE POLICY "Org members can insert campaign sequence executions" ON campaign_sequence_executions FOR INSERT
+DROP POLICY IF EXISTS "Org members can insert campaign sequence executions" ON public.campaign_sequence_executions;
+CREATE POLICY "Org members can insert campaign sequence executions" ON public.campaign_sequence_executions FOR INSERT
   WITH CHECK (org_id IN (SELECT public.get_user_org_ids()));
-DROP POLICY IF EXISTS "Org members can update campaign sequence executions" ON campaign_sequence_executions;
-CREATE POLICY "Org members can update campaign sequence executions" ON campaign_sequence_executions FOR UPDATE
+DROP POLICY IF EXISTS "Org members can update campaign sequence executions" ON public.campaign_sequence_executions;
+CREATE POLICY "Org members can update campaign sequence executions" ON public.campaign_sequence_executions FOR UPDATE
   USING (org_id IN (SELECT public.get_user_org_ids()));
 
 DROP TRIGGER IF EXISTS update_campaign_sequence_steps_updated_at ON campaign_sequence_steps;
