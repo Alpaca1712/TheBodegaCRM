@@ -2,6 +2,7 @@
 
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
+import { getSafeInternalRedirect } from '@/lib/auth/redirects';
 import { createClient } from '@/lib/supabase/server';
 
 export async function signIn(formData: FormData) {
@@ -10,6 +11,10 @@ export async function signIn(formData: FormData) {
   const email = formData.get('email') as string;
   const password = formData.get('password') as string;
   const inviteToken = formData.get('invite_token') as string | null;
+  const redirectedFromValue = formData.get('redirectedFrom');
+  const redirectedFrom = getSafeInternalRedirect(
+    typeof redirectedFromValue === 'string' ? redirectedFromValue : null
+  );
   
   const { error } = await supabase.auth.signInWithPassword({
     email,
@@ -49,7 +54,7 @@ export async function signIn(formData: FormData) {
   if (inviteToken) {
     redirect(`/invite/${inviteToken}`);
   }
-  redirect('/dashboard');
+  redirect(redirectedFrom || '/dashboard');
 }
 
 export async function signUp(formData: FormData) {

@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from 'next/server'
+import { getSafeInternalRedirect } from './lib/auth/redirects'
 import { createMiddlewareClient } from './lib/supabase/middleware'
 
 // Routes accessible without authentication
@@ -24,7 +25,7 @@ export async function middleware(request: NextRequest) {
     data: { user },
   } = await supabase.auth.getUser()
 
-  const { pathname } = request.nextUrl
+  const { pathname, search } = request.nextUrl
 
   // Auth enforcement: redirect unauthenticated users away from protected routes
   if (!user && !isPublicPath(pathname)) {
@@ -32,12 +33,16 @@ export async function middleware(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
     const loginUrl = new URL('/login', request.url)
-    loginUrl.searchParams.set('redirectedFrom', pathname)
+    loginUrl.searchParams.set('redirectedFrom', `${pathname}${search}`)
     return NextResponse.redirect(loginUrl)
   }
 
   // Redirect authenticated users away from login/signup
   if (user && (pathname === '/login' || pathname.startsWith('/signup'))) {
+    const redirectedFrom = getSafeInternalRedirect(request.nextUrl.searchParams.get('redirectedFrom'))
+    if (redirectedFrom) {
+      return NextResponse.redirect(new URL(redirectedFrom, request.url))
+    }
     return NextResponse.redirect(new URL('/dashboard', request.url))
   }
 

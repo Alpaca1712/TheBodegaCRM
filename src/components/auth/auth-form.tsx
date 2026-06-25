@@ -73,6 +73,10 @@ function AuthFormInner({ mode }: AuthFormProps) {
       if (inviteToken) {
         formData.append('invite_token', inviteToken);
       }
+      const redirectedFrom = searchParams.get('redirectedFrom');
+      if (redirectedFrom) {
+        formData.append('redirectedFrom', redirectedFrom);
+      }
       
       if (isLogin) {
         const result = await signIn(formData);
