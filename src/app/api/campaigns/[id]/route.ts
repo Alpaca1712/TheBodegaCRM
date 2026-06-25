@@ -3,6 +3,7 @@ import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { campaignMetricsFromRows } from '@/lib/campaigns/server'
 import { buildCampaignLandingUrl } from '@/lib/landing-links/server'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import type {
   Campaign,
   CampaignAutomationStep,
@@ -94,7 +95,9 @@ export async function GET(
     if (stagesRes.error) throw stagesRes.error
     if (enrollmentsRes.error) throw enrollmentsRes.error
     if (eventsRes.error) throw eventsRes.error
-    if (sequenceStepsRes.error) throw sequenceStepsRes.error
+    if (sequenceStepsRes.error && !isMissingRelation(sequenceStepsRes.error, 'campaign_sequence_steps')) {
+      throw sequenceStepsRes.error
+    }
 
     const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
@@ -107,7 +110,7 @@ export async function GET(
       stages: (stagesRes.data || []) as CampaignStage[],
       enrollments,
       events,
-      sequence_steps: (sequenceStepsRes.data || []) as CampaignAutomationStep[],
+      sequence_steps: (sequenceStepsRes.error ? [] : sequenceStepsRes.data || []) as CampaignAutomationStep[],
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({

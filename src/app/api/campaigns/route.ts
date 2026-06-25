@@ -7,6 +7,7 @@ import {
   slugifyCampaignName,
 } from '@/lib/campaigns/server'
 import { defaultCampaignAutomationSteps } from '@/lib/campaigns/automation'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import {
   CAMPAIGN_TEMPLATES,
   CAMPAIGN_TYPES,
@@ -182,7 +183,9 @@ export async function POST(request: NextRequest) {
           metadata: { seeded_from_template: template.key },
         })))
 
-      if (sequenceStepsError) throw sequenceStepsError
+      if (sequenceStepsError && !isMissingRelation(sequenceStepsError, 'campaign_sequence_steps')) {
+        throw sequenceStepsError
+      }
     }
 
     return NextResponse.json({ data: campaign }, { status: 201 })

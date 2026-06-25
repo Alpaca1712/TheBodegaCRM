@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { runCampaignSequence, GmailTokenExpiredError } from '@/lib/campaigns/sequence-runner'
 import { createAdminClient } from '@/lib/supabase/admin'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 
 function authorizeCron(request: NextRequest) {
   const secret = process.env.CRON_SECRET
@@ -21,6 +22,9 @@ async function runSequences(request: NextRequest) {
       .eq('active', true)
       .limit(250)
 
+    if (error && isMissingRelation(error, 'campaign_sequence_steps')) {
+      return NextResponse.json({ data: [] })
+    }
     if (error) throw error
 
     const campaignKeys = new Map<string, { campaignId: string; orgId: string }>()

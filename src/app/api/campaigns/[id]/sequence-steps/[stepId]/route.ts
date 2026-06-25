@@ -4,6 +4,7 @@ import {
   CAMPAIGN_AUTOMATION_CHANNELS,
   CAMPAIGN_AUTOMATION_EMAIL_TYPES,
 } from '@/lib/campaigns/automation'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
 const updateSequenceStepSchema = z.object({
@@ -48,6 +49,12 @@ export async function PATCH(
       .select()
       .single()
 
+    if (error && isMissingRelation(error, 'campaign_sequence_steps')) {
+      return NextResponse.json(
+        { error: 'Campaign sequences need database migration 037 before steps can be edited.', code: 'MIGRATION_REQUIRED' },
+        { status: 503 },
+      )
+    }
     if (error) throw error
     return NextResponse.json({ data })
   } catch (error) {
@@ -73,6 +80,12 @@ export async function DELETE(
       .eq('campaign_id', id)
       .eq('org_id', orgId)
 
+    if (error && isMissingRelation(error, 'campaign_sequence_steps')) {
+      return NextResponse.json(
+        { error: 'Campaign sequences need database migration 037 before steps can be edited.', code: 'MIGRATION_REQUIRED' },
+        { status: 503 },
+      )
+    }
     if (error) throw error
     if (count === 0) return NextResponse.json({ error: 'Sequence step not found' }, { status: 404 })
     return NextResponse.json({ success: true })

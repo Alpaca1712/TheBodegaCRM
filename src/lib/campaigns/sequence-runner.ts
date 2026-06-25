@@ -3,7 +3,7 @@ import { GmailTokenExpiredError, refreshAccessToken, sendGmailMessage } from '@/
 import { recordCampaignEvent } from '@/lib/campaigns/server'
 import { renderCampaignTemplate } from '@/lib/campaigns/automation'
 import { buildChallengeTrackingUrl, ensureLeadToken } from '@/lib/landing-links/server'
-import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import { isMissingColumn, isMissingRelation, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignAutomationStep, CampaignEventType } from '@/types/campaigns'
 import type { Lead } from '@/types/leads'
 
@@ -276,6 +276,7 @@ export async function runCampaignSequence({
     .order('position', { ascending: true })
     .order('created_at', { ascending: true })
 
+  if (stepsError && isMissingRelation(stepsError, 'campaign_sequence_steps')) return result
   if (stepsError) throw stepsError
   const activeSteps = (steps || []) as CampaignAutomationStep[]
   if (activeSteps.length === 0) return result

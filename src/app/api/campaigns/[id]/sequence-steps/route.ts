@@ -4,6 +4,7 @@ import {
   CAMPAIGN_AUTOMATION_CHANNELS,
   CAMPAIGN_AUTOMATION_EMAIL_TYPES,
 } from '@/lib/campaigns/automation'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
 const sequenceStepSchema = z.object({
@@ -51,6 +52,9 @@ export async function GET(
       .order('position', { ascending: true })
       .order('created_at', { ascending: true })
 
+    if (error && isMissingRelation(error, 'campaign_sequence_steps')) {
+      return NextResponse.json({ data: [] })
+    }
     if (error) throw error
     return NextResponse.json({ data: data || [] })
   } catch (error) {
@@ -89,6 +93,12 @@ export async function POST(
       .select()
       .single()
 
+    if (error && isMissingRelation(error, 'campaign_sequence_steps')) {
+      return NextResponse.json(
+        { error: 'Campaign sequences need database migration 037 before steps can be edited.', code: 'MIGRATION_REQUIRED' },
+        { status: 503 },
+      )
+    }
     if (error) throw error
     return NextResponse.json({ data }, { status: 201 })
   } catch (error) {
