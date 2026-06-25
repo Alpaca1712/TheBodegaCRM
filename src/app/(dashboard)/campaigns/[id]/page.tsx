@@ -18,6 +18,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Settings2,
   Trash2,
   UserPlus,
   Users,
@@ -757,6 +758,7 @@ function SequencePanel({
 }) {
   const [editingStepId, setEditingStepId] = useState<string | 'new' | null>(null)
   const [form, setForm] = useState<SequenceStepForm>(() => emptySequenceForm(campaign))
+  const [newStepStageKey, setNewStepStageKey] = useState(campaign.stages[0]?.stage_key || '')
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const sortedSteps = useMemo(
@@ -765,10 +767,12 @@ function SequencePanel({
   )
   const sequenceGroups = useMemo(() => {
     const knownStageKeys = new Set(campaign.stages.map((stage) => stage.stage_key))
-    const knownGroups = campaign.stages.map((stage) => ({
-      stage,
-      steps: sortedSteps.filter((step) => step.trigger_stage_key === stage.stage_key),
-    }))
+    const knownGroups = campaign.stages
+      .map((stage) => ({
+        stage,
+        steps: sortedSteps.filter((step) => step.trigger_stage_key === stage.stage_key),
+      }))
+      .filter((group) => group.steps.length > 0)
     const unknownSteps = sortedSteps.filter((step) => !knownStageKeys.has(step.trigger_stage_key))
 
     if (unknownSteps.length === 0) return knownGroups
@@ -788,12 +792,15 @@ function SequencePanel({
       },
     ]
   }, [campaign.stages, sortedSteps])
+  const activeStepCount = sortedSteps.filter((step) => step.active).length
+  const inactiveStepCount = sortedSteps.length - activeStepCount
 
   const beginCreate = (stageKey?: string) => {
+    const triggerStageKey = stageKey || newStepStageKey || campaign.stages[0]?.stage_key || ''
     setEditingStepId('new')
     setForm({
       ...emptySequenceForm(campaign),
-      trigger_stage_key: stageKey || campaign.stages[0]?.stage_key || '',
+      trigger_stage_key: triggerStageKey,
     })
   }
 
@@ -926,14 +933,14 @@ function SequencePanel({
               <ListChecks className="h-4 w-4" />
             </span>
             <div>
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign sequences</h2>
+              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Sequences</h2>
               <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-                {sortedSteps.filter((step) => step.active).length} active / {sortedSteps.length} automation step{sortedSteps.length !== 1 ? 's' : ''}
+                {activeStepCount} on, {inactiveStepCount} paused
               </p>
             </div>
           </div>
           <p className="mt-3 max-w-3xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            Trigger templated Gmail touches from a campaign stage, stop when a lead replies, and optionally move the lead to the next board column.
+            Create rules that run from a pipeline stage: wait, send the right touch, stop on reply, and optionally move the lead.
           </p>
         </div>
         <div className="flex shrink-0 gap-2">
@@ -947,94 +954,154 @@ function SequencePanel({
         </div>
       </div>
 
-      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
-        <div className="min-w-0">
-          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
-            {sequenceGroups.map((group) => (
-              <section key={group.stage.stage_key} className="min-w-0 rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-                <div className="flex items-start justify-between gap-2">
-                  <div className="min-w-0">
-                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-200">
-                      {group.stage.label}
-                    </p>
-                    <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
-                      {group.steps.length} step{group.steps.length !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  {group.stage.stage_key !== 'unknown' && (
-                    <button
-                      type="button"
-                      onClick={() => beginCreate(group.stage.stage_key)}
-                      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-[11px] font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                    >
-                      <Plus className="h-3 w-3" />
-                      Add
-                    </button>
-                  )}
-                </div>
-
-                <div className="mt-3 space-y-2">
-                  {group.steps.map((step, index) => {
-                    const attachments = sequenceAttachmentsFromStep(step)
-                    return (
-                      <button
-                        key={step.id}
-                        type="button"
-                        onClick={() => beginEdit(step)}
-                        className="w-full rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/75 dark:hover:border-zinc-700"
-                      >
-                        <div className="flex items-start justify-between gap-2">
-                          <div className="min-w-0">
-                            <div className="flex flex-wrap items-center gap-1.5">
-                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-50 text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
-                                {index + 1}
-                              </span>
-                              <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.name}</p>
-                            </div>
-                            <p className="mt-1 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                              {step.wait_minutes <= 0 ? 'Immediately' : `After ${formatWaitMinutes(step.wait_minutes)}`}
-                            </p>
-                          </div>
-                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                            step.active
-                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
-                              : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
-                          }`}>
-                            {step.active ? 'On' : 'Off'}
-                          </span>
-                        </div>
-                        <div className="mt-2 flex flex-wrap gap-1.5">
-                          <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
-                            {automationChannelLabels[step.channel]}
-                          </span>
-                          <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
-                            {automationEmailTypeLabels[step.email_type]}
-                          </span>
-                          {attachments.length > 0 && (
-                            <span className="inline-flex items-center gap-1 rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
-                              <Paperclip className="h-3 w-3" />
-                              {attachments.length}
-                            </span>
-                          )}
-                          {step.move_to_stage_key && (
-                            <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
-                              Move: {stageLabel(campaign.stages, step.move_to_stage_key)}
-                            </span>
-                          )}
-                        </div>
-                      </button>
-                    )
-                  })}
-
-                  {group.steps.length === 0 && (
-                    <div className="rounded-md border border-dashed border-zinc-200 bg-white px-3 py-5 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">No automation in this stage</p>
-                    </div>
-                  )}
-                </div>
-              </section>
-            ))}
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <Clock3 className="h-4 w-4 text-zinc-400" />
+            When
           </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">A lead sits in a campaign stage.</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <Send className="h-4 w-4 text-zinc-400" />
+            Send
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Use a templated Gmail touch or task.</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <CheckCircle2 className="h-4 w-4 text-zinc-400" />
+            Then
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Move the lead or leave them in place.</p>
+        </div>
+      </div>
+
+      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
+        <div className="min-w-0 space-y-3">
+          <section className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex min-w-0 items-center gap-2">
+                <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-white text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700">
+                  <Settings2 className="h-4 w-4" />
+                </span>
+                <div className="min-w-0">
+                  <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Add an automation rule</h3>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Choose the stage that should trigger the next touch.</p>
+                </div>
+              </div>
+              <div className="grid gap-2 sm:grid-cols-[minmax(220px,1fr)_auto]">
+                <select
+                  value={newStepStageKey}
+                  onChange={(event) => setNewStepStageKey(event.target.value)}
+                  className="h-9 min-w-0 rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {campaign.stages.map((stage) => (
+                    <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
+                  ))}
+                </select>
+                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add rule
+                </Button>
+              </div>
+            </div>
+          </section>
+
+          {sortedSteps.length === 0 ? (
+            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No sequence rules yet</p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Add your first rule to send the next email or lead magnet from a campaign stage.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sequenceGroups.map((group) => (
+                <section key={group.stage.stage_key} className="min-w-0 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/70">
+                  <div className="flex flex-col gap-2 border-b border-zinc-100 px-3 py-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">When lead is in</p>
+                      <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{group.stage.label}</h3>
+                    </div>
+                    {group.stage.stage_key !== 'unknown' && (
+                      <button
+                        type="button"
+                        onClick={() => beginCreate(group.stage.stage_key)}
+                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add rule here
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {group.steps.map((step, index) => {
+                      const attachments = sequenceAttachmentsFromStep(step)
+                      const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
+                      const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
+
+                      return (
+                        <button
+                          key={step.id}
+                          type="button"
+                          onClick={() => beginEdit(step)}
+                          className="block w-full px-3 py-3 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-950/40"
+                        >
+                          <div className="grid gap-3 xl:grid-cols-[minmax(180px,1.15fr)_110px_minmax(160px,1fr)_minmax(160px,1fr)_64px] xl:items-center">
+                            <div className="min-w-0">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
+                                  {index + 1}
+                                </span>
+                                <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{step.name}</p>
+                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                                  step.active
+                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
+                                    : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+                                }`}>
+                                  {step.active ? 'On' : 'Paused'}
+                                </span>
+                              </div>
+                              <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                {step.stop_on_reply ? 'Stops when they reply' : 'Keeps running after replies'}
+                              </p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Wait</p>
+                              <p className="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">{waitLabel}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Send</p>
+                              <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                {automationEmailTypeLabels[step.email_type]}
+                              </p>
+                              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{automationChannelLabels[step.channel]}</p>
+                            </div>
+
+                            <div>
+                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Then</p>
+                              <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{thenLabel}</p>
+                              {attachments.length > 0 && (
+                                <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                  <Paperclip className="h-3 w-3" />
+                                  {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
+                                </p>
+                              )}
+                            </div>
+
+                            <span className="text-xs font-medium text-zinc-400 xl:text-right">Edit</span>
+                          </div>
+                        </button>
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
         </div>
 
       {editingStepId && (
