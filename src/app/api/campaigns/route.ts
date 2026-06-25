@@ -6,6 +6,7 @@ import {
   resolveCampaignTemplate,
   slugifyCampaignName,
 } from '@/lib/campaigns/server'
+import { defaultCampaignAutomationSteps } from '@/lib/campaigns/automation'
 import {
   CAMPAIGN_TEMPLATES,
   CAMPAIGN_TYPES,
@@ -168,6 +169,21 @@ export async function POST(request: NextRequest) {
       })))
 
     if (stagesError) throw stagesError
+
+    const sequenceSteps = defaultCampaignAutomationSteps(template.key)
+    if (sequenceSteps.length > 0) {
+      const { error: sequenceStepsError } = await supabase
+        .from('campaign_sequence_steps')
+        .insert(sequenceSteps.map((step) => ({
+          ...step,
+          campaign_id: campaign.id,
+          org_id: orgId,
+          user_id: user.id,
+          metadata: { seeded_from_template: template.key },
+        })))
+
+      if (sequenceStepsError) throw sequenceStepsError
+    }
 
     return NextResponse.json({ data: campaign }, { status: 201 })
   } catch (error) {

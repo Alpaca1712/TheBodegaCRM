@@ -23,8 +23,21 @@ import {
   X,
 } from 'lucide-react'
 import { toast } from 'sonner'
-import type { CampaignDetail, CampaignEnrollmentWithLead, CampaignEvent, CampaignSequenceStep, CampaignStage } from '@/types/campaigns'
+import type {
+  CampaignAutomationChannel,
+  CampaignAutomationEmailType,
+  CampaignAutomationStep,
+  CampaignDetail,
+  CampaignEnrollmentWithLead,
+  CampaignEvent,
+  CampaignStage,
+} from '@/types/campaigns'
 import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TEMPLATES, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
+import {
+  CAMPAIGN_AUTOMATION_CHANNELS,
+  CAMPAIGN_AUTOMATION_EMAIL_TYPES,
+  formatWaitMinutes,
+} from '@/lib/campaigns/automation'
 import type { Lead } from '@/types/leads'
 import { STAGE_LABELS } from '@/types/leads'
 import { Button } from '@/components/ui/button'
@@ -38,6 +51,36 @@ const metricTones = {
 }
 
 type MetricTone = keyof typeof metricTones
+
+const automationChannelLabels: Record<CampaignAutomationChannel, string> = {
+  email: 'Email',
+  linkedin: 'LinkedIn',
+  task: 'Task',
+}
+
+const automationEmailTypeLabels: Record<CampaignAutomationEmailType, string> = {
+  initial: 'Initial',
+  follow_up_1: 'Follow-up 1',
+  follow_up_2: 'Follow-up 2',
+  follow_up_3: 'Follow-up 3',
+  reply_response: 'Reply',
+  meeting_request: 'Meeting ask',
+  lead_magnet: 'Lead magnet',
+  break_up: 'Break-up',
+}
+
+interface SequenceStepForm {
+  name: string
+  trigger_stage_key: string
+  wait_minutes: string
+  channel: CampaignAutomationChannel
+  email_type: CampaignAutomationEmailType
+  subject_template: string
+  body_template: string
+  move_to_stage_key: string
+  stop_on_reply: boolean
+  active: boolean
+}
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>()
@@ -270,7 +313,7 @@ export default function CampaignDetailPage() {
 
   const cta = campaign.lead_magnet_name || 'Discovery call'
   const templateName = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].name : campaign.pipeline?.name || 'Campaign funnel'
-  const sequenceSteps = campaign.template_key ? CAMPAIGN_TEMPLATES[campaign.template_key].sequenceSteps : []
+  const sequenceSteps = campaign.sequence_steps || []
   const meetingRate = campaign.metrics.leads_enrolled > 0
     ? Math.round((campaign.metrics.meetings_booked / campaign.metrics.leads_enrolled) * 100)
     : 0
@@ -384,7 +427,7 @@ export default function CampaignDetailPage() {
           onClearSelected={clearSelectedLeads}
           onEnrollSelected={enrollSelectedLeads}
         />
-        <SequencePanel steps={sequenceSteps} />
+        <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />
         <EventFeed events={campaign.events} />
       </section>
     </div>
@@ -603,43 +646,395 @@ function LeadOnboardingPanel({
   )
 }
 
-function SequencePanel({ steps }: { steps: CampaignSequenceStep[] }) {
-  if (steps.length === 0) return null
+function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
+  return {
+    name: '',
+    trigger_stage_key: campaign.stages[0]?.stage_key || '',
+    wait_minutes: '0',
+    channel: 'email',
+    email_type: 'follow_up_1',
+    subject_template: '',
+    body_template: '',
+    move_to_stage_key: '',
+    stop_on_reply: true,
+    active: false,
+  }
+}
+
+function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
+  return {
+    name: step.name,
+    trigger_stage_key: step.trigger_stage_key,
+    wait_minutes: String(step.wait_minutes),
+    channel: step.channel,
+    email_type: step.email_type,
+    subject_template: step.subject_template,
+    body_template: step.body_template,
+    move_to_stage_key: step.move_to_stage_key || '',
+    stop_on_reply: step.stop_on_reply,
+    active: step.active,
+  }
+}
+
+function stageLabel(stages: CampaignStage[], stageKey?: string | null) {
+  if (!stageKey) return 'No move'
+  return stages.find((stage) => stage.stage_key === stageKey)?.label || stageKey.replaceAll('_', ' ')
+}
+
+function SequencePanel({
+  campaign,
+  steps,
+  onChanged,
+}: {
+  campaign: CampaignDetail
+  steps: CampaignAutomationStep[]
+  onChanged: () => Promise<void>
+}) {
+  const [editingStepId, setEditingStepId] = useState<string | 'new' | null>(null)
+  const [form, setForm] = useState<SequenceStepForm>(() => emptySequenceForm(campaign))
+  const [saving, setSaving] = useState(false)
+  const [running, setRunning] = useState(false)
+  const sortedSteps = useMemo(
+    () => [...steps].sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at)),
+    [steps],
+  )
+
+  const beginCreate = () => {
+    setEditingStepId('new')
+    setForm(emptySequenceForm(campaign))
+  }
+
+  const beginEdit = (step: CampaignAutomationStep) => {
+    setEditingStepId(step.id)
+    setForm(sequenceFormFromStep(step))
+  }
+
+  const cancelEdit = () => {
+    setEditingStepId(null)
+    setForm(emptySequenceForm(campaign))
+  }
+
+  const saveStep = async () => {
+    if (!form.name.trim()) {
+      toast.error('Name the sequence step')
+      return
+    }
+    if (!form.trigger_stage_key) {
+      toast.error('Pick a trigger stage')
+      return
+    }
+    if (form.channel === 'email' && !form.body_template.trim()) {
+      toast.error('Add an email body')
+      return
+    }
+
+    const waitMinutes = Number(form.wait_minutes)
+    if (!Number.isFinite(waitMinutes) || waitMinutes < 0) {
+      toast.error('Wait time must be zero or higher')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const isNew = editingStepId === 'new'
+      const existingStep = sortedSteps.find((step) => step.id === editingStepId)
+      const nextPosition = sortedSteps.length > 0
+        ? Math.max(...sortedSteps.map((step) => step.position)) + 10
+        : 10
+      const res = await fetch(
+        isNew
+          ? `/api/campaigns/${campaign.id}/sequence-steps`
+          : `/api/campaigns/${campaign.id}/sequence-steps/${editingStepId}`,
+        {
+          method: isNew ? 'POST' : 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: form.name.trim(),
+            position: existingStep?.position ?? nextPosition,
+            trigger_stage_key: form.trigger_stage_key,
+            wait_minutes: Math.round(waitMinutes),
+            channel: form.channel,
+            email_type: form.email_type,
+            subject_template: form.subject_template,
+            body_template: form.body_template,
+            move_to_stage_key: form.move_to_stage_key || null,
+            stop_on_reply: form.stop_on_reply,
+            active: form.active,
+          }),
+        },
+      )
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to save sequence step')
+      toast.success(isNew ? 'Sequence step created' : 'Sequence step saved')
+      cancelEdit()
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save sequence step')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const deleteStep = async (step: CampaignAutomationStep) => {
+    if (!window.confirm(`Delete "${step.name}" from this sequence?`)) return
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/sequence-steps/${step.id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete sequence step')
+      toast.success('Sequence step deleted')
+      if (editingStepId === step.id) cancelEdit()
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete sequence step')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const runDueSteps = async () => {
+    setRunning(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/sequence/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 50 }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to run sequence')
+      const result = data.data as { due: number; sent: number; skipped: number; failed: number }
+      toast.success(`Sequence checked: ${result.sent} sent, ${result.skipped} skipped, ${result.failed} failed`)
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to run sequence')
+    } finally {
+      setRunning(false)
+    }
+  }
 
   return (
     <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex items-center justify-between gap-2">
-        <div>
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0">
           <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Sequence</h2>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{steps.length} planned touch{steps.length !== 1 ? 'es' : ''}</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            {sortedSteps.filter((step) => step.active).length} active / {sortedSteps.length} step{sortedSteps.length !== 1 ? 's' : ''}
+          </p>
         </div>
-        <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
           <ListChecks className="h-4 w-4" />
         </span>
       </div>
 
-      <div className="mt-3 space-y-3">
-        {steps.map((step, index) => (
-          <div key={step.key} className="grid grid-cols-[26px_minmax(0,1fr)] gap-3">
-            <div className="flex flex-col items-center">
-              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-zinc-100 text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700">
-                {index + 1}
-              </span>
-              {index < steps.length - 1 && <span className="mt-1 h-full min-h-4 w-px bg-zinc-200 dark:bg-zinc-800" />}
-            </div>
-            <div className="min-w-0 pb-2">
-              <div className="flex flex-wrap items-center gap-1.5">
-                <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.label}</p>
-                <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium uppercase text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                  {step.channel.replace('_', ' ')}
+      <div className="mt-3 flex gap-2">
+        <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running} className="flex-1 text-xs">
+          Run due
+        </Button>
+        <Button type="button" size="sm" onClick={beginCreate} className="bg-zinc-900 text-xs hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+          <Plus className="mr-1.5 h-3.5 w-3.5" />
+          Step
+        </Button>
+      </div>
+
+      <div className="mt-3 space-y-2">
+        {sortedSteps.map((step, index) => (
+          <div key={step.id} className="rounded-md border border-zinc-200 bg-zinc-50/70 p-2.5 dark:border-zinc-800 dark:bg-zinc-950/30">
+            <button type="button" onClick={() => beginEdit(step)} className="w-full text-left">
+              <div className="flex items-start justify-between gap-2">
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-1.5">
+                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700">
+                      {index + 1}
+                    </span>
+                    <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.name}</p>
+                  </div>
+                  <p className="mt-1 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                    {stageLabel(campaign.stages, step.trigger_stage_key)} · {formatWaitMinutes(step.wait_minutes)}
+                  </p>
+                </div>
+                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                  step.active
+                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
+                    : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+                }`}>
+                  {step.active ? 'On' : 'Off'}
                 </span>
               </div>
-              <p className="mt-1 text-[11px] font-medium text-zinc-500 dark:text-zinc-400">{step.timing}</p>
-              <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">{step.goal}</p>
-            </div>
+              <div className="mt-2 flex flex-wrap gap-1.5">
+                <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
+                  {automationChannelLabels[step.channel]}
+                </span>
+                <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
+                  {automationEmailTypeLabels[step.email_type]}
+                </span>
+                {step.move_to_stage_key && (
+                  <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
+                    Move: {stageLabel(campaign.stages, step.move_to_stage_key)}
+                  </span>
+                )}
+              </div>
+            </button>
           </div>
         ))}
+
+        {sortedSteps.length === 0 && (
+          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No sequence yet</p>
+            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add a step to automate this campaign stage.</p>
+          </div>
+        )}
       </div>
+
+      {editingStepId && (
+        <div className="mt-3 rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
+              {editingStepId === 'new' ? 'New step' : 'Edit step'}
+            </h3>
+            {editingStepId !== 'new' && (
+              <button
+                type="button"
+                onClick={() => {
+                  const step = sortedSteps.find((item) => item.id === editingStepId)
+                  if (step) void deleteStep(step)
+                }}
+                className="rounded-md p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
+                aria-label="Delete sequence step"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            )}
+          </div>
+
+          <div className="mt-3 space-y-2">
+            <label className="block">
+              <span className="text-[11px] font-medium text-zinc-500">Name</span>
+              <input
+                value={form.name}
+                onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
+                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block min-w-0">
+                <span className="text-[11px] font-medium text-zinc-500">When in</span>
+                <select
+                  value={form.trigger_stage_key}
+                  onChange={(event) => setForm((current) => ({ ...current, trigger_stage_key: event.target.value }))}
+                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {campaign.stages.map((stage) => (
+                    <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block min-w-0">
+                <span className="text-[11px] font-medium text-zinc-500">Wait minutes</span>
+                <input
+                  type="number"
+                  min="0"
+                  value={form.wait_minutes}
+                  onChange={(event) => setForm((current) => ({ ...current, wait_minutes: event.target.value }))}
+                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                />
+              </label>
+            </div>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="block min-w-0">
+                <span className="text-[11px] font-medium text-zinc-500">Channel</span>
+                <select
+                  value={form.channel}
+                  onChange={(event) => setForm((current) => ({ ...current, channel: event.target.value as CampaignAutomationChannel }))}
+                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {CAMPAIGN_AUTOMATION_CHANNELS.map((channel) => (
+                    <option key={channel} value={channel}>{automationChannelLabels[channel]}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="block min-w-0">
+                <span className="text-[11px] font-medium text-zinc-500">Email type</span>
+                <select
+                  value={form.email_type}
+                  onChange={(event) => setForm((current) => ({ ...current, email_type: event.target.value as CampaignAutomationEmailType }))}
+                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  {CAMPAIGN_AUTOMATION_EMAIL_TYPES.map((emailType) => (
+                    <option key={emailType} value={emailType}>{automationEmailTypeLabels[emailType]}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <label className="block">
+              <span className="text-[11px] font-medium text-zinc-500">Move to</span>
+              <select
+                value={form.move_to_stage_key}
+                onChange={(event) => setForm((current) => ({ ...current, move_to_stage_key: event.target.value }))}
+                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              >
+                <option value="">No move</option>
+                {campaign.stages.map((stage) => (
+                  <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
+                ))}
+              </select>
+            </label>
+
+            <label className="block">
+              <span className="text-[11px] font-medium text-zinc-500">Subject</span>
+              <input
+                value={form.subject_template}
+                onChange={(event) => setForm((current) => ({ ...current, subject_template: event.target.value }))}
+                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+
+            <label className="block">
+              <span className="text-[11px] font-medium text-zinc-500">Message</span>
+              <textarea
+                value={form.body_template}
+                onChange={(event) => setForm((current) => ({ ...current, body_template: event.target.value }))}
+                rows={5}
+                className="mt-1 w-full resize-y rounded-md border border-zinc-200 bg-white px-2 py-2 text-xs leading-5 text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+
+            <div className="grid grid-cols-2 gap-2">
+              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-2 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={form.active}
+                  onChange={(event) => setForm((current) => ({ ...current, active: event.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                Active
+              </label>
+              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-2 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+                <input
+                  type="checkbox"
+                  checked={form.stop_on_reply}
+                  onChange={(event) => setForm((current) => ({ ...current, stop_on_reply: event.target.checked }))}
+                  className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+                />
+                Stop on reply
+              </label>
+            </div>
+
+            <div className="flex items-center justify-end gap-2 pt-1">
+              <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={saving}>
+                Cancel
+              </Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => void saveStep()} isLoading={saving}>
+                Save
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </section>
   )
 }

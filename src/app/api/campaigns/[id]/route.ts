@@ -5,6 +5,7 @@ import { campaignMetricsFromRows } from '@/lib/campaigns/server'
 import { buildCampaignLandingUrl } from '@/lib/landing-links/server'
 import type {
   Campaign,
+  CampaignAutomationStep,
   CampaignDetail,
   CampaignEnrollmentWithLead,
   CampaignEvent,
@@ -41,7 +42,7 @@ export async function GET(
 
     if (campaignError || !campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes] = await Promise.all([
+    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes] = await Promise.all([
       supabase
         .from('campaign_pipelines')
         .select('*')
@@ -80,12 +81,20 @@ export async function GET(
         .eq('org_id', orgId)
         .order('occurred_at', { ascending: false })
         .limit(100),
+      supabase
+        .from('campaign_sequence_steps')
+        .select('*')
+        .eq('campaign_id', id)
+        .eq('org_id', orgId)
+        .order('position', { ascending: true })
+        .order('created_at', { ascending: true }),
     ])
 
     if (pipelineRes.error) throw pipelineRes.error
     if (stagesRes.error) throw stagesRes.error
     if (enrollmentsRes.error) throw enrollmentsRes.error
     if (eventsRes.error) throw eventsRes.error
+    if (sequenceStepsRes.error) throw sequenceStepsRes.error
 
     const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
@@ -98,6 +107,7 @@ export async function GET(
       stages: (stagesRes.data || []) as CampaignStage[],
       enrollments,
       events,
+      sequence_steps: (sequenceStepsRes.data || []) as CampaignAutomationStep[],
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({

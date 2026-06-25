@@ -94,6 +94,39 @@ export interface CampaignSequenceStep {
   goal: string
 }
 
+export type CampaignAutomationChannel = 'email' | 'linkedin' | 'task'
+
+export type CampaignAutomationEmailType =
+  | 'initial'
+  | 'follow_up_1'
+  | 'follow_up_2'
+  | 'follow_up_3'
+  | 'reply_response'
+  | 'meeting_request'
+  | 'lead_magnet'
+  | 'break_up'
+
+export interface CampaignAutomationStep {
+  id: string
+  campaign_id: string
+  org_id: string
+  user_id: string
+  name: string
+  position: number
+  trigger_stage_key: string
+  wait_minutes: number
+  channel: CampaignAutomationChannel
+  email_type: CampaignAutomationEmailType
+  subject_template: string
+  body_template: string
+  move_to_stage_key: string | null
+  stop_on_reply: boolean
+  active: boolean
+  metadata: Record<string, unknown>
+  created_at: string
+  updated_at: string
+}
+
 export interface CampaignTemplate {
   key: CampaignTemplateKey
   name: string
@@ -314,4 +347,5 @@ export interface CampaignDetail extends CampaignListItem {
   stages: CampaignStage[]
   enrollments: CampaignEnrollmentWithLead[]
   events: CampaignEvent[]
+  sequence_steps: CampaignAutomationStep[]
 }
