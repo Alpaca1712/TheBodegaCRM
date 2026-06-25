@@ -232,9 +232,9 @@ export default function DashboardLayoutClient({
         </div>
 
         {/* Main content */}
-        <div className="flex-1 md:ml-[232px] flex flex-col min-h-screen">
+        <div className="flex-1 min-w-0 md:ml-[232px] flex flex-col min-h-screen">
           <Header userEmail={userEmail} userName={userName} />
-          <main className="flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
+          <main className="min-w-0 flex-1 p-4 md:p-6 lg:p-8 pb-20 md:pb-6">
             {children}
           </main>
         </div>

@@ -279,8 +279,8 @@ export default function CampaignDetailPage() {
     : 0
 
   return (
-    <div className="w-full max-w-none space-y-4">
-      <header className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div className="min-w-0 overflow-x-hidden space-y-4">
+      <header className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
           <div className="min-w-0">
             <Link href="/campaigns" className="mb-2 inline-flex items-center gap-1.5 text-xs font-medium text-zinc-500 hover:text-zinc-900 dark:hover:text-zinc-100">
@@ -319,7 +319,7 @@ export default function CampaignDetailPage() {
         </div>
       </header>
 
-      <div className="flex gap-2 overflow-x-auto pb-1">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
         <MetricCard icon={Send} label="Emails sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
         <MetricCard icon={Mail} label="Reply rate" value={`${replyRate}%`} tone="blue" />
@@ -327,7 +327,7 @@ export default function CampaignDetailPage() {
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
       </div>
 
-      <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <section className="min-w-0 overflow-hidden rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
           <div className="min-w-0">
             <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
@@ -344,8 +344,8 @@ export default function CampaignDetailPage() {
           </Link>
         </div>
 
-        <div className="-mx-3 mt-3 overflow-x-auto px-3 pb-2">
-          <div className="flex w-max gap-3">
+        <div className="-mx-3 mt-3 max-w-full overflow-x-auto px-3 pb-2">
+          <div className="flex min-w-max gap-3">
             {campaign.stages.map((stage) => (
               <StageColumn
                 key={stage.id}
@@ -369,7 +369,7 @@ export default function CampaignDetailPage() {
         </div>
       </section>
 
-      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_320px] 2xl:grid-cols-[minmax(0,1fr)_320px_320px]">
+      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(260px,320px)_minmax(260px,320px)]">
         <LeadOnboardingPanel
           campaign={campaign}
           leadSearch={leadSearch}
@@ -458,7 +458,7 @@ function MetricCard({
   tone: MetricTone
 }) {
   return (
-    <div className="min-w-[168px] rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+    <div className="min-w-0 rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
       <div className="flex items-center justify-between gap-3">
         <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{label}</p>
         <div className={`flex h-7 w-7 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
