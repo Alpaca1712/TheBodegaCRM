@@ -1,6 +1,8 @@
 -- Campaign stage sequence rules.
 -- These are campaign-native automations: when a lead sits in a campaign stage
 -- for a configured delay, send a templated touch and optionally move stages.
+-- Run this whole file together. The seed rows below are not valid SQL by
+-- themselves unless they are inside their INSERT ... SELECT statement.
 
 CREATE TABLE IF NOT EXISTS campaign_sequence_steps (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -59,19 +61,26 @@ CREATE INDEX IF NOT EXISTS idx_campaign_sequence_executions_due ON campaign_sequ
 ALTER TABLE campaign_sequence_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE campaign_sequence_executions ENABLE ROW LEVEL SECURITY;
 
+DROP POLICY IF EXISTS "Org members can view campaign sequence steps" ON campaign_sequence_steps;
 CREATE POLICY "Org members can view campaign sequence steps" ON campaign_sequence_steps FOR SELECT
   USING (org_id IN (SELECT public.get_user_org_ids()));
+DROP POLICY IF EXISTS "Org members can insert campaign sequence steps" ON campaign_sequence_steps;
 CREATE POLICY "Org members can insert campaign sequence steps" ON campaign_sequence_steps FOR INSERT
   WITH CHECK (org_id IN (SELECT public.get_user_org_ids()));
+DROP POLICY IF EXISTS "Org members can update campaign sequence steps" ON campaign_sequence_steps;
 CREATE POLICY "Org members can update campaign sequence steps" ON campaign_sequence_steps FOR UPDATE
   USING (org_id IN (SELECT public.get_user_org_ids()));
+DROP POLICY IF EXISTS "Org members can delete campaign sequence steps" ON campaign_sequence_steps;
 CREATE POLICY "Org members can delete campaign sequence steps" ON campaign_sequence_steps FOR DELETE
   USING (org_id IN (SELECT public.get_user_org_ids()));
 
+DROP POLICY IF EXISTS "Org members can view campaign sequence executions" ON campaign_sequence_executions;
 CREATE POLICY "Org members can view campaign sequence executions" ON campaign_sequence_executions FOR SELECT
   USING (org_id IN (SELECT public.get_user_org_ids()));
+DROP POLICY IF EXISTS "Org members can insert campaign sequence executions" ON campaign_sequence_executions;
 CREATE POLICY "Org members can insert campaign sequence executions" ON campaign_sequence_executions FOR INSERT
   WITH CHECK (org_id IN (SELECT public.get_user_org_ids()));
+DROP POLICY IF EXISTS "Org members can update campaign sequence executions" ON campaign_sequence_executions;
 CREATE POLICY "Org members can update campaign sequence executions" ON campaign_sequence_executions FOR UPDATE
   USING (org_id IN (SELECT public.get_user_org_ids()));
 
