@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
@@ -69,80 +70,84 @@ export async function GET(
 ) {
   try {
     const { id } = await params
-    const { supabase, user, orgId } = await getOrgScopedClient()
+    const { user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
-    let leadOrgId = orgId
-    const { data: activeOrgLead, error } = await supabase
+    const admin = createAdminClient()
+    const { data: memberships, error: membershipsError } = await admin
+      .from('org_members')
+      .select('org_id')
+      .eq('user_id', user.id)
+
+    if (membershipsError) throw membershipsError
+
+    const membershipOrgIds = (memberships || [])
+      .map((membership) => membership.org_id as string | null)
+      .filter((membershipOrgId): membershipOrgId is string => Boolean(membershipOrgId))
+
+    if (membershipOrgIds.length === 0) {
+      return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+    }
+
+    const orderedOrgIds = [
+      ...(orgId && membershipOrgIds.includes(orgId) ? [orgId] : []),
+      ...membershipOrgIds.filter((membershipOrgId) => membershipOrgId !== orgId),
+    ]
+
+    const { data: lead, error: leadError } = await admin
       .from('leads')
       .select('*')
       .eq('id', id)
-      .eq('org_id', orgId)
+      .in('org_id', orderedOrgIds)
       .maybeSingle()
 
-    if (error) throw error
-
-    let lead = activeOrgLead
+    if (leadError) throw leadError
 
     if (!lead) {
-      const { data: memberships } = await supabase
-        .from('org_members')
-        .select('org_id')
-        .eq('user_id', user.id)
-
-      const orgIds = (memberships || [])
-        .map((membership) => membership.org_id as string)
-        .filter((membershipOrgId) => membershipOrgId && membershipOrgId !== orgId)
-
-      if (orgIds.length > 0) {
-        const fallback = await supabase
-          .from('leads')
-          .select('*')
-          .eq('id', id)
-          .in('org_id', orgIds)
-          .maybeSingle()
-
-        if (fallback.error) throw fallback.error
-        if (fallback.data) {
-          lead = fallback.data
-          leadOrgId = fallback.data.org_id
-
-          await supabase
-            .from('profiles')
-            .update({ active_org_id: leadOrgId })
-            .eq('user_id', user.id)
-        }
-      }
+      return NextResponse.json(
+        { error: 'Not found', code: 'LEAD_NOT_IN_USER_ORGS' },
+        { status: 404 }
+      )
     }
 
-    if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+    const leadOrgId = lead.org_id as string
+    if (leadOrgId && leadOrgId !== orgId) {
+      await admin
+        .from('profiles')
+        .update({ active_org_id: leadOrgId })
+        .eq('user_id', user.id)
+    }
 
-    const { data: emails } = await supabase
+    const { data: emails, error: emailsError } = await admin
       .from('lead_emails')
       .select('*')
       .eq('lead_id', id)
       .eq('org_id', leadOrgId)
       .order('created_at', { ascending: true })
 
-    const { data: interactions } = await supabase
+    if (emailsError) console.error('GET /api/leads/[id] lead_emails error:', emailsError)
+
+    const { data: interactions, error: interactionsError } = await admin
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', id)
       .eq('org_id', leadOrgId)
       .order('occurred_at', { ascending: true })
 
+    if (interactionsError) console.error('GET /api/leads/[id] lead_interactions error:', interactionsError)
+
     // Fetch related leads at the same company (by domain)
     let relatedLeads: Array<{ id: string; contact_name: string; contact_email: string | null; contact_title: string | null; contact_photo_url: string | null; stage: string; type: string }> = []
     const domain = lead.email_domain || (lead.contact_email ? lead.contact_email.split('@')[1] : null)
     if (domain) {
-      const { data: related } = await supabase
+      const { data: related, error: relatedError } = await admin
         .from('leads')
         .select('id, contact_name, contact_email, contact_title, contact_photo_url, stage, type')
         .eq('email_domain', domain)
         .eq('org_id', leadOrgId)
         .neq('id', id)
         .limit(10)
+      if (relatedError) console.error('GET /api/leads/[id] related leads error:', relatedError)
       relatedLeads = related || []
     }
 
