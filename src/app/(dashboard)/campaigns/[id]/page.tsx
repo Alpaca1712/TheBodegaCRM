@@ -329,50 +329,41 @@ export default function CampaignDetailPage() {
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
       </div>
 
-      <div className="grid min-w-0 gap-6 2xl:grid-cols-[minmax(0,1fr)_390px] 2xl:items-start">
+      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
         <section className="min-w-0 space-y-3">
-          <div className="flex flex-col gap-2 sm:flex-row sm:items-end sm:justify-between">
+          <div>
             <div>
               <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
               <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
                 {campaign.metrics.leads_enrolled} enrolled lead{campaign.metrics.leads_enrolled !== 1 ? 's' : ''} moving toward {cta.toLowerCase()}.
               </p>
             </div>
-            <Link
-              href={`/leads/new?type=customer&campaign_id=${campaign.id}`}
-              className="inline-flex h-9 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-sm font-medium text-white shadow-sm shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
-            >
-              <Plus className="h-4 w-4" />
-              New Lead
-            </Link>
           </div>
 
-          <div className="min-w-0 overflow-x-auto rounded-lg pb-2">
-            <div className="grid w-max gap-3" style={{ gridTemplateColumns: `repeat(${Math.max(campaign.stages.length, 1)}, 240px)` }}>
-              {campaign.stages.map((stage) => (
-                <StageColumn
-                  key={stage.id}
-                  stage={stage}
-                  stages={campaign.stages}
-                  campaignId={campaign.id}
-                  count={stageCounts[stage.stage_key] || 0}
-                  enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
-                  movingId={movingId}
-                  draggingEnrollmentId={draggingEnrollmentId}
-                  isDropTarget={dragOverStageKey === stage.stage_key}
-                  onMove={moveEnrollment}
-                  onDragStart={startDraggingEnrollment}
-                  onDragEnd={stopDraggingEnrollment}
-                  onDragOverStage={dragOverStage}
-                  onDragLeaveStage={leaveStageDropTarget}
-                  onDropStage={dropEnrollmentOnStage}
-                />
-              ))}
-            </div>
+          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3 min-[1800px]:grid-cols-4">
+            {campaign.stages.map((stage) => (
+              <StageColumn
+                key={stage.id}
+                stage={stage}
+                stages={campaign.stages}
+                campaignId={campaign.id}
+                count={stageCounts[stage.stage_key] || 0}
+                enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
+                movingId={movingId}
+                draggingEnrollmentId={draggingEnrollmentId}
+                isDropTarget={dragOverStageKey === stage.stage_key}
+                onMove={moveEnrollment}
+                onDragStart={startDraggingEnrollment}
+                onDragEnd={stopDraggingEnrollment}
+                onDragOverStage={dragOverStage}
+                onDragLeaveStage={leaveStageDropTarget}
+                onDropStage={dropEnrollmentOnStage}
+              />
+            ))}
           </div>
         </section>
 
-        <aside className="min-w-0 space-y-4">
+        <aside className="min-w-0 space-y-4 xl:sticky xl:top-4">
           <LeadOnboardingPanel
             campaign={campaign}
             leadSearch={leadSearch}
@@ -684,7 +675,7 @@ function StageColumn({
       onDragOver={(event) => onDragOverStage(event, stage.stage_key)}
       onDragLeave={(event) => onDragLeaveStage(event, stage.stage_key)}
       onDrop={(event) => void onDropStage(event, stage.stage_key)}
-      className={`min-h-[420px] rounded-lg border p-3 shadow-sm transition ${
+      className={`flex min-h-[320px] flex-col rounded-lg border p-3 shadow-sm transition ${
         isDropTarget
           ? 'border-red-300 bg-red-50/60 ring-2 ring-red-500/15 dark:border-red-900/60 dark:bg-red-950/20'
           : stage.is_goal
@@ -702,7 +693,7 @@ function StageColumn({
         </span>
       </div>
 
-      <div className="space-y-2">
+      <div className="flex-1 space-y-2">
         {enrollments.map((enrollment) => (
           <EnrollmentCard
             key={enrollment.id}
