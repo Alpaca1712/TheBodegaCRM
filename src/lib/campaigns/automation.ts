@@ -156,10 +156,10 @@ export function defaultCampaignAutomationSteps(templateKey: CampaignTemplateKey)
 
 export function formatWaitMinutes(minutes: number) {
   if (minutes <= 0) return 'Instant'
-  if (minutes < 60) return `${minutes}m`
   if (minutes % 1440 === 0) return `${minutes / 1440}d`
   if (minutes % 60 === 0) return `${minutes / 60}h`
-  return `${minutes}m`
+  const hours = minutes / 60
+  return `${Number(hours.toFixed(1))}h`
 }
 
 export function renderCampaignTemplate(input: {

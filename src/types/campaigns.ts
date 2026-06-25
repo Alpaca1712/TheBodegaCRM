@@ -106,6 +106,11 @@ export type CampaignAutomationEmailType =
   | 'lead_magnet'
   | 'break_up'
 
+export interface CampaignAutomationAttachment {
+  name: string
+  url: string
+}
+
 export interface CampaignAutomationStep {
   id: string
   campaign_id: string
@@ -122,7 +127,9 @@ export interface CampaignAutomationStep {
   move_to_stage_key: string | null
   stop_on_reply: boolean
   active: boolean
-  metadata: Record<string, unknown>
+  metadata: Record<string, unknown> & {
+    attachments?: CampaignAutomationAttachment[]
+  }
   created_at: string
   updated_at: string
 }

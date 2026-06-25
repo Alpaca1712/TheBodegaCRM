@@ -78,6 +78,52 @@ function addMinutes(value: string, minutes: number) {
   return new Date(new Date(value).getTime() + minutes * 60_000)
 }
 
+function campaignStepAttachments(step: CampaignAutomationStep) {
+  const attachments = step.metadata?.attachments
+  if (!Array.isArray(attachments)) return []
+
+  return attachments.filter((attachment): attachment is { name: string; url: string } => {
+    return typeof attachment?.name === 'string' && typeof attachment?.url === 'string'
+  })
+}
+
+function appendAttachmentLinks({
+  body,
+  step,
+  lead,
+  challengeLink,
+  leadMagnetName,
+}: {
+  body: string
+  step: CampaignAutomationStep
+  lead: SequenceLead
+  challengeLink: string
+  leadMagnetName: string
+}) {
+  const renderedAttachments = campaignStepAttachments(step)
+    .map((attachment) => {
+      const name = renderCampaignTemplate({
+        template: attachment.name,
+        lead,
+        challengeLink,
+        leadMagnetName,
+      }).trim()
+      const url = renderCampaignTemplate({
+        template: attachment.url,
+        lead,
+        challengeLink,
+        leadMagnetName,
+      }).trim()
+      return name && url ? { name, url } : null
+    })
+    .filter((attachment): attachment is { name: string; url: string } => Boolean(attachment))
+
+  if (renderedAttachments.length === 0) return body
+
+  const links = renderedAttachments.map((attachment) => `- ${attachment.name}: ${attachment.url}`).join('\n')
+  return `${body.trim()}\n\nAttachments:\n${links}`
+}
+
 function executionKey(stepId: string, enrollmentId: string) {
   return `${stepId}:${enrollmentId}`
 }
@@ -489,15 +535,22 @@ export async function runCampaignSequence({
           challengeLink,
           leadMagnetName,
         }).trim()
+        const bodyWithAttachments = appendAttachmentLinks({
+          body,
+          step,
+          lead,
+          challengeLink,
+          leadMagnetName,
+        })
 
-        if (!body) throw new Error('Sequence step has no email body')
+        if (!bodyWithAttachments) throw new Error('Sequence step has no email body')
         if (!sendingContext) throw new Error('No Gmail account connected')
 
         const sent = await sendGmailMessage(sendingContext.accessToken, {
           from: sendingContext.account.email_address,
           to: lead.contact_email,
           subject,
-          body,
+          body: bodyWithAttachments,
           threadId: latestThreadByLead.get(enrollment.lead_id) || null,
         })
         const sentAt = new Date().toISOString()
@@ -509,7 +562,7 @@ export async function runCampaignSequence({
           leadId: enrollment.lead_id,
           step,
           subject,
-          body,
+          body: bodyWithAttachments,
           sentAt,
           sent,
           account: sendingContext.account,

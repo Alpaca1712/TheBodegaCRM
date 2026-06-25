@@ -7,6 +7,15 @@ import {
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
+const attachmentSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(2048),
+})
+
+const sequenceStepMetadataSchema = z.object({
+  attachments: z.array(attachmentSchema).max(10).optional(),
+}).passthrough()
+
 const updateSequenceStepSchema = z.object({
   name: z.string().min(2).optional(),
   position: z.number().int().min(0).optional(),
@@ -19,6 +28,7 @@ const updateSequenceStepSchema = z.object({
   move_to_stage_key: z.string().nullable().optional(),
   stop_on_reply: z.boolean().optional(),
   active: z.boolean().optional(),
+  metadata: sequenceStepMetadataSchema.optional(),
 })
 
 export async function PATCH(

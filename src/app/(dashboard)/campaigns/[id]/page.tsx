@@ -13,6 +13,7 @@ import {
   ListChecks,
   Loader2,
   Mail,
+  Paperclip,
   Plus,
   RefreshCw,
   Search,
@@ -24,6 +25,7 @@ import {
 } from 'lucide-react'
 import { toast } from 'sonner'
 import type {
+  CampaignAutomationAttachment,
   CampaignAutomationChannel,
   CampaignAutomationEmailType,
   CampaignAutomationStep,
@@ -72,7 +74,8 @@ const automationEmailTypeLabels: Record<CampaignAutomationEmailType, string> = {
 interface SequenceStepForm {
   name: string
   trigger_stage_key: string
-  wait_minutes: string
+  wait_value: string
+  wait_unit: 'hours' | 'days'
   channel: CampaignAutomationChannel
   email_type: CampaignAutomationEmailType
   subject_template: string
@@ -80,6 +83,7 @@ interface SequenceStepForm {
   move_to_stage_key: string
   stop_on_reply: boolean
   active: boolean
+  attachments: CampaignAutomationAttachment[]
 }
 
 export default function CampaignDetailPage() {
@@ -651,7 +655,8 @@ function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
   return {
     name: '',
     trigger_stage_key: campaign.stages[0]?.stage_key || '',
-    wait_minutes: '0',
+    wait_value: '0',
+    wait_unit: 'hours',
     channel: 'email',
     email_type: 'follow_up_1',
     subject_template: '',
@@ -659,14 +664,72 @@ function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
     move_to_stage_key: '',
     stop_on_reply: true,
     active: false,
+    attachments: [],
   }
 }
 
+function sequenceDelayFromMinutes(minutes: number): Pick<SequenceStepForm, 'wait_value' | 'wait_unit'> {
+  if (minutes <= 0) return { wait_value: '0', wait_unit: 'hours' }
+  if (minutes % 1440 === 0) return { wait_value: String(minutes / 1440), wait_unit: 'days' }
+  const hours = minutes / 60
+  return {
+    wait_value: Number.isInteger(hours) ? String(hours) : String(Number(hours.toFixed(2))),
+    wait_unit: 'hours',
+  }
+}
+
+function minutesFromSequenceDelay(value: string, unit: SequenceStepForm['wait_unit']) {
+  const numericValue = Number(value)
+  if (!Number.isFinite(numericValue) || numericValue < 0) return null
+  return Math.round(numericValue * (unit === 'days' ? 1440 : 60))
+}
+
+function sequenceAttachmentsFromStep(step: CampaignAutomationStep): CampaignAutomationAttachment[] {
+  const attachments = step.metadata?.attachments
+  if (!Array.isArray(attachments)) return []
+
+  return attachments
+    .filter((attachment): attachment is CampaignAutomationAttachment => {
+      return typeof attachment?.name === 'string' && typeof attachment?.url === 'string'
+    })
+    .map((attachment) => ({
+      name: attachment.name,
+      url: attachment.url,
+    }))
+}
+
+function cleanSequenceAttachments(attachments: CampaignAutomationAttachment[]) {
+  const cleaned: CampaignAutomationAttachment[] = []
+
+  for (const attachment of attachments) {
+    const name = attachment.name.trim()
+    const url = attachment.url.trim()
+    if (!name && !url) continue
+    if (!name || !url) return { error: 'Each attachment needs a name and URL', attachments: cleaned }
+
+    try {
+      const parsed = new URL(url)
+      if (!['http:', 'https:'].includes(parsed.protocol)) {
+        return { error: 'Attachment URLs must start with http or https', attachments: cleaned }
+      }
+    } catch {
+      return { error: 'Attachment URLs must be valid links', attachments: cleaned }
+    }
+
+    cleaned.push({ name, url })
+  }
+
+  if (cleaned.length > 10) return { error: 'Use 10 or fewer attachments per step', attachments: cleaned.slice(0, 10) }
+  return { attachments: cleaned }
+}
+
 function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
+  const delay = sequenceDelayFromMinutes(step.wait_minutes)
   return {
     name: step.name,
     trigger_stage_key: step.trigger_stage_key,
-    wait_minutes: String(step.wait_minutes),
+    wait_value: delay.wait_value,
+    wait_unit: delay.wait_unit,
     channel: step.channel,
     email_type: step.email_type,
     subject_template: step.subject_template,
@@ -674,6 +737,7 @@ function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
     move_to_stage_key: step.move_to_stage_key || '',
     stop_on_reply: step.stop_on_reply,
     active: step.active,
+    attachments: sequenceAttachmentsFromStep(step),
   }
 }
 
@@ -699,10 +763,38 @@ function SequencePanel({
     () => [...steps].sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at)),
     [steps],
   )
+  const sequenceGroups = useMemo(() => {
+    const knownStageKeys = new Set(campaign.stages.map((stage) => stage.stage_key))
+    const knownGroups = campaign.stages.map((stage) => ({
+      stage,
+      steps: sortedSteps.filter((step) => step.trigger_stage_key === stage.stage_key),
+    }))
+    const unknownSteps = sortedSteps.filter((step) => !knownStageKeys.has(step.trigger_stage_key))
 
-  const beginCreate = () => {
+    if (unknownSteps.length === 0) return knownGroups
+    return [
+      ...knownGroups,
+      {
+        stage: {
+          id: 'unknown',
+          stage_key: 'unknown',
+          label: 'Other',
+          position: 999,
+          is_terminal: false,
+          is_goal: false,
+          created_at: '',
+        } as CampaignStage,
+        steps: unknownSteps,
+      },
+    ]
+  }, [campaign.stages, sortedSteps])
+
+  const beginCreate = (stageKey?: string) => {
     setEditingStepId('new')
-    setForm(emptySequenceForm(campaign))
+    setForm({
+      ...emptySequenceForm(campaign),
+      trigger_stage_key: stageKey || campaign.stages[0]?.stage_key || '',
+    })
   }
 
   const beginEdit = (step: CampaignAutomationStep) => {
@@ -729,9 +821,15 @@ function SequencePanel({
       return
     }
 
-    const waitMinutes = Number(form.wait_minutes)
-    if (!Number.isFinite(waitMinutes) || waitMinutes < 0) {
+    const waitMinutes = minutesFromSequenceDelay(form.wait_value, form.wait_unit)
+    if (waitMinutes === null) {
       toast.error('Wait time must be zero or higher')
+      return
+    }
+
+    const cleanedAttachments = cleanSequenceAttachments(form.attachments)
+    if (cleanedAttachments.error) {
+      toast.error(cleanedAttachments.error)
       return
     }
 
@@ -753,7 +851,7 @@ function SequencePanel({
             name: form.name.trim(),
             position: existingStep?.position ?? nextPosition,
             trigger_stage_key: form.trigger_stage_key,
-            wait_minutes: Math.round(waitMinutes),
+            wait_minutes: waitMinutes,
             channel: form.channel,
             email_type: form.email_type,
             subject_template: form.subject_template,
@@ -761,6 +859,10 @@ function SequencePanel({
             move_to_stage_key: form.move_to_stage_key || null,
             stop_on_reply: form.stop_on_reply,
             active: form.active,
+            metadata: {
+              ...(existingStep?.metadata || {}),
+              attachments: cleanedAttachments.attachments,
+            },
           }),
         },
       )
@@ -838,7 +940,7 @@ function SequencePanel({
           <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
             Run due
           </Button>
-          <Button type="button" size="sm" onClick={beginCreate} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+          <Button type="button" size="sm" onClick={() => beginCreate()} className="bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             New step
           </Button>
@@ -847,55 +949,93 @@ function SequencePanel({
 
       <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
         <div className="min-w-0">
-          <div className="grid gap-2 md:grid-cols-2 2xl:grid-cols-3">
-        {sortedSteps.map((step, index) => (
-          <div key={step.id} className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-            <button type="button" onClick={() => beginEdit(step)} className="w-full text-left">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    <span className="flex h-5 w-5 items-center justify-center rounded-full bg-white text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700">
-                      {index + 1}
-                    </span>
-                    <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.name}</p>
+          <div className="grid gap-3 lg:grid-cols-2 2xl:grid-cols-3">
+            {sequenceGroups.map((group) => (
+              <section key={group.stage.stage_key} className="min-w-0 rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <p className="truncate text-xs font-semibold uppercase tracking-wide text-zinc-700 dark:text-zinc-200">
+                      {group.stage.label}
+                    </p>
+                    <p className="mt-1 text-[11px] text-zinc-500 dark:text-zinc-400">
+                      {group.steps.length} step{group.steps.length !== 1 ? 's' : ''}
+                    </p>
                   </div>
-                  <p className="mt-1 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
-                    {stageLabel(campaign.stages, step.trigger_stage_key)} · {formatWaitMinutes(step.wait_minutes)}
-                  </p>
+                  {group.stage.stage_key !== 'unknown' && (
+                    <button
+                      type="button"
+                      onClick={() => beginCreate(group.stage.stage_key)}
+                      className="inline-flex h-7 shrink-0 items-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-[11px] font-medium text-zinc-600 hover:bg-zinc-100 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                    >
+                      <Plus className="h-3 w-3" />
+                      Add
+                    </button>
+                  )}
                 </div>
-                <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                  step.active
-                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
-                    : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
-                }`}>
-                  {step.active ? 'On' : 'Off'}
-                </span>
-              </div>
-              <div className="mt-2 flex flex-wrap gap-1.5">
-                <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
-                  {automationChannelLabels[step.channel]}
-                </span>
-                <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
-                  {automationEmailTypeLabels[step.email_type]}
-                </span>
-                {step.move_to_stage_key && (
-                  <span className="rounded bg-white px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-400 dark:ring-zinc-700">
-                    Move: {stageLabel(campaign.stages, step.move_to_stage_key)}
-                  </span>
-                )}
-              </div>
-            </button>
-          </div>
-        ))}
 
-        {sortedSteps.length === 0 && (
-          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40 md:col-span-2 2xl:col-span-3">
-            <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No sequence yet</p>
-            <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Add a step to automate this campaign stage.</p>
+                <div className="mt-3 space-y-2">
+                  {group.steps.map((step, index) => {
+                    const attachments = sequenceAttachmentsFromStep(step)
+                    return (
+                      <button
+                        key={step.id}
+                        type="button"
+                        onClick={() => beginEdit(step)}
+                        className="w-full rounded-md border border-zinc-200 bg-white p-3 text-left shadow-sm transition hover:border-zinc-300 dark:border-zinc-800 dark:bg-zinc-900/75 dark:hover:border-zinc-700"
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="min-w-0">
+                            <div className="flex flex-wrap items-center gap-1.5">
+                              <span className="flex h-5 w-5 items-center justify-center rounded-full bg-zinc-50 text-[10px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
+                                {index + 1}
+                              </span>
+                              <p className="truncate text-xs font-semibold text-zinc-900 dark:text-zinc-100">{step.name}</p>
+                            </div>
+                            <p className="mt-1 truncate text-[11px] text-zinc-500 dark:text-zinc-400">
+                              {step.wait_minutes <= 0 ? 'Immediately' : `After ${formatWaitMinutes(step.wait_minutes)}`}
+                            </p>
+                          </div>
+                          <span className={`shrink-0 rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                            step.active
+                              ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
+                              : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+                          }`}>
+                            {step.active ? 'On' : 'Off'}
+                          </span>
+                        </div>
+                        <div className="mt-2 flex flex-wrap gap-1.5">
+                          <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
+                            {automationChannelLabels[step.channel]}
+                          </span>
+                          <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
+                            {automationEmailTypeLabels[step.email_type]}
+                          </span>
+                          {attachments.length > 0 && (
+                            <span className="inline-flex items-center gap-1 rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
+                              <Paperclip className="h-3 w-3" />
+                              {attachments.length}
+                            </span>
+                          )}
+                          {step.move_to_stage_key && (
+                            <span className="rounded bg-zinc-50 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-400 dark:ring-zinc-700">
+                              Move: {stageLabel(campaign.stages, step.move_to_stage_key)}
+                            </span>
+                          )}
+                        </div>
+                      </button>
+                    )
+                  })}
+
+                  {group.steps.length === 0 && (
+                    <div className="rounded-md border border-dashed border-zinc-200 bg-white px-3 py-5 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">No automation in this stage</p>
+                    </div>
+                  )}
+                </div>
+              </section>
+            ))}
           </div>
-        )}
-          </div>
-      </div>
+        </div>
 
       {editingStepId && (
         <div className="h-fit rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
@@ -941,16 +1081,27 @@ function SequencePanel({
                   ))}
                 </select>
               </label>
-              <label className="block min-w-0">
-                <span className="text-[11px] font-medium text-zinc-500">Wait minutes</span>
-                <input
-                  type="number"
-                  min="0"
-                  value={form.wait_minutes}
-                  onChange={(event) => setForm((current) => ({ ...current, wait_minutes: event.target.value }))}
-                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                />
-              </label>
+              <div className="block min-w-0">
+                <span className="text-[11px] font-medium text-zinc-500">Wait</span>
+                <div className="mt-1 grid grid-cols-[minmax(0,1fr)_92px] gap-1.5">
+                  <input
+                    type="number"
+                    min="0"
+                    step={form.wait_unit === 'days' ? '0.5' : '1'}
+                    value={form.wait_value}
+                    onChange={(event) => setForm((current) => ({ ...current, wait_value: event.target.value }))}
+                    className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  />
+                  <select
+                    value={form.wait_unit}
+                    onChange={(event) => setForm((current) => ({ ...current, wait_unit: event.target.value as SequenceStepForm['wait_unit'] }))}
+                    className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  >
+                    <option value="hours">Hours</option>
+                    <option value="days">Days</option>
+                  </select>
+                </div>
+              </div>
             </div>
 
             <div className="grid grid-cols-2 gap-2">
@@ -1012,6 +1163,71 @@ function SequencePanel({
                 className="mt-1 w-full resize-y rounded-md border border-zinc-200 bg-white px-2 py-2 text-xs leading-5 text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </label>
+
+            <div className="rounded-md border border-zinc-200 p-2 dark:border-zinc-800">
+              <div className="flex items-center justify-between gap-2">
+                <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  Attachment links
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setForm((current) => ({
+                    ...current,
+                    attachments: [...current.attachments, { name: '', url: '' }],
+                  }))}
+                  className="rounded-md px-2 py-1 text-[11px] font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                >
+                  Add
+                </button>
+              </div>
+
+              <div className="mt-2 space-y-2">
+                {form.attachments.map((attachment, index) => (
+                  <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_28px] gap-1.5">
+                    <input
+                      value={attachment.name}
+                      placeholder="Name"
+                      onChange={(event) => setForm((current) => ({
+                        ...current,
+                        attachments: current.attachments.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, name: event.target.value } : item,
+                        ),
+                      }))}
+                      className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    />
+                    <input
+                      value={attachment.url}
+                      placeholder="https://..."
+                      onChange={(event) => setForm((current) => ({
+                        ...current,
+                        attachments: current.attachments.map((item, itemIndex) =>
+                          itemIndex === index ? { ...item, url: event.target.value } : item,
+                        ),
+                      }))}
+                      className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setForm((current) => ({
+                        ...current,
+                        attachments: current.attachments.filter((_item, itemIndex) => itemIndex !== index),
+                      }))}
+                      className="flex h-8 items-center justify-center rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                      aria-label="Remove attachment"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                ))}
+
+                {form.attachments.length === 0 && (
+                  <div className="rounded-md border border-dashed border-zinc-200 px-3 py-3 text-center text-xs text-zinc-400 dark:border-zinc-800">
+                    No attachments
+                  </div>
+                )}
+              </div>
+            </div>
 
             <div className="grid grid-cols-2 gap-2">
               <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-2 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">

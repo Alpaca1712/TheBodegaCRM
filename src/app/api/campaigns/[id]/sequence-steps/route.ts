@@ -7,6 +7,15 @@ import {
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
+const attachmentSchema = z.object({
+  name: z.string().trim().min(1).max(120),
+  url: z.string().trim().url().max(2048),
+})
+
+const sequenceStepMetadataSchema = z.object({
+  attachments: z.array(attachmentSchema).max(10).optional(),
+}).passthrough()
+
 const sequenceStepSchema = z.object({
   name: z.string().min(2),
   position: z.number().int().min(0).optional(),
@@ -19,6 +28,7 @@ const sequenceStepSchema = z.object({
   move_to_stage_key: z.string().nullable().optional(),
   stop_on_reply: z.boolean().default(true),
   active: z.boolean().default(false),
+  metadata: sequenceStepMetadataSchema.optional(),
 })
 
 async function assertCampaignAccess(supabase: Awaited<ReturnType<typeof getOrgScopedClient>>['supabase'], campaignId: string, orgId: string) {
