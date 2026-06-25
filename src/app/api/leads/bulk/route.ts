@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import { deleteLeadCampaignArtifacts } from '@/lib/leads/delete'
 import { LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const MAX_BULK = 500
@@ -35,6 +36,8 @@ export async function POST(request: NextRequest) {
     const { action, ids, updates } = validation.data
 
     if (action === 'delete') {
+      await deleteLeadCampaignArtifacts({ orgId, leadIds: ids })
+
       const { error, count } = await supabase
         .from('leads')
         .delete({ count: 'exact' })

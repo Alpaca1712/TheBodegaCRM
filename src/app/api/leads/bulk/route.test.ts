@@ -12,6 +12,7 @@ const {
   mockProfileSelect,
   mockProfileEqUser,
   mockProfileSingle,
+  mockDeleteLeadCampaignArtifacts,
 } = vi.hoisted(() => ({
   mockCreateClient: vi.fn(),
   mockGetUser: vi.fn(),
@@ -23,10 +24,15 @@ const {
   mockProfileSelect: vi.fn(),
   mockProfileEqUser: vi.fn(),
   mockProfileSingle: vi.fn(),
+  mockDeleteLeadCampaignArtifacts: vi.fn(),
 }))
 
 vi.mock('@/lib/supabase/server', () => ({
   createClient: mockCreateClient,
+}))
+
+vi.mock('@/lib/leads/delete', () => ({
+  deleteLeadCampaignArtifacts: mockDeleteLeadCampaignArtifacts,
 }))
 
 import { POST } from './route'
@@ -64,6 +70,7 @@ describe('POST /api/leads/bulk', () => {
     mockProfileSelect.mockReturnValue({ eq: mockProfileEqUser })
     mockProfileEqUser.mockReturnValue({ single: mockProfileSingle })
     mockProfileSingle.mockResolvedValue({ data: { active_org_id: ORG_ID }, error: null })
+    mockDeleteLeadCampaignArtifacts.mockResolvedValue(undefined)
     mockDelete.mockReturnValue({ in: mockIn })
     mockUpdate.mockReturnValue({ in: mockIn })
     mockIn.mockReturnValue({ eq: mockEq })
@@ -87,11 +94,26 @@ describe('POST /api/leads/bulk', () => {
 
     expect(response.status).toBe(200)
     expect(payload).toEqual({ success: true, affected: 2 })
+    expect(mockDeleteLeadCampaignArtifacts).toHaveBeenCalledWith({ orgId: ORG_ID, leadIds: LEAD_IDS })
     expect(mockFrom).toHaveBeenCalledWith('leads')
     expect(mockDelete).toHaveBeenCalledWith({ count: 'exact' })
     expect(mockIn).toHaveBeenCalledWith('id', LEAD_IDS)
     expect(mockEq).toHaveBeenCalledWith('org_id', ORG_ID)
     expect(mockUpdate).not.toHaveBeenCalled()
+  })
+
+  it('stops before deleting leads when campaign artifact cleanup fails', async () => {
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    mockDeleteLeadCampaignArtifacts.mockRejectedValueOnce(new Error('campaign cleanup failed'))
+
+    const response = await POST(jsonRequest({ action: 'delete', ids: LEAD_IDS }))
+    const payload = await response.json()
+
+    expect(response.status).toBe(500)
+    expect(payload).toEqual({ error: 'campaign cleanup failed' })
+    expect(mockDeleteLeadCampaignArtifacts).toHaveBeenCalledWith({ orgId: ORG_ID, leadIds: LEAD_IDS })
+    expect(mockDelete).not.toHaveBeenCalled()
+    consoleError.mockRestore()
   })
 
   it('updates allowed sales fields with a timestamp and user scope', async () => {
@@ -120,6 +142,7 @@ describe('POST /api/leads/bulk', () => {
     expect(mockIn).toHaveBeenCalledWith('id', LEAD_IDS)
     expect(mockEq).toHaveBeenCalledWith('org_id', ORG_ID)
     expect(mockDelete).not.toHaveBeenCalled()
+    expect(mockDeleteLeadCampaignArtifacts).not.toHaveBeenCalled()
   })
 
   it('rejects update requests with no allowed field changes', async () => {

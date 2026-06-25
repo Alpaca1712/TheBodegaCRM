@@ -63,7 +63,7 @@ export async function GET() {
         .eq('org_id', orgId),
       supabase
         .from('campaign_events')
-        .select('campaign_id,event_type')
+        .select('campaign_id,event_type,lead_id,enrollment_id')
         .in('campaign_id', ids)
         .eq('org_id', orgId),
     ])
@@ -78,7 +78,12 @@ export async function GET() {
     }
 
     const enrollments = enrollmentsRes.data || []
-    const events = (eventsRes.data || []) as Array<{ campaign_id: string; event_type: CampaignEventType }>
+    const events = (eventsRes.data || []) as Array<{
+      campaign_id: string
+      event_type: CampaignEventType
+      lead_id: string | null
+      enrollment_id: string | null
+    }>
 
     const data: CampaignListItem[] = ((campaigns || []) as Campaign[]).map((campaign) => ({
       ...campaign,

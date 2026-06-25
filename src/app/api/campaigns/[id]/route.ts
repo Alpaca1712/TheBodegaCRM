@@ -100,7 +100,12 @@ export async function GET(
       events,
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
-        events.map((event) => ({ campaign_id: event.campaign_id, event_type: event.event_type as CampaignEventType })),
+        events.map((event) => ({
+          campaign_id: event.campaign_id,
+          event_type: event.event_type as CampaignEventType,
+          lead_id: event.lead_id,
+          enrollment_id: event.enrollment_id,
+        })),
         id,
       ),
     }

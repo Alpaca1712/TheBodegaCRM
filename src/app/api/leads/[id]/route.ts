@@ -4,6 +4,7 @@ import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { createClient } from '@/lib/supabase/server'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
+import { deleteLeadCampaignArtifacts } from '@/lib/leads/delete'
 import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const updateSchema = z.object({
@@ -240,6 +241,8 @@ export async function DELETE(
     const { supabase, user, orgId } = await getOrgScopedClient()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+
+    await deleteLeadCampaignArtifacts({ orgId, leadIds: [id] })
 
     const { error, count } = await supabase
       .from('leads')

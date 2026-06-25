@@ -350,7 +350,12 @@ export function emptyCampaignMetrics() {
 
 export function campaignMetricsFromRows(
   enrollments: Array<{ campaign_id: string; stage_key?: string | null }>,
-  events: Array<{ campaign_id: string; event_type: CampaignEventType | string }>,
+  events: Array<{
+    campaign_id: string
+    event_type: CampaignEventType | string
+    lead_id?: string | null
+    enrollment_id?: string | null
+  }>,
   campaignId: string,
 ) {
   const metrics = emptyCampaignMetrics()
@@ -360,6 +365,7 @@ export function campaignMetricsFromRows(
 
   for (const event of events) {
     if (event.campaign_id !== campaignId) continue
+    if (!event.lead_id && !event.enrollment_id) continue
     if (event.event_type === 'email_sent' || event.event_type === 'pre_event_outreach_sent') metrics.initial_emails_sent += 1
     if (event.event_type === 'email_replied') metrics.replies += 1
     if (event.event_type === 'lead_magnet_sent') metrics.lead_magnets_sent += 1
