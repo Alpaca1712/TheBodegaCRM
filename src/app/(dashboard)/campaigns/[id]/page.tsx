@@ -367,7 +367,7 @@ export default function CampaignDetailPage() {
         </div>
       </header>
 
-      <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
+      <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
         <MetricCard icon={Send} label="Emails sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
         <MetricCard icon={Mail} label="Reply rate" value={`${replyRate}%`} tone="blue" />
@@ -507,14 +507,14 @@ function MetricCard({
   tone: MetricTone
 }) {
   return (
-    <div className="min-w-0 rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex items-center justify-between gap-3">
+    <div className="min-w-0 rounded-lg border border-zinc-200 bg-white p-2.5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex items-center justify-between gap-2">
         <p className="text-[11px] font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-        <div className={`flex h-7 w-7 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
+        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-md ring-1 ${metricTones[tone]}`}>
           <Icon className="h-3.5 w-3.5" />
         </div>
       </div>
-      <p className="mt-2 text-xl font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
+      <p className="mt-2 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
     </div>
   )
 }
