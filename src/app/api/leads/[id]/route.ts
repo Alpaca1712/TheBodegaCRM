@@ -73,28 +73,63 @@ export async function GET(
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
 
-    const { data: lead, error } = await supabase
+    let leadOrgId = orgId
+    const { data: activeOrgLead, error } = await supabase
       .from('leads')
       .select('*')
       .eq('id', id)
       .eq('org_id', orgId)
-      .single()
+      .maybeSingle()
 
     if (error) throw error
+
+    let lead = activeOrgLead
+
+    if (!lead) {
+      const { data: memberships } = await supabase
+        .from('org_members')
+        .select('org_id')
+        .eq('user_id', user.id)
+
+      const orgIds = (memberships || [])
+        .map((membership) => membership.org_id as string)
+        .filter((membershipOrgId) => membershipOrgId && membershipOrgId !== orgId)
+
+      if (orgIds.length > 0) {
+        const fallback = await supabase
+          .from('leads')
+          .select('*')
+          .eq('id', id)
+          .in('org_id', orgIds)
+          .maybeSingle()
+
+        if (fallback.error) throw fallback.error
+        if (fallback.data) {
+          lead = fallback.data
+          leadOrgId = fallback.data.org_id
+
+          await supabase
+            .from('profiles')
+            .update({ active_org_id: leadOrgId })
+            .eq('user_id', user.id)
+        }
+      }
+    }
+
     if (!lead) return NextResponse.json({ error: 'Not found' }, { status: 404 })
 
     const { data: emails } = await supabase
       .from('lead_emails')
       .select('*')
       .eq('lead_id', id)
-      .eq('org_id', orgId)
+      .eq('org_id', leadOrgId)
       .order('created_at', { ascending: true })
 
     const { data: interactions } = await supabase
       .from('lead_interactions')
       .select('*')
       .eq('lead_id', id)
-      .eq('org_id', orgId)
+      .eq('org_id', leadOrgId)
       .order('occurred_at', { ascending: true })
 
     // Fetch related leads at the same company (by domain)
@@ -105,7 +140,7 @@ export async function GET(
         .from('leads')
         .select('id, contact_name, contact_email, contact_title, contact_photo_url, stage, type')
         .eq('email_domain', domain)
-        .eq('org_id', orgId)
+        .eq('org_id', leadOrgId)
         .neq('id', id)
         .limit(10)
       relatedLeads = related || []

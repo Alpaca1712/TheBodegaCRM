@@ -507,6 +507,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
             <span>{emails.filter(e => e.direction === 'outbound').length} outbound sent</span>
             <span>{emails.filter(e => e.direction === 'inbound').length} inbound received</span>
             <span>Stage: {lead.stage}</span>
+            {campaignId && <span>Campaign attached</span>}
           </div>
         </div>
 
@@ -772,7 +773,7 @@ function VariantCard({
           className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-medium text-white bg-red-600 hover:bg-red-500 rounded-lg transition-colors disabled:opacity-50"
         >
           {isSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-          Save
+          Send
         </button>
       </div>
     </div>

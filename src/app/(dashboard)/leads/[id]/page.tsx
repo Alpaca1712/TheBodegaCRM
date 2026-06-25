@@ -81,6 +81,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
   const searchParams = useSearchParams();
   const urlTab = searchParams.get('tab');
   const urlFollowup = searchParams.get('followup');
+  const urlCampaignId = searchParams.get('campaign_id');
   const leadQuery = useLeadDetail(id);
   const memoriesQuery = useLeadMemories(id);
   const [lead, setLead] = useState<Lead | null>(null);
@@ -126,10 +127,9 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
 
   useEffect(() => {
     if (leadQuery.isError) {
-      toast.error('Lead not found');
-      router.push('/leads');
+      toast.error(leadQuery.error instanceof Error ? leadQuery.error.message : 'Lead not found');
     }
-  }, [leadQuery.isError, router]);
+  }, [leadQuery.error, leadQuery.isError]);
 
   useEffect(() => {
     if (memoriesQuery.isError) toast.error('Failed to load memories');
@@ -341,6 +341,34 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     return (
       <div className="flex items-center justify-center py-20">
         <Loader2 className="h-6 w-6 animate-spin text-zinc-400" />
+      </div>
+    );
+  }
+
+  if (leadQuery.isError && !lead) {
+    const message = leadQuery.error instanceof Error ? leadQuery.error.message : 'Lead not found';
+    return (
+      <div className="mx-auto flex min-h-[420px] max-w-lg flex-col items-center justify-center px-4 text-center">
+        <div className="rounded-2xl border border-zinc-200 bg-white p-8 shadow-sm dark:border-zinc-800 dark:bg-zinc-900">
+          <AlertCircle className="mx-auto h-8 w-8 text-red-500" />
+          <h1 className="mt-4 text-lg font-semibold text-zinc-950 dark:text-zinc-100">Lead could not load</h1>
+          <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{message}</p>
+          <div className="mt-5 flex justify-center gap-2">
+            <button
+              type="button"
+              onClick={() => void leadQuery.refetch()}
+              className="inline-flex h-9 items-center justify-center rounded-md bg-red-600 px-3 text-sm font-medium text-white transition hover:bg-red-500"
+            >
+              Retry
+            </button>
+            <Link
+              href="/leads"
+              className="inline-flex h-9 items-center justify-center rounded-md border border-zinc-200 px-3 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+            >
+              Back to leads
+            </Link>
+          </div>
+        </div>
       </div>
     );
   }
@@ -601,6 +629,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                   lead={lead}
                   emails={emails}
                   followUpType={urlFollowup}
+                  campaignId={urlCampaignId}
                   onEmailSaved={handleEmailSaved}
                 />
                 <EmailThread emails={emails} />

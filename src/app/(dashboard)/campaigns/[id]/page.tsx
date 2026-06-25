@@ -801,6 +801,17 @@ function EnrollmentCard({
         ))}
       </select>
 
+      {lead && (
+        <Link
+          href={buildCampaignComposeHref(lead.id, campaignId, enrollment.stage_key)}
+          title="Compose and send from connected Gmail with this campaign attached"
+          className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-zinc-200 bg-white px-2 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800 dark:hover:text-zinc-100"
+        >
+          <Mail className="h-3.5 w-3.5" />
+          Compose email
+        </Link>
+      )}
+
       <CopyChallengeLinkButton
         campaignId={campaignId}
         enrollmentId={enrollment.id}
@@ -808,6 +819,27 @@ function EnrollmentCard({
       />
     </article>
   )
+}
+
+function buildCampaignComposeHref(leadId: string, campaignId: string, stageKey: string) {
+  const params = new URLSearchParams({
+    tab: 'emails',
+    campaign_id: campaignId,
+  })
+
+  const followup = followupTypeForCampaignStage(stageKey)
+  if (followup) params.set('followup', followup)
+
+  return `/leads/${leadId}?${params.toString()}`
+}
+
+function followupTypeForCampaignStage(stageKey: string) {
+  if (stageKey === 'to_send' || stageKey === 'target_list') return 'initial'
+  if (stageKey === 'sent_waiting' || stageKey === 'outreach_sent') return 'follow_up_1'
+  if (stageKey === 'replied' || stageKey === 'meeting_scheduled') return 'reply_needed'
+  if (stageKey === 'lead_magnet_sent' || stageKey === 'diagnostic_offered') return 'follow_up_2'
+  if (stageKey === 'challenge_link_clicked' || stageKey === 'application_completed') return 'follow_up_1'
+  return null
 }
 
 function CopyChallengeLinkButton({
