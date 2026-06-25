@@ -136,7 +136,7 @@ export default function CampaignsPage() {
             <Megaphone className="h-3.5 w-3.5" />
             Campaign command center
           </div>
-          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">Campaigns</h1>
+          <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">Campaign command center</h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {campaigns.length} active funnel{campaigns.length !== 1 ? 's' : ''}
           </p>
