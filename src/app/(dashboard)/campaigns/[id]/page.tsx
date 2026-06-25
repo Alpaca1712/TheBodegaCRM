@@ -977,7 +977,7 @@ function SequencePanel({
         </div>
       </div>
 
-      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_minmax(320px,420px)]' : ''}`}>
+      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_520px] 2xl:grid-cols-[minmax(0,1fr)_minmax(620px,44%)]' : ''}`}>
         <div className="min-w-0 space-y-3">
           <section className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
             <div className="flex flex-col gap-2 md:flex-row md:items-center">
@@ -1104,11 +1104,16 @@ function SequencePanel({
         </div>
 
       {editingStepId && (
-        <div className="h-fit rounded-md border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-950/40">
+        <div className="h-fit rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
           <div className="flex items-center justify-between gap-2">
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500">
-              {editingStepId === 'new' ? 'New rule' : 'Edit rule'}
-            </h3>
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">
+                {editingStepId === 'new' ? 'New rule' : 'Edit rule'}
+              </h3>
+              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                Write the touch this rule sends.
+              </p>
+            </div>
             {editingStepId !== 'new' && (
               <button
                 type="button"
@@ -1124,23 +1129,23 @@ function SequencePanel({
             )}
           </div>
 
-          <div className="mt-3 space-y-2">
+          <div className="mt-4 space-y-3">
             <label className="block">
-              <span className="text-[11px] font-medium text-zinc-500">Name</span>
+              <span className="text-xs font-medium text-zinc-500">Name</span>
               <input
                 value={form.name}
                 onChange={(event) => setForm((current) => ({ ...current, name: event.target.value }))}
-                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <label className="block min-w-0">
-                <span className="text-[11px] font-medium text-zinc-500">When in</span>
+                <span className="text-xs font-medium text-zinc-500">When in</span>
                 <select
                   value={form.trigger_stage_key}
                   onChange={(event) => setForm((current) => ({ ...current, trigger_stage_key: event.target.value }))}
-                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   {campaign.stages.map((stage) => (
                     <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
@@ -1148,20 +1153,20 @@ function SequencePanel({
                 </select>
               </label>
               <div className="block min-w-0">
-                <span className="text-[11px] font-medium text-zinc-500">Wait</span>
-                <div className="mt-1 grid grid-cols-[minmax(0,1fr)_92px] gap-1.5">
+                <span className="text-xs font-medium text-zinc-500">Wait</span>
+                <div className="mt-1.5 grid grid-cols-[minmax(0,1fr)_112px] gap-2">
                   <input
                     type="number"
                     min="0"
                     step={form.wait_unit === 'days' ? '0.5' : '1'}
                     value={form.wait_value}
                     onChange={(event) => setForm((current) => ({ ...current, wait_value: event.target.value }))}
-                    className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   />
                   <select
                     value={form.wait_unit}
                     onChange={(event) => setForm((current) => ({ ...current, wait_unit: event.target.value as SequenceStepForm['wait_unit'] }))}
-                    className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                    className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                   >
                     <option value="hours">Hours</option>
                     <option value="days">Days</option>
@@ -1170,13 +1175,13 @@ function SequencePanel({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-2 gap-3">
               <label className="block min-w-0">
-                <span className="text-[11px] font-medium text-zinc-500">Channel</span>
+                <span className="text-xs font-medium text-zinc-500">Channel</span>
                 <select
                   value={form.channel}
                   onChange={(event) => setForm((current) => ({ ...current, channel: event.target.value as CampaignAutomationChannel }))}
-                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   {CAMPAIGN_AUTOMATION_CHANNELS.map((channel) => (
                     <option key={channel} value={channel}>{automationChannelLabels[channel]}</option>
@@ -1184,11 +1189,11 @@ function SequencePanel({
                 </select>
               </label>
               <label className="block min-w-0">
-                <span className="text-[11px] font-medium text-zinc-500">Email type</span>
+                <span className="text-xs font-medium text-zinc-500">Email type</span>
                 <select
                   value={form.email_type}
                   onChange={(event) => setForm((current) => ({ ...current, email_type: event.target.value as CampaignAutomationEmailType }))}
-                  className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                  className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
                   {CAMPAIGN_AUTOMATION_EMAIL_TYPES.map((emailType) => (
                     <option key={emailType} value={emailType}>{automationEmailTypeLabels[emailType]}</option>
@@ -1198,11 +1203,11 @@ function SequencePanel({
             </div>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-zinc-500">Move to</span>
+              <span className="text-xs font-medium text-zinc-500">Move to</span>
               <select
                 value={form.move_to_stage_key}
                 onChange={(event) => setForm((current) => ({ ...current, move_to_stage_key: event.target.value }))}
-                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               >
                 <option value="">No move</option>
                 {campaign.stages.map((stage) => (
@@ -1212,27 +1217,27 @@ function SequencePanel({
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-zinc-500">Subject</span>
+              <span className="text-xs font-medium text-zinc-500">Subject</span>
               <input
                 value={form.subject_template}
                 onChange={(event) => setForm((current) => ({ ...current, subject_template: event.target.value }))}
-                className="mt-1 h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </label>
 
             <label className="block">
-              <span className="text-[11px] font-medium text-zinc-500">Message</span>
+              <span className="text-xs font-medium text-zinc-500">Message</span>
               <textarea
                 value={form.body_template}
                 onChange={(event) => setForm((current) => ({ ...current, body_template: event.target.value }))}
-                rows={5}
-                className="mt-1 w-full resize-y rounded-md border border-zinc-200 bg-white px-2 py-2 text-xs leading-5 text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                rows={9}
+                className="mt-1.5 min-h-[220px] w-full resize-y rounded-md border border-zinc-200 bg-white px-3 py-3 text-sm leading-6 text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
             </label>
 
-            <div className="rounded-md border border-zinc-200 p-2 dark:border-zinc-800">
+            <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
               <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+                <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
                   <Paperclip className="h-3.5 w-3.5" />
                   Attachment links
                 </div>
@@ -1250,7 +1255,7 @@ function SequencePanel({
 
               <div className="mt-2 space-y-2">
                 {form.attachments.map((attachment, index) => (
-                  <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_28px] gap-1.5">
+                  <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px] gap-2">
                     <input
                       value={attachment.name}
                       placeholder="Name"
@@ -1260,7 +1265,7 @@ function SequencePanel({
                           itemIndex === index ? { ...item, name: event.target.value } : item,
                         ),
                       }))}
-                      className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                      className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                     />
                     <input
                       value={attachment.url}
@@ -1271,7 +1276,7 @@ function SequencePanel({
                           itemIndex === index ? { ...item, url: event.target.value } : item,
                         ),
                       }))}
-                      className="h-8 w-full rounded-md border border-zinc-200 bg-white px-2 text-xs text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                      className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                     />
                     <button
                       type="button"
@@ -1279,7 +1284,7 @@ function SequencePanel({
                         ...current,
                         attachments: current.attachments.filter((_item, itemIndex) => itemIndex !== index),
                       }))}
-                      className="flex h-8 items-center justify-center rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
+                      className="flex h-9 items-center justify-center rounded-md text-zinc-400 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950/30"
                       aria-label="Remove attachment"
                     >
                       <X className="h-3.5 w-3.5" />
@@ -1295,8 +1300,8 @@ function SequencePanel({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-2 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+            <div className="grid grid-cols-2 gap-3">
+              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
                 <input
                   type="checkbox"
                   checked={form.active}
@@ -1305,7 +1310,7 @@ function SequencePanel({
                 />
                 Active
               </label>
-              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-2 py-2 text-xs text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+              <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
                 <input
                   type="checkbox"
                   checked={form.stop_on_reply}
@@ -1316,11 +1321,11 @@ function SequencePanel({
               </label>
             </div>
 
-            <div className="flex items-center justify-end gap-2 pt-1">
+            <div className="flex items-center justify-end gap-2 border-t border-zinc-100 pt-4 dark:border-zinc-800">
               <Button type="button" size="sm" variant="ghost" onClick={cancelEdit} disabled={saving}>
                 Cancel
               </Button>
-              <Button type="button" size="sm" variant="destructive" onClick={() => void saveStep()} isLoading={saving}>
+              <Button type="button" variant="destructive" onClick={() => void saveStep()} isLoading={saving} className="min-w-[104px]">
                 Save
               </Button>
             </div>
