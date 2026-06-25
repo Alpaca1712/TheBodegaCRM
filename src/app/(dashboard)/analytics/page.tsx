@@ -3,7 +3,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import {
   Loader2,
-  TrendingUp,
   Mail,
   MessageSquare,
   CalendarCheck,

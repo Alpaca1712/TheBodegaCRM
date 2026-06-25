@@ -132,10 +132,6 @@ export default function CampaignsPage() {
     <div className="mx-auto max-w-[1500px] space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div>
-          <div className="mb-2 inline-flex items-center gap-2 rounded-full border border-red-100 bg-red-50 px-2.5 py-1 text-xs font-medium text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
-            <Megaphone className="h-3.5 w-3.5" />
-            Campaign command center
-          </div>
           <h1 className="text-2xl font-bold tracking-tight text-zinc-950 dark:text-zinc-100">Campaign command center</h1>
           <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
             {campaigns.length} active funnel{campaigns.length !== 1 ? 's' : ''}

@@ -2,26 +2,16 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Use vi.hoisted() for mock variables referenced inside vi.mock()
 const {
-  mockOrder,
-  mockEq,
   mockSelect,
   mockFrom,
   mockInsert,
   mockSingle,
-  mockLimit,
-  mockNot,
-  mockIn,
 } = vi.hoisted(() => {
-  const mockOrder = vi.fn()
-  const mockEq = vi.fn()
   const mockSelect = vi.fn()
   const mockFrom = vi.fn()
   const mockInsert = vi.fn()
   const mockSingle = vi.fn()
-  const mockLimit = vi.fn()
-  const mockNot = vi.fn()
-  const mockIn = vi.fn()
-  return { mockOrder, mockEq, mockSelect, mockFrom, mockInsert, mockSingle, mockLimit, mockNot, mockIn }
+  return { mockSelect, mockFrom, mockInsert, mockSingle }
 })
 
 vi.mock('@/lib/supabase/client', () => ({
