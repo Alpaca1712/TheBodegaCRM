@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useEffect, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useSyncExternalStore } from 'react';
 
 type Theme = 'light' | 'dark' | 'system';
 
@@ -21,15 +21,37 @@ const initialState: ThemeProviderState = {
 };
 
 const ThemeProviderContext = createContext<ThemeProviderState>(initialState);
+const THEME_CHANGE_EVENT = 'bodega-theme-change';
+
+function isTheme(value: string | null): value is Theme {
+  return value === 'light' || value === 'dark' || value === 'system';
+}
+
+function getStoredTheme(storageKey: string, defaultTheme: Theme): Theme {
+  const storedTheme = localStorage.getItem(storageKey);
+  return isTheme(storedTheme) ? storedTheme : defaultTheme;
+}
+
+function subscribeToThemeChanges(callback: () => void) {
+  window.addEventListener('storage', callback);
+  window.addEventListener(THEME_CHANGE_EVENT, callback);
+  return () => {
+    window.removeEventListener('storage', callback);
+    window.removeEventListener(THEME_CHANGE_EVENT, callback);
+  };
+}
 
 export function ThemeProvider({
   children,
   defaultTheme = 'system',
   storageKey = 'theme',
 }: ThemeProviderProps) {
-  const [theme, setTheme] = useState<Theme>(
-    () => (typeof window !== 'undefined' ? (localStorage.getItem(storageKey) as Theme) : defaultTheme) || defaultTheme
+  const getSnapshot = useCallback(
+    () => getStoredTheme(storageKey, defaultTheme),
+    [defaultTheme, storageKey]
   );
+  const getServerSnapshot = useCallback(() => defaultTheme, [defaultTheme]);
+  const theme = useSyncExternalStore(subscribeToThemeChanges, getSnapshot, getServerSnapshot);
 
   useEffect(() => {
     const root = window.document.documentElement;
@@ -48,13 +70,15 @@ export function ThemeProvider({
     }
   }, [theme]);
 
-  const value = {
+  const setTheme = useCallback((theme: Theme) => {
+    localStorage.setItem(storageKey, theme);
+    window.dispatchEvent(new Event(THEME_CHANGE_EVENT));
+  }, [storageKey]);
+
+  const value = useMemo(() => ({
     theme,
-    setTheme: (theme: Theme) => {
-      localStorage.setItem(storageKey, theme);
-      setTheme(theme);
-    },
-  };
+    setTheme,
+  }), [setTheme, theme]);
 
   return (
     <ThemeProviderContext.Provider value={value}>
