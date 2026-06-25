@@ -26,8 +26,16 @@ const landingLeadSchema = z.object({
   contact_name: z.string().min(1),
   contact_email: z.string().email(),
   contact_title: z.string().optional().nullable(),
+  contact_phone: z.string().optional().nullable(),
+  contact_linkedin: z.string().optional().nullable(),
+  contact_twitter: z.string().optional().nullable(),
   company_name: z.string().optional().nullable(),
+  product_name: z.string().optional().nullable(),
   company_website: z.string().optional().nullable(),
+  company_description: z.string().optional().nullable(),
+  attack_surface_notes: z.string().optional().nullable(),
+  personal_details: z.string().optional().nullable(),
+  smykm_hooks: z.array(z.string()).optional(),
   notes: z.string().optional().nullable(),
   utm_source: z.string().optional().nullable(),
   utm_medium: z.string().optional().nullable(),
@@ -123,6 +131,83 @@ function stageForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
   return 'researched'
 }
 
+type LandingInput = z.infer<typeof landingLeadSchema> & Record<string, unknown>
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
+}
+
+function landingRecords(input: LandingInput) {
+  const metadata = isRecord(input.metadata) ? input.metadata : {}
+  return [
+    input,
+    metadata,
+    isRecord(metadata.lead) ? metadata.lead : {},
+    isRecord(metadata.profile) ? metadata.profile : {},
+    isRecord(metadata.application) ? metadata.application : {},
+    isRecord(metadata.challenge) ? metadata.challenge : {},
+    isRecord(metadata.answers) ? metadata.answers : {},
+    isRecord(metadata.qualification) ? metadata.qualification : {},
+  ]
+}
+
+function landingString(input: LandingInput, keys: string[]) {
+  for (const record of landingRecords(input)) {
+    for (const key of keys) {
+      const value = record[key]
+      if (typeof value === 'string' && value.trim()) return value.trim()
+    }
+  }
+  return null
+}
+
+function landingStringArray(input: LandingInput, keys: string[]) {
+  for (const record of landingRecords(input)) {
+    for (const key of keys) {
+      const value = record[key]
+      if (Array.isArray(value)) {
+        const cleaned = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
+        if (cleaned.length > 0) return cleaned
+      }
+    }
+  }
+  return []
+}
+
+function sourceTypeForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
+  return intent === 'conference_scan' ? 'outreach' : 'website'
+}
+
+function shouldReplaceSourceType(sourceType: unknown) {
+  return !sourceType || sourceType === 'manual' || sourceType === 'other'
+}
+
+function buildLandingProfileFieldPatch(input: LandingInput, existingLead?: Record<string, unknown> | null) {
+  const patch: Record<string, unknown> = {}
+  const setIfPresent = (column: string, value: string | null, replace = false) => {
+    if (!value) return
+    if (replace || !existingLead || !existingLead[column]) patch[column] = value
+  }
+
+  setIfPresent('contact_title', landingString(input, ['contact_title', 'contactTitle', 'title', 'role']))
+  setIfPresent('contact_phone', landingString(input, ['contact_phone', 'contactPhone', 'phone', 'phone_number', 'phoneNumber']))
+  setIfPresent('contact_linkedin', landingString(input, ['contact_linkedin', 'contactLinkedin', 'linkedin', 'linkedin_url', 'linkedinUrl']))
+  setIfPresent('contact_twitter', landingString(input, ['contact_twitter', 'contactTwitter', 'twitter', 'twitter_url', 'twitterUrl']))
+  setIfPresent('product_name', landingString(input, ['product_name', 'productName', 'product', 'product_context', 'productContext']))
+  setIfPresent('company_website', landingString(input, ['company_website', 'companyWebsite', 'website', 'url']))
+  setIfPresent('company_description', landingString(input, ['company_description', 'companyDescription', 'company_context', 'companyContext']))
+  setIfPresent('attack_surface_notes', landingString(input, ['attack_surface_notes', 'attackSurfaceNotes', 'security_requirements', 'securityRequirements', 'pentest_requirements', 'pentestRequirements']))
+  setIfPresent('personal_details', landingString(input, ['personal_details', 'personalDetails', 'context', 'additional_context', 'additionalContext']))
+
+  const hooks = landingStringArray(input, ['smykm_hooks', 'smykmHooks', 'hooks', 'personalization_hooks', 'personalizationHooks'])
+  if (hooks.length > 0) {
+    const existingHooks = Array.isArray(existingLead?.smykm_hooks) ? existingLead.smykm_hooks.filter((hook): hook is string => typeof hook === 'string') : []
+    patch.smykm_hooks = Array.from(new Set([...existingHooks, ...hooks])).slice(0, 8)
+  }
+
+  return patch
+}
+
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
@@ -131,7 +216,7 @@ export async function POST(request: NextRequest) {
       return json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
     }
 
-    const input = validation.data
+    const input = validation.data as LandingInput
     const supabase = createAdminClient()
 
     let campaignQuery = supabase.from('campaigns').select('*').limit(1)
@@ -204,6 +289,7 @@ export async function POST(request: NextRequest) {
       const challengeLeadPatch = hasStructuredChallengeProfile
         ? buildLeadProfilePatchFromChallenge(challengeProfile)
         : {}
+      const landingProfilePatch = buildLandingProfileFieldPatch(input)
       const leadInsertPayload = {
         org_id: orgId,
         user_id: userId,
@@ -215,11 +301,12 @@ export async function POST(request: NextRequest) {
         company_website: input.company_website || null,
         email_domain: emailDomain,
         stage: stageForIntent(input.intent),
-        source_type: input.intent === 'conference_scan' ? 'outreach' : 'website',
+        source_type: sourceTypeForIntent(input.intent),
         source,
         lead_token: leadToken,
         priority: input.intent === 'discovery' ? 'high' : 'medium',
         notes: manualNotes,
+        ...landingProfilePatch,
         ...challengeLeadPatch,
       }
       if (input.intent === 'discovery') leadInsertPayload.priority = 'high'
@@ -257,12 +344,15 @@ export async function POST(request: NextRequest) {
       const challengeLeadPatch = hasStructuredChallengeProfile
         ? buildLeadProfilePatchFromChallenge(challengeProfile, existingLead)
         : {}
+      const landingProfilePatch = buildLandingProfileFieldPatch(input, existingLead)
+      const sourceType = shouldReplaceSourceType(existingLead.source_type)
+        ? sourceTypeForIntent(input.intent)
+        : existingLead.source_type
       let leadUpdatePayload: Record<string, unknown> = {
         lead_token: existingLead.lead_token || leadToken,
         source: existingLead.source || source,
-        source_type: existingLead.source_type || (input.intent === 'conference_scan' ? 'outreach' : 'website'),
-        company_website: existingLead.company_website || input.company_website || null,
-        contact_title: existingLead.contact_title || input.contact_title || null,
+        source_type: sourceType,
+        ...landingProfilePatch,
         ...challengeLeadPatch,
       }
       if (input.intent === 'discovery') leadUpdatePayload.priority = 'high'

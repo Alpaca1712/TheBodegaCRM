@@ -306,6 +306,10 @@ function buildChallengeSection(profile: ChallengeProfile) {
   return lines.length > 0 ? lines.join('\n') : null
 }
 
+export function challengeProfileToAttackSurfaceNotes(profile: ChallengeProfile) {
+  return buildChallengeSection(profile)
+}
+
 function mergeValues(existing: string[] | null | undefined, incoming: string[]) {
   return uniqueStrings([...(existing || []), ...incoming])
 }

@@ -4,6 +4,10 @@ import { useState, useEffect, use } from 'react';
 import { useRouter } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import LeadForm from '@/components/leads/lead-form';
+import {
+  challengeProfileToAttackSurfaceNotes,
+  getLeadChallengeProfile,
+} from '@/lib/leads/challenge-profile';
 import type { Lead, LeadFormValues } from '@/types/leads';
 
 export default function EditLeadPage({ params }: { params: Promise<{ id: string }> }) {
@@ -37,6 +41,12 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
 
   if (!lead) return null;
 
+  const challengeProfile = getLeadChallengeProfile(lead);
+  const challengeAttackSurface = challengeProfile ? challengeProfileToAttackSurfaceNotes(challengeProfile) : null;
+  const sourceType =
+    lead.source_type === 'manual' && challengeProfile
+      ? 'website'
+      : lead.source_type;
   const defaultValues: Partial<LeadFormValues> = {
     type: lead.type,
     company_name: lead.company_name,
@@ -45,15 +55,19 @@ export default function EditLeadPage({ params }: { params: Promise<{ id: string 
     contact_name: lead.contact_name,
     contact_title: lead.contact_title,
     contact_email: lead.contact_email,
+    contact_phone: lead.contact_phone,
     contact_twitter: lead.contact_twitter,
     contact_linkedin: lead.contact_linkedin,
-    company_description: lead.company_description,
-    attack_surface_notes: lead.attack_surface_notes,
+    company_description: lead.company_description || challengeProfile?.companyDescription || null,
+    attack_surface_notes: lead.attack_surface_notes || challengeAttackSurface,
     investment_thesis_notes: lead.investment_thesis_notes,
     personal_details: lead.personal_details,
-    smykm_hooks: lead.smykm_hooks || [],
+    smykm_hooks: lead.smykm_hooks?.length ? lead.smykm_hooks : challengeProfile?.hooks || [],
+    research_sources: lead.research_sources || [],
     stage: lead.stage,
+    source_type: sourceType,
     source: lead.source,
+    lead_token: lead.lead_token,
     priority: lead.priority,
     notes: lead.notes,
   };
