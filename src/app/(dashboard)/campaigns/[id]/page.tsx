@@ -295,8 +295,6 @@ export default function CampaignDetailPage() {
               <span>{CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}</span>
               <span className="hidden text-zinc-300 sm:inline">/</span>
               <span>{templateName}</span>
-              <span className="hidden text-zinc-300 sm:inline">/</span>
-              <span>campaign_id attribution</span>
             </div>
           </div>
 
@@ -314,9 +312,9 @@ export default function CampaignDetailPage() {
         </div>
 
         <div className="mt-5 grid gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:grid-cols-2 lg:grid-cols-4">
-          <HeaderFact label="Primary CTA" value={cta} />
+          <HeaderFact label="Goal" value={cta} />
           <HeaderFact label="Available leads" value={`${availableLeads.length} not enrolled`} />
-          <HeaderFact label="Board columns" value={`${campaign.stages.length} stages`} />
+          <HeaderFact label="Funnel stages" value={`${campaign.stages.length} stages`} />
           <HeaderFact label="Landing page" value={formatLandingLinkLabel(campaign.landing_url)} />
         </div>
       </header>
@@ -329,18 +327,25 @@ export default function CampaignDetailPage() {
         <MetricCard icon={CheckCircle2} label="Meeting rate" value={`${meetingRate}%`} tone="zinc" />
       </div>
 
-      <div className="grid min-w-0 gap-6 xl:grid-cols-[minmax(0,1fr)_360px] xl:items-start">
-        <section className="min-w-0 space-y-3">
-          <div>
-            <div>
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
-                {campaign.metrics.leads_enrolled} enrolled lead{campaign.metrics.leads_enrolled !== 1 ? 's' : ''} moving toward {cta.toLowerCase()}.
-              </p>
-            </div>
+      <section className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between">
+          <div className="min-w-0">
+            <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Campaign funnel</h2>
+            <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">
+              {campaign.metrics.leads_enrolled} enrolled lead{campaign.metrics.leads_enrolled !== 1 ? 's' : ''} moving toward {cta.toLowerCase()}.
+            </p>
           </div>
+          <Link
+            href={`/leads/new?type=customer&campaign_id=${campaign.id}`}
+            className="inline-flex h-9 shrink-0 items-center justify-center gap-1.5 rounded-md bg-red-600 px-3 text-sm font-medium text-white shadow-sm shadow-red-600/20 transition hover:bg-red-500 focus:outline-none focus:ring-2 focus:ring-red-500/30"
+          >
+            <Plus className="h-4 w-4" />
+            New Lead
+          </Link>
+        </div>
 
-          <div className="grid min-w-0 grid-cols-1 gap-3 md:grid-cols-2 2xl:grid-cols-3 min-[1800px]:grid-cols-4">
+        <div className="-mx-4 mt-4 overflow-x-auto px-4 pb-2">
+          <div className="flex w-max gap-3">
             {campaign.stages.map((stage) => (
               <StageColumn
                 key={stage.id}
@@ -361,27 +366,27 @@ export default function CampaignDetailPage() {
               />
             ))}
           </div>
-        </section>
+        </div>
+      </section>
 
-        <aside className="min-w-0 space-y-4 xl:sticky xl:top-4">
-          <LeadOnboardingPanel
-            campaign={campaign}
-            leadSearch={leadSearch}
-            setLeadSearch={setLeadSearch}
-            availableLeads={availableLeads}
-            filteredLeads={filteredAvailableLeads}
-            selectedLeadIds={selectedLeadIds}
-            selectedLeads={selectedLeads}
-            enrolling={enrolling}
-            onToggleLead={toggleLead}
-            onSelectVisible={selectVisibleLeads}
-            onClearSelected={clearSelectedLeads}
-            onEnrollSelected={enrollSelectedLeads}
-          />
-          <SequencePanel steps={sequenceSteps} />
-          <EventFeed events={campaign.events} />
-        </aside>
-      </div>
+      <section className="grid min-w-0 gap-4 xl:grid-cols-[minmax(0,1fr)_360px] 2xl:grid-cols-[minmax(0,1fr)_340px_340px]">
+        <LeadOnboardingPanel
+          campaign={campaign}
+          leadSearch={leadSearch}
+          setLeadSearch={setLeadSearch}
+          availableLeads={availableLeads}
+          filteredLeads={filteredAvailableLeads}
+          selectedLeadIds={selectedLeadIds}
+          selectedLeads={selectedLeads}
+          enrolling={enrolling}
+          onToggleLead={toggleLead}
+          onSelectVisible={selectVisibleLeads}
+          onClearSelected={clearSelectedLeads}
+          onEnrollSelected={enrollSelectedLeads}
+        />
+        <SequencePanel steps={sequenceSteps} />
+        <EventFeed events={campaign.events} />
+      </section>
     </div>
   )
 }
@@ -675,7 +680,7 @@ function StageColumn({
       onDragOver={(event) => onDragOverStage(event, stage.stage_key)}
       onDragLeave={(event) => onDragLeaveStage(event, stage.stage_key)}
       onDrop={(event) => void onDropStage(event, stage.stage_key)}
-      className={`flex min-h-[320px] flex-col rounded-lg border p-3 shadow-sm transition ${
+      className={`flex min-h-[320px] w-[280px] max-w-[82vw] shrink-0 flex-col rounded-lg border p-3 shadow-sm transition ${
         isDropTarget
           ? 'border-red-300 bg-red-50/60 ring-2 ring-red-500/15 dark:border-red-900/60 dark:bg-red-950/20'
           : stage.is_goal
