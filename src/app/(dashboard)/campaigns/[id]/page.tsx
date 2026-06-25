@@ -9,6 +9,7 @@ import {
   CheckCircle2,
   Clock3,
   GripVertical,
+  Info,
   Link2,
   ListChecks,
   Loader2,
@@ -70,6 +71,16 @@ const automationEmailTypeLabels: Record<CampaignAutomationEmailType, string> = {
   lead_magnet: 'Lead magnet',
   break_up: 'Break-up',
 }
+
+const campaignTemplateTokens = [
+  { token: '{{first_name}}', description: 'First name' },
+  { token: '{{contact_name}}', description: 'Full contact name' },
+  { token: '{{company_name}}', description: 'Company name' },
+  { token: '{{contact_title}}', description: 'Contact title' },
+  { token: '{{contact_email}}', description: 'Contact email' },
+  { token: '{{challenge_link}}', description: 'Tracked challenge link' },
+  { token: '{{lead_magnet}}', description: 'Lead magnet or offer name' },
+] as const
 
 interface SequenceStepForm {
   name: string
@@ -1225,15 +1236,40 @@ function SequencePanel({
               />
             </label>
 
-            <label className="block">
-              <span className="text-xs font-medium text-zinc-500">Message</span>
+            <div className="block">
+              <div className="mb-1.5 flex items-center gap-2">
+                <span className="text-xs font-medium text-zinc-500">Message</span>
+                <div className="group relative inline-flex">
+                  <button
+                    type="button"
+                    className="flex h-5 w-5 items-center justify-center rounded-full border border-zinc-200 text-zinc-500 transition hover:border-red-200 hover:bg-red-50 hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:text-zinc-400 dark:hover:border-red-900/60 dark:hover:bg-red-950/30"
+                    aria-label="Show template variables"
+                  >
+                    <Info className="h-3.5 w-3.5" />
+                  </button>
+                  <div className="pointer-events-auto absolute left-0 top-7 z-30 hidden w-[360px] rounded-md border border-zinc-200 bg-white p-3 text-left shadow-xl group-focus-within:block group-hover:block dark:border-zinc-800 dark:bg-zinc-950">
+                    <p className="text-xs font-semibold text-zinc-950 dark:text-zinc-100">Template variables</p>
+                    <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                      Drop these into subject or message. They resolve per lead before Gmail sends.
+                    </p>
+                    <div className="mt-3 grid gap-1.5">
+                      {campaignTemplateTokens.map((item) => (
+                        <div key={item.token} className="flex items-center justify-between gap-3 rounded-md bg-zinc-50 px-2 py-1.5 dark:bg-zinc-900">
+                          <code className="whitespace-nowrap text-xs font-semibold text-red-600 dark:text-red-300">{item.token}</code>
+                          <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">{item.description}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
               <textarea
                 value={form.body_template}
                 onChange={(event) => setForm((current) => ({ ...current, body_template: event.target.value }))}
                 rows={9}
                 className="mt-1.5 min-h-[220px] w-full resize-y rounded-md border border-zinc-200 bg-white px-3 py-3 text-sm leading-6 text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
               />
-            </label>
+            </div>
 
             <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
               <div className="flex items-center justify-between gap-2">
