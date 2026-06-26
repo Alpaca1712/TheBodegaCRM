@@ -64,6 +64,14 @@ interface LeadThread {
   created_at: string
 }
 
+interface SentLeadEmail {
+  id: string
+  lead_id: string
+  email_type: CampaignAutomationStep['email_type']
+  sent_at: string | null
+  created_at: string
+}
+
 export interface CampaignSequenceRunResult {
   campaign_id: string
   due: number
@@ -163,6 +171,27 @@ function renderFileAttachments({
 
 function executionKey(stepId: string, enrollmentId: string) {
   return `${stepId}:${enrollmentId}`
+}
+
+function sentEmailKey(leadId: string, emailType: CampaignAutomationStep['email_type']) {
+  return `${leadId}:${emailType}`
+}
+
+function readableErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error) return error.message
+  if (typeof error === 'object' && error && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+  return fallback
+}
+
+function isUniqueViolation(error: unknown) {
+  return Boolean(
+    typeof error === 'object' &&
+      error &&
+      'code' in error &&
+      error.code === '23505',
+  )
 }
 
 function eventOwnerKey(event: Pick<SequenceEvent, 'enrollment_id' | 'lead_id'>) {
@@ -324,6 +353,61 @@ async function insertSentLeadEmail({
       .single()
   }
 
+  if (isUniqueViolation(inserted.error)) {
+    const existingQuery = () =>
+      supabase
+        .from('lead_emails')
+        .select('id')
+        .eq('lead_id', leadId)
+        .eq('org_id', orgId)
+        .eq('email_type', step.email_type)
+        .eq('direction', 'outbound')
+
+    let existingResult = campaignId
+      ? await existingQuery().eq('campaign_id', campaignId).maybeSingle()
+      : await existingQuery().is('campaign_id', null).maybeSingle()
+
+    if (isMissingColumn(existingResult.error, 'campaign_id')) {
+      existingResult = await existingQuery().maybeSingle()
+    }
+
+    if (existingResult.error) throw existingResult.error
+    const existingEmail = existingResult.data
+
+    if (existingEmail?.id) {
+      let updated = await supabase
+        .from('lead_emails')
+        .update(insertPayload)
+        .eq('id', existingEmail.id)
+        .eq('org_id', orgId)
+        .select('id')
+        .single()
+
+      if (isMissingColumn(updated.error, 'sent_via')) {
+        updated = await supabase
+          .from('lead_emails')
+          .update(omitColumn(insertPayload, 'sent_via'))
+          .eq('id', existingEmail.id)
+          .eq('org_id', orgId)
+          .select('id')
+          .single()
+      }
+
+      if (isMissingColumn(updated.error, 'campaign_id')) {
+        updated = await supabase
+          .from('lead_emails')
+          .update(omitColumn(omitColumn(insertPayload, 'campaign_id'), 'sent_via'))
+          .eq('id', existingEmail.id)
+          .eq('org_id', orgId)
+          .select('id')
+          .single()
+      }
+
+      if (updated.error) throw updated.error
+      return updated.data as { id: string }
+    }
+  }
+
   if (inserted.error) throw inserted.error
   return inserted.data as { id: string }
 }
@@ -333,10 +417,64 @@ async function updateExecution(
   executionId: string,
   updates: Record<string, unknown>,
 ) {
-  const { error } = await supabase
+  const payload = { ...updates, executed_at: new Date().toISOString() }
+  let updated = await supabase
     .from('campaign_sequence_executions')
-    .update({ ...updates, executed_at: new Date().toISOString() })
+    .update(payload)
     .eq('id', executionId)
+
+  if (isMissingColumn(updated.error, 'lead_email_id') && 'lead_email_id' in payload) {
+    updated = await supabase
+      .from('campaign_sequence_executions')
+      .update(omitColumn(payload, 'lead_email_id'))
+      .eq('id', executionId)
+  }
+
+  if (updated.error) throw updated.error
+}
+
+async function moveEnrollmentToStage({
+  supabase,
+  campaignId,
+  enrollmentId,
+  orgId,
+  stageKey,
+  now,
+}: {
+  supabase: SupabaseClient
+  campaignId: string
+  enrollmentId: string
+  orgId: string
+  stageKey: string
+  now: string
+}) {
+  const { data: stage, error: stageError } = await supabase
+    .from('campaign_stages')
+    .select('stage_key,is_terminal,is_goal')
+    .eq('campaign_id', campaignId)
+    .eq('org_id', orgId)
+    .eq('stage_key', stageKey)
+    .maybeSingle()
+
+  if (stageError) throw stageError
+  if (!stage) return
+
+  const status = stage.is_goal
+    ? 'completed'
+    : stage.is_terminal
+      ? 'exited'
+      : 'active'
+
+  const { error } = await supabase
+    .from('campaign_enrollments')
+    .update({
+      stage_key: stageKey,
+      status,
+      completed_at: stage.is_goal ? now : null,
+      last_event_at: now,
+    })
+    .eq('id', enrollmentId)
+    .eq('org_id', orgId)
 
   if (error) throw error
 }
@@ -564,6 +702,31 @@ export async function runCampaignSequence({
   if (eventsError) throw eventsError
   if (threadsError) throw threadsError
 
+  const sentEmailRows = await supabase
+    .from('lead_emails')
+    .select('id,lead_id,email_type,sent_at,created_at,campaign_id,direction')
+    .eq('org_id', orgId)
+    .eq('campaign_id', campaignId)
+    .eq('direction', 'outbound')
+    .in('lead_id', leadIds)
+
+  let sentEmailData: unknown[] | null = sentEmailRows.data
+  let sentEmailError = sentEmailRows.error
+
+  if (isMissingColumn(sentEmailRows.error, 'campaign_id')) {
+    const fallbackSentEmailRows = await supabase
+      .from('lead_emails')
+      .select('id,lead_id,email_type,sent_at,created_at,direction')
+      .eq('org_id', orgId)
+      .eq('direction', 'outbound')
+      .in('lead_id', leadIds)
+
+    sentEmailData = fallbackSentEmailRows.data
+    sentEmailError = fallbackSentEmailRows.error
+  }
+
+  if (sentEmailError) throw sentEmailError
+
   const executionByKey = new Map(
     ((executions || []) as SequenceExecution[]).map((execution) => [
       executionKey(execution.campaign_sequence_step_id, execution.campaign_enrollment_id),
@@ -577,6 +740,16 @@ export async function runCampaignSequence({
   for (const thread of (threadRows || []) as LeadThread[]) {
     if (thread.gmail_thread_id && !latestThreadByLead.has(thread.lead_id)) {
       latestThreadByLead.set(thread.lead_id, thread.gmail_thread_id)
+    }
+  }
+  const sentEmailByLeadAndType = new Map<string, SentLeadEmail>()
+  for (const email of (sentEmailData || []) as SentLeadEmail[]) {
+    const key = sentEmailKey(email.lead_id, email.email_type)
+    const current = sentEmailByLeadAndType.get(key)
+    const emailAt = new Date(email.sent_at || email.created_at).getTime()
+    const currentAt = current ? new Date(current.sent_at || current.created_at).getTime() : 0
+    if (!current || emailAt > currentAt) {
+      sentEmailByLeadAndType.set(key, email)
     }
   }
 
@@ -601,6 +774,55 @@ export async function runCampaignSequence({
 
       const dueAt = addMinutes(stageStartedAt, step.wait_minutes)
       if (dueAt > now) continue
+
+      const existingSentEmail = sentEmailByLeadAndType.get(sentEmailKey(enrollment.lead_id, step.email_type))
+      const existingSentAt = existingSentEmail?.sent_at || existingSentEmail?.created_at || null
+      if (
+        existingExecution?.status === 'failed' &&
+        existingSentEmail &&
+        existingSentAt &&
+        new Date(existingSentAt) >= new Date(stageStartedAt)
+      ) {
+        const repairWarnings: string[] = []
+        if (step.move_to_stage_key) {
+          try {
+            await moveEnrollmentToStage({
+              supabase,
+              campaignId,
+              enrollmentId: enrollment.id,
+              orgId,
+              stageKey: step.move_to_stage_key,
+              now: existingSentAt,
+            })
+          } catch (error) {
+            repairWarnings.push(`Campaign stage: ${readableErrorMessage(error, 'Failed to move campaign stage')}`)
+          }
+        }
+
+        await updateExecution(supabase, existingExecution.id, {
+          status: 'sent',
+          lead_email_id: existingSentEmail.id,
+          error_message: null,
+          metadata: {
+            stage_key: step.trigger_stage_key,
+            moved_to_stage_key: step.move_to_stage_key,
+            repaired_from_failed: true,
+            ...(repairWarnings.length > 0 ? { post_send_warnings: repairWarnings } : {}),
+          },
+        })
+        executionByKey.set(executionKey(step.id, enrollment.id), {
+          id: existingExecution.id,
+          campaign_sequence_step_id: step.id,
+          campaign_enrollment_id: enrollment.id,
+          status: 'sent',
+          due_at: dueAt.toISOString(),
+          executed_at: existingSentAt,
+          error_message: null,
+        })
+        result.due += 1
+        result.skipped += 1
+        continue
+      }
 
       if (step.stop_on_reply && hasReplyAfterStageEntry(repliesByOwner, enrollment, stageStartedAt)) {
         await markSkippedExecution({
@@ -716,54 +938,104 @@ export async function runCampaignSequence({
           attachments: gmailAttachments,
         })
         const sentAt = new Date().toISOString()
-        const email = await insertSentLeadEmail({
-          supabase,
-          campaignId,
-          orgId,
-          userId: typedCampaign.user_id,
-          leadId: enrollment.lead_id,
-          step,
-          subject,
-          body: bodyWithAttachments,
-          sentAt,
-          sent,
-          account: sendingContext.account,
-          toAddress: lead.contact_email,
-        })
+        const postSendWarnings: string[] = []
+        let email: { id: string } | null = null
 
-        await recordCampaignEvent({
-          supabase,
-          campaignId,
-          enrollmentId: enrollment.id,
-          leadId: enrollment.lead_id,
-          orgId,
-          userId: typedCampaign.user_id,
-          eventType: campaignEventForEmail(step.email_type),
-          stageKey: step.move_to_stage_key || undefined,
-          metadata: {
-            source: 'campaign_sequence',
-            sequence_step_id: step.id,
-            sequence_execution_id: execution.id,
-            lead_email_id: email.id,
-            email_type: step.email_type,
-            gmail_message_id: sent.id,
-            gmail_thread_id: sent.threadId,
-          },
-        })
+        try {
+          email = await insertSentLeadEmail({
+            supabase,
+            campaignId,
+            orgId,
+            userId: typedCampaign.user_id,
+            leadId: enrollment.lead_id,
+            step,
+            subject,
+            body: bodyWithAttachments,
+            sentAt,
+            sent,
+            account: sendingContext.account,
+            toAddress: lead.contact_email,
+          })
+        } catch (error) {
+          const message = readableErrorMessage(error, 'Failed to log sent email')
+          postSendWarnings.push(`Email log: ${message}`)
+          console.warn('Campaign sequence sent Gmail but failed to log lead email', {
+            campaignId,
+            stepId: step.id,
+            enrollmentId: enrollment.id,
+            leadId: enrollment.lead_id,
+            error,
+          })
+        }
+
+        try {
+          await recordCampaignEvent({
+            supabase,
+            campaignId,
+            enrollmentId: enrollment.id,
+            leadId: enrollment.lead_id,
+            orgId,
+            userId: typedCampaign.user_id,
+            eventType: campaignEventForEmail(step.email_type),
+            stageKey: step.move_to_stage_key || undefined,
+            metadata: {
+              source: 'campaign_sequence',
+              sequence_step_id: step.id,
+              sequence_execution_id: execution.id,
+              lead_email_id: email?.id || null,
+              email_type: step.email_type,
+              gmail_message_id: sent.id,
+              gmail_thread_id: sent.threadId,
+            },
+          })
+        } catch (error) {
+          const message = readableErrorMessage(error, 'Failed to record campaign event')
+          postSendWarnings.push(`Campaign event: ${message}`)
+          console.warn('Campaign sequence sent Gmail but failed to record campaign event', {
+            campaignId,
+            stepId: step.id,
+            enrollmentId: enrollment.id,
+            leadId: enrollment.lead_id,
+            error,
+          })
+
+          if (step.move_to_stage_key) {
+            try {
+              await moveEnrollmentToStage({
+                supabase,
+                campaignId,
+                enrollmentId: enrollment.id,
+                orgId,
+                stageKey: step.move_to_stage_key,
+                now: sentAt,
+              })
+            } catch (moveError) {
+              postSendWarnings.push(`Campaign stage: ${readableErrorMessage(moveError, 'Failed to move campaign stage')}`)
+            }
+          }
+        }
 
         const leadStage = step.move_to_stage_key === 'nurture_lost' ? 'no_response' : 'email_sent'
         if (!['replied', 'meeting_booked', 'meeting_held', 'closed_won', 'closed_lost'].includes(lead.stage)) {
-          await supabase
+          const { error: leadUpdateError } = await supabase
             .from('leads')
             .update({ stage: leadStage, last_outbound_at: sentAt, last_contacted_at: sentAt })
             .eq('id', enrollment.lead_id)
             .eq('org_id', orgId)
+          if (leadUpdateError) {
+            postSendWarnings.push(`Lead stage: ${readableErrorMessage(leadUpdateError, 'Failed to update lead stage')}`)
+          }
         }
 
         await updateExecution(supabase, execution.id, {
           status: 'sent',
-          lead_email_id: email.id,
-          metadata: { stage_key: step.trigger_stage_key, moved_to_stage_key: step.move_to_stage_key },
+          lead_email_id: email?.id || null,
+          error_message: null,
+          metadata: {
+            stage_key: step.trigger_stage_key,
+            moved_to_stage_key: step.move_to_stage_key,
+            ...(postSendWarnings.length > 0 ? { post_send_warnings: postSendWarnings } : {}),
+          },
         })
         executionByKey.set(executionKey(step.id, enrollment.id), {
           id: execution.id,
@@ -776,7 +1048,7 @@ export async function runCampaignSequence({
         })
         result.sent += 1
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'Failed to run sequence step'
+        const message = readableErrorMessage(error, 'Failed to run sequence step')
         await updateExecution(supabase, execution.id, {
           status: 'failed',
           error_message: message,
