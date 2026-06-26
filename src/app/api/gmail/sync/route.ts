@@ -5,7 +5,6 @@ import {
   refreshAccessToken,
   GmailTokenExpiredError,
   fetchThreadsByEmail,
-  fetchThreadsByDomain,
   fetchFullThread,
   extractEmailAddress,
   type GmailThread,
@@ -111,17 +110,6 @@ export async function POST() {
 
     console.log('[Sync] Found', leads.length, 'leads with emails:', leads.map(l => `${l.contact_name} <${l.contact_email}>`))
 
-    const domainToLeads = new Map<string, LeadRow[]>()
-    for (const lead of leads) {
-      if (!lead.contact_email) continue
-      const domain = lead.email_domain || lead.contact_email.split('@')[1]?.toLowerCase()
-      if (domain) {
-        const existing = domainToLeads.get(domain) || []
-        existing.push(lead as LeadRow)
-        domainToLeads.set(domain, existing)
-      }
-    }
-
     const { data: profile } = await supabase
       .from('profiles')
       .select('active_org_id')
@@ -187,7 +175,7 @@ export async function POST() {
           console.log(`[Sync] Processing lead batch ${Math.floor(i / LEAD_BATCH_SIZE) + 1}/${Math.ceil(validLeads.length / LEAD_BATCH_SIZE)} (${batch.map(l => l.contact_name).join(', ')})`)
 
           await Promise.all(batch.map(lead =>
-            processLead(lead, accessToken, account, supabase, user.id, orgId, domainToLeads, results)
+            processLead(lead, accessToken, account, supabase, user.id, orgId, results)
           ))
         }
 
@@ -228,7 +216,6 @@ async function processLead(
   supabase: SupabaseClient,
   userId: string,
   orgId: string | null,
-  domainToLeads: Map<string, LeadRow[]>,
   results: SyncResults,
 ): Promise<void> {
   try {
@@ -256,13 +243,16 @@ async function processLead(
     )
     const directThreads = threadResults.filter((t): t is GmailThread => t !== null)
 
-    // Batch dedup: one query for all message IDs across all threads
+    // Batch dedup: only track emails that belong to CRM leads.
     const allMessageIds = directThreads.flatMap(t => t.messages.map(m => m.id))
-    const { data: existingRows } = await supabase
-      .from('email_summaries')
-      .select('gmail_message_id')
-      .eq('user_id', userId)
-      .in('gmail_message_id', allMessageIds)
+    const { data: existingRows } = allMessageIds.length > 0
+      ? await supabase
+          .from('lead_emails')
+          .select('gmail_message_id')
+          .eq('user_id', userId)
+          .eq('lead_id', lead.id)
+          .in('gmail_message_id', allMessageIds)
+      : { data: [] }
     const existingIds = new Set(existingRows?.map(e => e.gmail_message_id) || [])
     const activeEnrollment = orgId ? await findActiveCampaignEnrollment(supabase, lead.id, orgId) : null
 
@@ -273,30 +263,6 @@ async function processLead(
 
         const msgFromEmail = extractEmailAddress(msg.from)
         const isFromMe = msg.direction === 'outbound'
-
-        const { error: insertError } = await supabase
-          .from('email_summaries')
-          .insert({
-            user_id: userId,
-            org_id: orgId,
-            email_account_id: account.id,
-            gmail_message_id: msg.id,
-            thread_id: msg.threadId,
-            subject: msg.subject,
-            from_address: msgFromEmail || msg.from,
-            to_addresses: msg.to,
-            date: new Date(msg.date).toISOString(),
-            snippet: msg.snippet,
-            lead_id: lead.id,
-            is_read: false,
-          })
-
-        if (insertError) {
-          console.error('[Sync] email_summaries insert error:', insertError.message, '| msg:', msg.id)
-        } else {
-          newMessageCount++
-          results.newEmails++
-        }
 
         const emailBody = msg.bodyPlainText || msg.snippet
         const { data: leadEmail, error: leadEmailError } = await supabase.from('lead_emails').insert({
@@ -320,23 +286,28 @@ async function processLead(
 
         if (leadEmailError) {
           console.error('[Sync] lead_emails insert error:', leadEmailError.message)
-        } else if (activeEnrollment && orgId) {
-          await recordCampaignEvent({
-            supabase,
-            campaignId: activeEnrollment.campaign_id,
-            enrollmentId: activeEnrollment.id,
-            leadId: lead.id,
-            orgId,
-            userId,
-            eventType: isFromMe ? 'email_sent' : 'email_replied',
-            metadata: {
-              source: 'gmail_sync',
-              lead_email_id: leadEmail.id,
-              gmail_message_id: msg.id,
-              gmail_thread_id: msg.threadId,
-              direction: isFromMe ? 'outbound' : 'inbound',
-            },
-          })
+        } else {
+          newMessageCount++
+          results.newEmails++
+
+          if (activeEnrollment && orgId) {
+            await recordCampaignEvent({
+              supabase,
+              campaignId: activeEnrollment.campaign_id,
+              enrollmentId: activeEnrollment.id,
+              leadId: lead.id,
+              orgId,
+              userId,
+              eventType: isFromMe ? 'email_sent' : 'email_replied',
+              metadata: {
+                source: 'gmail_sync',
+                lead_email_id: leadEmail.id,
+                gmail_message_id: msg.id,
+                gmail_thread_id: msg.threadId,
+                direction: isFromMe ? 'outbound' : 'inbound',
+              },
+            })
+          }
         }
       }
     }
@@ -344,34 +315,11 @@ async function processLead(
     console.log('[Sync]', lead.contact_name, ':', newMessageCount, 'new messages stored')
     results.debugLog.push(`${lead.contact_name}: ${threadIds.length} threads, ${newMessageCount} new messages`)
 
-    // Fetch domain threads in parallel (for AI context only)
-    const domain = lead.email_domain || lead.contact_email!.split('@')[1]?.toLowerCase()
-    let domainThreads: GmailThread[] = []
-    if (domain) {
-      try {
-        const domainThreadIds = await fetchThreadsByDomain(accessToken, domain, 10)
-        const directThreadIdSet = new Set(threadIds)
-        const newDomainIds = domainThreadIds.filter(id => !directThreadIdSet.has(id)).slice(0, 5)
-
-        if (newDomainIds.length > 0) {
-          const domainResults = await Promise.all(
-            newDomainIds.map(id =>
-              fetchFullThread(accessToken, id, account.email_address).catch(() => null)
-            )
-          )
-          domainThreads = domainResults.filter((t): t is GmailThread => t !== null)
-        }
-      } catch (domainErr) {
-        console.error('[Sync] Domain thread fetch error for', lead.contact_name, ':', domainErr)
-      }
-    }
-
-    // AI analysis using already-fetched threads (no duplicate API calls)
+    // AI analysis using the lead's direct threads only.
     try {
-      console.log('[Sync] Running AI analysis for', lead.contact_name, '| direct:', directThreads.length, 'domain:', domainThreads.length)
-      const domainLeads = (domainToLeads.get(domain || '') || []).filter(dl => dl.id !== lead.id)
+      console.log('[Sync] Running AI analysis for', lead.contact_name, '| direct:', directThreads.length)
 
-      const analysis = await analyzeConversation(lead, directThreads, domainThreads)
+      const analysis = await analyzeConversation(lead, directThreads, [])
 
       if (analysis) {
         console.log('[Sync] AI result for', lead.contact_name, ':', {
@@ -460,7 +408,7 @@ async function processLead(
           results.leadsUpdated++
         }
 
-        // Parallel email classification + domain insight updates
+        // Parallel email classification updates
         const classifyPromises = (analysis.email_classifications || []).map(c =>
           supabase
             .from('lead_emails')
@@ -473,18 +421,7 @@ async function processLead(
             })
         )
 
-        const domainInsightPromises = (analysis.domain_insights && domainLeads.length > 0)
-          ? domainLeads.map(dl =>
-              supabase.from('leads').update({
-                notes: dl.notes
-                  ? `${dl.notes}\n\n[Auto] Domain intel: ${analysis.domain_insights}`
-                  : `[Auto] Domain intel: ${analysis.domain_insights}`,
-              }).eq('id', dl.id)
-                .eq('user_id', userId)
-            )
-          : []
-
-        await Promise.all([...classifyPromises, ...domainInsightPromises])
+        await Promise.all(classifyPromises)
 
         // Auto-extract memories from conversation for progressive personalization
         if (analysis.conversation_summary) {

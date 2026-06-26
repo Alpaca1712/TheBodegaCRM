@@ -4,7 +4,6 @@ import {
   refreshAccessToken,
   GmailTokenExpiredError,
   fetchThreadsByEmail,
-  fetchThreadsByDomain,
   fetchFullThread,
   extractEmailAddress,
   type GmailThread,
@@ -190,13 +189,16 @@ export async function POST(request: NextRequest) {
     )
     const directThreads = threadResults.filter((t): t is GmailThread => t !== null)
 
-    // Dedup against existing emails
+    // Dedup against lead email history only; the standalone email summary inbox is intentionally retired.
     const allMessageIds = directThreads.flatMap(t => t.messages.map(m => m.id))
-    const { data: existingRows } = await supabase
-      .from('email_summaries')
-      .select('gmail_message_id')
-      .eq('user_id', user.id)
-      .in('gmail_message_id', allMessageIds)
+    const { data: existingRows } = allMessageIds.length > 0
+      ? await supabase
+          .from('lead_emails')
+          .select('gmail_message_id')
+          .eq('user_id', user.id)
+          .eq('lead_id', lead.id)
+          .in('gmail_message_id', allMessageIds)
+      : { data: [] }
     const existingIds = new Set(existingRows?.map(e => e.gmail_message_id) || [])
     const activeEnrollment = orgId ? await findActiveCampaignEnrollment(supabase, lead.id, orgId) : null
 
@@ -208,22 +210,9 @@ export async function POST(request: NextRequest) {
         const msgFromEmail = extractEmailAddress(msg.from)
         const isFromMe = msg.direction === 'outbound'
 
-        const [summaryResult, leadEmailResult] = await Promise.all([
-          supabase.from('email_summaries').insert({
-            user_id: user.id,
-            org_id: orgId,
-            email_account_id: account.id,
-            gmail_message_id: msg.id,
-            thread_id: msg.threadId,
-            subject: msg.subject,
-            from_address: msgFromEmail || msg.from,
-            to_addresses: msg.to,
-            date: new Date(msg.date).toISOString(),
-            snippet: msg.snippet,
-            lead_id: lead.id,
-            is_read: false,
-          }),
-          supabase.from('lead_emails').insert({
+        const leadEmailResult = await supabase
+          .from('lead_emails')
+          .insert({
             lead_id: lead.id,
             user_id: user.id,
             org_id: orgId,
@@ -240,10 +229,11 @@ export async function POST(request: NextRequest) {
             ...(isFromMe
               ? { sent_at: new Date(msg.date).toISOString() }
               : { replied_at: new Date(msg.date).toISOString(), reply_content: msg.bodyPlainText || msg.snippet }),
-          }).select('id').single(),
-        ])
+          })
+          .select('id')
+          .single()
 
-        if (!summaryResult.error && !leadEmailResult.error) {
+        if (!leadEmailResult.error) {
           syncResult.newEmails++
           if (activeEnrollment && orgId) {
             await recordCampaignEvent({
@@ -267,39 +257,9 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    // Fetch domain threads for AI context
-    const domain = lead.email_domain || lead.contact_email.split('@')[1]?.toLowerCase()
-    let domainThreads: GmailThread[] = []
-    if (domain) {
-      try {
-        const domainThreadIds = await fetchThreadsByDomain(accessToken, domain, 10)
-        const directThreadIdSet = new Set(threadIds)
-        const newDomainIds = domainThreadIds.filter(id => !directThreadIdSet.has(id)).slice(0, 5)
-        if (newDomainIds.length > 0) {
-          const domainResults = await Promise.all(
-            newDomainIds.map(id =>
-              fetchFullThread(accessToken, id, account.email_address).catch(() => null)
-            )
-          )
-          domainThreads = domainResults.filter((t): t is GmailThread => t !== null)
-        }
-      } catch { /* non-critical */ }
-    }
-
-    // AI analysis
+    // AI analysis uses this lead's direct threads only.
     const directMessages = directThreads.flatMap(t => t.messages)
     if (directMessages.length > 0) {
-      let domainContext = ''
-      if (domainThreads.length > 0) {
-        const domainMessages = domainThreads.flatMap(t => t.messages)
-        domainContext = `\n\n=== OTHER CONVERSATIONS WITH PEOPLE AT ${lead.company_name.toUpperCase()} ===\n\n` +
-          domainMessages
-            .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
-            .slice(0, 20)
-            .map((m, i) => `[D${i + 1}] ${m.direction === 'outbound' ? 'YOU \u2192' : '\u2190 THEM'} | ${m.date}\nSubject: ${m.subject}\nFrom: ${m.from}\n${m.bodyPlainText.slice(0, 500)}`)
-            .join('\n\n---\n\n')
-      }
-
       const leadContext = lead.type === 'customer'
         ? `Type: Customer\nCompany: ${lead.company_name}${lead.company_description ? `\nDescription: ${lead.company_description}` : ''}${lead.attack_surface_notes ? `\nSecurity notes: ${lead.attack_surface_notes}` : ''}`
         : lead.type === 'investor'
@@ -352,7 +312,6 @@ ${directMessages
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime())
     .map((m, i) => `[${i + 1}] gmail_message_id: "${m.id}" | ${m.direction === 'outbound' ? 'YOU \u2192' : '\u2190 THEM'} | ${m.date}\nSubject: ${m.subject}\nFrom: ${m.from}\n${m.bodyPlainText.slice(0, 1500)}`)
     .join('\n\n---\n\n')}
-${domainContext}
 
 JSON response:
 {
