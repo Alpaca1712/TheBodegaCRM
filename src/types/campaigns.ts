@@ -116,6 +116,17 @@ export interface CampaignAutomationAttachment {
 
 export interface CampaignAutomationAiCondition {
   prompt: string
+  true_tag?: string
+  false_tag?: string
+}
+
+export interface LeadTag {
+  id: string
+  lead_id: string
+  name: string
+  color: string
+  source: string
+  created_at: string
 }
 
 export interface CampaignAutomationStep {
@@ -343,7 +354,9 @@ export interface CampaignEnrollmentWithLead extends CampaignEnrollment {
     | 'source'
     | 'last_contacted_at'
     | 'updated_at'
-  > | null
+  > & {
+    lead_tags?: LeadTag[]
+  } | null
 }
 
 export interface CampaignEvent {

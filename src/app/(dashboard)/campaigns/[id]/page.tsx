@@ -102,6 +102,8 @@ interface SequenceStepForm {
   stop_on_reply: boolean
   active: boolean
   ai_condition_prompt: string
+  ai_condition_true_tag: string
+  ai_condition_false_tag: string
   attachments: CampaignAutomationAttachment[]
 }
 
@@ -687,6 +689,8 @@ function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
     stop_on_reply: true,
     active: false,
     ai_condition_prompt: '',
+    ai_condition_true_tag: '',
+    ai_condition_false_tag: 'Needs a manual reply',
     attachments: [],
   }
 }
@@ -727,6 +731,17 @@ function sequenceAttachmentsFromStep(step: CampaignAutomationStep): CampaignAuto
 function sequenceAiConditionPromptFromStep(step: CampaignAutomationStep) {
   const prompt = step.metadata?.ai_condition?.prompt
   return typeof prompt === 'string' ? prompt : ''
+}
+
+function sequenceAiConditionTrueTagFromStep(step: CampaignAutomationStep) {
+  const tag = step.metadata?.ai_condition?.true_tag
+  return typeof tag === 'string' ? tag : ''
+}
+
+function sequenceAiConditionFalseTagFromStep(step: CampaignAutomationStep) {
+  const tag = step.metadata?.ai_condition?.false_tag
+  if (typeof tag === 'string') return tag
+  return 'Needs a manual reply'
 }
 
 function cleanSequenceAttachments(attachments: CampaignAutomationAttachment[]) {
@@ -817,6 +832,8 @@ function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
     stop_on_reply: step.stop_on_reply,
     active: step.active,
     ai_condition_prompt: sequenceAiConditionPromptFromStep(step),
+    ai_condition_true_tag: sequenceAiConditionTrueTagFromStep(step),
+    ai_condition_false_tag: sequenceAiConditionFalseTagFromStep(step),
     attachments: sequenceAttachmentsFromStep(step),
   }
 }
@@ -979,6 +996,8 @@ function SequencePanel({
       const { ai_condition: _existingAiCondition, ...existingMetadata } = existingStep?.metadata || {}
       void _existingAiCondition
       const aiConditionPrompt = form.ai_condition_prompt.trim()
+      const aiConditionTrueTag = form.ai_condition_true_tag.trim()
+      const aiConditionFalseTag = form.ai_condition_false_tag.trim()
       const res = await fetch(
         isNew
           ? `/api/campaigns/${campaign.id}/sequence-steps`
@@ -1001,7 +1020,15 @@ function SequencePanel({
             metadata: {
               ...existingMetadata,
               attachments: cleanedAttachments.attachments,
-              ...(aiConditionPrompt ? { ai_condition: { prompt: aiConditionPrompt } } : {}),
+              ...(aiConditionPrompt
+                ? {
+                    ai_condition: {
+                      prompt: aiConditionPrompt,
+                      ...(aiConditionTrueTag ? { true_tag: aiConditionTrueTag } : {}),
+                      ...(aiConditionFalseTag ? { false_tag: aiConditionFalseTag } : {}),
+                    },
+                  }
+                : {}),
             },
           }),
         },
@@ -1198,6 +1225,26 @@ function SequencePanel({
               <p className="mt-1.5 text-xs leading-5 text-blue-700/80 dark:text-blue-300/80">
                 Leave blank to run normally. When filled, this rule only sends if the AI says the condition is true.
               </p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                <label className="block">
+                  <span className="text-[11px] font-medium text-blue-700/80 dark:text-blue-300/80">Tag if true</span>
+                  <input
+                    value={form.ai_condition_true_tag}
+                    onChange={(event) => setForm((current) => ({ ...current, ai_condition_true_tag: event.target.value }))}
+                    placeholder="Lead magnet requested"
+                    className="mt-1 h-9 w-full rounded-md border border-blue-100 bg-white px-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-blue-500/20 dark:border-blue-900/60 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-[11px] font-medium text-blue-700/80 dark:text-blue-300/80">Tag if false</span>
+                  <input
+                    value={form.ai_condition_false_tag}
+                    onChange={(event) => setForm((current) => ({ ...current, ai_condition_false_tag: event.target.value }))}
+                    placeholder="Needs a manual reply"
+                    className="mt-1 h-9 w-full rounded-md border border-blue-100 bg-white px-2.5 text-sm text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-blue-500/20 dark:border-blue-900/60 dark:bg-zinc-950 dark:text-zinc-100"
+                  />
+                </label>
+              </div>
             </label>
 
             <label className="block">
@@ -1903,6 +1950,7 @@ function EnrollmentCard({
   onDragEnd: () => void
 }) {
   const lead = enrollment.lead
+  const leadTags = lead?.lead_tags || []
   const sequenceIndicator = getEnrollmentSequenceIndicator({
     enrollment,
     steps: sequenceSteps,
@@ -1939,6 +1987,20 @@ function EnrollmentCard({
       </div>
 
       <div className="mt-2.5 flex flex-wrap items-center gap-1.5">
+        {leadTags.slice(0, 3).map((tag) => (
+          <span
+            key={tag.id}
+            title={tag.name}
+            className="rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-medium text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50"
+          >
+            {tag.name}
+          </span>
+        ))}
+        {leadTags.length > 3 && (
+          <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700">
+            +{leadTags.length - 3}
+          </span>
+        )}
         {lead?.stage && (
           <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
             {STAGE_LABELS[lead.stage]}

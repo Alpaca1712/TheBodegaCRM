@@ -36,6 +36,8 @@ const sequenceStepMetadataSchema = z.object({
   attachments: z.array(attachmentSchema).max(10).optional(),
   ai_condition: z.object({
     prompt: z.string().trim().min(1).max(4000),
+    true_tag: z.string().trim().min(1).max(80).optional(),
+    false_tag: z.string().trim().min(1).max(80).optional(),
   }).optional(),
 }).passthrough()
 

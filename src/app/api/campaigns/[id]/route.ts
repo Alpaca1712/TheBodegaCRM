@@ -16,6 +16,7 @@ import type {
   CampaignStage,
   CampaignStatus,
   CampaignTemplateKey,
+  LeadTag,
 } from '@/types/campaigns'
 
 const updateCampaignSchema = z.object({
@@ -110,8 +111,40 @@ export async function GET(
       throw sequenceExecutionsRes.error
     }
 
-    const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
+    let enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
+    const enrollmentLeadIds = enrollments
+      .map((enrollment) => enrollment.lead_id)
+      .filter((leadId): leadId is string => Boolean(leadId))
+
+    if (enrollmentLeadIds.length > 0) {
+      const { data: leadTags, error: leadTagsError } = await supabase
+        .from('lead_tags')
+        .select('id,lead_id,name,color,source,created_at')
+        .eq('org_id', orgId)
+        .in('lead_id', enrollmentLeadIds)
+        .order('created_at', { ascending: true })
+
+      if (leadTagsError && !isMissingRelation(leadTagsError, 'lead_tags')) {
+        throw leadTagsError
+      }
+
+      const tagsByLead = new Map<string, LeadTag[]>()
+      for (const tag of (leadTagsError ? [] : leadTags || []) as LeadTag[]) {
+        tagsByLead.set(tag.lead_id, [...(tagsByLead.get(tag.lead_id) || []), tag])
+      }
+
+      enrollments = enrollments.map((enrollment) => ({
+        ...enrollment,
+        lead: enrollment.lead
+          ? {
+              ...enrollment.lead,
+              lead_tags: tagsByLead.get(enrollment.lead_id) || [],
+            }
+          : enrollment.lead,
+      }))
+    }
+
     const templateKey = (pipelineRes.data?.template_key || null) as CampaignTemplateKey | null
     const detail: CampaignDetail = {
       ...(campaign as Campaign),

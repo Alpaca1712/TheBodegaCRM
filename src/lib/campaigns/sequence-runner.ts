@@ -127,6 +127,79 @@ function campaignStepAiConditionPrompt(step: CampaignAutomationStep) {
   return typeof prompt === 'string' ? prompt.trim() : ''
 }
 
+function campaignStepAiConditionTrueTag(step: CampaignAutomationStep) {
+  const tag = step.metadata?.ai_condition?.true_tag
+  return typeof tag === 'string' ? tag.trim() : ''
+}
+
+function campaignStepAiConditionFalseTag(step: CampaignAutomationStep) {
+  const tag = step.metadata?.ai_condition?.false_tag
+  return typeof tag === 'string' ? tag.trim() : ''
+}
+
+async function applyLeadTag({
+  supabase,
+  leadId,
+  orgId,
+  userId,
+  name,
+  source,
+  metadata,
+}: {
+  supabase: SupabaseClient
+  leadId: string
+  orgId: string
+  userId: string
+  name: string
+  source: string
+  metadata?: Record<string, unknown>
+}) {
+  const tagName = name.trim()
+  if (!tagName) return null
+
+  const { data: existing, error: existingError } = await supabase
+    .from('lead_tags')
+    .select('id')
+    .eq('lead_id', leadId)
+    .eq('org_id', orgId)
+    .ilike('name', tagName)
+    .maybeSingle()
+
+  if (existingError && isMissingRelation(existingError, 'lead_tags')) return null
+  if (existingError) throw existingError
+  if (existing?.id) return existing as { id: string }
+
+  const { data, error } = await supabase
+    .from('lead_tags')
+    .insert({
+      lead_id: leadId,
+      org_id: orgId,
+      user_id: userId,
+      name: tagName,
+      color: 'blue',
+      source,
+      metadata: metadata || {},
+    })
+    .select('id')
+    .single()
+
+  if (error && isMissingRelation(error, 'lead_tags')) return null
+  if (isUniqueViolation(error)) {
+    const { data: duplicate, error: duplicateError } = await supabase
+      .from('lead_tags')
+      .select('id')
+      .eq('lead_id', leadId)
+      .eq('org_id', orgId)
+      .ilike('name', tagName)
+      .maybeSingle()
+
+    if (duplicateError) throw duplicateError
+    return duplicate as { id: string } | null
+  }
+  if (error) throw error
+  return data as { id: string }
+}
+
 function latestInboundEmailAt(emails: LeadEmailContext[]) {
   const latest = emails
     .filter((email) => email.direction === 'inbound')
@@ -925,6 +998,8 @@ export async function runCampaignSequence({
       if (enrollment.stage_key !== step.trigger_stage_key) continue
       const existingExecution = executionByKey.get(executionKey(step.id, enrollment.id))
       const aiConditionPrompt = campaignStepAiConditionPrompt(step)
+      const aiConditionTrueTag = campaignStepAiConditionTrueTag(step)
+      const aiConditionFalseTag = campaignStepAiConditionFalseTag(step)
       const leadEmails = emailContextByLead.get(enrollment.lead_id) || []
       const latestConditionInputAt = aiConditionPrompt ? latestInboundEmailAt(leadEmails) : null
 
@@ -1057,6 +1132,8 @@ export async function runCampaignSequence({
         const challengeLink = buildChallengeTrackingUrl({ leadToken, campaignId })
         const leadMagnetName = typedCampaign.lead_magnet_name || 'Free Pentest Challenge'
         let aiConditionDecision: AiConditionDecision | null = null
+        let aiConditionAppliedTag: string | null = null
+        const aiConditionWarnings: string[] = []
 
         if (aiConditionPrompt) {
           aiConditionDecision = await evaluateAiCondition({
@@ -1070,6 +1147,28 @@ export async function runCampaignSequence({
           })
 
           if (!aiConditionDecision.should_run) {
+            if (aiConditionFalseTag) {
+              try {
+                const tag = await applyLeadTag({
+                  supabase,
+                  leadId: enrollment.lead_id,
+                  orgId,
+                  userId: typedCampaign.user_id,
+                  name: aiConditionFalseTag,
+                  source: 'campaign_sequence_ai_condition_false',
+                  metadata: {
+                    campaign_id: campaignId,
+                    sequence_step_id: step.id,
+                    sequence_execution_id: execution.id,
+                    reason: aiConditionDecision.reason,
+                  },
+                })
+                if (tag) aiConditionAppliedTag = aiConditionFalseTag
+              } catch (error) {
+                aiConditionWarnings.push(`Lead tag: ${readableErrorMessage(error, 'Failed to tag lead')}`)
+              }
+            }
+
             await updateExecution(supabase, execution.id, {
               status: 'skipped',
               lead_email_id: null,
@@ -1080,6 +1179,8 @@ export async function runCampaignSequence({
                 ai_condition: aiConditionDecision,
                 condition_prompt: aiConditionPrompt,
                 condition_latest_input_at: latestConditionInputAt,
+                ...(aiConditionAppliedTag ? { applied_tag: aiConditionAppliedTag } : {}),
+                ...(aiConditionWarnings.length > 0 ? { post_condition_warnings: aiConditionWarnings } : {}),
               },
             })
             executionByKey.set(executionKey(step.id, enrollment.id), {
@@ -1093,10 +1194,40 @@ export async function runCampaignSequence({
               metadata: {
                 reason: 'ai_condition_false',
                 ai_condition: aiConditionDecision,
+                ...(aiConditionAppliedTag ? { applied_tag: aiConditionAppliedTag } : {}),
               },
             })
             result.skipped += 1
             continue
+          }
+
+          if (aiConditionTrueTag) {
+            try {
+              const tag = await applyLeadTag({
+                supabase,
+                leadId: enrollment.lead_id,
+                orgId,
+                userId: typedCampaign.user_id,
+                name: aiConditionTrueTag,
+                source: 'campaign_sequence_ai_condition_true',
+                metadata: {
+                  campaign_id: campaignId,
+                  sequence_step_id: step.id,
+                  sequence_execution_id: execution.id,
+                  reason: aiConditionDecision.reason,
+                },
+              })
+              if (tag) aiConditionAppliedTag = aiConditionTrueTag
+            } catch (error) {
+              aiConditionWarnings.push(`Lead tag: ${readableErrorMessage(error, 'Failed to tag lead')}`)
+              console.warn('Campaign sequence AI condition matched but failed to tag lead', {
+                campaignId,
+                stepId: step.id,
+                enrollmentId: enrollment.id,
+                leadId: enrollment.lead_id,
+                error,
+              })
+            }
           }
         }
 
@@ -1245,7 +1376,14 @@ export async function runCampaignSequence({
           metadata: {
             stage_key: step.trigger_stage_key,
             moved_to_stage_key: step.move_to_stage_key,
-            ...(aiConditionDecision ? { ai_condition: aiConditionDecision, condition_prompt: aiConditionPrompt } : {}),
+            ...(aiConditionDecision
+              ? {
+                  ai_condition: aiConditionDecision,
+                  condition_prompt: aiConditionPrompt,
+                  ...(aiConditionAppliedTag ? { applied_tag: aiConditionAppliedTag } : {}),
+                  ...(aiConditionWarnings.length > 0 ? { post_condition_warnings: aiConditionWarnings } : {}),
+                }
+              : {}),
             ...(postSendWarnings.length > 0 ? { post_send_warnings: postSendWarnings } : {}),
           },
         })
