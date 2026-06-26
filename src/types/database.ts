@@ -161,74 +161,6 @@ export type Database = {
           updated_at?: string
         }
       }
-      email_summaries: {
-        Row: {
-          id: string
-          user_id: string
-          org_id: string | null
-          email_account_id: string
-          gmail_message_id: string
-          thread_id: string | null
-          subject: string | null
-          from_address: string
-          to_addresses: string[] | null
-          date: string
-          snippet: string | null
-          ai_summary: string | null
-          ai_sentiment: 'positive' | 'neutral' | 'negative' | 'urgent' | null
-          ai_action_items: string[] | null
-          ai_suggested_stage: string | null
-          ai_follow_up_draft: string | null
-          lead_id: string | null
-          is_read: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          org_id?: string | null
-          email_account_id: string
-          gmail_message_id: string
-          thread_id?: string | null
-          subject?: string | null
-          from_address: string
-          to_addresses?: string[] | null
-          date: string
-          snippet?: string | null
-          ai_summary?: string | null
-          ai_sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent' | null
-          ai_action_items?: string[] | null
-          ai_suggested_stage?: string | null
-          ai_follow_up_draft?: string | null
-          lead_id?: string | null
-          is_read?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          org_id?: string | null
-          email_account_id?: string
-          gmail_message_id?: string
-          thread_id?: string | null
-          subject?: string | null
-          from_address?: string
-          to_addresses?: string[] | null
-          date?: string
-          snippet?: string | null
-          ai_summary?: string | null
-          ai_sentiment?: 'positive' | 'neutral' | 'negative' | 'urgent' | null
-          ai_action_items?: string[] | null
-          ai_suggested_stage?: string | null
-          ai_follow_up_draft?: string | null
-          lead_id?: string | null
-          is_read?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
       email_templates: {
         Row: {
           id: string
@@ -338,8 +270,6 @@ export type Database = {
     }
   }
 }
-
-export type EmailSummary = Database['public']['Tables']['email_summaries']['Row']
 
 export type Reminder = Database['public']['Tables']['reminders']['Row']
 
