@@ -30,6 +30,7 @@ export default function CampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [showCreateForm, setShowCreateForm] = useState(false)
   const [errorMessage, setErrorMessage] = useState<string | null>(null)
   const [name, setName] = useState('')
   const [templateKey, setTemplateKey] = useState<CampaignTemplateKey>('email_outbound_lead_magnet')
@@ -97,6 +98,7 @@ export default function CampaignsPage() {
       if (!res.ok) throw new Error(data?.error || 'Failed to create campaign')
       toast.success('Campaign created')
       setName('')
+      setShowCreateForm(false)
       await loadCampaigns()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to create campaign')
@@ -137,25 +139,47 @@ export default function CampaignsPage() {
             {campaigns.length} active funnel{campaigns.length !== 1 ? 's' : ''}
           </p>
         </div>
-        <Button type="button" variant="outline" onClick={() => void loadCampaigns()} disabled={loading}>
-          {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
-          Refresh
-        </Button>
+        <div className="flex flex-wrap items-center gap-2">
+          {!showCreateForm && (
+            <Button type="button" variant="destructive" onClick={() => setShowCreateForm(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              Create a new campaign
+            </Button>
+          )}
+          <Button type="button" variant="outline" onClick={() => void loadCampaigns()} disabled={loading}>
+            {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
+            Refresh
+          </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1.35fr)_420px]">
+      <section className="overflow-hidden rounded-lg border border-zinc-200 bg-zinc-100 shadow-sm dark:border-zinc-800 dark:bg-zinc-800">
+        <div className="grid gap-px sm:grid-cols-2 xl:grid-cols-4">
+          <Metric icon={Users} label="Enrolled" value={totals.enrolled} tone="red" />
+          <Metric icon={Send} label="Emails sent" value={totals.sent} tone="amber" />
+          <Metric icon={MousePointerClick} label="Reply rate" value={`${replyRate}%`} tone="blue" />
+          <Metric icon={CalendarCheck} label="Meeting rate" value={`${meetingRate}%`} tone="emerald" />
+        </div>
+      </section>
+
+      {showCreateForm && (
         <form
           onSubmit={createCampaign}
           className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70"
         >
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
             <div>
-              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Create Campaign</h2>
+              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Create a new campaign</h2>
               <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">{selectedTemplate.name}</p>
             </div>
-            <span className="inline-flex w-fit items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
-              {CAMPAIGN_TYPE_LABELS[selectedTemplate.campaignType]}
-            </span>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="inline-flex w-fit items-center rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-medium text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300">
+                {CAMPAIGN_TYPE_LABELS[selectedTemplate.campaignType]}
+              </span>
+              <Button type="button" size="sm" variant="ghost" onClick={() => setShowCreateForm(false)} disabled={creating}>
+                Cancel
+              </Button>
+            </div>
           </div>
 
           <div className="grid gap-4 lg:grid-cols-[minmax(0,1fr)_260px]">
@@ -203,14 +227,7 @@ export default function CampaignsPage() {
             </Button>
           </div>
         </form>
-
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-1">
-          <Metric icon={Users} label="Enrolled" value={totals.enrolled} tone="red" />
-          <Metric icon={Send} label="Emails Sent" value={totals.sent} tone="amber" />
-          <Metric icon={MousePointerClick} label="Reply Rate" value={`${replyRate}%`} tone="blue" />
-          <Metric icon={CalendarCheck} label="Meeting Rate" value={`${meetingRate}%`} tone="emerald" />
-        </div>
-      </div>
+      )}
 
       <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
         <div className="flex items-center justify-between border-b border-zinc-100 px-5 py-4 dark:border-zinc-800">
@@ -235,7 +252,11 @@ export default function CampaignsPage() {
               <Megaphone className="h-5 w-5 text-zinc-400" />
             </div>
             <p className="text-sm font-medium text-zinc-950 dark:text-zinc-100">No campaigns yet</p>
-            <p className="mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">Create one above and it will appear here with funnel progress.</p>
+            <p className="mt-1 max-w-sm text-xs text-zinc-500 dark:text-zinc-400">Create a new campaign and it will appear here with funnel progress.</p>
+            <Button type="button" variant="destructive" onClick={() => setShowCreateForm(true)} className="mt-4">
+              <Plus className="mr-2 h-4 w-4" />
+              Create a new campaign
+            </Button>
           </div>
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
@@ -272,21 +293,21 @@ function Metric({
   tone: 'red' | 'amber' | 'blue' | 'emerald'
 }) {
   const tones = {
-    red: 'bg-red-50 text-red-600 dark:bg-red-950/40 dark:text-red-300',
-    amber: 'bg-amber-50 text-amber-600 dark:bg-amber-950/40 dark:text-amber-300',
-    blue: 'bg-blue-50 text-blue-600 dark:bg-blue-950/40 dark:text-blue-300',
-    emerald: 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-300',
+    red: 'bg-red-50 text-red-600 ring-red-100 dark:bg-red-950/40 dark:text-red-300 dark:ring-red-900/50',
+    amber: 'bg-amber-50 text-amber-600 ring-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:ring-amber-900/50',
+    blue: 'bg-blue-50 text-blue-600 ring-blue-100 dark:bg-blue-950/40 dark:text-blue-300 dark:ring-blue-900/50',
+    emerald: 'bg-emerald-50 text-emerald-600 ring-emerald-100 dark:bg-emerald-950/40 dark:text-emerald-300 dark:ring-emerald-900/50',
   }
 
   return (
-    <div className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex items-center justify-between gap-3">
-        <p className="text-xs font-medium uppercase tracking-wide text-zinc-400">{label}</p>
-        <div className={`flex h-8 w-8 items-center justify-center rounded-lg ${tones[tone]}`}>
-          <Icon className="h-4 w-4" />
-        </div>
+    <div className="flex min-h-[84px] items-center justify-between gap-4 bg-white px-4 py-3 dark:bg-zinc-900/70">
+      <div className="min-w-0">
+        <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">{label}</p>
+        <p className="mt-1 text-2xl font-semibold tabular-nums tracking-tight text-zinc-950 dark:text-zinc-100">{value}</p>
       </div>
-      <p className="mt-3 text-2xl font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
+      <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-md ring-1 ${tones[tone]}`}>
+        <Icon className="h-4 w-4" />
+      </div>
     </div>
   )
 }
