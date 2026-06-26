@@ -40,9 +40,12 @@ interface SequenceEvent {
 }
 
 interface SequenceExecution {
+  id: string
   campaign_sequence_step_id: string
   campaign_enrollment_id: string
   status: 'scheduled' | 'sent' | 'skipped' | 'failed'
+  due_at: string
+  error_message: string | null
 }
 
 interface EmailAccount {
@@ -313,6 +316,120 @@ async function updateExecution(
   if (error) throw error
 }
 
+async function scheduleExecution({
+  supabase,
+  existingExecution,
+  campaignId,
+  step,
+  enrollment,
+  orgId,
+  userId,
+  dueAt,
+}: {
+  supabase: SupabaseClient
+  existingExecution?: SequenceExecution
+  campaignId: string
+  step: CampaignAutomationStep
+  enrollment: SequenceEnrollment
+  orgId: string
+  userId: string
+  dueAt: Date
+}) {
+  const payload = {
+    campaign_id: campaignId,
+    campaign_sequence_step_id: step.id,
+    campaign_enrollment_id: enrollment.id,
+    lead_id: enrollment.lead_id,
+    org_id: orgId,
+    user_id: userId,
+    status: 'scheduled',
+    due_at: dueAt.toISOString(),
+    executed_at: null,
+    error_message: null,
+    metadata: { stage_key: step.trigger_stage_key },
+  }
+
+  if (existingExecution) {
+    const { data, error } = await supabase
+      .from('campaign_sequence_executions')
+      .update(payload)
+      .eq('id', existingExecution.id)
+      .select('id')
+      .single()
+
+    if (error) throw error
+    return data as { id: string }
+  }
+
+  const { data, error } = await supabase
+    .from('campaign_sequence_executions')
+    .insert(payload)
+    .select('id')
+    .single()
+
+  if (error) throw error
+  return data as { id: string }
+}
+
+async function markSkippedExecution({
+  supabase,
+  existingExecution,
+  campaignId,
+  step,
+  enrollment,
+  orgId,
+  userId,
+  dueAt,
+  now,
+  metadata,
+}: {
+  supabase: SupabaseClient
+  existingExecution?: SequenceExecution
+  campaignId: string
+  step: CampaignAutomationStep
+  enrollment: SequenceEnrollment
+  orgId: string
+  userId: string
+  dueAt: Date
+  now: Date
+  metadata: Record<string, unknown>
+}) {
+  const payload = {
+    campaign_id: campaignId,
+    campaign_sequence_step_id: step.id,
+    campaign_enrollment_id: enrollment.id,
+    lead_id: enrollment.lead_id,
+    org_id: orgId,
+    user_id: userId,
+    status: 'skipped',
+    due_at: dueAt.toISOString(),
+    executed_at: now.toISOString(),
+    error_message: null,
+    metadata,
+  }
+
+  if (existingExecution) {
+    const { data, error } = await supabase
+      .from('campaign_sequence_executions')
+      .update(payload)
+      .eq('id', existingExecution.id)
+      .select('id')
+      .single()
+
+    if (error) throw error
+    return data as { id: string }
+  }
+
+  const { data, error } = await supabase
+    .from('campaign_sequence_executions')
+    .insert(payload)
+    .select('id')
+    .single()
+
+  if (error) throw error
+  return data as { id: string }
+}
+
 export async function runCampaignSequence({
   supabase,
   campaignId,
@@ -398,7 +515,7 @@ export async function runCampaignSequence({
     await Promise.all([
       supabase
         .from('campaign_sequence_executions')
-        .select('campaign_sequence_step_id,campaign_enrollment_id,status')
+        .select('id,campaign_sequence_step_id,campaign_enrollment_id,status,due_at,error_message')
         .eq('campaign_id', campaignId)
         .eq('org_id', orgId),
       supabase
@@ -420,10 +537,11 @@ export async function runCampaignSequence({
   if (eventsError) throw eventsError
   if (threadsError) throw threadsError
 
-  const executed = new Set(
-    ((executions || []) as SequenceExecution[]).map((execution) =>
+  const executionByKey = new Map(
+    ((executions || []) as SequenceExecution[]).map((execution) => [
       executionKey(execution.campaign_sequence_step_id, execution.campaign_enrollment_id),
-    ),
+      execution,
+    ]),
   )
   const eventRows = (events || []) as SequenceEvent[]
   const stageEvents = firstStageEventByOwner(eventRows)
@@ -441,7 +559,8 @@ export async function runCampaignSequence({
     for (const enrollment of activeEnrollments) {
       if (result.due >= limit) return result
       if (enrollment.stage_key !== step.trigger_stage_key) continue
-      if (executed.has(executionKey(step.id, enrollment.id))) continue
+      const existingExecution = executionByKey.get(executionKey(step.id, enrollment.id))
+      if (existingExecution && ['sent', 'skipped'].includes(existingExecution.status)) continue
 
       const lead = enrollment.lead
       const exactStageEvent = stageEvents.get(`${enrollment.id}:${step.trigger_stage_key}`)
@@ -456,24 +575,18 @@ export async function runCampaignSequence({
       if (dueAt > now) continue
 
       if (step.stop_on_reply && (ownersWithReplies.has(enrollment.id) || ownersWithReplies.has(enrollment.lead_id))) {
-        const { data: skippedExecution } = await supabase
-          .from('campaign_sequence_executions')
-          .insert({
-            campaign_id: campaignId,
-            campaign_sequence_step_id: step.id,
-            campaign_enrollment_id: enrollment.id,
-            lead_id: enrollment.lead_id,
-            org_id: orgId,
-            user_id: typedCampaign.user_id,
-            status: 'skipped',
-            due_at: dueAt.toISOString(),
-            executed_at: now.toISOString(),
-            metadata: { reason: 'lead_replied' },
-          })
-          .select('id')
-          .single()
-
-        if (skippedExecution) executed.add(executionKey(step.id, enrollment.id))
+        await markSkippedExecution({
+          supabase,
+          existingExecution,
+          campaignId,
+          step,
+          enrollment,
+          orgId,
+          userId: typedCampaign.user_id,
+          dueAt,
+          now,
+          metadata: { reason: 'lead_replied' },
+        })
         result.due += 1
         result.skipped += 1
         continue
@@ -487,24 +600,18 @@ export async function runCampaignSequence({
       }
 
       if (step.channel !== 'email') {
-        const { data: skippedExecution } = await supabase
-          .from('campaign_sequence_executions')
-          .insert({
-            campaign_id: campaignId,
-            campaign_sequence_step_id: step.id,
-            campaign_enrollment_id: enrollment.id,
-            lead_id: enrollment.lead_id,
-            org_id: orgId,
-            user_id: typedCampaign.user_id,
-            status: 'skipped',
-            due_at: dueAt.toISOString(),
-            executed_at: now.toISOString(),
-            metadata: { reason: 'non_email_channel', channel: step.channel },
-          })
-          .select('id')
-          .single()
-
-        if (skippedExecution) executed.add(executionKey(step.id, enrollment.id))
+        await markSkippedExecution({
+          supabase,
+          existingExecution,
+          campaignId,
+          step,
+          enrollment,
+          orgId,
+          userId: typedCampaign.user_id,
+          dueAt,
+          now,
+          metadata: { reason: 'non_email_channel', channel: step.channel },
+        })
         result.due += 1
         result.skipped += 1
         continue
@@ -521,29 +628,16 @@ export async function runCampaignSequence({
         )
       }
 
-      const { data: execution, error: executionError } = await supabase
-        .from('campaign_sequence_executions')
-        .insert({
-          campaign_id: campaignId,
-          campaign_sequence_step_id: step.id,
-          campaign_enrollment_id: enrollment.id,
-          lead_id: enrollment.lead_id,
-          org_id: orgId,
-          user_id: typedCampaign.user_id,
-          status: 'scheduled',
-          due_at: dueAt.toISOString(),
-          metadata: { stage_key: step.trigger_stage_key },
-        })
-        .select('id')
-        .single()
-
-      if (executionError) {
-        if ('code' in executionError && executionError.code === '23505') {
-          executed.add(executionKey(step.id, enrollment.id))
-          continue
-        }
-        throw executionError
-      }
+      const execution = await scheduleExecution({
+        supabase,
+        existingExecution,
+        campaignId,
+        step,
+        enrollment,
+        orgId,
+        userId: typedCampaign.user_id,
+        dueAt,
+      })
 
       result.due += 1
 
@@ -643,7 +737,14 @@ export async function runCampaignSequence({
           lead_email_id: email.id,
           metadata: { stage_key: step.trigger_stage_key, moved_to_stage_key: step.move_to_stage_key },
         })
-        executed.add(executionKey(step.id, enrollment.id))
+        executionByKey.set(executionKey(step.id, enrollment.id), {
+          id: execution.id,
+          campaign_sequence_step_id: step.id,
+          campaign_enrollment_id: enrollment.id,
+          status: 'sent',
+          due_at: dueAt.toISOString(),
+          error_message: null,
+        })
         result.sent += 1
       } catch (error) {
         const message = error instanceof Error ? error.message : 'Failed to run sequence step'

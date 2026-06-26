@@ -1020,8 +1020,21 @@ function SequencePanel({
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to run sequence')
-      const result = data.data as { due: number; sent: number; skipped: number; failed: number }
-      toast.success(`Sequence checked: ${result.sent} sent, ${result.skipped} skipped, ${result.failed} failed`)
+      const result = data.data as {
+        due: number
+        sent: number
+        skipped: number
+        failed: number
+        errors?: Array<{ message: string; lead_id?: string; step_id?: string }>
+      }
+      const firstError = result.errors?.[0]?.message
+      if (result.failed > 0) {
+        toast.error(firstError || `Sequence failed for ${result.failed} lead${result.failed !== 1 ? 's' : ''}`)
+      } else if (result.due === 0) {
+        toast.info('No sequence steps are due yet')
+      } else {
+        toast.success(`Sequence ran: ${result.sent} sent, ${result.skipped} skipped`)
+      }
       await onChanged()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to run sequence')
