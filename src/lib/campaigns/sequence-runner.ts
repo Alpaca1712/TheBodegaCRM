@@ -45,6 +45,7 @@ interface SequenceExecution {
   campaign_enrollment_id: string
   status: 'scheduled' | 'sent' | 'skipped' | 'failed'
   due_at: string
+  executed_at: string | null
   error_message: string | null
 }
 
@@ -168,7 +169,7 @@ function eventOwnerKey(event: Pick<SequenceEvent, 'enrollment_id' | 'lead_id'>) 
   return event.enrollment_id || event.lead_id || ''
 }
 
-function firstStageEventByOwner(events: SequenceEvent[]) {
+function latestStageEventByOwner(events: SequenceEvent[]) {
   const byOwnerAndStage = new Map<string, SequenceEvent>()
 
   for (const event of events) {
@@ -176,20 +177,44 @@ function firstStageEventByOwner(events: SequenceEvent[]) {
     const owner = eventOwnerKey(event)
     if (!owner) continue
     const key = `${owner}:${event.stage_key}`
-    if (!byOwnerAndStage.has(key)) byOwnerAndStage.set(key, event)
+    const current = byOwnerAndStage.get(key)
+    if (!current || new Date(event.occurred_at) > new Date(current.occurred_at)) {
+      byOwnerAndStage.set(key, event)
+    }
   }
 
   return byOwnerAndStage
 }
 
-function repliedOwners(events: SequenceEvent[]) {
-  const owners = new Set<string>()
+function latestReplyByOwner(events: SequenceEvent[]) {
+  const owners = new Map<string, string>()
   for (const event of events) {
     if (event.event_type !== 'email_replied') continue
-    if (event.enrollment_id) owners.add(event.enrollment_id)
-    if (event.lead_id) owners.add(event.lead_id)
+    for (const owner of [event.enrollment_id, event.lead_id]) {
+      if (!owner) continue
+      const current = owners.get(owner)
+      if (!current || new Date(event.occurred_at) > new Date(current)) {
+        owners.set(owner, event.occurred_at)
+      }
+    }
   }
   return owners
+}
+
+function hasReplyAfterStageEntry(
+  replyMap: Map<string, string>,
+  enrollment: Pick<SequenceEnrollment, 'id' | 'lead_id'>,
+  stageStartedAt: string,
+) {
+  const stageStarted = new Date(stageStartedAt)
+  const replyAt = replyMap.get(enrollment.id) || replyMap.get(enrollment.lead_id)
+  return replyAt ? new Date(replyAt) >= stageStarted : false
+}
+
+function isTerminalExecutionCurrent(execution: SequenceExecution | undefined, stageStartedAt: string) {
+  if (!execution || !['sent', 'skipped'].includes(execution.status)) return false
+  if (!execution.executed_at) return true
+  return new Date(execution.executed_at) >= new Date(stageStartedAt)
 }
 
 function normalizeEnrollment(row: RawSequenceEnrollment): SequenceEnrollment {
@@ -345,6 +370,7 @@ async function scheduleExecution({
     status: 'scheduled',
     due_at: dueAt.toISOString(),
     executed_at: null,
+    lead_email_id: null,
     error_message: null,
     metadata: { stage_key: step.trigger_stage_key },
   }
@@ -404,6 +430,7 @@ async function markSkippedExecution({
     status: 'skipped',
     due_at: dueAt.toISOString(),
     executed_at: now.toISOString(),
+    lead_email_id: null,
     error_message: null,
     metadata,
   }
@@ -515,7 +542,7 @@ export async function runCampaignSequence({
     await Promise.all([
       supabase
         .from('campaign_sequence_executions')
-        .select('id,campaign_sequence_step_id,campaign_enrollment_id,status,due_at,error_message')
+        .select('id,campaign_sequence_step_id,campaign_enrollment_id,status,due_at,executed_at,error_message')
         .eq('campaign_id', campaignId)
         .eq('org_id', orgId),
       supabase
@@ -544,8 +571,8 @@ export async function runCampaignSequence({
     ]),
   )
   const eventRows = (events || []) as SequenceEvent[]
-  const stageEvents = firstStageEventByOwner(eventRows)
-  const ownersWithReplies = repliedOwners(eventRows)
+  const stageEvents = latestStageEventByOwner(eventRows)
+  const repliesByOwner = latestReplyByOwner(eventRows)
   const latestThreadByLead = new Map<string, string>()
   for (const thread of (threadRows || []) as LeadThread[]) {
     if (thread.gmail_thread_id && !latestThreadByLead.has(thread.lead_id)) {
@@ -560,7 +587,6 @@ export async function runCampaignSequence({
       if (result.due >= limit) return result
       if (enrollment.stage_key !== step.trigger_stage_key) continue
       const existingExecution = executionByKey.get(executionKey(step.id, enrollment.id))
-      if (existingExecution && ['sent', 'skipped'].includes(existingExecution.status)) continue
 
       const lead = enrollment.lead
       const exactStageEvent = stageEvents.get(`${enrollment.id}:${step.trigger_stage_key}`)
@@ -571,10 +597,12 @@ export async function runCampaignSequence({
         enrollment.last_event_at ||
         enrollment.updated_at ||
         enrollment.enrolled_at
+      if (isTerminalExecutionCurrent(existingExecution, stageStartedAt)) continue
+
       const dueAt = addMinutes(stageStartedAt, step.wait_minutes)
       if (dueAt > now) continue
 
-      if (step.stop_on_reply && (ownersWithReplies.has(enrollment.id) || ownersWithReplies.has(enrollment.lead_id))) {
+      if (step.stop_on_reply && hasReplyAfterStageEntry(repliesByOwner, enrollment, stageStartedAt)) {
         await markSkippedExecution({
           supabase,
           existingExecution,
@@ -743,6 +771,7 @@ export async function runCampaignSequence({
           campaign_enrollment_id: enrollment.id,
           status: 'sent',
           due_at: dueAt.toISOString(),
+          executed_at: sentAt,
           error_message: null,
         })
         result.sent += 1
