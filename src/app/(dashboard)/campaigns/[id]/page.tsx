@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState, type ComponentType, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType, type DragEvent } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
@@ -81,6 +81,10 @@ const campaignTemplateTokens = [
   { token: '{{challenge_link}}', description: 'Tracked challenge link' },
   { token: '{{lead_magnet}}', description: 'Lead magnet or offer name' },
 ] as const
+
+const MAX_SEQUENCE_ATTACHMENT_BYTES = 5 * 1024 * 1024
+const MAX_SEQUENCE_ATTACHMENT_TOTAL_BYTES = 8 * 1024 * 1024
+const MAX_SEQUENCE_ATTACHMENTS = 10
 
 interface SequenceStepForm {
   name: string
@@ -701,37 +705,88 @@ function sequenceAttachmentsFromStep(step: CampaignAutomationStep): CampaignAuto
 
   return attachments
     .filter((attachment): attachment is CampaignAutomationAttachment => {
-      return typeof attachment?.name === 'string' && typeof attachment?.url === 'string'
+      return typeof attachment?.name === 'string' && (typeof attachment?.url === 'string' || typeof attachment?.data === 'string')
     })
     .map((attachment) => ({
       name: attachment.name,
       url: attachment.url,
+      data: attachment.data,
+      mime_type: attachment.mime_type,
+      size: attachment.size,
     }))
 }
 
 function cleanSequenceAttachments(attachments: CampaignAutomationAttachment[]) {
   const cleaned: CampaignAutomationAttachment[] = []
+  let totalFileBytes = 0
 
   for (const attachment of attachments) {
     const name = attachment.name.trim()
-    const url = attachment.url.trim()
-    if (!name && !url) continue
-    if (!name || !url) return { error: 'Each attachment needs a name and URL', attachments: cleaned }
+    const url = attachment.url?.trim() || ''
+    const data = attachment.data?.trim() || ''
+    if (!name && !url && !data) continue
+    if (!name) return { error: 'Each attachment needs a name', attachments: cleaned }
+    if (!url && !data) return { error: 'Each attachment needs a file or URL', attachments: cleaned }
 
-    try {
-      const parsed = new URL(url)
-      if (!['http:', 'https:'].includes(parsed.protocol)) {
-        return { error: 'Attachment URLs must start with http or https', attachments: cleaned }
+    if (url) {
+      try {
+        const parsed = new URL(url)
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          return { error: 'Attachment URLs must start with http or https', attachments: cleaned }
+        }
+      } catch {
+        return { error: 'Attachment URLs must be valid links', attachments: cleaned }
       }
-    } catch {
-      return { error: 'Attachment URLs must be valid links', attachments: cleaned }
+
+      cleaned.push({ name, url })
+      continue
     }
 
-    cleaned.push({ name, url })
+    const size = attachment.size || Math.ceil((data.length * 3) / 4)
+    if (size > MAX_SEQUENCE_ATTACHMENT_BYTES) {
+      return { error: `${name} is over the 5 MB attachment limit`, attachments: cleaned }
+    }
+    totalFileBytes += size
+    if (totalFileBytes > MAX_SEQUENCE_ATTACHMENT_TOTAL_BYTES) {
+      return { error: 'Use 8 MB or less of uploaded attachments per step', attachments: cleaned }
+    }
+
+    cleaned.push({
+      name,
+      data,
+      mime_type: attachment.mime_type || 'application/octet-stream',
+      size,
+    })
   }
 
-  if (cleaned.length > 10) return { error: 'Use 10 or fewer attachments per step', attachments: cleaned.slice(0, 10) }
+  if (cleaned.length > MAX_SEQUENCE_ATTACHMENTS) {
+    return { error: `Use ${MAX_SEQUENCE_ATTACHMENTS} or fewer attachments per step`, attachments: cleaned.slice(0, MAX_SEQUENCE_ATTACHMENTS) }
+  }
   return { attachments: cleaned }
+}
+
+function formatAttachmentSize(bytes?: number) {
+  if (!bytes) return ''
+  if (bytes >= 1024 * 1024) return `${Number((bytes / 1024 / 1024).toFixed(1))} MB`
+  return `${Math.max(1, Math.round(bytes / 1024))} KB`
+}
+
+function readFileAsAttachment(file: File): Promise<CampaignAutomationAttachment> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onload = () => {
+      const result = typeof reader.result === 'string' ? reader.result : ''
+      const data = result.includes(',') ? result.split(',')[1] : result
+      resolve({
+        name: file.name,
+        data,
+        mime_type: file.type || 'application/octet-stream',
+        size: file.size,
+      })
+    }
+    reader.onerror = () => reject(reader.error || new Error('Failed to read attachment'))
+    reader.readAsDataURL(file)
+  })
 }
 
 function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
@@ -771,6 +826,7 @@ function SequencePanel({
   const [newStepStageKey, setNewStepStageKey] = useState(campaign.stages[0]?.stage_key || '')
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement | null>(null)
   const sortedSteps = useMemo(
     () => [...steps].sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at)),
     [steps],
@@ -822,6 +878,46 @@ function SequencePanel({
   const cancelEdit = () => {
     setEditingStepId(null)
     setForm(emptySequenceForm(campaign))
+  }
+
+  const addUploadedFiles = async (fileList: FileList | null) => {
+    const files = Array.from(fileList || [])
+    if (files.length === 0) return
+
+    if (form.attachments.length + files.length > MAX_SEQUENCE_ATTACHMENTS) {
+      toast.error(`Use ${MAX_SEQUENCE_ATTACHMENTS} or fewer attachments per step`)
+      return
+    }
+
+    const currentFileBytes = form.attachments.reduce((total, attachment) => total + (attachment.data ? attachment.size || 0 : 0), 0)
+    let nextFileBytes = currentFileBytes
+    const uploaded: CampaignAutomationAttachment[] = []
+
+    for (const file of files) {
+      if (file.size > MAX_SEQUENCE_ATTACHMENT_BYTES) {
+        toast.error(`${file.name} is over the 5 MB attachment limit`)
+        continue
+      }
+
+      nextFileBytes += file.size
+      if (nextFileBytes > MAX_SEQUENCE_ATTACHMENT_TOTAL_BYTES) {
+        toast.error('Use 8 MB or less of uploaded attachments per step')
+        break
+      }
+
+      try {
+        uploaded.push(await readFileAsAttachment(file))
+      } catch (error) {
+        toast.error(error instanceof Error ? error.message : `Failed to read ${file.name}`)
+      }
+    }
+
+    if (uploaded.length > 0) {
+      setForm((current) => ({
+        ...current,
+        attachments: [...current.attachments, ...uploaded],
+      }))
+    }
   }
 
   const saveStep = async () => {
@@ -1272,48 +1368,50 @@ function SequencePanel({
             </div>
 
             <div className="rounded-md border border-zinc-200 p-3 dark:border-zinc-800">
-              <div className="flex items-center justify-between gap-2">
-                <div className="flex items-center gap-1.5 text-xs font-medium text-zinc-500">
-                  <Paperclip className="h-3.5 w-3.5" />
-                  Attachment links
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <div>
+                  <div className="flex items-center gap-1.5 text-sm font-medium text-zinc-700 dark:text-zinc-200">
+                    <Paperclip className="h-4 w-4" />
+                    Attachments
+                  </div>
+                  <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+                    Files send through Gmail. Links are added to the message body.
+                  </p>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setForm((current) => ({
-                    ...current,
-                    attachments: [...current.attachments, { name: '', url: '' }],
-                  }))}
-                  className="rounded-md px-2 py-1 text-[11px] font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                >
-                  Add
-                </button>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    multiple
+                    className="hidden"
+                    onChange={(event) => {
+                      void addUploadedFiles(event.target.files)
+                      event.target.value = ''
+                    }}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => fileInputRef.current?.click()}
+                    className="rounded-md border border-zinc-200 px-2.5 py-1.5 text-xs font-medium text-zinc-700 hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-200 dark:hover:bg-zinc-800"
+                  >
+                    Upload file
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setForm((current) => ({
+                      ...current,
+                      attachments: [...current.attachments, { name: '', url: '' }],
+                    }))}
+                    className="rounded-md px-2.5 py-1.5 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                  >
+                    Add link
+                  </button>
+                </div>
               </div>
 
               <div className="mt-2 space-y-2">
-                {form.attachments.map((attachment, index) => (
-                  <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px] gap-2">
-                    <input
-                      value={attachment.name}
-                      placeholder="Name"
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        attachments: current.attachments.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, name: event.target.value } : item,
-                        ),
-                      }))}
-                      className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                    />
-                    <input
-                      value={attachment.url}
-                      placeholder="https://..."
-                      onChange={(event) => setForm((current) => ({
-                        ...current,
-                        attachments: current.attachments.map((item, itemIndex) =>
-                          itemIndex === index ? { ...item, url: event.target.value } : item,
-                        ),
-                      }))}
-                      className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
-                    />
+                {form.attachments.map((attachment, index) => {
+                  const removeButton = (
                     <button
                       type="button"
                       onClick={() => setForm((current) => ({
@@ -1325,12 +1423,62 @@ function SequencePanel({
                     >
                       <X className="h-3.5 w-3.5" />
                     </button>
-                  </div>
-                ))}
+                  )
+
+                  if (attachment.data) {
+                    return (
+                      <div key={index} className="grid grid-cols-[minmax(0,1fr)_auto_32px] items-center gap-2 rounded-md border border-zinc-200 bg-zinc-50 p-2 dark:border-zinc-800 dark:bg-zinc-900/60">
+                        <input
+                          value={attachment.name}
+                          placeholder="Filename"
+                          onChange={(event) => setForm((current) => ({
+                            ...current,
+                            attachments: current.attachments.map((item, itemIndex) =>
+                              itemIndex === index ? { ...item, name: event.target.value } : item,
+                            ),
+                          }))}
+                          className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                        />
+                        <span className="whitespace-nowrap text-xs text-zinc-500 dark:text-zinc-400">
+                          {formatAttachmentSize(attachment.size) || 'File'}
+                        </span>
+                        {removeButton}
+                      </div>
+                    )
+                  }
+
+                  return (
+                    <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px] gap-2">
+                      <input
+                        value={attachment.name}
+                        placeholder="Link label"
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          attachments: current.attachments.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, name: event.target.value } : item,
+                          ),
+                        }))}
+                        className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                      />
+                      <input
+                        value={attachment.url || ''}
+                        placeholder="https://..."
+                        onChange={(event) => setForm((current) => ({
+                          ...current,
+                          attachments: current.attachments.map((item, itemIndex) =>
+                            itemIndex === index ? { ...item, url: event.target.value } : item,
+                          ),
+                        }))}
+                        className="h-9 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                      />
+                      {removeButton}
+                    </div>
+                  )
+                })}
 
                 {form.attachments.length === 0 && (
                   <div className="rounded-md border border-dashed border-zinc-200 px-3 py-3 text-center text-xs text-zinc-400 dark:border-zinc-800">
-                    No attachments
+                    No files or links attached
                   </div>
                 )}
               </div>

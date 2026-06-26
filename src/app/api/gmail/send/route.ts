@@ -8,6 +8,14 @@ import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import type { CampaignEventType } from '@/types/campaigns'
 
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+
+const attachmentSchema = z.object({
+  filename: z.string().trim().min(1).max(120),
+  contentType: z.string().trim().min(1).max(120),
+  data: z.string().min(1).max(Math.ceil(MAX_ATTACHMENT_BYTES * 1.4)),
+})
+
 const sendSchema = z.object({
   lead_id: z.string().uuid(),
   lead_email_id: z.string().uuid().optional().nullable(),
@@ -17,6 +25,7 @@ const sendSchema = z.object({
   to_address: z.string().email().optional().nullable(),
   subject: z.string().min(1),
   body: z.string().min(1),
+  attachments: z.array(attachmentSchema).max(10).optional(),
 })
 
 function campaignEventForEmail(emailType: z.infer<typeof sendSchema>['email_type']): CampaignEventType {
@@ -129,6 +138,7 @@ export async function POST(request: NextRequest) {
       subject: input.subject,
       body: input.body,
       threadId: latestThreadEmail?.gmail_thread_id || null,
+      attachments: input.attachments,
     })
 
     const sentAt = new Date().toISOString()

@@ -82,8 +82,8 @@ function campaignStepAttachments(step: CampaignAutomationStep) {
   const attachments = step.metadata?.attachments
   if (!Array.isArray(attachments)) return []
 
-  return attachments.filter((attachment): attachment is { name: string; url: string } => {
-    return typeof attachment?.name === 'string' && typeof attachment?.url === 'string'
+  return attachments.filter((attachment): attachment is NonNullable<CampaignAutomationStep['metadata']['attachments']>[number] => {
+    return typeof attachment?.name === 'string' && (typeof attachment?.url === 'string' || typeof attachment?.data === 'string')
   })
 }
 
@@ -101,6 +101,7 @@ function appendAttachmentLinks({
   leadMagnetName: string
 }) {
   const renderedAttachments = campaignStepAttachments(step)
+    .filter((attachment) => attachment.url)
     .map((attachment) => {
       const name = renderCampaignTemplate({
         template: attachment.name,
@@ -109,7 +110,7 @@ function appendAttachmentLinks({
         leadMagnetName,
       }).trim()
       const url = renderCampaignTemplate({
-        template: attachment.url,
+        template: attachment.url || '',
         lead,
         challengeLink,
         leadMagnetName,
@@ -122,6 +123,38 @@ function appendAttachmentLinks({
 
   const links = renderedAttachments.map((attachment) => `- ${attachment.name}: ${attachment.url}`).join('\n')
   return `${body.trim()}\n\nAttachments:\n${links}`
+}
+
+function renderFileAttachments({
+  step,
+  lead,
+  challengeLink,
+  leadMagnetName,
+}: {
+  step: CampaignAutomationStep
+  lead: SequenceLead
+  challengeLink: string
+  leadMagnetName: string
+}) {
+  return campaignStepAttachments(step)
+    .filter((attachment) => attachment.data)
+    .map((attachment) => {
+      const filename = renderCampaignTemplate({
+        template: attachment.name,
+        lead,
+        challengeLink,
+        leadMagnetName,
+      }).trim()
+
+      return filename && attachment.data
+        ? {
+            filename,
+            contentType: attachment.mime_type || 'application/octet-stream',
+            data: attachment.data,
+          }
+        : null
+    })
+    .filter((attachment): attachment is { filename: string; contentType: string; data: string } => Boolean(attachment))
 }
 
 function executionKey(stepId: string, enrollmentId: string) {
@@ -542,6 +575,12 @@ export async function runCampaignSequence({
           challengeLink,
           leadMagnetName,
         })
+        const gmailAttachments = renderFileAttachments({
+          step,
+          lead,
+          challengeLink,
+          leadMagnetName,
+        })
 
         if (!bodyWithAttachments) throw new Error('Sequence step has no email body')
         if (!sendingContext) throw new Error('No Gmail account connected')
@@ -552,6 +591,7 @@ export async function runCampaignSequence({
           subject,
           body: bodyWithAttachments,
           threadId: latestThreadByLead.get(enrollment.lead_id) || null,
+          attachments: gmailAttachments,
         })
         const sentAt = new Date().toISOString()
         const email = await insertSentLeadEmail({

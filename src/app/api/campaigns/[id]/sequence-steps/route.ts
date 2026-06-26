@@ -7,9 +7,29 @@ import {
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+
 const attachmentSchema = z.object({
   name: z.string().trim().min(1).max(120),
-  url: z.string().trim().url().max(2048),
+  url: z.string().trim().url().max(2048).optional(),
+  data: z.string().max(Math.ceil(MAX_ATTACHMENT_BYTES * 1.4)).optional(),
+  mime_type: z.string().trim().max(120).optional(),
+  size: z.number().int().min(0).max(MAX_ATTACHMENT_BYTES).optional(),
+}).superRefine((attachment, ctx) => {
+  if (!attachment.url && !attachment.data) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Attachment needs a URL or uploaded file data',
+      path: ['url'],
+    })
+  }
+  if (attachment.data && !attachment.mime_type) {
+    ctx.addIssue({
+      code: z.ZodIssueCode.custom,
+      message: 'Uploaded attachments need a content type',
+      path: ['mime_type'],
+    })
+  }
 })
 
 const sequenceStepMetadataSchema = z.object({

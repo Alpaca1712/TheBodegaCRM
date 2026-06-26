@@ -108,7 +108,10 @@ export type CampaignAutomationEmailType =
 
 export interface CampaignAutomationAttachment {
   name: string
-  url: string
+  url?: string
+  data?: string
+  mime_type?: string
+  size?: number
 }
 
 export interface CampaignAutomationStep {

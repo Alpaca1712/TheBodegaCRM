@@ -130,18 +130,61 @@ export async function sendGmailMessage(
     subject: string
     body: string
     threadId?: string | null
+    attachments?: Array<{
+      filename: string
+      contentType: string
+      data: string
+    }>
   },
 ): Promise<{ id: string; threadId: string }> {
   const sanitizeHeader = (value: string) => value.replace(/[\r\n]+/g, ' ').trim()
-  const raw = [
-    `From: ${sanitizeHeader(input.from)}`,
-    `To: ${sanitizeHeader(input.to)}`,
-    `Subject: ${sanitizeHeader(input.subject)}`,
-    'MIME-Version: 1.0',
-    'Content-Type: text/plain; charset="UTF-8"',
-    '',
-    input.body,
-  ].join('\r\n')
+  const sanitizeHeaderParam = (value: string) => sanitizeHeader(value).replace(/"/g, "'")
+  const wrapBase64 = (value: string) => value.replace(/(.{76})/g, '$1\r\n')
+  const encodeBase64 = (value: string) => wrapBase64(Buffer.from(value, 'utf8').toString('base64'))
+  const cleanBase64 = (value: string) => value.replace(/^data:[^;]+;base64,/, '').replace(/\s/g, '')
+
+  const validAttachments = (input.attachments || []).filter((attachment) => {
+    return attachment.filename.trim() && attachment.contentType.trim() && attachment.data.trim()
+  })
+
+  let raw: string
+  if (validAttachments.length > 0) {
+    const boundary = `rocoto_${Date.now()}_${Math.random().toString(36).slice(2)}`
+    const parts = [
+      `From: ${sanitizeHeader(input.from)}`,
+      `To: ${sanitizeHeader(input.to)}`,
+      `Subject: ${sanitizeHeader(input.subject)}`,
+      'MIME-Version: 1.0',
+      `Content-Type: multipart/mixed; boundary="${boundary}"`,
+      '',
+      `--${boundary}`,
+      'Content-Type: text/plain; charset="UTF-8"',
+      'Content-Transfer-Encoding: base64',
+      '',
+      encodeBase64(input.body),
+      ...validAttachments.flatMap((attachment) => [
+        `--${boundary}`,
+        `Content-Type: ${sanitizeHeader(attachment.contentType)}; name="${sanitizeHeaderParam(attachment.filename)}"`,
+        'Content-Transfer-Encoding: base64',
+        `Content-Disposition: attachment; filename="${sanitizeHeaderParam(attachment.filename)}"`,
+        '',
+        wrapBase64(cleanBase64(attachment.data)),
+      ]),
+      `--${boundary}--`,
+      '',
+    ]
+    raw = parts.join('\r\n')
+  } else {
+    raw = [
+      `From: ${sanitizeHeader(input.from)}`,
+      `To: ${sanitizeHeader(input.to)}`,
+      `Subject: ${sanitizeHeader(input.subject)}`,
+      'MIME-Version: 1.0',
+      'Content-Type: text/plain; charset="UTF-8"',
+      '',
+      input.body,
+    ].join('\r\n')
+  }
 
   const encoded = Buffer.from(raw)
     .toString('base64')
