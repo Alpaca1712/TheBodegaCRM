@@ -1057,188 +1057,8 @@ function SequencePanel({
     }
   }
 
-  return (
-    <section className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
-              <ListChecks className="h-4 w-4" />
-            </span>
-            <div>
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Sequences</h2>
-              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-                {activeStepCount} on, {inactiveStepCount} paused
-              </p>
-            </div>
-          </div>
-          <p className="mt-3 max-w-3xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            Create rules that run from a pipeline stage: wait, send the right touch, stop on reply, and optionally move the lead.
-          </p>
-        </div>
-        <div className="flex shrink-0 gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
-            Run due
-          </Button>
-          <Button type="button" size="sm" onClick={() => beginCreate()} className="whitespace-nowrap bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add rule
-          </Button>
-        </div>
-      </div>
-
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <Clock3 className="h-4 w-4 text-zinc-400" />
-            When
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">A lead sits in a campaign stage.</p>
-        </div>
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <Send className="h-4 w-4 text-zinc-400" />
-            Send
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Use a templated Gmail touch or task.</p>
-        </div>
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <CheckCircle2 className="h-4 w-4 text-zinc-400" />
-            Then
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Move the lead or leave them in place.</p>
-        </div>
-      </div>
-
-      <div className={`mt-4 grid min-w-0 gap-4 ${editingStepId ? 'xl:grid-cols-[minmax(0,1fr)_520px] 2xl:grid-cols-[minmax(0,1fr)_minmax(620px,44%)]' : ''}`}>
-        <div className="min-w-0 space-y-3">
-          <section className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <div className="flex min-w-[140px] shrink-0 items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
-                  <Plus className="h-3.5 w-3.5" />
-                </span>
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">New rule</h3>
-                  <p className="text-[11px] text-zinc-400">Trigger stage</p>
-                </div>
-              </div>
-              <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(180px,360px)_auto]">
-                <select
-                  value={newStepStageKey}
-                  onChange={(event) => setNewStepStageKey(event.target.value)}
-                  className="h-8 min-w-0 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                >
-                  {campaign.stages.map((stage) => (
-                    <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
-                  ))}
-                </select>
-                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="h-8 whitespace-nowrap bg-zinc-900 px-3 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add rule
-                </Button>
-              </div>
-            </div>
-          </section>
-
-          {sortedSteps.length === 0 ? (
-            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
-              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No sequence rules yet</p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Add your first rule to send the next email or lead magnet from a campaign stage.</p>
-            </div>
-          ) : (
-            <div className="space-y-3">
-              {sequenceGroups.map((group) => (
-                <section key={group.stage.stage_key} className="min-w-0 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/70">
-                  <div className="flex flex-col gap-2 border-b border-zinc-100 px-3 py-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="min-w-0">
-                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">When lead is in</p>
-                      <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{group.stage.label}</h3>
-                    </div>
-                    {group.stage.stage_key !== 'unknown' && (
-                      <button
-                        type="button"
-                        onClick={() => beginCreate(group.stage.stage_key)}
-                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
-                      >
-                        <Plus className="h-3.5 w-3.5" />
-                        Add rule here
-                      </button>
-                    )}
-                  </div>
-
-                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
-                    {group.steps.map((step, index) => {
-                      const attachments = sequenceAttachmentsFromStep(step)
-                      const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
-                      const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
-
-                      return (
-                        <button
-                          key={step.id}
-                          type="button"
-                          onClick={() => beginEdit(step)}
-                          className="block w-full px-3 py-3 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-950/40"
-                        >
-                          <div className="grid gap-3 xl:grid-cols-[minmax(180px,1.15fr)_110px_minmax(160px,1fr)_minmax(160px,1fr)_64px] xl:items-center">
-                            <div className="min-w-0">
-                              <div className="flex flex-wrap items-center gap-2">
-                                <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
-                                  {index + 1}
-                                </span>
-                                <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{step.name}</p>
-                                <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
-                                  step.active
-                                    ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
-                                    : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
-                                }`}>
-                                  {step.active ? 'On' : 'Paused'}
-                                </span>
-                              </div>
-                              <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
-                                {step.stop_on_reply ? 'Stops when they reply' : 'Keeps running after replies'}
-                              </p>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Wait</p>
-                              <p className="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">{waitLabel}</p>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Send</p>
-                              <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
-                                {automationEmailTypeLabels[step.email_type]}
-                              </p>
-                              <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{automationChannelLabels[step.channel]}</p>
-                            </div>
-
-                            <div>
-                              <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Then</p>
-                              <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{thenLabel}</p>
-                              {attachments.length > 0 && (
-                                <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
-                                  <Paperclip className="h-3 w-3" />
-                                  {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
-                                </p>
-                              )}
-                            </div>
-
-                            <span className="text-xs font-medium text-zinc-400 xl:text-right">Edit</span>
-                          </div>
-                        </button>
-                      )
-                    })}
-                  </div>
-                </section>
-              ))}
-            </div>
-          )}
-        </div>
-
-      {editingStepId && (
-        <div className="h-fit rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+  const editorPanel = editingStepId ? (
+    <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">
@@ -1551,7 +1371,204 @@ function SequencePanel({
             </div>
           </div>
         </div>
-      )}
+  ) : null
+
+  return (
+    <section className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+              <ListChecks className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Sequences</h2>
+              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
+                {activeStepCount} on, {inactiveStepCount} paused
+              </p>
+            </div>
+          </div>
+          <p className="mt-3 max-w-3xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+            Create rules that run from a pipeline stage: wait, send the right touch, stop on reply, and optionally move the lead.
+          </p>
+        </div>
+        <div className="flex shrink-0 gap-2">
+          <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
+            Run due
+          </Button>
+          <Button type="button" size="sm" onClick={() => beginCreate()} className="whitespace-nowrap bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add rule
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-4 grid gap-2 md:grid-cols-3">
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <Clock3 className="h-4 w-4 text-zinc-400" />
+            When
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">A lead sits in a campaign stage.</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <Send className="h-4 w-4 text-zinc-400" />
+            Send
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Use a templated Gmail touch or task.</p>
+        </div>
+        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
+            <CheckCircle2 className="h-4 w-4 text-zinc-400" />
+            Then
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Move the lead or leave them in place.</p>
+        </div>
+      </div>
+
+      <div className="mt-4 min-w-0">
+        <div className="min-w-0 space-y-3">
+          <section className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
+            <div className="flex flex-col gap-2 md:flex-row md:items-center">
+              <div className="flex min-w-[140px] shrink-0 items-center gap-2">
+                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
+                  <Plus className="h-3.5 w-3.5" />
+                </span>
+                <div>
+                  <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">New rule</h3>
+                  <p className="text-[11px] text-zinc-400">Trigger stage</p>
+                </div>
+              </div>
+              <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(180px,360px)_auto]">
+                <select
+                  value={newStepStageKey}
+                  onChange={(event) => setNewStepStageKey(event.target.value)}
+                  className="h-8 min-w-0 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                >
+                  {campaign.stages.map((stage) => (
+                    <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
+                  ))}
+                </select>
+                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="h-8 whitespace-nowrap bg-zinc-900 px-3 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Add rule
+                </Button>
+              </div>
+            </div>
+            {editingStepId === 'new' && (
+              <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                {editorPanel}
+              </div>
+            )}
+          </section>
+
+          {sortedSteps.length === 0 ? (
+            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+              <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No sequence rules yet</p>
+              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Add your first rule to send the next email or lead magnet from a campaign stage.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {sequenceGroups.map((group) => (
+                <section key={group.stage.stage_key} className="min-w-0 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/70">
+                  <div className="flex flex-col gap-2 border-b border-zinc-100 px-3 py-3 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0">
+                      <p className="text-[11px] font-semibold uppercase tracking-wide text-zinc-400">When lead is in</p>
+                      <h3 className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{group.stage.label}</h3>
+                    </div>
+                    {group.stage.stage_key !== 'unknown' && (
+                      <button
+                        type="button"
+                        onClick={() => beginCreate(group.stage.stage_key)}
+                        className="inline-flex h-8 shrink-0 items-center justify-center gap-1 rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
+                      >
+                        <Plus className="h-3.5 w-3.5" />
+                        Add rule here
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
+                    {group.steps.map((step, index) => {
+                      const attachments = sequenceAttachmentsFromStep(step)
+                      const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
+                      const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
+
+                      return (
+                        <div key={step.id}>
+                          <button
+                            type="button"
+                            onClick={() => beginEdit(step)}
+                            className={`block w-full px-3 py-3 text-left transition ${
+                              editingStepId === step.id
+                                ? 'bg-zinc-50 dark:bg-zinc-950/40'
+                                : 'hover:bg-zinc-50 dark:hover:bg-zinc-950/40'
+                            }`}
+                          >
+                            <div className="grid gap-3 xl:grid-cols-[minmax(180px,1.15fr)_110px_minmax(160px,1fr)_minmax(160px,1fr)_64px] xl:items-center">
+                              <div className="min-w-0">
+                                <div className="flex flex-wrap items-center gap-2">
+                                  <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
+                                    {index + 1}
+                                  </span>
+                                  <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{step.name}</p>
+                                  <span className={`rounded px-1.5 py-0.5 text-[10px] font-semibold uppercase ${
+                                    step.active
+                                      ? 'bg-emerald-50 text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50'
+                                      : 'bg-zinc-100 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:ring-zinc-700'
+                                  }`}>
+                                    {step.active ? 'On' : 'Paused'}
+                                  </span>
+                                </div>
+                                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
+                                  {step.stop_on_reply ? 'Stops when they reply' : 'Keeps running after replies'}
+                                </p>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Wait</p>
+                                <p className="mt-1 text-sm font-medium text-zinc-800 dark:text-zinc-200">{waitLabel}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Send</p>
+                                <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">
+                                  {automationEmailTypeLabels[step.email_type]}
+                                </p>
+                                <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{automationChannelLabels[step.channel]}</p>
+                              </div>
+
+                              <div>
+                                <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">Then</p>
+                                <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{thenLabel}</p>
+                                {attachments.length > 0 && (
+                                  <p className="mt-0.5 inline-flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
+                                    <Paperclip className="h-3 w-3" />
+                                    {attachments.length} attachment{attachments.length !== 1 ? 's' : ''}
+                                  </p>
+                                )}
+                              </div>
+
+                              <span className="text-xs font-medium text-zinc-400 xl:text-right">
+                                {editingStepId === step.id ? 'Editing' : 'Edit'}
+                              </span>
+                            </div>
+                          </button>
+                          {editingStepId === step.id && (
+                            <div className="border-t border-zinc-100 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+                              {editorPanel}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          )}
+        </div>
       </div>
     </section>
   )
