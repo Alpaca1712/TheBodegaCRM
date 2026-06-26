@@ -33,6 +33,7 @@ import type {
   CampaignDetail,
   CampaignEnrollmentWithLead,
   CampaignEvent,
+  CampaignSequenceExecution,
   CampaignStage,
 } from '@/types/campaigns'
 import { CAMPAIGN_EVENT_LABELS, CAMPAIGN_TEMPLATES, CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
@@ -416,6 +417,9 @@ export default function CampaignDetailPage() {
                 campaignId={campaign.id}
                 count={stageCounts[stage.stage_key] || 0}
                 enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
+                sequenceSteps={sequenceSteps}
+                sequenceExecutions={campaign.sequence_executions || []}
+                events={campaign.events}
                 movingId={movingId}
                 draggingEnrollmentId={draggingEnrollmentId}
                 isDropTarget={dragOverStageKey === stage.stage_key}
@@ -1534,12 +1538,180 @@ function SequencePanel({
   )
 }
 
+type SequenceIndicatorTone = 'amber' | 'blue' | 'emerald' | 'red' | 'zinc'
+
+const sequenceIndicatorTones: Record<SequenceIndicatorTone, string> = {
+  amber: 'bg-amber-50 text-amber-700 ring-amber-100 dark:bg-amber-950/35 dark:text-amber-300 dark:ring-amber-900/50',
+  blue: 'bg-blue-50 text-blue-700 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50',
+  emerald: 'bg-emerald-50 text-emerald-700 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50',
+  red: 'bg-red-50 text-red-700 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50',
+  zinc: 'bg-zinc-100 text-zinc-600 ring-zinc-200 dark:bg-zinc-800 dark:text-zinc-300 dark:ring-zinc-700',
+}
+
+interface SequenceCardIndicator {
+  label: string
+  detail?: string
+  title: string
+  tone: SequenceIndicatorTone
+}
+
+function eventBelongsToEnrollment(event: CampaignEvent, enrollment: CampaignEnrollmentWithLead) {
+  return event.enrollment_id === enrollment.id || event.lead_id === enrollment.lead_id
+}
+
+function latestStageEntryAt(enrollment: CampaignEnrollmentWithLead, events: CampaignEvent[]) {
+  const stageEvent = events
+    .filter((event) => event.stage_key === enrollment.stage_key && eventBelongsToEnrollment(event, enrollment))
+    .sort((a, b) => new Date(b.occurred_at).getTime() - new Date(a.occurred_at).getTime())[0]
+
+  return stageEvent?.occurred_at || enrollment.last_event_at || enrollment.updated_at || enrollment.enrolled_at
+}
+
+function latestReplyAfterStageEntry(enrollment: CampaignEnrollmentWithLead, events: CampaignEvent[], stageStartedAt: string) {
+  const stageStarted = new Date(stageStartedAt).getTime()
+  return events.some((event) => {
+    if (event.event_type !== 'email_replied' || !eventBelongsToEnrollment(event, enrollment)) return false
+    return new Date(event.occurred_at).getTime() >= stageStarted
+  })
+}
+
+function executionTimestamp(execution: CampaignSequenceExecution) {
+  return execution.executed_at || execution.due_at || execution.created_at
+}
+
+function currentExecutionForStep({
+  enrollment,
+  step,
+  executions,
+  stageStartedAt,
+}: {
+  enrollment: CampaignEnrollmentWithLead
+  step: CampaignAutomationStep
+  executions: CampaignSequenceExecution[]
+  stageStartedAt: string
+}) {
+  const stageStarted = new Date(stageStartedAt).getTime()
+
+  return executions
+    .filter((execution) => {
+      return execution.campaign_enrollment_id === enrollment.id &&
+        execution.campaign_sequence_step_id === step.id &&
+        new Date(executionTimestamp(execution)).getTime() >= stageStarted
+    })
+    .sort((a, b) => new Date(executionTimestamp(b)).getTime() - new Date(executionTimestamp(a)).getTime())[0]
+}
+
+function formatWaitUntil(dueAt: Date, now: Date) {
+  const minutes = Math.max(0, Math.ceil((dueAt.getTime() - now.getTime()) / 60_000))
+  if (minutes <= 0) return 'now'
+  return formatWaitMinutes(minutes)
+}
+
+function getEnrollmentSequenceIndicator({
+  enrollment,
+  steps,
+  executions,
+  events,
+}: {
+  enrollment: CampaignEnrollmentWithLead
+  steps: CampaignAutomationStep[]
+  executions: CampaignSequenceExecution[]
+  events: CampaignEvent[]
+}): SequenceCardIndicator | null {
+  const activeStageSteps = steps
+    .filter((step) => step.active && step.trigger_stage_key === enrollment.stage_key)
+    .sort((a, b) => a.position - b.position || new Date(a.created_at).getTime() - new Date(b.created_at).getTime())
+
+  if (activeStageSteps.length === 0) return null
+
+  const stageStartedAt = latestStageEntryAt(enrollment, events)
+  const stoppedByReply = activeStageSteps.some((step) => step.stop_on_reply) &&
+    latestReplyAfterStageEntry(enrollment, events, stageStartedAt)
+
+  if (stoppedByReply) {
+    return {
+      label: 'Stopped by reply',
+      detail: formatShortDate(stageStartedAt),
+      title: 'A reply happened after this lead entered the current stage, so stop-on-reply sequence rules will not send.',
+      tone: 'zinc',
+    }
+  }
+
+  if (!enrollment.lead?.contact_email && activeStageSteps.some((step) => step.channel === 'email')) {
+    return {
+      label: 'No email',
+      detail: 'sequence blocked',
+      title: 'This stage has an email sequence rule, but the lead has no email address.',
+      tone: 'red',
+    }
+  }
+
+  const now = new Date()
+  let latestTerminal: SequenceCardIndicator | null = null
+
+  for (const step of activeStageSteps) {
+    const execution = currentExecutionForStep({ enrollment, step, executions, stageStartedAt })
+    const stepLabel = step.name || automationEmailTypeLabels[step.email_type]
+
+    if (execution?.status === 'failed') {
+      return {
+        label: 'Sequence failed',
+        detail: stepLabel,
+        title: execution.error_message || `The "${stepLabel}" rule failed. Run due again after fixing the issue.`,
+        tone: 'red',
+      }
+    }
+
+    if (execution?.status === 'skipped') {
+      latestTerminal = {
+        label: 'Sequence skipped',
+        detail: stepLabel,
+        title: `The "${stepLabel}" rule was skipped for this current stage entry.`,
+        tone: 'zinc',
+      }
+      continue
+    }
+
+    if (execution?.status === 'sent') {
+      latestTerminal = {
+        label: 'Sequence sent',
+        detail: execution.executed_at ? formatShortDate(execution.executed_at) : stepLabel,
+        title: `The "${stepLabel}" rule has already sent for this current stage entry.`,
+        tone: 'emerald',
+      }
+      continue
+    }
+
+    const dueAt = new Date(new Date(stageStartedAt).getTime() + step.wait_minutes * 60_000)
+    if (dueAt <= now) {
+      return {
+        label: 'Due now',
+        detail: stepLabel,
+        title: `The "${stepLabel}" rule is due. Click Run due to send it now.`,
+        tone: 'amber',
+      }
+    }
+
+    return {
+      label: `Waiting ${formatWaitUntil(dueAt, now)}`,
+      detail: stepLabel,
+      title: `The "${stepLabel}" rule is scheduled for ${dueAt.toLocaleString()}.`,
+      tone: 'blue',
+    }
+  }
+
+  return latestTerminal
+}
+
 function StageColumn({
   stage,
   stages,
   campaignId,
   count,
   enrollments,
+  sequenceSteps,
+  sequenceExecutions,
+  events,
   movingId,
   draggingEnrollmentId,
   isDropTarget,
@@ -1555,6 +1727,9 @@ function StageColumn({
   campaignId: string
   count: number
   enrollments: CampaignEnrollmentWithLead[]
+  sequenceSteps: CampaignAutomationStep[]
+  sequenceExecutions: CampaignSequenceExecution[]
+  events: CampaignEvent[]
   movingId: string | null
   draggingEnrollmentId: string | null
   isDropTarget: boolean
@@ -1595,6 +1770,9 @@ function StageColumn({
             enrollment={enrollment}
             stages={stages}
             campaignId={campaignId}
+            sequenceSteps={sequenceSteps}
+            sequenceExecutions={sequenceExecutions}
+            events={events}
             moving={movingId === enrollment.id}
             dragging={draggingEnrollmentId === enrollment.id}
             onMove={onMove}
@@ -1616,6 +1794,9 @@ function EnrollmentCard({
   enrollment,
   stages,
   campaignId,
+  sequenceSteps,
+  sequenceExecutions,
+  events,
   moving,
   dragging,
   onMove,
@@ -1625,6 +1806,9 @@ function EnrollmentCard({
   enrollment: CampaignEnrollmentWithLead
   stages: CampaignStage[]
   campaignId: string
+  sequenceSteps: CampaignAutomationStep[]
+  sequenceExecutions: CampaignSequenceExecution[]
+  events: CampaignEvent[]
   moving: boolean
   dragging: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
@@ -1632,6 +1816,12 @@ function EnrollmentCard({
   onDragEnd: () => void
 }) {
   const lead = enrollment.lead
+  const sequenceIndicator = getEnrollmentSequenceIndicator({
+    enrollment,
+    steps: sequenceSteps,
+    executions: sequenceExecutions,
+    events,
+  })
 
   return (
     <article
@@ -1674,6 +1864,19 @@ function EnrollmentCard({
           </span>
         )}
       </div>
+
+      {sequenceIndicator && (
+        <div
+          title={sequenceIndicator.title}
+          className={`mt-2 flex min-w-0 items-center gap-1.5 rounded-md px-2 py-1 text-[11px] font-medium ring-1 ${sequenceIndicatorTones[sequenceIndicator.tone]}`}
+        >
+          <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-current" />
+          <span className="truncate">{sequenceIndicator.label}</span>
+          {sequenceIndicator.detail && (
+            <span className="min-w-0 shrink truncate opacity-75">{sequenceIndicator.detail}</span>
+          )}
+        </div>
+      )}
 
       <select
         value={enrollment.stage_key}

@@ -6,6 +6,7 @@ import { buildCampaignLandingUrl } from '@/lib/landing-links/server'
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 import type {
   Campaign,
+  CampaignSequenceExecution,
   CampaignAutomationStep,
   CampaignDetail,
   CampaignEnrollmentWithLead,
@@ -43,7 +44,7 @@ export async function GET(
 
     if (campaignError || !campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes] = await Promise.all([
+    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes, sequenceExecutionsRes] = await Promise.all([
       supabase
         .from('campaign_pipelines')
         .select('*')
@@ -89,6 +90,13 @@ export async function GET(
         .eq('org_id', orgId)
         .order('position', { ascending: true })
         .order('created_at', { ascending: true }),
+      supabase
+        .from('campaign_sequence_executions')
+        .select('*')
+        .eq('campaign_id', id)
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: false })
+        .limit(500),
     ])
 
     if (pipelineRes.error) throw pipelineRes.error
@@ -97,6 +105,9 @@ export async function GET(
     if (eventsRes.error) throw eventsRes.error
     if (sequenceStepsRes.error && !isMissingRelation(sequenceStepsRes.error, 'campaign_sequence_steps')) {
       throw sequenceStepsRes.error
+    }
+    if (sequenceExecutionsRes.error && !isMissingRelation(sequenceExecutionsRes.error, 'campaign_sequence_executions')) {
+      throw sequenceExecutionsRes.error
     }
 
     const enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
@@ -111,6 +122,7 @@ export async function GET(
       enrollments,
       events,
       sequence_steps: (sequenceStepsRes.error ? [] : sequenceStepsRes.data || []) as CampaignAutomationStep[],
+      sequence_executions: (sequenceExecutionsRes.error ? [] : sequenceExecutionsRes.data || []) as CampaignSequenceExecution[],
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({

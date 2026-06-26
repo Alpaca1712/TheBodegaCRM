@@ -137,6 +137,23 @@ export interface CampaignAutomationStep {
   updated_at: string
 }
 
+export interface CampaignSequenceExecution {
+  id: string
+  campaign_id: string
+  campaign_sequence_step_id: string
+  campaign_enrollment_id: string
+  lead_id: string
+  org_id: string
+  user_id: string
+  status: 'scheduled' | 'sent' | 'skipped' | 'failed'
+  due_at: string
+  executed_at: string | null
+  lead_email_id: string | null
+  error_message: string | null
+  metadata: Record<string, unknown>
+  created_at: string
+}
+
 export interface CampaignTemplate {
   key: CampaignTemplateKey
   name: string
@@ -358,4 +375,5 @@ export interface CampaignDetail extends CampaignListItem {
   enrollments: CampaignEnrollmentWithLead[]
   events: CampaignEvent[]
   sequence_steps: CampaignAutomationStep[]
+  sequence_executions: CampaignSequenceExecution[]
 }
