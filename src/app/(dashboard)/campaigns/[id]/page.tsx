@@ -8,6 +8,7 @@ import {
   CalendarCheck,
   CheckCircle2,
   Clock3,
+  Copy,
   GripVertical,
   Info,
   Link2,
@@ -884,6 +885,15 @@ function SequencePanel({
     setForm(emptySequenceForm(campaign))
   }
 
+  const copyTemplateToken = async (token: string) => {
+    try {
+      await navigator.clipboard.writeText(token)
+      toast.success(`${token} copied`)
+    } catch {
+      toast.error('Failed to copy variable')
+    }
+  }
+
   const addUploadedFiles = async (fileList: FileList | null) => {
     const files = Array.from(fileList || [])
     if (files.length === 0) return
@@ -1367,9 +1377,18 @@ function SequencePanel({
                     </p>
                     <div className="mt-3 grid gap-1.5">
                       {campaignTemplateTokens.map((item) => (
-                        <div key={item.token} className="flex items-center justify-between gap-3 rounded-md bg-zinc-50 px-2 py-1.5 dark:bg-zinc-900">
-                          <code className="whitespace-nowrap text-xs font-semibold text-red-600 dark:text-red-300">{item.token}</code>
+                        <div key={item.token} className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-2 rounded-md bg-zinc-50 px-2 py-1.5 dark:bg-zinc-900">
+                          <code className="truncate text-xs font-semibold text-red-600 dark:text-red-300">{item.token}</code>
                           <span className="truncate text-xs text-zinc-500 dark:text-zinc-400">{item.description}</span>
+                          <button
+                            type="button"
+                            onClick={() => void copyTemplateToken(item.token)}
+                            className="flex h-6 w-6 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-white hover:text-red-600 focus:outline-none focus:ring-2 focus:ring-red-500/20 dark:hover:bg-zinc-800 dark:hover:text-red-300"
+                            aria-label={`Copy ${item.token}`}
+                            title={`Copy ${item.token}`}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
