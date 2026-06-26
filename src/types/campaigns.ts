@@ -114,6 +114,10 @@ export interface CampaignAutomationAttachment {
   size?: number
 }
 
+export interface CampaignAutomationAiCondition {
+  prompt: string
+}
+
 export interface CampaignAutomationStep {
   id: string
   campaign_id: string
@@ -132,6 +136,7 @@ export interface CampaignAutomationStep {
   active: boolean
   metadata: Record<string, unknown> & {
     attachments?: CampaignAutomationAttachment[]
+    ai_condition?: CampaignAutomationAiCondition
   }
   created_at: string
   updated_at: string

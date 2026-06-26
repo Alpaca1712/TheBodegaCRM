@@ -20,6 +20,7 @@ import {
   RefreshCw,
   Search,
   Send,
+  Sparkles,
   Trash2,
   UserPlus,
   Users,
@@ -100,6 +101,7 @@ interface SequenceStepForm {
   move_to_stage_key: string
   stop_on_reply: boolean
   active: boolean
+  ai_condition_prompt: string
   attachments: CampaignAutomationAttachment[]
 }
 
@@ -684,6 +686,7 @@ function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
     move_to_stage_key: '',
     stop_on_reply: true,
     active: false,
+    ai_condition_prompt: '',
     attachments: [],
   }
 }
@@ -719,6 +722,11 @@ function sequenceAttachmentsFromStep(step: CampaignAutomationStep): CampaignAuto
       mime_type: attachment.mime_type,
       size: attachment.size,
     }))
+}
+
+function sequenceAiConditionPromptFromStep(step: CampaignAutomationStep) {
+  const prompt = step.metadata?.ai_condition?.prompt
+  return typeof prompt === 'string' ? prompt : ''
 }
 
 function cleanSequenceAttachments(attachments: CampaignAutomationAttachment[]) {
@@ -808,6 +816,7 @@ function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
     move_to_stage_key: step.move_to_stage_key || '',
     stop_on_reply: step.stop_on_reply,
     active: step.active,
+    ai_condition_prompt: sequenceAiConditionPromptFromStep(step),
     attachments: sequenceAttachmentsFromStep(step),
   }
 }
@@ -967,6 +976,9 @@ function SequencePanel({
       const nextPosition = sortedSteps.length > 0
         ? Math.max(...sortedSteps.map((step) => step.position)) + 10
         : 10
+      const { ai_condition: _existingAiCondition, ...existingMetadata } = existingStep?.metadata || {}
+      void _existingAiCondition
+      const aiConditionPrompt = form.ai_condition_prompt.trim()
       const res = await fetch(
         isNew
           ? `/api/campaigns/${campaign.id}/sequence-steps`
@@ -987,8 +999,9 @@ function SequencePanel({
             stop_on_reply: form.stop_on_reply,
             active: form.active,
             metadata: {
-              ...(existingStep?.metadata || {}),
+              ...existingMetadata,
               attachments: cleanedAttachments.attachments,
+              ...(aiConditionPrompt ? { ai_condition: { prompt: aiConditionPrompt } } : {}),
             },
           }),
         },
@@ -1168,6 +1181,23 @@ function SequencePanel({
                   <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
                 ))}
               </select>
+            </label>
+
+            <label className="block rounded-md border border-blue-100 bg-blue-50/50 p-3 dark:border-blue-900/50 dark:bg-blue-950/20">
+              <span className="flex items-center gap-1.5 text-xs font-semibold text-blue-700 dark:text-blue-300">
+                <Sparkles className="h-3.5 w-3.5" />
+                AI condition
+              </span>
+              <textarea
+                value={form.ai_condition_prompt}
+                onChange={(event) => setForm((current) => ({ ...current, ai_condition_prompt: event.target.value }))}
+                rows={4}
+                placeholder="Example: Only send if the latest inbound reply clearly says yes, send it, interested, or otherwise asks for the lead magnet. If they ask for more info, object, or are unclear, do not send."
+                className="mt-2 min-h-[104px] w-full resize-y rounded-md border border-blue-100 bg-white px-3 py-2.5 text-sm leading-6 text-zinc-900 outline-none placeholder:text-zinc-400 focus:ring-2 focus:ring-blue-500/20 dark:border-blue-900/60 dark:bg-zinc-950 dark:text-zinc-100"
+              />
+              <p className="mt-1.5 text-xs leading-5 text-blue-700/80 dark:text-blue-300/80">
+                Leave blank to run normally. When filled, this rule only sends if the AI says the condition is true.
+              </p>
             </label>
 
             <label className="block">
@@ -1492,6 +1522,7 @@ function SequencePanel({
                   <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
                     {group.steps.map((step, index) => {
                       const attachments = sequenceAttachmentsFromStep(step)
+                      const aiConditionPrompt = sequenceAiConditionPromptFromStep(step)
                       const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
                       const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
 
@@ -1520,6 +1551,15 @@ function SequencePanel({
                                   }`}>
                                     {step.active ? 'On' : 'Paused'}
                                   </span>
+                                  {aiConditionPrompt && (
+                                    <span
+                                      title={aiConditionPrompt}
+                                      className="inline-flex items-center gap-1 rounded bg-blue-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase text-blue-700 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50"
+                                    >
+                                      <Sparkles className="h-3 w-3" />
+                                      AI gate
+                                    </span>
+                                  )}
                                 </div>
                                 <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">
                                   {step.stop_on_reply ? 'Stops when they reply' : 'Keeps running after replies'}
@@ -1699,6 +1739,17 @@ function getEnrollmentSequenceIndicator({
     }
 
     if (execution?.status === 'skipped') {
+      if (execution.metadata?.reason === 'ai_condition_false') {
+        const condition = execution.metadata.ai_condition as { reason?: string } | undefined
+        latestTerminal = {
+          label: 'AI gate waiting',
+          detail: stepLabel,
+          title: condition?.reason || `The "${stepLabel}" rule checked the AI condition and did not send.`,
+          tone: 'blue',
+        }
+        continue
+      }
+
       latestTerminal = {
         label: 'Sequence skipped',
         detail: stepLabel,
