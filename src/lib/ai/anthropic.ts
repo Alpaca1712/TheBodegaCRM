@@ -1,7 +1,40 @@
 import Anthropic from '@anthropic-ai/sdk'
 
-const DEFAULT_MODEL = 'claude-sonnet-4-20250514'
-const RESEARCH_MODEL = 'claude-opus-4-6'
+const DEFAULT_MODEL = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-6'
+const RESEARCH_MODEL = process.env.ANTHROPIC_RESEARCH_MODEL || 'claude-opus-4-8'
+
+type GenerationOptions = {
+  maxTokens?: number
+  temperature?: number
+  model?: string
+}
+
+type ResearchOptions = GenerationOptions & {
+  maxSearches?: number
+}
+
+function supportsSamplingParams(model: string): boolean {
+  return !(
+    model.startsWith('claude-fable-') ||
+    model.startsWith('claude-mythos-') ||
+    model.startsWith('claude-opus-4-7') ||
+    model.startsWith('claude-opus-4-8')
+  )
+}
+
+function withTemperature<T extends { model: string }>(
+  payload: T,
+  temperature: number | undefined
+): T & { temperature?: number } {
+  if (!supportsSamplingParams(payload.model)) {
+    return payload
+  }
+
+  return {
+    ...payload,
+    temperature: temperature ?? 0.7,
+  }
+}
 
 function getClient(): Anthropic {
   const apiKey = process.env.ANTHROPIC_API_KEY
@@ -14,16 +47,16 @@ function getClient(): Anthropic {
 export async function generateCompletion(
   systemPrompt: string,
   userPrompt: string,
-  options?: { maxTokens?: number; temperature?: number }
+  options?: GenerationOptions
 ): Promise<string> {
   const client = getClient()
-  const response = await client.messages.create({
-    model: DEFAULT_MODEL,
+  const model = options?.model || DEFAULT_MODEL
+  const response = await client.messages.create(withTemperature({
+    model,
     max_tokens: options?.maxTokens ?? 1024,
-    temperature: options?.temperature ?? 0.7,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
-  })
+  }, options?.temperature))
 
   const block = response.content[0]
   if (block.type === 'text') {
@@ -35,7 +68,7 @@ export async function generateCompletion(
 export async function generateJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: { maxTokens?: number; temperature?: number }
+  options?: GenerationOptions
 ): Promise<T> {
   const result = await generateCompletion(systemPrompt, userPrompt, options)
   const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
@@ -51,13 +84,13 @@ export async function generateJSON<T>(
 export async function researchWithWebSearch(
   systemPrompt: string,
   userPrompt: string,
-  options?: { maxTokens?: number; temperature?: number; maxSearches?: number }
+  options?: ResearchOptions
 ): Promise<string> {
   const client = getClient()
-  const response = await client.messages.create({
-    model: RESEARCH_MODEL,
+  const model = options?.model || RESEARCH_MODEL
+  const response = await client.messages.create(withTemperature({
+    model,
     max_tokens: options?.maxTokens ?? 4096,
-    temperature: options?.temperature ?? 0.3,
     system: systemPrompt,
     messages: [{ role: 'user', content: userPrompt }],
     tools: [
@@ -67,7 +100,7 @@ export async function researchWithWebSearch(
         max_uses: options?.maxSearches ?? 10,
       },
     ],
-  })
+  }, options?.temperature ?? 0.3))
 
   // The response contains interleaved search results and text blocks.
   // Extract the last text block -- that's Claude's final synthesized answer.
@@ -102,7 +135,7 @@ function extractJSON(text: string): string | null {
 export async function researchWithWebSearchJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: { maxTokens?: number; temperature?: number; maxSearches?: number }
+  options?: ResearchOptions
 ): Promise<T> {
   const result = await researchWithWebSearch(systemPrompt, userPrompt, options)
   const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
