@@ -32,7 +32,7 @@ export interface CampaignAutomationStepSeed {
 }
 
 export function defaultCampaignAutomationSteps(templateKey: CampaignTemplateKey): CampaignAutomationStepSeed[] {
-  if (templateKey === 'linkedin_inbound_playbook') {
+  if (templateKey === 'linkedin_inbound_playbook' || templateKey === 'website_inbound_lead_magnet') {
     return [
       {
         name: 'Send lead magnet reply',
@@ -101,6 +101,37 @@ export function defaultCampaignAutomationSteps(templateKey: CampaignTemplateKey)
         subject_template: 'Should I close the loop?',
         body_template: 'Hey {{first_name}},\n\nI have not heard back, so I will close the loop unless AI agent security is active for {{company_name}} right now.\n\nEither way, here is the challenge link in case it helps later: {{challenge_link}}',
         move_to_stage_key: 'nurture_lost',
+        stop_on_reply: true,
+        active: false,
+      },
+    ]
+  }
+
+  if (templateKey === 'linkedin_outbound_lead_magnet') {
+    return [
+      {
+        name: 'Send requested lead magnet',
+        position: 10,
+        trigger_stage_key: 'lead_magnet_requested',
+        wait_minutes: 0,
+        channel: 'email',
+        email_type: 'lead_magnet',
+        subject_template: '{{lead_magnet}}',
+        body_template: 'Hey {{first_name}},\n\nSending the {{lead_magnet}} I mentioned: {{challenge_link}}\n\nIf you complete the challenge, I can point you to the most important gaps.',
+        move_to_stage_key: 'lead_magnet_sent',
+        stop_on_reply: true,
+        active: false,
+      },
+      {
+        name: 'Challenge completion nudge',
+        position: 20,
+        trigger_stage_key: 'challenge_link_clicked',
+        wait_minutes: 120,
+        channel: 'email',
+        email_type: 'follow_up_1',
+        subject_template: 'Want me to review it?',
+        body_template: 'Hey {{first_name}},\n\nSaw you opened the challenge link. If you finish it here, I can send back the highest-risk places I would look first: {{challenge_link}}',
+        move_to_stage_key: null,
         stop_on_reply: true,
         active: false,
       },

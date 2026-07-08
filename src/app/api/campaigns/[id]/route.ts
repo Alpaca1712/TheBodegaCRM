@@ -6,6 +6,7 @@ import { buildCampaignLandingUrl } from '@/lib/landing-links/server'
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 import type {
   Campaign,
+  CampaignLeadMagnet,
   CampaignSequenceExecution,
   CampaignAutomationStep,
   CampaignDetail,
@@ -45,7 +46,7 @@ export async function GET(
 
     if (campaignError || !campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes, sequenceExecutionsRes] = await Promise.all([
+    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes, sequenceExecutionsRes, leadMagnetsRes] = await Promise.all([
       supabase
         .from('campaign_pipelines')
         .select('*')
@@ -98,6 +99,13 @@ export async function GET(
         .eq('org_id', orgId)
         .order('created_at', { ascending: false })
         .limit(500),
+      supabase
+        .from('campaign_lead_magnets')
+        .select('*')
+        .eq('campaign_id', id)
+        .eq('org_id', orgId)
+        .order('is_default', { ascending: false })
+        .order('created_at', { ascending: true }),
     ])
 
     if (pipelineRes.error) throw pipelineRes.error
@@ -109,6 +117,9 @@ export async function GET(
     }
     if (sequenceExecutionsRes.error && !isMissingRelation(sequenceExecutionsRes.error, 'campaign_sequence_executions')) {
       throw sequenceExecutionsRes.error
+    }
+    if (leadMagnetsRes.error && !isMissingRelation(leadMagnetsRes.error, 'campaign_lead_magnets')) {
+      throw leadMagnetsRes.error
     }
 
     let enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
@@ -156,6 +167,7 @@ export async function GET(
       events,
       sequence_steps: (sequenceStepsRes.error ? [] : sequenceStepsRes.data || []) as CampaignAutomationStep[],
       sequence_executions: (sequenceExecutionsRes.error ? [] : sequenceExecutionsRes.data || []) as CampaignSequenceExecution[],
+      lead_magnets: (leadMagnetsRes.error ? [] : leadMagnetsRes.data || []) as CampaignLeadMagnet[],
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({

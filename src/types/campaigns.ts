@@ -77,6 +77,8 @@ export type CampaignTemplateKey =
   | 'email_outbound_lead_magnet'
   | 'email_outbound_direct_offer'
   | 'linkedin_inbound_playbook'
+  | 'website_inbound_lead_magnet'
+  | 'linkedin_outbound_lead_magnet'
   | 'conference_in_person_hormozi'
 
 export interface CampaignStageTemplate {
@@ -254,6 +256,54 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'book', label: 'Book discovery', timing: 'After application', channel: 'email', goal: 'Convert qualified applications to discovery.' },
     ],
   },
+  website_inbound_lead_magnet: {
+    key: 'website_inbound_lead_magnet',
+    name: 'Website Inbound Lead Magnet',
+    campaignType: 'website_inbound',
+    description: 'Generic inbound flow for landing pages, referrals, QR codes, or direct traffic: opt in, receive the lead magnet, click the challenge, complete the application, then book discovery.',
+    initialStageKey: 'opted_in',
+    targetChannel: 'landing',
+    stages: [
+      { key: 'opted_in', label: 'Opted In' },
+      { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
+      { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
+      { key: 'application_completed', label: 'Application Completed' },
+      { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'opt_in', label: 'Inbound opt-in', timing: 'Instant', channel: 'landing', goal: 'Capture the lead from the inbound source.' },
+      { key: 'deliver', label: 'Deliver lead magnet', timing: 'Instant', channel: 'email', goal: 'Send the selected lead magnet with per-lead attribution.' },
+      { key: 'challenge', label: 'Challenge CTA', timing: 'Same day', channel: 'landing', goal: 'Move them to the tracked challenge page.' },
+      { key: 'nudge', label: 'Application nudge', timing: 'Day 1', channel: 'email', goal: 'Remind them to complete the challenge application.' },
+      { key: 'book', label: 'Book discovery', timing: 'After application', channel: 'email', goal: 'Convert qualified applications to discovery.' },
+    ],
+  },
+  linkedin_outbound_lead_magnet: {
+    key: 'linkedin_outbound_lead_magnet',
+    name: 'LinkedIn Outbound Lead Magnet',
+    campaignType: 'linkedin_outbound',
+    description: 'Manual LinkedIn outbound flow: message prospects, track who asks for the lead magnet or offer, then move them toward the challenge and discovery.',
+    initialStageKey: 'to_message',
+    targetChannel: 'linkedin',
+    stages: [
+      { key: 'to_message', label: 'To Message' },
+      { key: 'messaged_waiting', label: 'Messaged / Waiting' },
+      { key: 'replied', label: 'Replied' },
+      { key: 'lead_magnet_requested', label: 'Asked For Lead Magnet' },
+      { key: 'lead_magnet_sent', label: 'Lead Magnet Sent' },
+      { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
+      { key: 'application_completed', label: 'Application Completed' },
+      { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'message', label: 'Manual LinkedIn opener', timing: 'Day 0', channel: 'linkedin', goal: 'Send the first LinkedIn message manually and track the response.' },
+      { key: 'reply', label: 'Track reply intent', timing: 'When they reply', channel: 'linkedin', goal: 'Move interested replies into requested or direct offer stages.' },
+      { key: 'deliver', label: 'Deliver lead magnet', timing: 'After request', channel: 'email', goal: 'Send the personalized lead magnet PDF or tracked challenge link.' },
+      { key: 'nudge', label: 'Challenge nudge', timing: '2 hours after click', channel: 'email', goal: 'Nudge the challenge/application if they clicked but did not complete.' },
+    ],
+  },
   conference_in_person_hormozi: {
     key: 'conference_in_person_hormozi',
     name: 'Conference Value-First Playbook',
@@ -283,8 +333,8 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
 export const DEFAULT_TEMPLATE_BY_CAMPAIGN_TYPE: Record<CampaignType, CampaignTemplateKey> = {
   email_outbound: 'email_outbound_lead_magnet',
   linkedin_inbound: 'linkedin_inbound_playbook',
-  linkedin_outbound: 'email_outbound_lead_magnet',
-  website_inbound: 'linkedin_inbound_playbook',
+  linkedin_outbound: 'linkedin_outbound_lead_magnet',
+  website_inbound: 'website_inbound_lead_magnet',
   direct_offer_outbound: 'email_outbound_direct_offer',
   conference_in_person: 'conference_in_person_hormozi',
 }
@@ -387,6 +437,22 @@ export interface CampaignListItem extends Campaign {
   landing_url?: string | null
 }
 
+export interface CampaignLeadMagnet {
+  id: string
+  campaign_id: string
+  org_id: string
+  user_id: string
+  name: string
+  google_doc_id: string
+  google_doc_url: string | null
+  cta_phrase: string
+  cta_link_text: string
+  filename_template: string
+  is_default: boolean
+  created_at: string
+  updated_at: string
+}
+
 export interface CampaignDetail extends CampaignListItem {
   pipeline: CampaignPipeline | null
   stages: CampaignStage[]
@@ -394,4 +460,5 @@ export interface CampaignDetail extends CampaignListItem {
   events: CampaignEvent[]
   sequence_steps: CampaignAutomationStep[]
   sequence_executions: CampaignSequenceExecution[]
+  lead_magnets: CampaignLeadMagnet[]
 }

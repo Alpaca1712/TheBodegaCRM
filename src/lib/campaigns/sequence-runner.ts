@@ -4,6 +4,7 @@ import { generateJSON } from '@/lib/ai/anthropic'
 import { recordCampaignEvent } from '@/lib/campaigns/server'
 import { renderCampaignTemplate } from '@/lib/campaigns/automation'
 import { buildChallengeTrackingUrl, ensureLeadToken } from '@/lib/landing-links/server'
+import { generateLeadMagnetPdfFromGoogleDoc, type GoogleDocLeadMagnet } from '@/lib/google/lead-magnets'
 import { isMissingColumn, isMissingRelation, omitColumn } from '@/lib/supabase/missing-column'
 import type { Campaign, CampaignAutomationStep, CampaignEventType } from '@/types/campaigns'
 import type { Lead } from '@/types/leads'
@@ -58,6 +59,10 @@ interface EmailAccount {
   access_token: string
   refresh_token: string
   token_expires_at: string
+}
+
+interface SequenceLeadMagnet extends GoogleDocLeadMagnet {
+  is_default: boolean
 }
 
 interface LeadThread {
@@ -503,6 +508,39 @@ async function getSendingAccount(supabase: SupabaseClient, userId: string) {
   }
 
   return { account: typedAccount, accessToken }
+}
+
+async function getDefaultCampaignLeadMagnet(supabase: SupabaseClient, campaignId: string, orgId: string) {
+  const { data: defaultData, error } = await supabase
+    .from('campaign_lead_magnets')
+    .select('*')
+    .eq('campaign_id', campaignId)
+    .eq('org_id', orgId)
+    .eq('is_default', true)
+    .order('created_at', { ascending: true })
+    .limit(1)
+    .maybeSingle()
+
+  if (error && isMissingRelation(error, 'campaign_lead_magnets')) return null
+  if (error) throw error
+
+  let data = defaultData
+  if (!data) {
+    const fallback = await supabase
+      .from('campaign_lead_magnets')
+      .select('*')
+      .eq('campaign_id', campaignId)
+      .eq('org_id', orgId)
+      .order('created_at', { ascending: true })
+      .limit(1)
+      .maybeSingle()
+
+    if (fallback.error && isMissingRelation(fallback.error, 'campaign_lead_magnets')) return null
+    if (fallback.error) throw fallback.error
+    data = fallback.data
+  }
+
+  return (data || null) as SequenceLeadMagnet | null
 }
 
 async function insertSentLeadEmail({
@@ -991,6 +1029,7 @@ export async function runCampaignSequence({
   }
 
   let sendingContext: Awaited<ReturnType<typeof getSendingAccount>> | undefined
+  let campaignLeadMagnet: SequenceLeadMagnet | null | undefined
 
   for (const step of activeSteps) {
     for (const enrollment of activeEnrollments) {
@@ -1267,6 +1306,26 @@ export async function runCampaignSequence({
           challengeLink,
           leadMagnetName,
         })
+
+        if (step.email_type === 'lead_magnet') {
+          if (campaignLeadMagnet === undefined) {
+            campaignLeadMagnet = await getDefaultCampaignLeadMagnet(supabase, campaignId, orgId)
+          }
+
+          if (campaignLeadMagnet) {
+            const pdf = await generateLeadMagnetPdfFromGoogleDoc({
+              accessToken: sendingContext.accessToken,
+              leadMagnet: campaignLeadMagnet,
+              lead,
+              challengeLink,
+            })
+            gmailAttachments.push({
+              filename: pdf.filename,
+              contentType: pdf.contentType,
+              data: pdf.base64,
+            })
+          }
+        }
 
         if (!bodyWithAttachments) throw new Error('Sequence step has no email body')
         if (!sendingContext) throw new Error('No Gmail account connected')

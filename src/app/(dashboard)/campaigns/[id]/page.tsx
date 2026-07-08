@@ -9,6 +9,8 @@ import {
   CheckCircle2,
   Clock3,
   Copy,
+  Download,
+  FileText,
   GripVertical,
   Info,
   Link2,
@@ -35,6 +37,7 @@ import type {
   CampaignDetail,
   CampaignEnrollmentWithLead,
   CampaignEvent,
+  CampaignLeadMagnet,
   CampaignSequenceExecution,
   CampaignStage,
 } from '@/types/campaigns'
@@ -422,6 +425,7 @@ export default function CampaignDetailPage() {
                 campaignId={campaign.id}
                 count={stageCounts[stage.stage_key] || 0}
                 enrollments={campaign.enrollments.filter((enrollment) => enrollment.stage_key === stage.stage_key)}
+                leadMagnets={campaign.lead_magnets || []}
                 sequenceSteps={sequenceSteps}
                 sequenceExecutions={campaign.sequence_executions || []}
                 events={campaign.events}
@@ -439,6 +443,8 @@ export default function CampaignDetailPage() {
           </div>
         </div>
       </section>
+
+      <LeadMagnetsPanel campaign={campaign} onChanged={load} />
 
       <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />
 
@@ -670,6 +676,139 @@ function LeadOnboardingPanel({
             Add selected
           </Button>
         </div>
+      </div>
+    </section>
+  )
+}
+
+function LeadMagnetsPanel({
+  campaign,
+  onChanged,
+}: {
+  campaign: CampaignDetail
+  onChanged: () => Promise<void>
+}) {
+  const [name, setName] = useState(campaign.lead_magnet_name || 'Free Pentest Challenge')
+  const [docUrl, setDocUrl] = useState('')
+  const [ctaPhrase, setCtaPhrase] = useState('Apply for our Pentest Challenge, and walk into your next deal ready.')
+  const [ctaLinkText, setCtaLinkText] = useState('Pentest Challenge')
+  const [saving, setSaving] = useState(false)
+  const leadMagnets = campaign.lead_magnets || []
+
+  const saveLeadMagnet = async () => {
+    if (!name.trim()) {
+      toast.error('Name the lead magnet')
+      return
+    }
+    if (!docUrl.trim()) {
+      toast.error('Paste the Google Doc link')
+      return
+    }
+
+    setSaving(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/lead-magnets`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: name.trim(),
+          google_doc_url: docUrl.trim(),
+          cta_phrase: ctaPhrase.trim(),
+          cta_link_text: ctaLinkText.trim(),
+          filename_template: '{{company_name}} - {{lead_magnet}}.pdf',
+          is_default: leadMagnets.length === 0,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to save lead magnet')
+      toast.success('Lead magnet saved')
+      setDocUrl('')
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to save lead magnet')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  return (
+    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
+        <div className="min-w-0">
+          <div className="flex items-center gap-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+              <FileText className="h-4 w-4" />
+            </span>
+            <div>
+              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Lead magnets</h2>
+              <p className="text-xs text-zinc-500 dark:text-zinc-400">
+                Google Docs exported as tracked PDFs for each enrolled lead.
+              </p>
+            </div>
+          </div>
+        </div>
+        <Link
+          href="/api/gmail/connect"
+          className="inline-flex h-8 items-center justify-center rounded-md border border-zinc-200 px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+        >
+          Reconnect Google for Drive access
+        </Link>
+      </div>
+
+      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
+        <input
+          value={name}
+          onChange={(event) => setName(event.target.value)}
+          placeholder="Lead magnet name"
+          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <input
+          value={docUrl}
+          onChange={(event) => setDocUrl(event.target.value)}
+          placeholder="Paste Google Doc link"
+          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <input
+          value={ctaPhrase}
+          onChange={(event) => setCtaPhrase(event.target.value)}
+          placeholder="CTA sentence to find"
+          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
+        />
+        <div className="flex gap-2">
+          <input
+            value={ctaLinkText}
+            onChange={(event) => setCtaLinkText(event.target.value)}
+            placeholder="Words to hyperlink"
+            className="h-9 min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
+          />
+          <Button type="button" size="sm" variant="destructive" onClick={() => void saveLeadMagnet()} isLoading={saving}>
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add
+          </Button>
+        </div>
+      </div>
+
+      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
+        {leadMagnets.map((leadMagnet) => (
+          <div key={leadMagnet.id} className="rounded-md border border-zinc-200 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+            <div className="flex items-start justify-between gap-2">
+              <div className="min-w-0">
+                <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{leadMagnet.name}</p>
+                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{leadMagnet.cta_link_text} link inserted per lead</p>
+              </div>
+              {leadMagnet.is_default && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">
+                  Default
+                </span>
+              )}
+            </div>
+          </div>
+        ))}
+        {leadMagnets.length === 0 && (
+          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 md:col-span-2 xl:col-span-3">
+            Add the Google Doc lead magnet for this campaign. The download button on each lead card will generate a PDF with that lead&apos;s tracked link.
+          </div>
+        )}
       </div>
     </section>
   )
@@ -1843,6 +1982,7 @@ function StageColumn({
   campaignId,
   count,
   enrollments,
+  leadMagnets,
   sequenceSteps,
   sequenceExecutions,
   events,
@@ -1861,6 +2001,7 @@ function StageColumn({
   campaignId: string
   count: number
   enrollments: CampaignEnrollmentWithLead[]
+  leadMagnets: CampaignLeadMagnet[]
   sequenceSteps: CampaignAutomationStep[]
   sequenceExecutions: CampaignSequenceExecution[]
   events: CampaignEvent[]
@@ -1904,6 +2045,7 @@ function StageColumn({
             enrollment={enrollment}
             stages={stages}
             campaignId={campaignId}
+            leadMagnets={leadMagnets}
             sequenceSteps={sequenceSteps}
             sequenceExecutions={sequenceExecutions}
             events={events}
@@ -1928,6 +2070,7 @@ function EnrollmentCard({
   enrollment,
   stages,
   campaignId,
+  leadMagnets,
   sequenceSteps,
   sequenceExecutions,
   events,
@@ -1940,6 +2083,7 @@ function EnrollmentCard({
   enrollment: CampaignEnrollmentWithLead
   stages: CampaignStage[]
   campaignId: string
+  leadMagnets: CampaignLeadMagnet[]
   sequenceSteps: CampaignAutomationStep[]
   sequenceExecutions: CampaignSequenceExecution[]
   events: CampaignEvent[]
@@ -2055,6 +2199,15 @@ function EnrollmentCard({
         enrollmentId={enrollment.id}
         leadName={lead?.contact_name || 'lead'}
       />
+
+      {leadMagnets.length > 0 && (
+        <LeadMagnetDownloadButton
+          campaignId={campaignId}
+          enrollmentId={enrollment.id}
+          leadName={lead?.contact_name || 'lead'}
+          leadMagnets={leadMagnets}
+        />
+      )}
     </article>
   )
 }
@@ -2118,6 +2271,65 @@ function CopyChallengeLinkButton({
     >
       {copying ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Link2 className="h-3.5 w-3.5" />}
       Copy challenge link
+    </button>
+  )
+}
+
+function LeadMagnetDownloadButton({
+  campaignId,
+  enrollmentId,
+  leadName,
+  leadMagnets,
+}: {
+  campaignId: string
+  enrollmentId: string
+  leadName: string
+  leadMagnets: CampaignLeadMagnet[]
+}) {
+  const [downloading, setDownloading] = useState(false)
+  const defaultLeadMagnet = leadMagnets.find((leadMagnet) => leadMagnet.is_default) || leadMagnets[0]
+
+  const downloadPdf = async () => {
+    if (!defaultLeadMagnet) return
+    setDownloading(true)
+    try {
+      const params = new URLSearchParams({ lead_magnet_id: defaultLeadMagnet.id })
+      const res = await fetch(`/api/campaigns/${campaignId}/enrollments/${enrollmentId}/lead-magnet?${params.toString()}`)
+      if (!res.ok) {
+        const data = await res.json().catch(() => null)
+        throw new Error(data?.error || 'Failed to generate PDF')
+      }
+
+      const blob = await res.blob()
+      const disposition = res.headers.get('content-disposition') || ''
+      const filenameMatch = disposition.match(/filename="([^"]+)"/)
+      const filename = filenameMatch?.[1] || `${leadName} - ${defaultLeadMagnet.name}.pdf`
+      const url = URL.createObjectURL(blob)
+      const anchor = document.createElement('a')
+      anchor.href = url
+      anchor.download = filename
+      document.body.appendChild(anchor)
+      anchor.click()
+      anchor.remove()
+      URL.revokeObjectURL(url)
+      toast.success(`PDF generated for ${leadName}`)
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to generate PDF')
+    } finally {
+      setDownloading(false)
+    }
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={() => void downloadPdf()}
+      disabled={downloading}
+      title={`Generate ${defaultLeadMagnet?.name || 'lead magnet'} with this lead's tracked link`}
+      className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+    >
+      {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+      Download lead magnet
     </button>
   )
 }
