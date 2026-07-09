@@ -33,6 +33,49 @@ export function safePdfFilename(input: string) {
   return `${cleaned || 'lead-magnet'}.pdf`.replace(/\.pdf\.pdf$/i, '.pdf')
 }
 
+function readableGoogleApiError(status: number, body: string) {
+  try {
+    const parsed = JSON.parse(body) as {
+      error?: {
+        message?: string
+        status?: string
+        details?: Array<{
+          reason?: string
+          metadata?: {
+            service?: string
+            serviceTitle?: string
+            consumer?: string
+            activationUrl?: string
+          }
+        }>
+      }
+    }
+    const error = parsed.error
+    const serviceDisabled = error?.details?.find((detail) => detail.reason === 'SERVICE_DISABLED')
+    const serviceTitle = serviceDisabled?.metadata?.serviceTitle || serviceDisabled?.metadata?.service
+    const project = serviceDisabled?.metadata?.consumer?.replace(/^projects\//, '')
+    const activationUrl = serviceDisabled?.metadata?.activationUrl
+
+    if (serviceDisabled) {
+      return [
+        `${serviceTitle || 'A required Google API'} is disabled${project ? ` for Google Cloud project ${project}` : ''}.`,
+        activationUrl ? `Enable it here: ${activationUrl}` : null,
+        'Also make sure the Google Docs API is enabled, then reconnect Google in Bodega so the token has Drive/Docs scopes.',
+      ].filter(Boolean).join(' ')
+    }
+
+    if (error?.status === 'PERMISSION_DENIED') {
+      return `${error.message || 'Google denied access.'} Reconnect Google in Bodega and confirm Drive/Docs access.`
+    }
+
+    if (error?.message) return error.message
+  } catch {
+    // Fall back to the original response body.
+  }
+
+  return `Google API failed (${status}): ${body}`
+}
+
 async function googleFetch(accessToken: string, url: string, init?: RequestInit) {
   const res = await fetch(url, {
     ...init,
@@ -44,7 +87,7 @@ async function googleFetch(accessToken: string, url: string, init?: RequestInit)
 
   if (!res.ok) {
     const body = await res.text()
-    throw new Error(`Google API failed (${res.status}): ${body}`)
+    throw new Error(readableGoogleApiError(res.status, body))
   }
 
   return res
