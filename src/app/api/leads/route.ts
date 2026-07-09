@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import type { SupabaseClient } from '@supabase/supabase-js'
+import { isMissingColumn } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { enrollLeadInCampaign, getCampaignByIdOrSlug, recordCampaignEvent } from '@/lib/campaigns/server'
 import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
@@ -45,6 +46,51 @@ const createSchema = z.object({
     lead_id: z.string().nullable().optional(),
   })).optional(),
 })
+
+const optionalLeadInsertColumns = [
+  'lead_token',
+  'source_type',
+  'contact_phone',
+  'research_sources',
+  'contact_photo_url',
+  'company_website',
+  'company_logo_url',
+  'org_chart',
+  'email_domain',
+] as const
+
+type SupabaseShapeError = Parameters<typeof isMissingColumn>[0]
+
+function getMissingOptionalLeadColumn(error: SupabaseShapeError) {
+  return optionalLeadInsertColumns.find((column) => isMissingColumn(error, column)) || null
+}
+
+async function insertLeadWithSchemaFallback(
+  supabase: SupabaseClient,
+  insertData: Record<string, unknown>,
+) {
+  const payload = { ...insertData }
+
+  for (let attempt = 0; attempt <= optionalLeadInsertColumns.length; attempt += 1) {
+    const result = await supabase
+      .from('leads')
+      .insert(payload)
+      .select()
+      .single()
+
+    if (!result.error) return result
+
+    const missingColumn = getMissingOptionalLeadColumn(result.error)
+    if (!missingColumn || !(missingColumn in payload)) return result
+
+    delete payload[missingColumn]
+  }
+
+  return {
+    data: null,
+    error: new Error('Failed to create lead after schema fallback'),
+  }
+}
 
 export async function GET(request: NextRequest) {
   try {
@@ -177,31 +223,7 @@ export async function POST(request: NextRequest) {
       insertData.email_domain = (insertData.contact_email as string).split('@')[1]?.toLowerCase()
     }
 
-    let { data, error } = await supabase
-      .from('leads')
-      .insert(insertData)
-      .select()
-      .single()
-
-    if (isMissingColumn(error, 'lead_token')) {
-      const retry = await supabase
-        .from('leads')
-        .insert(omitColumn(insertData, 'lead_token'))
-        .select()
-        .single()
-      data = retry.data
-      error = retry.error
-    }
-
-    if (isMissingColumn(error, 'source_type')) {
-      const retry = await supabase
-        .from('leads')
-        .insert(omitColumn(insertData, 'source_type'))
-        .select()
-        .single()
-      data = retry.data
-      error = retry.error
-    }
+    const { data, error } = await insertLeadWithSchemaFallback(supabase, insertData)
 
     if (error) throw error
     if (campaign && data?.id) {
