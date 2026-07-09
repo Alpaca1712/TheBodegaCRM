@@ -13,6 +13,30 @@ const leadMagnetSchema = z.object({
   is_default: z.boolean().default(false),
 })
 
+function leadMagnetErrorResponse(error: unknown, fallback: string) {
+  if (
+    typeof error === 'object' &&
+    error &&
+    isMissingRelation(error as { code?: string; message?: string; details?: string }, 'campaign_lead_magnets')
+  ) {
+    return NextResponse.json(
+      {
+        error: 'Campaign lead magnets need database migration 040_campaign_lead_magnets.sql before documents can be saved.',
+        code: 'MIGRATION_REQUIRED',
+      },
+      { status: 400 },
+    )
+  }
+
+  const message = error instanceof Error
+    ? error.message
+    : typeof error === 'object' && error && 'message' in error && typeof error.message === 'string'
+      ? error.message
+      : fallback
+
+  return NextResponse.json({ error: message }, { status: 500 })
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> },
@@ -32,7 +56,12 @@ export async function GET(
       .order('created_at', { ascending: true })
 
     if (error && isMissingRelation(error, 'campaign_lead_magnets')) {
-      return NextResponse.json({ data: [], migration_required: true })
+      return NextResponse.json({
+        data: [],
+        migration_required: true,
+        error: 'Run migration 040_campaign_lead_magnets.sql to enable campaign lead magnets.',
+        code: 'MIGRATION_REQUIRED',
+      })
     }
     if (error) throw error
 
@@ -78,7 +107,18 @@ export async function POST(
         .eq('campaign_id', id)
         .eq('org_id', orgId)
 
-      if (clearDefaultError && !isMissingRelation(clearDefaultError, 'campaign_lead_magnets')) throw clearDefaultError
+      if (clearDefaultError) {
+        if (isMissingRelation(clearDefaultError, 'campaign_lead_magnets')) {
+          return NextResponse.json(
+            {
+              error: 'Campaign lead magnets need database migration 040_campaign_lead_magnets.sql before documents can be saved.',
+              code: 'MIGRATION_REQUIRED',
+            },
+            { status: 400 },
+          )
+        }
+        throw clearDefaultError
+      }
     }
 
     const { data, error } = await supabase
@@ -98,10 +138,21 @@ export async function POST(
       .select()
       .single()
 
-    if (error) throw error
+    if (error) {
+      if (isMissingRelation(error, 'campaign_lead_magnets')) {
+        return NextResponse.json(
+          {
+            error: 'Campaign lead magnets need database migration 040_campaign_lead_magnets.sql before documents can be saved.',
+            code: 'MIGRATION_REQUIRED',
+          },
+          { status: 400 },
+        )
+      }
+      throw error
+    }
     return NextResponse.json({ data }, { status: 201 })
   } catch (error) {
     console.error('POST /api/campaigns/[id]/lead-magnets failed', error)
-    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to save lead magnet' }, { status: 500 })
+    return leadMagnetErrorResponse(error, 'Failed to save lead magnet')
   }
 }
