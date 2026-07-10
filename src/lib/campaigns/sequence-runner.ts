@@ -1123,13 +1123,6 @@ export async function runCampaignSequence({
         continue
       }
 
-      if (!lead?.contact_email) {
-        result.due += 1
-        result.skipped += 1
-        result.errors.push({ lead_id: enrollment.lead_id, step_id: step.id, message: 'Lead has no email address' })
-        continue
-      }
-
       if (step.channel !== 'email') {
         await markSkippedExecution({
           supabase,
@@ -1145,6 +1138,13 @@ export async function runCampaignSequence({
         })
         result.due += 1
         result.skipped += 1
+        continue
+      }
+
+      if (!lead?.contact_email) {
+        result.due += 1
+        result.skipped += 1
+        result.errors.push({ lead_id: enrollment.lead_id, step_id: step.id, message: 'Lead has no email address' })
         continue
       }
 
