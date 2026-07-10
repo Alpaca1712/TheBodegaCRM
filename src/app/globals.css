@@ -1,5 +1,7 @@
 @import "tailwindcss";
 
+@custom-variant dark (&:where(.dark, .dark *));
+
 :root {
   --background: #fafafa;
   --foreground: #0f172a;
@@ -23,7 +25,12 @@
   --radius: 0.625rem;
 }
 
+html {
+  color-scheme: light;
+}
+
 .dark {
+  color-scheme: dark;
   --background: #09090b;
   --foreground: #f4f4f5;
   --card: #111113;
@@ -75,6 +82,7 @@
 }
 
 body {
+  min-height: 100vh;
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, -apple-system, sans-serif;
