@@ -100,6 +100,7 @@ interface SequenceStepForm {
   wait_unit: 'hours' | 'days'
   channel: CampaignAutomationChannel
   email_type: CampaignAutomationEmailType
+  lead_magnet_id: string
   subject_template: string
   body_template: string
   move_to_stage_key: string
@@ -132,6 +133,7 @@ export default function CampaignDetailPage() {
     status: 'active',
     lead_magnet_name: '',
     description: '',
+    is_default_landing: false,
   })
 
   const load = async () => {
@@ -334,6 +336,7 @@ export default function CampaignDetailPage() {
       status: campaign.status,
       lead_magnet_name: campaign.lead_magnet_name || '',
       description: campaign.description || '',
+      is_default_landing: Boolean(campaign.is_default_landing),
     })
     setEditingCampaign(true)
   }
@@ -360,6 +363,7 @@ export default function CampaignDetailPage() {
           status: campaignDraft.status,
           lead_magnet_name: campaignDraft.lead_magnet_name.trim() || null,
           description: campaignDraft.description.trim() || null,
+          is_default_landing: campaignDraft.is_default_landing,
         }),
       })
       const data = await res.json()
@@ -417,6 +421,11 @@ export default function CampaignDetailPage() {
             <div className="flex flex-wrap items-center gap-2">
               <h1 className="text-xl font-semibold tracking-tight text-zinc-950 dark:text-zinc-100">{campaign.name}</h1>
               <StatusBadge status={campaign.status} />
+              {campaign.is_default_landing && (
+                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">
+                  Landing default
+                </span>
+              )}
             </div>
             <div className="mt-1.5 flex flex-wrap items-center gap-2 text-sm text-zinc-500 dark:text-zinc-400">
               <span>{CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}</span>
@@ -560,6 +569,7 @@ function CampaignEditPanel({
     status: string
     lead_magnet_name: string
     description: string
+    is_default_landing: boolean
   }
   saving: boolean
   onChange: (draft: {
@@ -567,6 +577,7 @@ function CampaignEditPanel({
     status: string
     lead_magnet_name: string
     description: string
+    is_default_landing: boolean
   }) => void
   onCancel: () => void
   onSubmit: (event: FormEvent) => void
@@ -633,6 +644,15 @@ function CampaignEditPanel({
             rows={4}
             className="min-h-[94px] w-full resize-y rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
           />
+        </label>
+        <label className="flex h-10 items-center gap-2 rounded-md border border-zinc-200 px-3 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+          <input
+            type="checkbox"
+            checked={draft.is_default_landing}
+            onChange={(event) => update({ is_default_landing: event.target.checked })}
+            className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+          />
+          Default landing campaign
         </label>
       </div>
     </form>
@@ -983,6 +1003,7 @@ function emptySequenceForm(campaign: CampaignDetail): SequenceStepForm {
     wait_unit: 'hours',
     channel: 'email',
     email_type: 'follow_up_1',
+    lead_magnet_id: '',
     subject_template: '',
     body_template: '',
     move_to_stage_key: '',
@@ -1026,6 +1047,20 @@ function sequenceAttachmentsFromStep(step: CampaignAutomationStep): CampaignAuto
       mime_type: attachment.mime_type,
       size: attachment.size,
     }))
+}
+
+function sequenceLeadMagnetIdFromStep(step: CampaignAutomationStep) {
+  const leadMagnetId = step.metadata?.lead_magnet_id
+  return typeof leadMagnetId === 'string' ? leadMagnetId : ''
+}
+
+function sequenceLeadMagnetName(leadMagnets: CampaignLeadMagnet[], step: CampaignAutomationStep) {
+  const leadMagnetId = sequenceLeadMagnetIdFromStep(step)
+  if (leadMagnetId) {
+    return leadMagnets.find((leadMagnet) => leadMagnet.id === leadMagnetId)?.name || ''
+  }
+
+  return leadMagnets.find((leadMagnet) => leadMagnet.is_default)?.name || leadMagnets[0]?.name || ''
 }
 
 function sequenceAiConditionPromptFromStep(step: CampaignAutomationStep) {
@@ -1126,6 +1161,7 @@ function sequenceFormFromStep(step: CampaignAutomationStep): SequenceStepForm {
     wait_unit: delay.wait_unit,
     channel: step.channel,
     email_type: step.email_type,
+    lead_magnet_id: sequenceLeadMagnetIdFromStep(step),
     subject_template: step.subject_template,
     body_template: step.body_template,
     move_to_stage_key: step.move_to_stage_key || '',
@@ -1293,8 +1329,13 @@ function SequencePanel({
       const nextPosition = sortedSteps.length > 0
         ? Math.max(...sortedSteps.map((step) => step.position)) + 10
         : 10
-      const { ai_condition: _existingAiCondition, ...existingMetadata } = existingStep?.metadata || {}
+      const {
+        ai_condition: _existingAiCondition,
+        lead_magnet_id: _existingLeadMagnetId,
+        ...existingMetadata
+      } = existingStep?.metadata || {}
       void _existingAiCondition
+      void _existingLeadMagnetId
       const aiConditionPrompt = form.ai_condition_prompt.trim()
       const aiConditionTrueTag = form.ai_condition_true_tag.trim()
       const aiConditionFalseTag = form.ai_condition_false_tag.trim()
@@ -1320,6 +1361,7 @@ function SequencePanel({
             metadata: {
               ...existingMetadata,
               attachments: cleanedAttachments.attachments,
+              ...(form.email_type === 'lead_magnet' && form.lead_magnet_id ? { lead_magnet_id: form.lead_magnet_id } : {}),
               ...(aiConditionPrompt
                 ? {
                     ai_condition: {
@@ -1495,6 +1537,29 @@ function SequencePanel({
                 </select>
               </label>
             </div>
+
+            {form.email_type === 'lead_magnet' && (
+              <label className="block rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+                <span className="text-xs font-medium text-zinc-500">Lead magnet document</span>
+                <select
+                  value={form.lead_magnet_id}
+                  onChange={(event) => setForm((current) => ({ ...current, lead_magnet_id: event.target.value }))}
+                  className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+                >
+                  <option value="">Campaign default</option>
+                  {(campaign.lead_magnets || []).map((leadMagnet) => (
+                    <option key={leadMagnet.id} value={leadMagnet.id}>
+                      {leadMagnet.name}{leadMagnet.is_default ? ' (default)' : ''}
+                    </option>
+                  ))}
+                </select>
+                <p className="mt-1.5 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
+                  {(campaign.lead_magnets || []).length > 0
+                    ? 'Pick a loaded Google Doc, or use the campaign default.'
+                    : 'Load a lead magnet above so this step can attach a tracked PDF.'}
+                </p>
+              </label>
+            )}
 
             <label className="block">
               <span className="text-xs font-medium text-zinc-500">Move to</span>
@@ -1872,6 +1937,9 @@ function SequencePanel({
                       const aiConditionPrompt = sequenceAiConditionPromptFromStep(step)
                       const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
                       const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
+                      const leadMagnetName = step.email_type === 'lead_magnet'
+                        ? sequenceLeadMagnetName(campaign.lead_magnets || [], step)
+                        : ''
 
                       return (
                         <div key={step.id}>
@@ -1924,6 +1992,9 @@ function SequencePanel({
                                   {automationEmailTypeLabels[step.email_type]}
                                 </p>
                                 <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">{automationChannelLabels[step.channel]}</p>
+                                {leadMagnetName && (
+                                  <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">Doc: {leadMagnetName}</p>
+                                )}
                               </div>
 
                               <div>

@@ -25,6 +25,7 @@ const updateCampaignSchema = z.object({
   status: z.enum(['draft', 'active', 'paused', 'completed', 'archived']).optional(),
   description: z.string().optional().nullable(),
   lead_magnet_name: z.string().optional().nullable(),
+  is_default_landing: z.boolean().optional(),
 })
 
 export async function GET(
@@ -201,6 +202,17 @@ export async function PATCH(
     const validation = updateCampaignSchema.safeParse(body)
     if (!validation.success) {
       return NextResponse.json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
+    }
+
+    if (validation.data.is_default_landing === true) {
+      const { error: clearDefaultError } = await supabase
+        .from('campaigns')
+        .update({ is_default_landing: false })
+        .eq('org_id', orgId)
+        .eq('is_default_landing', true)
+        .neq('id', id)
+
+      if (clearDefaultError) throw clearDefaultError
     }
 
     const { data, error } = await supabase

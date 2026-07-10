@@ -142,6 +142,11 @@ function campaignStepAiConditionFalseTag(step: CampaignAutomationStep) {
   return typeof tag === 'string' ? tag.trim() : ''
 }
 
+function campaignStepLeadMagnetId(step: CampaignAutomationStep) {
+  const leadMagnetId = step.metadata?.lead_magnet_id
+  return typeof leadMagnetId === 'string' && leadMagnetId ? leadMagnetId : null
+}
+
 async function applyLeadTag({
   supabase,
   leadId,
@@ -510,7 +515,26 @@ async function getSendingAccount(supabase: SupabaseClient, userId: string) {
   return { account: typedAccount, accessToken }
 }
 
-async function getDefaultCampaignLeadMagnet(supabase: SupabaseClient, campaignId: string, orgId: string) {
+async function getCampaignLeadMagnet(
+  supabase: SupabaseClient,
+  campaignId: string,
+  orgId: string,
+  leadMagnetId?: string | null,
+) {
+  if (leadMagnetId) {
+    const selected = await supabase
+      .from('campaign_lead_magnets')
+      .select('*')
+      .eq('id', leadMagnetId)
+      .eq('campaign_id', campaignId)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (selected.error && isMissingRelation(selected.error, 'campaign_lead_magnets')) return null
+    if (selected.error) throw selected.error
+    if (selected.data) return selected.data as SequenceLeadMagnet
+  }
+
   const { data: defaultData, error } = await supabase
     .from('campaign_lead_magnets')
     .select('*')
@@ -1029,7 +1053,7 @@ export async function runCampaignSequence({
   }
 
   let sendingContext: Awaited<ReturnType<typeof getSendingAccount>> | undefined
-  let campaignLeadMagnet: SequenceLeadMagnet | null | undefined
+  const campaignLeadMagnetCache = new Map<string, SequenceLeadMagnet | null>()
 
   for (const step of activeSteps) {
     for (const enrollment of activeEnrollments) {
@@ -1169,7 +1193,19 @@ export async function runCampaignSequence({
           existingToken: lead.lead_token,
         })
         const challengeLink = buildChallengeTrackingUrl({ leadToken, campaignId })
-        const leadMagnetName = typedCampaign.lead_magnet_name || 'Free Pentest Challenge'
+        const selectedLeadMagnetId = step.email_type === 'lead_magnet' ? campaignStepLeadMagnetId(step) : null
+        let selectedCampaignLeadMagnet: SequenceLeadMagnet | null = null
+        if (step.email_type === 'lead_magnet') {
+          const cacheKey = selectedLeadMagnetId || 'default'
+          if (!campaignLeadMagnetCache.has(cacheKey)) {
+            campaignLeadMagnetCache.set(
+              cacheKey,
+              await getCampaignLeadMagnet(supabase, campaignId, orgId, selectedLeadMagnetId),
+            )
+          }
+          selectedCampaignLeadMagnet = campaignLeadMagnetCache.get(cacheKey) || null
+        }
+        const leadMagnetName = selectedCampaignLeadMagnet?.name || typedCampaign.lead_magnet_name || 'Free Pentest Challenge'
         let aiConditionDecision: AiConditionDecision | null = null
         let aiConditionAppliedTag: string | null = null
         const aiConditionWarnings: string[] = []
@@ -1308,14 +1344,10 @@ export async function runCampaignSequence({
         })
 
         if (step.email_type === 'lead_magnet') {
-          if (campaignLeadMagnet === undefined) {
-            campaignLeadMagnet = await getDefaultCampaignLeadMagnet(supabase, campaignId, orgId)
-          }
-
-          if (campaignLeadMagnet) {
+          if (selectedCampaignLeadMagnet) {
             const pdf = await generateLeadMagnetPdfFromGoogleDoc({
               accessToken: sendingContext.accessToken,
-              leadMagnet: campaignLeadMagnet,
+              leadMagnet: selectedCampaignLeadMagnet,
               lead,
               challengeLink,
             })

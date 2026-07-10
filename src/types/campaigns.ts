@@ -151,6 +151,7 @@ export interface CampaignAutomationStep {
   metadata: Record<string, unknown> & {
     attachments?: CampaignAutomationAttachment[]
     ai_condition?: CampaignAutomationAiCondition
+    lead_magnet_id?: string | null
   }
   created_at: string
   updated_at: string
@@ -373,6 +374,7 @@ export interface Campaign {
   status: CampaignStatus
   description: string | null
   lead_magnet_name: string | null
+  is_default_landing: boolean
   created_at: string
   updated_at: string
 }

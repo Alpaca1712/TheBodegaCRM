@@ -219,17 +219,46 @@ export async function POST(request: NextRequest) {
     const input = validation.data as LandingInput
     const supabase = createAdminClient()
 
-    let campaignQuery = supabase.from('campaigns').select('*').limit(1)
+    let campaign: Campaign | null = null
     if (input.campaign_id) {
-      campaignQuery = campaignQuery.eq('id', input.campaign_id)
+      const result = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', input.campaign_id)
+        .limit(1)
+        .maybeSingle()
+      if (result.error) throw result.error
+      campaign = result.data as Campaign | null
     } else if (input.campaign_slug || input.utm_campaign) {
-      campaignQuery = campaignQuery.eq('slug', input.campaign_slug || input.utm_campaign)
+      const result = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('slug', input.campaign_slug || input.utm_campaign)
+        .limit(1)
+        .maybeSingle()
+      if (result.error) throw result.error
+      campaign = result.data as Campaign | null
     } else {
-      return json({ error: 'campaign_id, campaign_slug, or utm_campaign is required' }, { status: 400 })
+      const result = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('is_default_landing', true)
+        .eq('status', 'active')
+        .limit(2)
+
+      if (isMissingColumn(result.error, 'is_default_landing')) {
+        return json({ error: 'Default landing campaigns need migration 043 before campaign-less landing submissions can be accepted.' }, { status: 500 })
+      }
+      if (result.error) throw result.error
+      if (!result.data || result.data.length === 0) {
+        return json({ error: 'No default landing campaign is configured' }, { status: 400 })
+      }
+      if (result.data.length > 1) {
+        return json({ error: 'Multiple default landing campaigns exist. Send campaign_id from the landing page.' }, { status: 400 })
+      }
+      campaign = result.data[0] as Campaign
     }
 
-    const { data: campaign, error: campaignError } = await campaignQuery.maybeSingle()
-    if (campaignError) throw campaignError
     if (!campaign) return json({ error: 'Campaign not found' }, { status: 404 })
 
     const resolvedCampaign = campaign as Campaign

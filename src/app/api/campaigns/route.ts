@@ -24,6 +24,7 @@ const createCampaignSchema = z.object({
   template_key: z.enum(Object.keys(CAMPAIGN_TEMPLATES) as [CampaignTemplateKey, ...CampaignTemplateKey[]]).optional(),
   description: z.string().optional().nullable(),
   lead_magnet_name: z.string().optional().nullable(),
+  is_default_landing: z.boolean().optional().default(false),
 })
 
 function getErrorMessage(error: unknown, fallback: string) {
@@ -115,6 +116,7 @@ export async function POST(request: NextRequest) {
     const template = resolveCampaignTemplate(validation.data.template_key, validation.data.campaign_type)
     const baseSlug = slugifyCampaignName(validation.data.slug || validation.data.name)
     const slug = baseSlug || `campaign-${crypto.randomUUID().slice(0, 8)}`
+    const isInboundLandingTemplate = template.key === 'website_inbound_lead_magnet' || template.key === 'linkedin_inbound_playbook'
 
     const { data: existing } = await supabase
       .from('campaigns')
@@ -124,6 +126,23 @@ export async function POST(request: NextRequest) {
       .maybeSingle()
 
     const finalSlug = existing ? `${slug}-${crypto.randomUUID().slice(0, 4)}` : slug
+    const { data: existingDefault } = await supabase
+      .from('campaigns')
+      .select('id')
+      .eq('org_id', orgId)
+      .eq('is_default_landing', true)
+      .maybeSingle()
+
+    const isDefaultLanding = Boolean(validation.data.is_default_landing || (isInboundLandingTemplate && !existingDefault))
+    if (isDefaultLanding) {
+      const { error: clearDefaultError } = await supabase
+        .from('campaigns')
+        .update({ is_default_landing: false })
+        .eq('org_id', orgId)
+        .eq('is_default_landing', true)
+
+      if (clearDefaultError) throw clearDefaultError
+    }
 
     const { data: campaign, error: campaignError } = await supabase
       .from('campaigns')
@@ -136,6 +155,7 @@ export async function POST(request: NextRequest) {
         status: 'active',
         description: validation.data.description || template.description,
         lead_magnet_name: validation.data.lead_magnet_name || null,
+        is_default_landing: isDefaultLanding,
       })
       .select()
       .single()

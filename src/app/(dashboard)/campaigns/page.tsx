@@ -35,6 +35,7 @@ export default function CampaignsPage() {
   const [name, setName] = useState('')
   const [templateKey, setTemplateKey] = useState<CampaignTemplateKey>('email_outbound_lead_magnet')
   const [leadMagnetName, setLeadMagnetName] = useState('Free Pentest Challenge')
+  const [isDefaultLanding, setIsDefaultLanding] = useState(false)
 
   const selectedTemplate = CAMPAIGN_TEMPLATES[templateKey]
   const totals = useMemo(() => {
@@ -92,12 +93,14 @@ export default function CampaignsPage() {
           campaign_type: selectedTemplate.campaignType,
           template_key: templateKey,
           lead_magnet_name: leadMagnetName.trim() || null,
+          is_default_landing: isDefaultLanding,
         }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to create campaign')
       toast.success('Campaign created')
       setName('')
+      setIsDefaultLanding(false)
       setShowCreateForm(false)
       await loadCampaigns()
     } catch (error) {
@@ -213,6 +216,15 @@ export default function CampaignsPage() {
                 placeholder="Discovery call, free diagnostic, or challenge"
               />
             </Field>
+            <label className="flex h-10 items-center gap-2 self-end rounded-md border border-zinc-200 px-3 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={isDefaultLanding}
+                onChange={(event) => setIsDefaultLanding(event.target.checked)}
+                className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500"
+              />
+              Default landing campaign
+            </label>
           </div>
 
           <div className="mt-5 flex flex-col gap-3 border-t border-zinc-100 pt-4 dark:border-zinc-800 sm:flex-row sm:items-center sm:justify-between">
@@ -338,6 +350,11 @@ function CampaignRow({
             {CAMPAIGN_TYPE_LABELS[campaign.campaign_type]}
           </span>
           {campaign.metrics.meetings_booked > 0 && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          {campaign.is_default_landing && (
+            <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">
+              Landing default
+            </span>
+          )}
         </div>
         <div className="mt-2 flex items-center gap-3">
           <p className="truncate text-xs text-zinc-500 dark:text-zinc-400">{campaign.lead_magnet_name || templateName}</p>
