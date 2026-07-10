@@ -133,6 +133,31 @@ function stageForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
 
 type LandingInput = z.infer<typeof landingLeadSchema> & Record<string, unknown>
 
+function preferredCampaignStagesForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
+  if (intent === 'discovery') return ['meeting_booked', 'discovery_booked']
+  if (intent === 'conference_scan') return ['in_person_conversation', 'meeting_scheduled', 'replied']
+  if (intent === 'application' || intent === 'application_completed') return ['application_completed', 'challenge_link_clicked']
+  return ['opted_in', 'lead_magnet_requested', 'replied', 'to_send']
+}
+
+async function resolveCampaignStageForIntent(
+  supabase: ReturnType<typeof createAdminClient>,
+  campaignId: string,
+  orgId: string,
+  intent: z.infer<typeof landingLeadSchema>['intent'],
+) {
+  const preferredStages = preferredCampaignStagesForIntent(intent)
+  const { data } = await supabase
+    .from('campaign_stages')
+    .select('stage_key')
+    .eq('campaign_id', campaignId)
+    .eq('org_id', orgId)
+    .in('stage_key', preferredStages)
+
+  const available = new Set((data || []).map((stage) => stage.stage_key))
+  return preferredStages.find((stageKey) => available.has(stageKey)) || null
+}
+
 function isRecord(value: unknown): value is Record<string, unknown> {
   return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
 }
@@ -284,6 +309,12 @@ export async function POST(request: NextRequest) {
       utm_campaign: input.utm_campaign,
       referrer: input.referrer,
     }
+    const initialCampaignStageKey = await resolveCampaignStageForIntent(
+      supabase,
+      resolvedCampaign.id,
+      orgId,
+      input.intent,
+    )
 
     await supabase.from('campaign_attribution_events').insert({
       campaign_id: resolvedCampaign.id,
@@ -425,6 +456,7 @@ export async function POST(request: NextRequest) {
       leadId: lead.id,
       userId,
       orgId,
+      stageKey: initialCampaignStageKey,
       metadata: attributionMetadata,
     })
 
