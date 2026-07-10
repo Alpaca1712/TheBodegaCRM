@@ -24,6 +24,7 @@ import {
   type CampaignTemplateKey,
 } from '@/types/campaigns'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { Input } from '@/components/ui/input'
 
 export default function CampaignsPage() {
@@ -36,6 +37,8 @@ export default function CampaignsPage() {
   const [templateKey, setTemplateKey] = useState<CampaignTemplateKey>('email_outbound_lead_magnet')
   const [leadMagnetName, setLeadMagnetName] = useState('Free Pentest Challenge')
   const [isDefaultLanding, setIsDefaultLanding] = useState(false)
+  const [campaignToDelete, setCampaignToDelete] = useState<CampaignListItem | null>(null)
+  const [deletingCampaignId, setDeletingCampaignId] = useState<string | null>(null)
 
   const selectedTemplate = CAMPAIGN_TEMPLATES[templateKey]
   const totals = useMemo(() => {
@@ -111,16 +114,18 @@ export default function CampaignsPage() {
   }
 
   const deleteCampaign = async (campaign: CampaignListItem) => {
-    if (!window.confirm(`Delete "${campaign.name}"? Leads will stay in the CRM, but the campaign funnel and events will be removed.`)) return
-
+    setDeletingCampaignId(campaign.id)
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}`, { method: 'DELETE' })
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to delete campaign')
       setCampaigns((current) => current.filter((item) => item.id !== campaign.id))
+      setCampaignToDelete(null)
       toast.success('Campaign deleted')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete campaign')
+    } finally {
+      setDeletingCampaignId(null)
     }
   }
 
@@ -275,11 +280,24 @@ export default function CampaignsPage() {
         ) : (
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {campaigns.map((campaign) => (
-              <CampaignRow key={campaign.id} campaign={campaign} onDelete={deleteCampaign} />
+              <CampaignRow key={campaign.id} campaign={campaign} onDelete={setCampaignToDelete} />
             ))}
           </div>
         )}
       </section>
+      <ConfirmDialog
+        open={Boolean(campaignToDelete)}
+        title={campaignToDelete ? `Delete ${campaignToDelete.name}?` : 'Delete campaign?'}
+        description="Leads will stay in the CRM. The campaign funnel, sequence rules, attribution events, and board history will be removed."
+        confirmLabel="Delete campaign"
+        loading={Boolean(campaignToDelete && deletingCampaignId === campaignToDelete.id)}
+        onClose={() => {
+          if (!deletingCampaignId) setCampaignToDelete(null)
+        }}
+        onConfirm={() => {
+          if (campaignToDelete) void deleteCampaign(campaignToDelete)
+        }}
+      />
     </div>
   )
 }

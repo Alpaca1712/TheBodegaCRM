@@ -237,7 +237,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
   },
   linkedin_inbound_playbook: {
     key: 'linkedin_inbound_playbook',
-    name: 'Inbound Playbook Landing',
+    name: 'LinkedIn Inbound Lead Magnet',
     campaignType: 'linkedin_inbound',
     description: 'Tracked landing-page flow: playbook opt-in, challenge click, application completion, then booked discovery.',
     initialStageKey: 'opted_in',

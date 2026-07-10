@@ -51,6 +51,7 @@ import {
 import type { Lead } from '@/types/leads'
 import { STAGE_LABELS } from '@/types/leads'
 import { Button } from '@/components/ui/button'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 const metricTones = {
   red: 'bg-red-50 text-red-600 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50',
@@ -128,6 +129,7 @@ export default function CampaignDetailPage() {
   const [draggingEnrollmentId, setDraggingEnrollmentId] = useState<string | null>(null)
   const [dragOverStageKey, setDragOverStageKey] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [confirmDeleteOpen, setConfirmDeleteOpen] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState(false)
   const [savingCampaign, setSavingCampaign] = useState(false)
   const [activeTool, setActiveTool] = useState<CampaignToolKey | null>(null)
@@ -316,7 +318,6 @@ export default function CampaignDetailPage() {
 
   const deleteCampaign = async () => {
     if (!campaign) return
-    if (!window.confirm(`Delete "${campaign.name}"? Leads will stay in the CRM, but this campaign funnel and its events will be removed.`)) return
 
     setDeleting(true)
     try {
@@ -324,6 +325,7 @@ export default function CampaignDetailPage() {
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to delete campaign')
       toast.success('Campaign deleted')
+      setConfirmDeleteOpen(false)
       router.push('/campaigns')
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete campaign')
@@ -447,7 +449,7 @@ export default function CampaignDetailPage() {
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Refresh
             </Button>
-            <Button type="button" variant="outline" onClick={() => void deleteCampaign()} isLoading={deleting} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30">
+            <Button type="button" variant="outline" onClick={() => setConfirmDeleteOpen(true)} disabled={deleting} className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-900/60 dark:text-red-300 dark:hover:bg-red-950/30">
               <Trash2 className="mr-2 h-4 w-4" />
               Delete
             </Button>
@@ -471,6 +473,18 @@ export default function CampaignDetailPage() {
           onSubmit={saveCampaign}
         />
       )}
+
+      <ConfirmDialog
+        open={confirmDeleteOpen}
+        title={`Delete ${campaign.name}?`}
+        description="Leads will stay in the CRM. The campaign funnel, sequence rules, attribution events, and board history will be removed."
+        confirmLabel="Delete campaign"
+        loading={deleting}
+        onClose={() => {
+          if (!deleting) setConfirmDeleteOpen(false)
+        }}
+        onConfirm={() => void deleteCampaign()}
+      />
 
       <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
@@ -1029,6 +1043,7 @@ function LeadMagnetsPanel({
   const [ctaLinkText, setCtaLinkText] = useState('Pentest Challenge')
   const [saving, setSaving] = useState(false)
   const [deletingLeadMagnetId, setDeletingLeadMagnetId] = useState<string | null>(null)
+  const [leadMagnetToDelete, setLeadMagnetToDelete] = useState<CampaignLeadMagnet | null>(null)
   const leadMagnets = campaign.lead_magnets || []
 
   const saveLeadMagnet = async () => {
@@ -1068,8 +1083,6 @@ function LeadMagnetsPanel({
   }
 
   const deleteLeadMagnet = async (leadMagnet: CampaignLeadMagnet) => {
-    if (!window.confirm(`Delete "${leadMagnet.name}" from this campaign?`)) return
-
     setDeletingLeadMagnetId(leadMagnet.id)
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/lead-magnets/${leadMagnet.id}`, {
@@ -1078,6 +1091,7 @@ function LeadMagnetsPanel({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to delete lead magnet')
       toast.success('Lead magnet deleted')
+      setLeadMagnetToDelete(null)
       await onChanged()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete lead magnet')
@@ -1158,7 +1172,7 @@ function LeadMagnetsPanel({
               )}
               <button
                 type="button"
-                onClick={() => void deleteLeadMagnet(leadMagnet)}
+                onClick={() => setLeadMagnetToDelete(leadMagnet)}
                 disabled={deletingLeadMagnetId === leadMagnet.id}
                 className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
                 aria-label={`Delete ${leadMagnet.name}`}
@@ -1175,6 +1189,19 @@ function LeadMagnetsPanel({
           </div>
         )}
       </div>
+      <ConfirmDialog
+        open={Boolean(leadMagnetToDelete)}
+        title={leadMagnetToDelete ? `Delete ${leadMagnetToDelete.name}?` : 'Delete lead magnet?'}
+        description="This removes the Google Doc lead magnet from this campaign. Existing leads and campaign history will stay in place."
+        confirmLabel="Delete lead magnet"
+        loading={Boolean(leadMagnetToDelete && deletingLeadMagnetId === leadMagnetToDelete.id)}
+        onClose={() => {
+          if (!deletingLeadMagnetId) setLeadMagnetToDelete(null)
+        }}
+        onConfirm={() => {
+          if (leadMagnetToDelete) void deleteLeadMagnet(leadMagnetToDelete)
+        }}
+      />
     </section>
   )
 }
@@ -1377,6 +1404,7 @@ function SequencePanel({
   const [newStepStageKey, setNewStepStageKey] = useState(campaign.stages[0]?.stage_key || '')
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
+  const [stepToDelete, setStepToDelete] = useState<CampaignAutomationStep | null>(null)
   const fileInputRef = useRef<HTMLInputElement | null>(null)
   const sortedSteps = useMemo(
     () => [...steps].sort((a, b) => a.position - b.position || a.created_at.localeCompare(b.created_at)),
@@ -1572,7 +1600,6 @@ function SequencePanel({
   }
 
   const deleteStep = async (step: CampaignAutomationStep) => {
-    if (!window.confirm(`Delete "${step.name}" from this sequence?`)) return
     setSaving(true)
     try {
       const res = await fetch(`/api/campaigns/${campaign.id}/sequence-steps/${step.id}`, {
@@ -1581,6 +1608,7 @@ function SequencePanel({
       const data = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(data?.error || 'Failed to delete sequence step')
       toast.success('Sequence step deleted')
+      setStepToDelete(null)
       if (editingStepId === step.id) cancelEdit()
       await onChanged()
     } catch (error) {
@@ -1639,7 +1667,7 @@ function SequencePanel({
                 type="button"
                 onClick={() => {
                   const step = sortedSteps.find((item) => item.id === editingStepId)
-                  if (step) void deleteStep(step)
+                  if (step) setStepToDelete(step)
                 }}
                 className="rounded-md p-1.5 text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30"
                 aria-label="Delete sequence step"
@@ -2212,6 +2240,19 @@ function SequencePanel({
           )}
         </div>
       </div>
+      <ConfirmDialog
+        open={Boolean(stepToDelete)}
+        title={stepToDelete ? `Delete ${stepToDelete.name}?` : 'Delete sequence rule?'}
+        description="This removes the sequence rule from the campaign. Leads and previous email history will stay in place."
+        confirmLabel="Delete rule"
+        loading={Boolean(stepToDelete && saving)}
+        onClose={() => {
+          if (!saving) setStepToDelete(null)
+        }}
+        onConfirm={() => {
+          if (stepToDelete) void deleteStep(stepToDelete)
+        }}
+      />
     </section>
   )
 }
