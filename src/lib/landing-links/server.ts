@@ -3,6 +3,7 @@ import { isMissingColumn } from '@/lib/supabase/missing-column'
 import { createClient } from '@/lib/supabase/server'
 
 const DEFAULT_ROCOTO_LANDING_URL = 'https://www.artoo.love'
+const PENTEST_CHALLENGE_PATH = '/pentest-challenge'
 type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 
 function getLeadTokenSecret() {
@@ -64,7 +65,7 @@ export function buildChallengeDestinationUrl({
     campaign_id: campaignId,
   })
 
-  return `${getRocotoLandingBaseUrl()}/free-pentest-challenge?${params.toString()}#claim`
+  return `${getRocotoLandingBaseUrl()}${PENTEST_CHALLENGE_PATH}?${params.toString()}#claim`
 }
 
 export function buildChallengeTrackingUrl(input: {
