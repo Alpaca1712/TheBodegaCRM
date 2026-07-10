@@ -138,6 +138,37 @@ export function defaultCampaignAutomationSteps(templateKey: CampaignTemplateKey)
     ]
   }
 
+  if (templateKey === 'linkedin_outbound_direct_offer') {
+    return [
+      {
+        name: 'Send direct offer',
+        position: 10,
+        trigger_stage_key: 'replied',
+        wait_minutes: 0,
+        channel: 'linkedin',
+        email_type: 'meeting_request',
+        subject_template: '{{lead_magnet}}',
+        body_template: 'Send {{first_name}} the tracked offer link manually on LinkedIn: {{challenge_link}}',
+        move_to_stage_key: 'offer_sent',
+        stop_on_reply: true,
+        active: false,
+      },
+      {
+        name: 'Application nudge',
+        position: 20,
+        trigger_stage_key: 'challenge_link_clicked',
+        wait_minutes: 120,
+        channel: 'email',
+        email_type: 'follow_up_1',
+        subject_template: 'Want me to review it?',
+        body_template: 'Hey {{first_name}},\n\nSaw you opened the challenge link. If you finish it here, I can send back the highest-risk places I would look first: {{challenge_link}}',
+        move_to_stage_key: null,
+        stop_on_reply: true,
+        active: false,
+      },
+    ]
+  }
+
   if (templateKey === 'conference_in_person_hormozi') {
     return [
       {

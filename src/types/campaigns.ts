@@ -79,6 +79,7 @@ export type CampaignTemplateKey =
   | 'linkedin_inbound_playbook'
   | 'website_inbound_lead_magnet'
   | 'linkedin_outbound_lead_magnet'
+  | 'linkedin_outbound_direct_offer'
   | 'conference_in_person_hormozi'
 
 export interface CampaignStageTemplate {
@@ -302,6 +303,29 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'reply', label: 'Track reply intent', timing: 'When they reply', channel: 'linkedin', goal: 'Move interested replies into requested or direct offer stages.' },
       { key: 'deliver', label: 'Deliver lead magnet', timing: 'After request', channel: 'email', goal: 'Send the personalized lead magnet PDF or tracked challenge link.' },
       { key: 'nudge', label: 'Challenge nudge', timing: '2 hours after click', channel: 'email', goal: 'Nudge the challenge/application if they clicked but did not complete.' },
+    ],
+  },
+  linkedin_outbound_direct_offer: {
+    key: 'linkedin_outbound_direct_offer',
+    name: 'LinkedIn Outbound Direct Offer',
+    campaignType: 'linkedin_outbound',
+    description: 'Manual LinkedIn outbound flow for pitching the offer directly: message prospects, send the tracked challenge link, then move them toward the application and discovery.',
+    initialStageKey: 'to_message',
+    targetChannel: 'linkedin',
+    stages: [
+      { key: 'to_message', label: 'To Message' },
+      { key: 'messaged_waiting', label: 'Messaged / Waiting' },
+      { key: 'replied', label: 'Replied' },
+      { key: 'offer_sent', label: 'Offer Sent' },
+      { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
+      { key: 'application_completed', label: 'Application Completed' },
+      { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
+      { key: 'nurture_lost', label: 'Nurture / Lost' },
+    ],
+    sequenceSteps: [
+      { key: 'message', label: 'Manual LinkedIn opener', timing: 'Day 0', channel: 'linkedin', goal: 'Send the first LinkedIn message manually and track the response.' },
+      { key: 'offer', label: 'Send direct offer', timing: 'After interest', channel: 'linkedin', goal: 'Send the tracked challenge link or offer asset for this specific lead.' },
+      { key: 'nudge', label: 'Application nudge', timing: '2 hours after click', channel: 'email', goal: 'Nudge the challenge/application if they clicked but did not complete.' },
     ],
   },
   conference_in_person_hormozi: {

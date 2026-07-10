@@ -59,8 +59,15 @@ export function stageForCampaignEvent(templateKey: CampaignTemplateKey | string 
       case 'meeting_booked':
         return conference ? 'discovery_booked' : 'meeting_booked'
       case 'email_replied':
-      case 'lead_magnet_requested':
         return conference ? 'meeting_scheduled' : inboundPlaybook ? 'opted_in' : 'replied'
+      case 'lead_magnet_requested':
+        return conference
+          ? 'meeting_scheduled'
+          : inboundPlaybook
+            ? 'opted_in'
+            : template?.stages.some((stage) => stage.key === 'lead_magnet_requested')
+              ? 'lead_magnet_requested'
+              : 'replied'
       case 'lead_magnet_sent':
         return 'lead_magnet_sent'
       case 'challenge_link_clicked':

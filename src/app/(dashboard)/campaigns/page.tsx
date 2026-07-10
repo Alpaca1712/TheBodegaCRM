@@ -125,6 +125,8 @@ export default function CampaignsPage() {
     setTemplateKey(nextTemplateKey)
     if (nextTemplateKey === 'conference_in_person_hormozi') {
       setLeadMagnetName('Free AI Security Diagnostic')
+    } else if (nextTemplateKey === 'email_outbound_direct_offer' || nextTemplateKey === 'linkedin_outbound_direct_offer') {
+      setLeadMagnetName('Free Pentest Challenge')
     } else if (!leadMagnetName.trim() || leadMagnetName === 'Free AI Security Diagnostic') {
       setLeadMagnetName('Free Pentest Challenge')
     }

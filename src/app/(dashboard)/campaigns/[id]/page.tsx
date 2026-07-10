@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useRef, useState, type ComponentType, type DragEvent } from 'react'
+import { useEffect, useMemo, useRef, useState, type ComponentType, type DragEvent, type FormEvent } from 'react'
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
@@ -10,6 +10,7 @@ import {
   Clock3,
   Copy,
   Download,
+  Edit3,
   FileText,
   GripVertical,
   Info,
@@ -124,6 +125,14 @@ export default function CampaignDetailPage() {
   const [draggingEnrollmentId, setDraggingEnrollmentId] = useState<string | null>(null)
   const [dragOverStageKey, setDragOverStageKey] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [editingCampaign, setEditingCampaign] = useState(false)
+  const [savingCampaign, setSavingCampaign] = useState(false)
+  const [campaignDraft, setCampaignDraft] = useState({
+    name: '',
+    status: 'active',
+    lead_magnet_name: '',
+    description: '',
+  })
 
   const load = async () => {
     setLoading(true)
@@ -318,6 +327,53 @@ export default function CampaignDetailPage() {
     }
   }
 
+  const startEditingCampaign = () => {
+    if (!campaign) return
+    setCampaignDraft({
+      name: campaign.name,
+      status: campaign.status,
+      lead_magnet_name: campaign.lead_magnet_name || '',
+      description: campaign.description || '',
+    })
+    setEditingCampaign(true)
+  }
+
+  const cancelEditingCampaign = () => {
+    setEditingCampaign(false)
+  }
+
+  const saveCampaign = async (event: FormEvent) => {
+    event.preventDefault()
+    if (!campaign) return
+    if (!campaignDraft.name.trim()) {
+      toast.error('Campaign name is required')
+      return
+    }
+
+    setSavingCampaign(true)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: campaignDraft.name.trim(),
+          status: campaignDraft.status,
+          lead_magnet_name: campaignDraft.lead_magnet_name.trim() || null,
+          description: campaignDraft.description.trim() || null,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data?.error || 'Failed to update campaign')
+      setCampaign((current) => current ? { ...current, ...data.data } : current)
+      setEditingCampaign(false)
+      toast.success('Campaign updated')
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to update campaign')
+    } finally {
+      setSavingCampaign(false)
+    }
+  }
+
   if (loading && !campaign) {
     return (
       <div className="flex min-h-[420px] items-center justify-center text-sm text-zinc-500">
@@ -371,6 +427,10 @@ export default function CampaignDetailPage() {
 
           <div className="flex flex-wrap items-center gap-2">
             {campaign.landing_url && <CopyLandingLinkButton url={campaign.landing_url} />}
+            <Button type="button" variant="outline" onClick={startEditingCampaign}>
+              <Edit3 className="mr-2 h-4 w-4" />
+              Edit
+            </Button>
             <Button type="button" variant="outline" onClick={() => void load()} disabled={loading}>
               {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <RefreshCw className="mr-2 h-4 w-4" />}
               Refresh
@@ -389,6 +449,16 @@ export default function CampaignDetailPage() {
           <HeaderFact label="Landing page" value={formatLandingLinkLabel(campaign.landing_url)} />
         </div>
       </header>
+
+      {editingCampaign && (
+        <CampaignEditPanel
+          draft={campaignDraft}
+          saving={savingCampaign}
+          onChange={setCampaignDraft}
+          onCancel={cancelEditingCampaign}
+          onSubmit={saveCampaign}
+        />
+      )}
 
       <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
@@ -475,6 +545,97 @@ function HeaderFact({ label, value }: { label: string; value: string }) {
       <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-400">{label}</p>
       <p className="mt-1 truncate text-sm font-medium text-zinc-800 dark:text-zinc-200">{value}</p>
     </div>
+  )
+}
+
+function CampaignEditPanel({
+  draft,
+  saving,
+  onChange,
+  onCancel,
+  onSubmit,
+}: {
+  draft: {
+    name: string
+    status: string
+    lead_magnet_name: string
+    description: string
+  }
+  saving: boolean
+  onChange: (draft: {
+    name: string
+    status: string
+    lead_magnet_name: string
+    description: string
+  }) => void
+  onCancel: () => void
+  onSubmit: (event: FormEvent) => void
+}) {
+  const update = (patch: Partial<typeof draft>) => onChange({ ...draft, ...patch })
+
+  return (
+    <form
+      onSubmit={onSubmit}
+      className="rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70"
+    >
+      <div className="mb-4 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Edit campaign</h2>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Update the visible campaign details without rebuilding the funnel.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button type="button" variant="ghost" size="sm" onClick={onCancel} disabled={saving}>
+            Cancel
+          </Button>
+          <Button type="submit" variant="destructive" size="sm" isLoading={saving}>
+            Save
+          </Button>
+        </div>
+      </div>
+
+      <div className="grid gap-3 lg:grid-cols-[minmax(0,1fr)_180px]">
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Campaign name</span>
+          <input
+            value={draft.name}
+            onChange={(event) => update({ name: event.target.value })}
+            className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Status</span>
+          <select
+            value={draft.status}
+            onChange={(event) => update({ status: event.target.value })}
+            className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          >
+            <option value="draft">Draft</option>
+            <option value="active">Active</option>
+            <option value="paused">Paused</option>
+            <option value="completed">Completed</option>
+            <option value="archived">Archived</option>
+          </select>
+        </label>
+        <label className="block">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Primary CTA</span>
+          <input
+            value={draft.lead_magnet_name}
+            onChange={(event) => update({ lead_magnet_name: event.target.value })}
+            placeholder="Free Pentest Challenge, discovery call, diagnostic..."
+            className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+        <label className="block lg:row-span-2">
+          <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Description</span>
+          <textarea
+            value={draft.description}
+            onChange={(event) => update({ description: event.target.value })}
+            rows={4}
+            className="min-h-[94px] w-full resize-y rounded-md border border-zinc-200 bg-white px-3 py-2 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+          />
+        </label>
+      </div>
+    </form>
   )
 }
 
