@@ -2172,8 +2172,8 @@ function SequencePanel({
                                 : 'hover:bg-zinc-50 dark:hover:bg-zinc-950/40'
                             }`}
                           >
-                            <div className="grid gap-3 xl:grid-cols-[minmax(180px,1.15fr)_110px_minmax(160px,1fr)_minmax(160px,1fr)_64px] xl:items-center">
-                              <div className="min-w-0">
+                            <div className="grid gap-3 sm:grid-cols-3 xl:grid-cols-[minmax(180px,1.15fr)_110px_minmax(160px,1fr)_minmax(160px,1fr)_64px] xl:items-center">
+                              <div className="min-w-0 sm:col-span-3 xl:col-span-1">
                                 <div className="flex flex-wrap items-center gap-2">
                                   <span className="flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-zinc-50 text-[11px] font-semibold text-zinc-600 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
                                     {index + 1}
@@ -2228,7 +2228,7 @@ function SequencePanel({
                                 )}
                               </div>
 
-                              <span className="text-xs font-medium text-zinc-400 xl:text-right">
+                              <span className="text-xs font-medium text-zinc-400 sm:col-span-3 sm:text-right xl:col-span-1">
                                 {editingStepId === step.id ? 'Editing' : 'Edit'}
                               </span>
                             </div>
