@@ -1028,6 +1028,7 @@ function LeadMagnetsPanel({
   const [ctaPhrase, setCtaPhrase] = useState('Apply for our Pentest Challenge, and walk into your next deal ready.')
   const [ctaLinkText, setCtaLinkText] = useState('Pentest Challenge')
   const [saving, setSaving] = useState(false)
+  const [deletingLeadMagnetId, setDeletingLeadMagnetId] = useState<string | null>(null)
   const leadMagnets = campaign.lead_magnets || []
 
   const saveLeadMagnet = async () => {
@@ -1063,6 +1064,25 @@ function LeadMagnetsPanel({
       toast.error(error instanceof Error ? error.message : 'Failed to save lead magnet')
     } finally {
       setSaving(false)
+    }
+  }
+
+  const deleteLeadMagnet = async (leadMagnet: CampaignLeadMagnet) => {
+    if (!window.confirm(`Delete "${leadMagnet.name}" from this campaign?`)) return
+
+    setDeletingLeadMagnetId(leadMagnet.id)
+    try {
+      const res = await fetch(`/api/campaigns/${campaign.id}/lead-magnets/${leadMagnet.id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to delete lead magnet')
+      toast.success('Lead magnet deleted')
+      await onChanged()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to delete lead magnet')
+    } finally {
+      setDeletingLeadMagnetId(null)
     }
   }
 
@@ -1136,6 +1156,16 @@ function LeadMagnetsPanel({
                   Default
                 </span>
               )}
+              <button
+                type="button"
+                onClick={() => void deleteLeadMagnet(leadMagnet)}
+                disabled={deletingLeadMagnetId === leadMagnet.id}
+                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+                aria-label={`Delete ${leadMagnet.name}`}
+                title={`Delete ${leadMagnet.name}`}
+              >
+                {deletingLeadMagnetId === leadMagnet.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+              </button>
             </div>
           </div>
         ))}
