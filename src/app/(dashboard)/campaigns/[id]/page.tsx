@@ -112,6 +112,8 @@ interface SequenceStepForm {
   attachments: CampaignAutomationAttachment[]
 }
 
+type CampaignToolKey = 'lead_magnets' | 'sequences' | 'onboarding' | 'activity'
+
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>()
   const router = useRouter()
@@ -128,6 +130,7 @@ export default function CampaignDetailPage() {
   const [deleting, setDeleting] = useState(false)
   const [editingCampaign, setEditingCampaign] = useState(false)
   const [savingCampaign, setSavingCampaign] = useState(false)
+  const [activeTool, setActiveTool] = useState<CampaignToolKey | null>(null)
   const [campaignDraft, setCampaignDraft] = useState({
     name: '',
     status: 'active',
@@ -523,11 +526,22 @@ export default function CampaignDetailPage() {
         </div>
       </section>
 
-      <LeadMagnetsPanel campaign={campaign} onChanged={load} />
+      <CampaignToolStrip
+        activeTool={activeTool}
+        onToggleTool={(tool) => setActiveTool((current) => (current === tool ? null : tool))}
+        onClose={() => setActiveTool(null)}
+        leadMagnetCount={campaign.lead_magnets?.length || 0}
+        sequenceCount={sequenceSteps.length}
+        activeSequenceCount={sequenceSteps.filter((step) => step.active).length}
+        availableLeadCount={availableLeads.length}
+        eventCount={campaign.events.length}
+      />
 
-      <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />
+      {activeTool === 'lead_magnets' && <LeadMagnetsPanel campaign={campaign} onChanged={load} />}
 
-      <section className="grid min-w-0 gap-3 xl:grid-cols-[minmax(0,1fr)_minmax(280px,380px)]">
+      {activeTool === 'sequences' && <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />}
+
+      {activeTool === 'onboarding' && (
         <LeadOnboardingPanel
           campaign={campaign}
           leadSearch={leadSearch}
@@ -542,8 +556,9 @@ export default function CampaignDetailPage() {
           onClearSelected={clearSelectedLeads}
           onEnrollSelected={enrollSelectedLeads}
         />
-        <EventFeed events={campaign.events} />
-      </section>
+      )}
+
+      {activeTool === 'activity' && <EventFeed events={campaign.events} />}
     </div>
   )
 }
@@ -726,6 +741,145 @@ function MetricCard({
       </div>
       <p className="mt-2 text-lg font-semibold tabular-nums text-zinc-950 dark:text-zinc-100">{value}</p>
     </div>
+  )
+}
+
+function CampaignToolStrip({
+  activeTool,
+  onToggleTool,
+  onClose,
+  leadMagnetCount,
+  sequenceCount,
+  activeSequenceCount,
+  availableLeadCount,
+  eventCount,
+}: {
+  activeTool: CampaignToolKey | null
+  onToggleTool: (tool: CampaignToolKey) => void
+  onClose: () => void
+  leadMagnetCount: number
+  sequenceCount: number
+  activeSequenceCount: number
+  availableLeadCount: number
+  eventCount: number
+}) {
+  const tools: Array<{
+    key: CampaignToolKey
+    icon: ComponentType<{ className?: string }>
+    label: string
+    value: string
+    hint: string
+  }> = [
+    {
+      key: 'lead_magnets',
+      icon: FileText,
+      label: 'Lead magnets',
+      value: `${leadMagnetCount} loaded`,
+      hint: 'Docs and tracked PDFs',
+    },
+    {
+      key: 'sequences',
+      icon: ListChecks,
+      label: 'Sequences',
+      value: `${activeSequenceCount} on / ${sequenceCount} total`,
+      hint: 'Automation rules',
+    },
+    {
+      key: 'onboarding',
+      icon: UserPlus,
+      label: 'Add leads',
+      value: `${availableLeadCount} available`,
+      hint: 'Attach CRM leads',
+    },
+    {
+      key: 'activity',
+      icon: Clock3,
+      label: 'Activity',
+      value: `${eventCount} events`,
+      hint: 'Recent touches',
+    },
+  ]
+
+  return (
+    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+        <div className="min-w-0">
+          <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Campaign tools</h2>
+          <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
+            Open only the workspace you need. The funnel stays focused above.
+          </p>
+        </div>
+        {activeTool && (
+          <button
+            type="button"
+            onClick={onClose}
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <X className="h-3.5 w-3.5" />
+            Close panel
+          </button>
+        )}
+      </div>
+
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+        {tools.map((tool) => (
+          <CampaignToolButton
+            key={tool.key}
+            icon={tool.icon}
+            label={tool.label}
+            value={tool.value}
+            hint={tool.hint}
+            active={activeTool === tool.key}
+            onClick={() => onToggleTool(tool.key)}
+          />
+        ))}
+      </div>
+    </section>
+  )
+}
+
+function CampaignToolButton({
+  icon: Icon,
+  label,
+  value,
+  hint,
+  active,
+  onClick,
+}: {
+  icon: ComponentType<{ className?: string }>
+  label: string
+  value: string
+  hint: string
+  active: boolean
+  onClick: () => void
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`min-w-0 rounded-md border p-3 text-left transition ${
+        active
+          ? 'border-red-200 bg-red-50/70 ring-2 ring-red-500/10 dark:border-red-900/60 dark:bg-red-950/25'
+          : 'border-zinc-200 bg-zinc-50/60 hover:border-zinc-300 hover:bg-white dark:border-zinc-800 dark:bg-zinc-950/30 dark:hover:border-zinc-700 dark:hover:bg-zinc-900'
+      }`}
+    >
+      <span className="flex items-start justify-between gap-3">
+        <span className="min-w-0">
+          <span className="block text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">
+            {label}
+          </span>
+          <span className="mt-1 block truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{value}</span>
+          <span className="mt-0.5 block truncate text-xs text-zinc-500 dark:text-zinc-400">{hint}</span>
+        </span>
+        <span className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-md ring-1 ${
+          active
+            ? 'bg-red-100 text-red-600 ring-red-200 dark:bg-red-950/50 dark:text-red-300 dark:ring-red-900/70'
+            : 'bg-white text-zinc-500 ring-zinc-200 dark:bg-zinc-900 dark:text-zinc-300 dark:ring-zinc-700'
+        }`}>
+          <Icon className="h-4 w-4" />
+        </span>
+      </span>
+    </button>
   )
 }
 
