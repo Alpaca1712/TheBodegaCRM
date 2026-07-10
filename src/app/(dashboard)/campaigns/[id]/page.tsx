@@ -1041,6 +1041,7 @@ function LeadMagnetsPanel({
   const [docUrl, setDocUrl] = useState('')
   const [ctaPhrase, setCtaPhrase] = useState('Apply for our Pentest Challenge, and walk into your next deal ready.')
   const [ctaLinkText, setCtaLinkText] = useState('Pentest Challenge')
+  const [isAdding, setIsAdding] = useState(false)
   const [saving, setSaving] = useState(false)
   const [deletingLeadMagnetId, setDeletingLeadMagnetId] = useState<string | null>(null)
   const [leadMagnetToDelete, setLeadMagnetToDelete] = useState<CampaignLeadMagnet | null>(null)
@@ -1074,6 +1075,7 @@ function LeadMagnetsPanel({
       if (!res.ok) throw new Error(data?.error || 'Failed to save lead magnet')
       toast.success('Lead magnet saved')
       setDocUrl('')
+      setIsAdding(false)
       await onChanged()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save lead magnet')
@@ -1101,94 +1103,149 @@ function LeadMagnetsPanel({
   }
 
   return (
-    <section className="rounded-lg border border-zinc-200 bg-white p-3 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex flex-col gap-3 xl:flex-row xl:items-start xl:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
-              <FileText className="h-4 w-4" />
-            </span>
-            <div>
+    <section className="rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+            <FileText className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Lead magnets</h2>
-              <p className="text-xs text-zinc-500 dark:text-zinc-400">
-                Google Docs exported as tracked PDFs for each enrolled lead.
-              </p>
+              <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                {leadMagnets.length} loaded
+              </span>
             </div>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Tracked PDFs personalized for each enrolled lead.</p>
           </div>
         </div>
-        <Link
-          href="/api/gmail/connect"
-          className="inline-flex h-8 items-center justify-center rounded-md border border-zinc-200 px-3 text-xs font-semibold text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
-        >
-          Reconnect Google for Drive access
-        </Link>
-      </div>
-
-      <div className="mt-3 grid gap-2 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
-        <input
-          value={name}
-          onChange={(event) => setName(event.target.value)}
-          placeholder="Lead magnet name"
-          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
-        />
-        <input
-          value={docUrl}
-          onChange={(event) => setDocUrl(event.target.value)}
-          placeholder="Paste Google Doc link"
-          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
-        />
-        <input
-          value={ctaPhrase}
-          onChange={(event) => setCtaPhrase(event.target.value)}
-          placeholder="CTA sentence to find"
-          className="h-9 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
-        />
-        <div className="flex gap-2">
-          <input
-            value={ctaLinkText}
-            onChange={(event) => setCtaLinkText(event.target.value)}
-            placeholder="Words to hyperlink"
-            className="h-9 min-w-0 flex-1 rounded-md border border-zinc-200 bg-white px-3 text-sm outline-none transition focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900"
-          />
-          <Button type="button" size="sm" variant="destructive" onClick={() => void saveLeadMagnet()} isLoading={saving}>
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add
-          </Button>
+        <div className="flex shrink-0 flex-wrap items-center gap-2">
+          <Link
+            href="/api/gmail/connect"
+            className="inline-flex h-8 items-center justify-center gap-1.5 rounded-md border border-zinc-200 px-2.5 text-xs font-medium text-zinc-600 transition hover:bg-zinc-50 hover:text-zinc-900 dark:border-zinc-700 dark:text-zinc-300 dark:hover:bg-zinc-800"
+          >
+            <Link2 className="h-3.5 w-3.5" />
+            Connect Drive
+          </Link>
+          {!isAdding && leadMagnets.length > 0 && (
+            <Button type="button" size="sm" onClick={() => setIsAdding(true)} className="h-8 bg-zinc-900 px-2.5 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add lead magnet
+            </Button>
+          )}
         </div>
       </div>
 
-      <div className="mt-3 grid gap-2 md:grid-cols-2 xl:grid-cols-3">
-        {leadMagnets.map((leadMagnet) => (
-          <div key={leadMagnet.id} className="rounded-md border border-zinc-200 bg-zinc-50/60 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-            <div className="flex items-start justify-between gap-2">
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{leadMagnet.name}</p>
-                <p className="mt-1 truncate text-xs text-zinc-500 dark:text-zinc-400">{leadMagnet.cta_link_text} link inserted per lead</p>
+      {isAdding && (
+        <div className="border-t border-zinc-100 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">
+          <div className="mb-4 flex items-start justify-between gap-3">
+            <div>
+              <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Add a Google Doc</h3>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Bodega creates a lead-specific PDF and replaces the selected CTA with its tracked challenge link.</p>
+            </div>
+            <button type="button" onClick={() => setIsAdding(false)} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-200/70 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200" aria-label="Close lead magnet form">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          <div className="grid gap-3 lg:grid-cols-2">
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Name</span>
+              <input
+                value={name}
+                onChange={(event) => setName(event.target.value)}
+                placeholder="Vertical SaaS security playbook"
+                className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+            <label className="block">
+              <span className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">Google Doc URL</span>
+              <input
+                value={docUrl}
+                onChange={(event) => setDocUrl(event.target.value)}
+                placeholder="https://docs.google.com/document/d/..."
+                className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
+              />
+            </label>
+          </div>
+
+          <details className="mt-3 rounded-md border border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+            <summary className="cursor-pointer select-none px-3 py-2.5 text-xs font-semibold text-zinc-700 dark:text-zinc-300">
+              Tracked link placement
+              <span className="ml-2 font-normal text-zinc-400">Optional</span>
+            </summary>
+            <div className="grid gap-3 border-t border-zinc-100 p-3 dark:border-zinc-800 lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.6fr)]">
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Sentence to find in the document</span>
+                <input
+                  value={ctaPhrase}
+                  onChange={(event) => setCtaPhrase(event.target.value)}
+                  placeholder="Apply for our Pentest Challenge..."
+                  className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </label>
+              <label className="block">
+                <span className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Words to hyperlink</span>
+                <input
+                  value={ctaLinkText}
+                  onChange={(event) => setCtaLinkText(event.target.value)}
+                  placeholder="Pentest Challenge"
+                  className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </label>
+            </div>
+          </details>
+
+          <div className="mt-4 flex justify-end gap-2">
+            <Button type="button" size="sm" variant="ghost" onClick={() => setIsAdding(false)} disabled={saving}>Cancel</Button>
+            <Button type="button" size="sm" variant="destructive" onClick={() => void saveLeadMagnet()} isLoading={saving}>
+              Add lead magnet
+            </Button>
+          </div>
+        </div>
+      )}
+
+      {!isAdding && leadMagnets.length > 0 && (
+        <div className="divide-y divide-zinc-100 border-t border-zinc-100 dark:divide-zinc-800 dark:border-zinc-800">
+          {leadMagnets.map((leadMagnet) => (
+            <div key={leadMagnet.id} className="flex items-center gap-3 px-4 py-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-400 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:ring-zinc-800">
+                <FileText className="h-3.5 w-3.5" />
+              </span>
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="truncate text-sm font-semibold text-zinc-950 dark:text-zinc-100">{leadMagnet.name}</p>
+                  {leadMagnet.is_default && (
+                    <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">Default</span>
+                  )}
+                </div>
+                <p className="mt-0.5 truncate text-xs text-zinc-500 dark:text-zinc-400">Links “{leadMagnet.cta_link_text}” to each lead&apos;s tracked challenge URL</p>
               </div>
-              {leadMagnet.is_default && (
-                <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">
-                  Default
-                </span>
-              )}
               <button
                 type="button"
                 onClick={() => setLeadMagnetToDelete(leadMagnet)}
                 disabled={deletingLeadMagnetId === leadMagnet.id}
-                className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
                 aria-label={`Delete ${leadMagnet.name}`}
                 title={`Delete ${leadMagnet.name}`}
               >
                 {deletingLeadMagnetId === leadMagnet.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
               </button>
             </div>
-          </div>
-        ))}
-        {leadMagnets.length === 0 && (
-          <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 p-4 text-sm text-zinc-500 dark:border-zinc-800 dark:bg-zinc-900/40 dark:text-zinc-400 md:col-span-2 xl:col-span-3">
-            Add the Google Doc lead magnet for this campaign. The download button on each lead card will generate a PDF with that lead&apos;s tracked link.
-          </div>
-        )}
-      </div>
+          ))}
+        </div>
+      )}
+
+      {!isAdding && leadMagnets.length === 0 && (
+        <div className="border-t border-zinc-100 px-4 py-8 text-center dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">No lead magnets loaded</p>
+          <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-zinc-500 dark:text-zinc-400">Add a Google Doc once, then generate a tracked PDF from any lead card or sequence.</p>
+          <Button type="button" size="sm" variant="outline" onClick={() => setIsAdding(true)} className="mt-3">
+            <Plus className="mr-1.5 h-3.5 w-3.5" />
+            Add lead magnet
+          </Button>
+        </div>
+      )}
       <ConfirmDialog
         open={Boolean(leadMagnetToDelete)}
         title={leadMagnetToDelete ? `Delete ${leadMagnetToDelete.name}?` : 'Delete lead magnet?'}
@@ -1401,7 +1458,6 @@ function SequencePanel({
 }) {
   const [editingStepId, setEditingStepId] = useState<string | 'new' | null>(null)
   const [form, setForm] = useState<SequenceStepForm>(() => emptySequenceForm(campaign))
-  const [newStepStageKey, setNewStepStageKey] = useState(campaign.stages[0]?.stage_key || '')
   const [saving, setSaving] = useState(false)
   const [running, setRunning] = useState(false)
   const [stepToDelete, setStepToDelete] = useState<CampaignAutomationStep | null>(null)
@@ -1441,7 +1497,7 @@ function SequencePanel({
   const inactiveStepCount = sortedSteps.length - activeStepCount
 
   const beginCreate = (stageKey?: string) => {
-    const triggerStageKey = stageKey || newStepStageKey || campaign.stages[0]?.stage_key || ''
+    const triggerStageKey = stageKey || campaign.stages[0]?.stage_key || ''
     setEditingStepId('new')
     setForm({
       ...emptySequenceForm(campaign),
@@ -1652,7 +1708,7 @@ function SequencePanel({
   }
 
   const editorPanel = editingStepId ? (
-    <div className="rounded-lg border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-800 dark:bg-zinc-950/40">
+    <div className="bg-white p-4 dark:bg-zinc-950/40 sm:p-5">
           <div className="flex items-center justify-between gap-2">
             <div>
               <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">
@@ -1687,7 +1743,7 @@ function SequencePanel({
               />
             </label>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="block min-w-0">
                 <span className="text-xs font-medium text-zinc-500">When in</span>
                 <select
@@ -1723,7 +1779,7 @@ function SequencePanel({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="block min-w-0">
                 <span className="text-xs font-medium text-zinc-500">Channel</span>
                 <select
@@ -1844,7 +1900,7 @@ function SequencePanel({
                   >
                     <Info className="h-3.5 w-3.5" />
                   </button>
-                  <div className="pointer-events-auto absolute left-0 top-7 z-30 hidden w-[360px] rounded-md border border-zinc-200 bg-white p-3 text-left shadow-xl group-focus-within:block group-hover:block dark:border-zinc-800 dark:bg-zinc-950">
+                  <div className="pointer-events-auto absolute left-0 top-7 z-30 hidden w-[min(360px,calc(100vw-4rem))] rounded-md border border-zinc-200 bg-white p-3 text-left shadow-xl group-focus-within:block group-hover:block dark:border-zinc-800 dark:bg-zinc-950">
                     <p className="text-xs font-semibold text-zinc-950 dark:text-zinc-100">Template variables</p>
                     <p className="mt-1 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                       Drop these into subject or message. They resolve per lead before Gmail sends.
@@ -1958,7 +2014,7 @@ function SequencePanel({
                   }
 
                   return (
-                    <div key={index} className="grid grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px] gap-2">
+                    <div key={index} className="grid gap-2 sm:grid-cols-[minmax(0,0.8fr)_minmax(0,1.2fr)_32px]">
                       <input
                         value={attachment.name}
                         placeholder="Link label"
@@ -1994,7 +2050,7 @@ function SequencePanel({
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid gap-3 sm:grid-cols-2">
               <label className="flex items-center gap-2 rounded-md border border-zinc-200 px-3 py-2.5 text-sm text-zinc-600 dark:border-zinc-800 dark:text-zinc-300">
                 <input
                   type="checkbox"
@@ -2028,99 +2084,51 @@ function SequencePanel({
   ) : null
 
   return (
-    <section className="min-w-0 rounded-lg border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
-      <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
-        <div className="min-w-0">
-          <div className="flex items-center gap-2">
-            <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
-              <ListChecks className="h-4 w-4" />
-            </span>
-            <div>
-              <h2 className="text-base font-semibold text-zinc-950 dark:text-zinc-100">Sequences</h2>
-              <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">
-                {activeStepCount} on, {inactiveStepCount} paused
-              </p>
+    <section className="min-w-0 rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 px-4 py-3.5 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex min-w-0 items-center gap-3">
+          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md bg-blue-50 text-blue-600 ring-1 ring-blue-100 dark:bg-blue-950/35 dark:text-blue-300 dark:ring-blue-900/50">
+            <ListChecks className="h-4 w-4" />
+          </span>
+          <div className="min-w-0">
+            <div className="flex flex-wrap items-center gap-2">
+              <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Sequences</h2>
+              {activeStepCount > 0 && <span className="rounded bg-emerald-50 px-1.5 py-0.5 text-[10px] font-semibold text-emerald-700 ring-1 ring-emerald-100 dark:bg-emerald-950/35 dark:text-emerald-300 dark:ring-emerald-900/50">{activeStepCount} active</span>}
+              {inactiveStepCount > 0 && <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-semibold text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">{inactiveStepCount} paused</span>}
             </div>
+            <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">Stage-based follow-ups and lead handoffs.</p>
           </div>
-          <p className="mt-3 max-w-3xl text-xs leading-5 text-zinc-500 dark:text-zinc-400">
-            Create rules that run from a pipeline stage: wait, send the right touch, stop on reply, and optionally move the lead.
-          </p>
         </div>
-        <div className="flex shrink-0 gap-2">
-          <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running}>
-            Run due
-          </Button>
-          <Button type="button" size="sm" onClick={() => beginCreate()} className="whitespace-nowrap bg-zinc-900 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-            <Plus className="mr-1.5 h-3.5 w-3.5" />
-            Add rule
-          </Button>
-        </div>
+        {sortedSteps.length > 0 && (
+          <div className="flex shrink-0 flex-wrap items-center gap-2">
+            <Button type="button" size="sm" variant="outline" onClick={() => void runDueSteps()} isLoading={running} className="h-8">
+              <Clock3 className="mr-1.5 h-3.5 w-3.5" />
+              Run due
+            </Button>
+            <Button type="button" size="sm" onClick={() => beginCreate()} className="h-8 whitespace-nowrap bg-zinc-900 px-2.5 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+              <Plus className="mr-1.5 h-3.5 w-3.5" />
+              Add rule
+            </Button>
+          </div>
+        )}
       </div>
 
-      <div className="mt-4 grid gap-2 md:grid-cols-3">
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <Clock3 className="h-4 w-4 text-zinc-400" />
-            When
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">A lead sits in a campaign stage.</p>
+      {editingStepId === 'new' && (
+        <div className="border-t border-zinc-100 dark:border-zinc-800">
+          {editorPanel}
         </div>
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <Send className="h-4 w-4 text-zinc-400" />
-            Send
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Use a templated Gmail touch or task.</p>
-        </div>
-        <div className="rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-          <div className="flex items-center gap-2 text-xs font-semibold text-zinc-900 dark:text-zinc-100">
-            <CheckCircle2 className="h-4 w-4 text-zinc-400" />
-            Then
-          </div>
-          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Move the lead or leave them in place.</p>
-        </div>
-      </div>
+      )}
 
-      <div className="mt-4 min-w-0">
+      {(sortedSteps.length > 0 || editingStepId !== 'new') && <div className="min-w-0 border-t border-zinc-100 p-4 dark:border-zinc-800">
         <div className="min-w-0 space-y-3">
-          <section className="rounded-md border border-zinc-200 bg-white p-2.5 dark:border-zinc-800 dark:bg-zinc-900/70">
-            <div className="flex flex-col gap-2 md:flex-row md:items-center">
-              <div className="flex min-w-[140px] shrink-0 items-center gap-2">
-                <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-zinc-50 text-zinc-500 ring-1 ring-zinc-200 dark:bg-zinc-950 dark:text-zinc-300 dark:ring-zinc-700">
-                  <Plus className="h-3.5 w-3.5" />
-                </span>
-                <div>
-                  <h3 className="text-xs font-semibold uppercase tracking-wide text-zinc-500 dark:text-zinc-400">New rule</h3>
-                  <p className="text-[11px] text-zinc-400">Trigger stage</p>
-                </div>
-              </div>
-              <div className="grid flex-1 gap-2 sm:grid-cols-[minmax(180px,360px)_auto]">
-                <select
-                  value={newStepStageKey}
-                  onChange={(event) => setNewStepStageKey(event.target.value)}
-                  className="h-8 min-w-0 rounded-md border border-zinc-200 bg-zinc-50 px-2.5 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
-                >
-                  {campaign.stages.map((stage) => (
-                    <option key={stage.stage_key} value={stage.stage_key}>{stage.label}</option>
-                  ))}
-                </select>
-                <Button type="button" size="sm" onClick={() => beginCreate(newStepStageKey)} className="h-8 whitespace-nowrap bg-zinc-900 px-3 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Add rule
-                </Button>
-              </div>
-            </div>
-            {editingStepId === 'new' && (
-              <div className="mt-3 border-t border-zinc-100 pt-3 dark:border-zinc-800">
-                {editorPanel}
-              </div>
-            )}
-          </section>
-
           {sortedSteps.length === 0 ? (
-            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-10 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
+            <div className="rounded-md border border-dashed border-zinc-200 bg-zinc-50/70 px-4 py-8 text-center dark:border-zinc-800 dark:bg-zinc-900/40">
               <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">No sequence rules yet</p>
-              <p className="mt-1 text-sm text-zinc-500 dark:text-zinc-400">Add your first rule to send the next email or lead magnet from a campaign stage.</p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Automate the next email, lead magnet, task, or stage move.</p>
+              <Button type="button" size="sm" variant="outline" onClick={() => beginCreate()} className="mt-3">
+                <Plus className="mr-1.5 h-3.5 w-3.5" />
+                Add first rule
+              </Button>
             </div>
           ) : (
             <div className="space-y-3">
@@ -2226,7 +2234,7 @@ function SequencePanel({
                             </div>
                           </button>
                           {editingStepId === step.id && (
-                            <div className="border-t border-zinc-100 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
+                            <div className="border-t border-zinc-100 bg-zinc-50/70 dark:border-zinc-800 dark:bg-zinc-950/30">
                               {editorPanel}
                             </div>
                           )}
@@ -2239,7 +2247,7 @@ function SequencePanel({
             </div>
           )}
         </div>
-      </div>
+      </div>}
       <ConfirmDialog
         open={Boolean(stepToDelete)}
         title={stepToDelete ? `Delete ${stepToDelete.name}?` : 'Delete sequence rule?'}
