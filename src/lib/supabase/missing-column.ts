@@ -1,13 +1,14 @@
 type SupabaseShapeError = { code?: string; message?: string; details?: string; hint?: string } | null
 
 export function isMissingColumn(error: SupabaseShapeError, column: string) {
-  return Boolean(
-    error &&
-      (error.code === 'PGRST204' ||
-        error.code === '42703' ||
-        error.message?.includes(column) ||
-        error.message?.includes(`Could not find the '${column}' column`)),
-  )
+  if (!error) return false
+
+  const errorText = [error.message, error.details, error.hint]
+    .filter(Boolean)
+    .join(' ')
+    .toLowerCase()
+
+  return errorText.includes(column.toLowerCase())
 }
 
 export function isMissingRelation(error: SupabaseShapeError, relation: string) {

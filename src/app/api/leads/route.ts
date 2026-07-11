@@ -61,6 +61,14 @@ const optionalLeadInsertColumns = [
 
 type SupabaseShapeError = Parameters<typeof isMissingColumn>[0]
 
+function getErrorMessage(error: unknown, fallback: string) {
+  if (error instanceof Error && error.message) return error.message
+  if (error && typeof error === 'object' && 'message' in error && typeof error.message === 'string') {
+    return error.message
+  }
+  return fallback
+}
+
 function getMissingOptionalLeadColumn(error: SupabaseShapeError) {
   return optionalLeadInsertColumns.find((column) => isMissingColumn(error, column)) || null
 }
@@ -137,7 +145,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('GET /api/leads error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to fetch leads' },
+      { error: getErrorMessage(error, 'Failed to fetch leads') },
       { status: 500 }
     )
   }
@@ -258,7 +266,7 @@ export async function POST(request: NextRequest) {
   } catch (error) {
     console.error('POST /api/leads error:', error)
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Failed to create lead' },
+      { error: getErrorMessage(error, 'Failed to create lead') },
       { status: 500 }
     )
   }
