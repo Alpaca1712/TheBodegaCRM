@@ -109,8 +109,8 @@ export interface CampaignSequenceRunResult {
   errors: Array<{ lead_id?: string; step_id?: string; message: string }>
 }
 
-function campaignEventForEmail(emailType: CampaignAutomationStep['email_type']): CampaignEventType {
-  if (emailType === 'lead_magnet') return 'lead_magnet_sent'
+function campaignEventForStep(step: CampaignAutomationStep): CampaignEventType {
+  if (step.email_type === 'lead_magnet' || campaignStepLeadMagnetId(step)) return 'lead_magnet_sent'
   return 'email_sent'
 }
 
@@ -533,6 +533,7 @@ async function getCampaignLeadMagnet(
     if (selected.error && isMissingRelation(selected.error, 'campaign_lead_magnets')) return null
     if (selected.error) throw selected.error
     if (selected.data) return selected.data as SequenceLeadMagnet
+    return null
   }
 
   const { data: defaultData, error } = await supabase
@@ -1193,9 +1194,10 @@ export async function runCampaignSequence({
           existingToken: lead.lead_token,
         })
         const challengeLink = buildChallengeTrackingUrl({ leadToken, campaignId })
-        const selectedLeadMagnetId = step.email_type === 'lead_magnet' ? campaignStepLeadMagnetId(step) : null
+        const selectedLeadMagnetId = campaignStepLeadMagnetId(step)
+        const shouldAttachLeadMagnet = Boolean(selectedLeadMagnetId) || step.email_type === 'lead_magnet'
         let selectedCampaignLeadMagnet: SequenceLeadMagnet | null = null
-        if (step.email_type === 'lead_magnet') {
+        if (shouldAttachLeadMagnet) {
           const cacheKey = selectedLeadMagnetId || 'default'
           if (!campaignLeadMagnetCache.has(cacheKey)) {
             campaignLeadMagnetCache.set(
@@ -1204,6 +1206,13 @@ export async function runCampaignSequence({
             )
           }
           selectedCampaignLeadMagnet = campaignLeadMagnetCache.get(cacheKey) || null
+          if (!selectedCampaignLeadMagnet) {
+            throw new Error(
+              selectedLeadMagnetId
+                ? 'The lead magnet attached to this sequence is no longer available. Edit the rule and choose another.'
+                : 'No default lead magnet is configured for this campaign.',
+            )
+          }
         }
         const leadMagnetName = selectedCampaignLeadMagnet?.name || typedCampaign.lead_magnet_name || 'Free Pentest Challenge'
         let aiConditionDecision: AiConditionDecision | null = null
@@ -1343,20 +1352,18 @@ export async function runCampaignSequence({
           leadMagnetName,
         })
 
-        if (step.email_type === 'lead_magnet') {
-          if (selectedCampaignLeadMagnet) {
-            const pdf = await generateLeadMagnetPdfFromGoogleDoc({
-              accessToken: sendingContext.accessToken,
-              leadMagnet: selectedCampaignLeadMagnet,
-              lead,
-              challengeLink,
-            })
-            gmailAttachments.push({
-              filename: pdf.filename,
-              contentType: pdf.contentType,
-              data: pdf.base64,
-            })
-          }
+        if (selectedCampaignLeadMagnet) {
+          const pdf = await generateLeadMagnetPdfFromGoogleDoc({
+            accessToken: sendingContext.accessToken,
+            leadMagnet: selectedCampaignLeadMagnet,
+            lead,
+            challengeLink,
+          })
+          gmailAttachments.push({
+            filename: pdf.filename,
+            contentType: pdf.contentType,
+            data: pdf.base64,
+          })
         }
 
         if (!bodyWithAttachments) throw new Error('Sequence step has no email body')
@@ -1409,7 +1416,7 @@ export async function runCampaignSequence({
             leadId: enrollment.lead_id,
             orgId,
             userId: typedCampaign.user_id,
-            eventType: campaignEventForEmail(step.email_type),
+            eventType: campaignEventForStep(step),
             stageKey: step.move_to_stage_key || undefined,
             metadata: {
               source: 'campaign_sequence',
@@ -1417,6 +1424,8 @@ export async function runCampaignSequence({
               sequence_execution_id: execution.id,
               lead_email_id: email?.id || null,
               email_type: step.email_type,
+              lead_magnet_id: selectedCampaignLeadMagnet?.id || null,
+              lead_magnet_name: selectedCampaignLeadMagnet?.name || null,
               gmail_message_id: sent.id,
               gmail_thread_id: sent.threadId,
             },

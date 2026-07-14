@@ -1577,6 +1577,21 @@ function SequencePanel({
       toast.error('Add an email body')
       return
     }
+    if (
+      form.channel === 'email' &&
+      form.email_type === 'lead_magnet' &&
+      (campaign.lead_magnets || []).length === 0
+    ) {
+      toast.error('Load a lead magnet before creating this rule')
+      return
+    }
+    if (
+      form.lead_magnet_id &&
+      !(campaign.lead_magnets || []).some((leadMagnet) => leadMagnet.id === form.lead_magnet_id)
+    ) {
+      toast.error('Choose a lead magnet that is still loaded in this campaign')
+      return
+    }
 
     const waitMinutes = minutesFromSequenceDelay(form.wait_value, form.wait_unit)
     if (waitMinutes === null) {
@@ -1629,7 +1644,7 @@ function SequencePanel({
             metadata: {
               ...existingMetadata,
               attachments: cleanedAttachments.attachments,
-              ...(form.email_type === 'lead_magnet' && form.lead_magnet_id ? { lead_magnet_id: form.lead_magnet_id } : {}),
+              ...(form.channel === 'email' && form.lead_magnet_id ? { lead_magnet_id: form.lead_magnet_id } : {}),
               ...(aiConditionPrompt
                 ? {
                     ai_condition: {
@@ -1806,15 +1821,23 @@ function SequencePanel({
               </label>
             </div>
 
-            {form.email_type === 'lead_magnet' && (
+            {form.channel === 'email' && (
               <label className="block rounded-md border border-zinc-200 bg-zinc-50/70 p-3 dark:border-zinc-800 dark:bg-zinc-950/30">
-                <span className="text-xs font-medium text-zinc-500">Lead magnet document</span>
+                <span className="flex items-center gap-2 text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                  <Paperclip className="h-3.5 w-3.5" />
+                  Attach lead magnet PDF
+                  {form.email_type !== 'lead_magnet' && (
+                    <span className="font-normal text-zinc-400">Optional</span>
+                  )}
+                </span>
                 <select
                   value={form.lead_magnet_id}
                   onChange={(event) => setForm((current) => ({ ...current, lead_magnet_id: event.target.value }))}
                   className="mt-1.5 h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none focus:ring-2 focus:ring-red-500/20 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
                 >
-                  <option value="">Campaign default</option>
+                  <option value="">
+                    {form.email_type === 'lead_magnet' ? 'Campaign default' : 'No lead magnet'}
+                  </option>
                   {(campaign.lead_magnets || []).map((leadMagnet) => (
                     <option key={leadMagnet.id} value={leadMagnet.id}>
                       {leadMagnet.name}{leadMagnet.is_default ? ' (default)' : ''}
@@ -1823,7 +1846,7 @@ function SequencePanel({
                 </select>
                 <p className="mt-1.5 text-xs leading-5 text-zinc-500 dark:text-zinc-400">
                   {(campaign.lead_magnets || []).length > 0
-                    ? 'Pick a loaded Google Doc, or use the campaign default.'
+                    ? 'Bodega generates a personalized tracked PDF and sends it through the connected Gmail account.'
                     : 'Load a lead magnet above so this step can attach a tracked PDF.'}
                 </p>
               </label>
@@ -2157,7 +2180,7 @@ function SequencePanel({
                       const aiConditionPrompt = sequenceAiConditionPromptFromStep(step)
                       const waitLabel = step.wait_minutes <= 0 ? 'Immediately' : formatWaitMinutes(step.wait_minutes)
                       const thenLabel = step.move_to_stage_key ? stageLabel(campaign.stages, step.move_to_stage_key) : 'Stay here'
-                      const leadMagnetName = step.email_type === 'lead_magnet'
+                      const leadMagnetName = (step.email_type === 'lead_magnet' || sequenceLeadMagnetIdFromStep(step))
                         ? sequenceLeadMagnetName(campaign.lead_magnets || [], step)
                         : ''
 
