@@ -26,11 +26,16 @@ export function extractGoogleDocId(value: string) {
 }
 
 export function safePdfFilename(input: string) {
-  const cleaned = input
-    .replace(/[\\/:*?"<>|]+/g, '-')
-    .replace(/\s+/g, ' ')
-    .trim()
-  return `${cleaned || 'lead-magnet'}.pdf`.replace(/\.pdf\.pdf$/i, '.pdf')
+  const stem = input.trim().replace(/(?:\.pdf)+$/i, '')
+  const cleaned = stem
+    .normalize('NFKD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/['’]/g, '')
+    .replace(/[^a-zA-Z0-9._-]+/g, '-')
+    .replace(/-+/g, '-')
+    .replace(/^-+|-+$/g, '')
+
+  return `${cleaned || 'lead-magnet'}.pdf`
 }
 
 function readableGoogleApiError(status: number, body: string) {
