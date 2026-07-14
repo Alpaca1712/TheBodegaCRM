@@ -2753,12 +2753,20 @@ function LeadMagnetDownloadButton({
 }) {
   const [downloading, setDownloading] = useState(false)
   const defaultLeadMagnet = leadMagnets.find((leadMagnet) => leadMagnet.is_default) || leadMagnets[0]
+  const [selectedLeadMagnetId, setSelectedLeadMagnetId] = useState(defaultLeadMagnet?.id || '')
+  const selectedLeadMagnet = leadMagnets.find((leadMagnet) => leadMagnet.id === selectedLeadMagnetId) || defaultLeadMagnet
+
+  useEffect(() => {
+    if (!leadMagnets.some((leadMagnet) => leadMagnet.id === selectedLeadMagnetId)) {
+      setSelectedLeadMagnetId(defaultLeadMagnet?.id || '')
+    }
+  }, [defaultLeadMagnet?.id, leadMagnets, selectedLeadMagnetId])
 
   const downloadPdf = async () => {
-    if (!defaultLeadMagnet) return
+    if (!selectedLeadMagnet) return
     setDownloading(true)
     try {
-      const params = new URLSearchParams({ lead_magnet_id: defaultLeadMagnet.id })
+      const params = new URLSearchParams({ lead_magnet_id: selectedLeadMagnet.id })
       const res = await fetch(`/api/campaigns/${campaignId}/enrollments/${enrollmentId}/lead-magnet?${params.toString()}`)
       if (!res.ok) {
         const data = await res.json().catch(() => null)
@@ -2768,7 +2776,7 @@ function LeadMagnetDownloadButton({
       const blob = await res.blob()
       const disposition = res.headers.get('content-disposition') || ''
       const filenameMatch = disposition.match(/filename="([^"]+)"/)
-      const filename = filenameMatch?.[1] || `${leadName} - ${defaultLeadMagnet.name}.pdf`
+      const filename = filenameMatch?.[1] || `${leadName} - ${selectedLeadMagnet.name}.pdf`
       const url = URL.createObjectURL(blob)
       const anchor = document.createElement('a')
       anchor.href = url
@@ -2786,16 +2794,33 @@ function LeadMagnetDownloadButton({
   }
 
   return (
-    <button
-      type="button"
-      onClick={() => void downloadPdf()}
-      disabled={downloading}
-      title={`Generate ${defaultLeadMagnet?.name || 'lead magnet'} with this lead's tracked link`}
-      className="mt-2 inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
-    >
-      {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-      Download lead magnet
-    </button>
+    <div className="mt-2 space-y-1.5">
+      {leadMagnets.length > 1 && (
+        <select
+          value={selectedLeadMagnet?.id || ''}
+          onChange={(event) => setSelectedLeadMagnetId(event.target.value)}
+          disabled={downloading}
+          aria-label={`Choose a lead magnet for ${leadName}`}
+          className="h-8 w-full truncate rounded-md border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 outline-none transition focus:border-blue-300 focus:ring-2 focus:ring-blue-500/15 disabled:opacity-60 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200"
+        >
+          {leadMagnets.map((leadMagnet) => (
+            <option key={leadMagnet.id} value={leadMagnet.id}>
+              {leadMagnet.name}{leadMagnet.is_default ? ' (default)' : ''}
+            </option>
+          ))}
+        </select>
+      )}
+      <button
+        type="button"
+        onClick={() => void downloadPdf()}
+        disabled={downloading || !selectedLeadMagnet}
+        title={`Generate ${selectedLeadMagnet?.name || 'lead magnet'} with this lead's tracked link`}
+        className="inline-flex h-8 w-full items-center justify-center gap-1.5 rounded-md border border-blue-200 bg-blue-50 px-2 text-xs font-semibold text-blue-700 transition hover:bg-blue-100 disabled:cursor-not-allowed disabled:opacity-60 dark:border-blue-900/60 dark:bg-blue-950/30 dark:text-blue-300 dark:hover:bg-blue-950/50"
+      >
+        {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+        Download PDF
+      </button>
+    </div>
   )
 }
 
