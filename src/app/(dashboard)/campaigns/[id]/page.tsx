@@ -1041,11 +1041,42 @@ function LeadMagnetsPanel({
   const [docUrl, setDocUrl] = useState('')
   const [ctaPhrase, setCtaPhrase] = useState('Apply for our Pentest Challenge, and walk into your next deal ready.')
   const [ctaLinkText, setCtaLinkText] = useState('Pentest Challenge')
+  const [filenameTemplate, setFilenameTemplate] = useState('{{company_name}} - {{lead_magnet}}.pdf')
+  const [isDefault, setIsDefault] = useState(false)
   const [isAdding, setIsAdding] = useState(false)
+  const [editingLeadMagnetId, setEditingLeadMagnetId] = useState<string | null>(null)
   const [saving, setSaving] = useState(false)
   const [deletingLeadMagnetId, setDeletingLeadMagnetId] = useState<string | null>(null)
   const [leadMagnetToDelete, setLeadMagnetToDelete] = useState<CampaignLeadMagnet | null>(null)
   const leadMagnets = campaign.lead_magnets || []
+  const editingLeadMagnet = leadMagnets.find((leadMagnet) => leadMagnet.id === editingLeadMagnetId) || null
+
+  const closeEditor = () => {
+    setIsAdding(false)
+    setEditingLeadMagnetId(null)
+  }
+
+  const beginAdd = () => {
+    setName(campaign.lead_magnet_name || 'Free Pentest Challenge')
+    setDocUrl('')
+    setCtaPhrase('Apply for our Pentest Challenge, and walk into your next deal ready.')
+    setCtaLinkText('Pentest Challenge')
+    setFilenameTemplate('{{company_name}} - {{lead_magnet}}.pdf')
+    setIsDefault(leadMagnets.length === 0)
+    setEditingLeadMagnetId(null)
+    setIsAdding(true)
+  }
+
+  const beginEdit = (leadMagnet: CampaignLeadMagnet) => {
+    setName(leadMagnet.name)
+    setDocUrl(leadMagnet.google_doc_url || leadMagnet.google_doc_id)
+    setCtaPhrase(leadMagnet.cta_phrase)
+    setCtaLinkText(leadMagnet.cta_link_text)
+    setFilenameTemplate(leadMagnet.filename_template)
+    setIsDefault(leadMagnet.is_default)
+    setEditingLeadMagnetId(leadMagnet.id)
+    setIsAdding(true)
+  }
 
   const saveLeadMagnet = async () => {
     if (!name.trim()) {
@@ -1056,26 +1087,39 @@ function LeadMagnetsPanel({
       toast.error('Paste the Google Doc link')
       return
     }
+    if (ctaPhrase.trim().length < 5 || ctaLinkText.trim().length < 2) {
+      toast.error('Add the document sentence and words that should receive the tracked link')
+      return
+    }
+    if (!filenameTemplate.trim()) {
+      toast.error('Add a PDF filename')
+      return
+    }
 
     setSaving(true)
     try {
-      const res = await fetch(`/api/campaigns/${campaign.id}/lead-magnets`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          name: name.trim(),
-          google_doc_url: docUrl.trim(),
-          cta_phrase: ctaPhrase.trim(),
-          cta_link_text: ctaLinkText.trim(),
-          filename_template: '{{company_name}} - {{lead_magnet}}.pdf',
-          is_default: leadMagnets.length === 0,
-        }),
-      })
+      const editing = Boolean(editingLeadMagnetId)
+      const res = await fetch(
+        editing
+          ? `/api/campaigns/${campaign.id}/lead-magnets/${editingLeadMagnetId}`
+          : `/api/campaigns/${campaign.id}/lead-magnets`,
+        {
+          method: editing ? 'PATCH' : 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            name: name.trim(),
+            google_doc_url: docUrl.trim(),
+            cta_phrase: ctaPhrase.trim(),
+            cta_link_text: ctaLinkText.trim(),
+            filename_template: filenameTemplate.trim(),
+            is_default: leadMagnets.length === 0 || isDefault,
+          }),
+        },
+      )
       const data = await res.json()
       if (!res.ok) throw new Error(data?.error || 'Failed to save lead magnet')
-      toast.success('Lead magnet saved')
-      setDocUrl('')
-      setIsAdding(false)
+      toast.success(editing ? 'Lead magnet updated' : 'Lead magnet saved')
+      closeEditor()
       await onChanged()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to save lead magnet')
@@ -1094,6 +1138,7 @@ function LeadMagnetsPanel({
       if (!res.ok) throw new Error(data?.error || 'Failed to delete lead magnet')
       toast.success('Lead magnet deleted')
       setLeadMagnetToDelete(null)
+      if (editingLeadMagnetId === leadMagnet.id) closeEditor()
       await onChanged()
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to delete lead magnet')
@@ -1128,7 +1173,7 @@ function LeadMagnetsPanel({
             Connect Drive
           </Link>
           {!isAdding && leadMagnets.length > 0 && (
-            <Button type="button" size="sm" onClick={() => setIsAdding(true)} className="h-8 bg-zinc-900 px-2.5 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
+            <Button type="button" size="sm" onClick={beginAdd} className="h-8 bg-zinc-900 px-2.5 hover:bg-zinc-800 dark:bg-zinc-50 dark:text-zinc-900 dark:hover:bg-zinc-200">
               <Plus className="mr-1.5 h-3.5 w-3.5" />
               Add lead magnet
             </Button>
@@ -1140,10 +1185,10 @@ function LeadMagnetsPanel({
         <div className="border-t border-zinc-100 bg-zinc-50/70 p-4 dark:border-zinc-800 dark:bg-zinc-950/30">
           <div className="mb-4 flex items-start justify-between gap-3">
             <div>
-              <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Add a Google Doc</h3>
-              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Bodega creates a lead-specific PDF and replaces the selected CTA with its tracked challenge link.</p>
+              <h3 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">{editingLeadMagnet ? `Edit ${editingLeadMagnet.name}` : 'Add a Google Doc'}</h3>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Changes keep the same saved asset attached to existing sequence rules.</p>
             </div>
-            <button type="button" onClick={() => setIsAdding(false)} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-200/70 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200" aria-label="Close lead magnet form">
+            <button type="button" onClick={closeEditor} className="flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-zinc-200/70 hover:text-zinc-700 dark:hover:bg-zinc-800 dark:hover:text-zinc-200" aria-label="Close lead magnet form">
               <X className="h-4 w-4" />
             </button>
           </div>
@@ -1174,7 +1219,7 @@ function LeadMagnetsPanel({
               Tracked link placement
               <span className="ml-2 font-normal text-zinc-400">Optional</span>
             </summary>
-            <div className="grid gap-3 border-t border-zinc-100 p-3 dark:border-zinc-800 lg:grid-cols-[minmax(0,1.4fr)_minmax(220px,0.6fr)]">
+            <div className="grid gap-3 border-t border-zinc-100 p-3 dark:border-zinc-800 lg:grid-cols-2">
               <label className="block">
                 <span className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">Sentence to find in the document</span>
                 <input
@@ -1193,14 +1238,35 @@ function LeadMagnetsPanel({
                   className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
                 />
               </label>
+              <label className="block lg:col-span-2">
+                <span className="mb-1.5 block text-xs font-medium text-zinc-600 dark:text-zinc-400">PDF filename</span>
+                <input
+                  value={filenameTemplate}
+                  onChange={(event) => setFilenameTemplate(event.target.value)}
+                  placeholder="{{company_name}} - {{lead_magnet}}.pdf"
+                  className="h-10 w-full rounded-md border border-zinc-200 bg-white px-3 font-mono text-sm text-zinc-900 outline-none transition placeholder:text-zinc-400 focus:border-red-300 focus:ring-4 focus:ring-red-500/10 dark:border-zinc-700 dark:bg-zinc-950 dark:text-zinc-100"
+                />
+              </label>
             </div>
           </details>
 
-          <div className="mt-4 flex justify-end gap-2">
-            <Button type="button" size="sm" variant="ghost" onClick={() => setIsAdding(false)} disabled={saving}>Cancel</Button>
-            <Button type="button" size="sm" variant="destructive" onClick={() => void saveLeadMagnet()} isLoading={saving}>
-              Add lead magnet
-            </Button>
+          <div className="mt-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <label className="inline-flex items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+              <input
+                type="checkbox"
+                checked={isDefault}
+                onChange={(event) => setIsDefault(event.target.checked)}
+                disabled={Boolean(editingLeadMagnet?.is_default) || leadMagnets.length === 0}
+                className="h-4 w-4 rounded border-zinc-300 text-red-600 focus:ring-red-500 disabled:opacity-60"
+              />
+              Campaign default
+            </label>
+            <div className="flex justify-end gap-2">
+              <Button type="button" size="sm" variant="ghost" onClick={closeEditor} disabled={saving}>Cancel</Button>
+              <Button type="button" size="sm" variant="destructive" onClick={() => void saveLeadMagnet()} isLoading={saving}>
+                {editingLeadMagnet ? 'Save changes' : 'Add lead magnet'}
+              </Button>
+            </div>
           </div>
         </div>
       )}
@@ -1223,6 +1289,16 @@ function LeadMagnetsPanel({
               </div>
               <button
                 type="button"
+                onClick={() => beginEdit(leadMagnet)}
+                disabled={saving || deletingLeadMagnetId === leadMagnet.id}
+                className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-800 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+                aria-label={`Edit ${leadMagnet.name}`}
+                title={`Edit ${leadMagnet.name}`}
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                type="button"
                 onClick={() => setLeadMagnetToDelete(leadMagnet)}
                 disabled={deletingLeadMagnetId === leadMagnet.id}
                 className="flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:cursor-not-allowed disabled:opacity-60 dark:hover:bg-red-950/30 dark:hover:text-red-300"
@@ -1240,7 +1316,7 @@ function LeadMagnetsPanel({
         <div className="border-t border-zinc-100 px-4 py-8 text-center dark:border-zinc-800">
           <p className="text-sm font-medium text-zinc-800 dark:text-zinc-200">No lead magnets loaded</p>
           <p className="mx-auto mt-1 max-w-lg text-xs leading-5 text-zinc-500 dark:text-zinc-400">Add a Google Doc once, then generate a tracked PDF from any lead card or sequence.</p>
-          <Button type="button" size="sm" variant="outline" onClick={() => setIsAdding(true)} className="mt-3">
+          <Button type="button" size="sm" variant="outline" onClick={beginAdd} className="mt-3">
             <Plus className="mr-1.5 h-3.5 w-3.5" />
             Add lead magnet
           </Button>
