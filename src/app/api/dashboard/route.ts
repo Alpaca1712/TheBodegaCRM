@@ -2,6 +2,8 @@ import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { buildSalesActionPlan } from '@/lib/dashboard/sales-actions'
 import { NextResponse } from 'next/server'
 
+const DASHBOARD_LEAD_FIELDS = 'id, contact_name, company_name, stage, type, icp_score, last_contacted_at, last_inbound_at, last_outbound_at, updated_at, conversation_next_step, conversation_signals, smykm_hooks, company_description, battle_card, investor_memo, total_emails_out' as const
+
 type ConversationSignal = {
   type?: string
   detected_at?: string | null
@@ -21,16 +23,24 @@ export async function GET(req: Request) {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    let leadsQuery = supabase.from('leads').select('*').eq('org_id', orgId)
+    let leadsQuery = supabase.from('leads').select(DASHBOARD_LEAD_FIELDS).eq('org_id', orgId)
     if (type) {
       leadsQuery = leadsQuery.eq('type', type)
     }
 
     const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
       leadsQuery,
-      supabase.from('lead_emails').select('*').eq('org_id', orgId).order('created_at', { ascending: true }),
-      supabase.from('lead_interactions').select('id, lead_id, channel, interaction_type, occurred_at').eq('org_id', orgId),
+      supabase
+        .from('lead_emails')
+        .select('lead_id, direction, created_at, sent_at, replied_at')
+        .eq('org_id', orgId)
+        .order('created_at', { ascending: true }),
+      supabase.from('lead_interactions').select('lead_id').eq('org_id', orgId),
     ])
+
+    if (leadsRes.error) throw leadsRes.error
+    if (emailsRes.error) throw emailsRes.error
+    if (interactionsRes.error) throw interactionsRes.error
 
     const leads = leadsRes.data || []
     const leadIds = new Set(leads.map(l => l.id))

@@ -6,6 +6,17 @@ export const DASHBOARD_QUERY_STALE_TIME_MS = 30_000
 
 export type DashboardLeadTypeFilter = 'all' | 'customer' | 'investor' | 'partnership'
 
+export type DashboardHotLead = Pick<
+  Lead,
+  | 'id'
+  | 'contact_name'
+  | 'company_name'
+  | 'stage'
+  | 'type'
+  | 'icp_score'
+  | 'conversation_signals'
+>
+
 export interface DashboardData {
   totalLeads: number
   outreachThisWeek: number
@@ -20,7 +31,7 @@ export interface DashboardData {
   avgDaysToReply: number
   followUpCompliance: number
   avgTouchpoints: number
-  hotLeads: Lead[]
+  hotLeads: DashboardHotLead[]
   salesActionPlan: SalesAction[]
   pipelineCounts: Record<string, number>
   byType: { customers: number; investors: number; partnerships: number }

@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { HeartPulse, AlertTriangle, Shield, Loader2, RefreshCw, ArrowRight, Sparkles, Zap } from 'lucide-react';
 import { STAGE_LABELS, type PipelineStage } from '@/types/leads';
 import { toast } from 'sonner';
+import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
 
 interface LeadRisk {
   lead_id: string;
@@ -92,14 +93,14 @@ export default function PipelineHealthPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId }),
       });
-      if (!res.ok) throw new Error('Magic drafting failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Magic drafting failed'));
       await handleRefresh();
     })();
 
     toast.promise(promise, {
       loading: `Magic drafting for ${contactName}...`,
       success: `Draft ready for ${contactName}`,
-      error: 'Drafting failed',
+      error: (error) => clientErrorMessage(error, 'Drafting failed'),
     });
 
     promise.finally(() => setIsDrafting(null));

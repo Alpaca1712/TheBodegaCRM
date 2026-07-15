@@ -8,6 +8,7 @@ import {
   Building2, ChevronDown, Zap, Sparkles, Swords, ClipboardCheck,
 } from 'lucide-react';
 import { toast } from 'sonner';
+import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
 import { createClient } from '@/lib/supabase/client';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
@@ -115,14 +116,14 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
           linkedin_url: lead.contact_linkedin,
         }),
       });
-      if (!res.ok) throw new Error('Research failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Research failed'));
       await loadFollowUps();
     })();
 
     toast.promise(promise, {
       loading: `Researching ${lead.contact_name}...`,
       success: `Research complete for ${lead.contact_name}`,
-      error: 'Research failed',
+      error: (error) => clientErrorMessage(error, 'Research failed'),
     });
 
     promise.finally(() => setIsProcessing(null));
@@ -136,14 +137,14 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId: lead.id }),
       });
-      if (!res.ok) throw new Error('Prep failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Prep failed'));
       await loadFollowUps();
     })();
 
     toast.promise(promise, {
       loading: `Prepping for meeting with ${lead.contact_name}...`,
       success: `Battle card ready for ${lead.contact_name}`,
-      error: 'Prep failed',
+      error: (error) => clientErrorMessage(error, 'Prep failed'),
     });
 
     promise.finally(() => setIsProcessing(null));
@@ -157,14 +158,14 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId: lead.id }),
       });
-      if (!res.ok) throw new Error('Magic drafting failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Magic drafting failed'));
       await loadFollowUps();
     })();
 
     toast.promise(promise, {
       loading: `Magic drafting for ${lead.contact_name}...`,
       success: `Draft ready for ${lead.contact_name}`,
-      error: 'Drafting failed',
+      error: (error) => clientErrorMessage(error, 'Drafting failed'),
     });
 
     promise.finally(() => setIsProcessing(null));

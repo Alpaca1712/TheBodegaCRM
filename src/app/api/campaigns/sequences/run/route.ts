@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { runCampaignSequence, GmailTokenExpiredError } from '@/lib/campaigns/sequence-runner'
+import { runCampaignSequence } from '@/lib/campaigns/sequence-runner'
+import { runCampaignSequenceBatch } from '@/lib/campaigns/sequence-batch'
 import { createAdminClient } from '@/lib/supabase/admin'
 import { isMissingRelation } from '@/lib/supabase/missing-column'
 
@@ -36,21 +37,27 @@ async function runSequences(request: NextRequest) {
       })
     }
 
-    const results = []
-    for (const campaign of campaignKeys.values()) {
-      results.push(await runCampaignSequence({
+    const batch = await runCampaignSequenceBatch({
+      campaigns: Array.from(campaignKeys.values()),
+      runCampaign: (campaign) => runCampaignSequence({
         supabase,
         campaignId: campaign.campaignId,
         orgId: campaign.orgId,
-      }))
-    }
+      }),
+      onCampaignError: (outcome, error) => {
+        console.error('Campaign sequence batch item failed', {
+          campaignId: outcome.campaign_id,
+          orgId: outcome.org_id,
+          code: outcome.code,
+          error,
+        })
+      },
+    })
 
-    return NextResponse.json({ data: results })
+    const response = NextResponse.json({ data: batch })
+    response.headers.set('Cache-Control', 'no-store')
+    return response
   } catch (error) {
-    if (error instanceof GmailTokenExpiredError) {
-      return NextResponse.json({ error: error.message, code: 'TOKEN_EXPIRED' }, { status: 401 })
-    }
-
     console.error('POST /api/campaigns/sequences/run failed', error)
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to run campaign sequences' },

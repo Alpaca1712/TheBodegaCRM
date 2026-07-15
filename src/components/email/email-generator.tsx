@@ -5,6 +5,7 @@ import { toast } from 'sonner';
 import { Loader2, RefreshCw, Send, Copy, Check, ChevronDown, Brain, Zap, AlertCircle, Info, Target } from 'lucide-react';
 import type { Lead, LeadEmail, EmailVariant, GeneratedEmail } from '@/types/leads';
 import { checkEmailQuality, countWords } from '@/lib/ai/quality';
+import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
 
 type EmailMode = 'initial' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
 
@@ -187,7 +188,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           }),
         ]);
 
-        if (!resA.ok || !resB.ok) throw new Error('Failed to generate follow-up');
+        if (!resA.ok) throw new Error(await apiErrorMessage(resA, 'Failed to generate follow-up'));
+        if (!resB.ok) throw new Error(await apiErrorMessage(resB, 'Failed to generate follow-up'));
         const [resultA, resultB] = await Promise.all([resA.json(), resB.json()]);
 
         data = {
@@ -206,15 +208,15 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           }),
         });
 
-        if (!res.ok) throw new Error('Failed to generate');
+        if (!res.ok) throw new Error(await apiErrorMessage(res, 'Failed to generate email'));
         data = await res.json();
       }
 
       setResult(data);
       setEditedMckenna(data.mckenna);
       setEditedHormozi(data.hormozi);
-    } catch {
-      toast.error('Failed to generate email. Check API key.');
+    } catch (error) {
+      toast.error(clientErrorMessage(error, 'Failed to generate email'));
     } finally {
       setIsGenerating(false);
     }

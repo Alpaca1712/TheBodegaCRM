@@ -30,6 +30,7 @@ import { PIPELINE_STAGES, STAGE_LABELS, LEAD_TYPE_COLORS } from '@/types/leads';
 import { useDashboard, usePipelineHealth, type DashboardLeadTypeFilter } from '@/hooks/use-dashboard';
 import SalesActionPlan from '@/components/dashboard/sales-action-plan';
 import { toast } from 'sonner';
+import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
 
 export default function DashboardPage() {
   const queryClient = useQueryClient();
@@ -55,14 +56,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId }),
       });
-      if (!res.ok) throw new Error('Magic drafting failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Magic drafting failed'));
       await refreshDashboard();
     })();
 
     toast.promise(promise, {
       loading: `Magic drafting for ${contactName}...`,
       success: `Draft ready for ${contactName}`,
-      error: 'Drafting failed',
+      error: (error) => clientErrorMessage(error, 'Drafting failed'),
     });
 
     promise.finally(() => setIsProcessing(null)).catch(() => undefined);
@@ -76,14 +77,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId, type: leadType }),
       });
-      if (!res.ok) throw new Error('Research failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Research failed'));
       await refreshDashboard();
     })();
 
     toast.promise(promise, {
       loading: `Researching ${contactName}...`,
       success: `Research complete for ${contactName}`,
-      error: 'Research failed',
+      error: (error) => clientErrorMessage(error, 'Research failed'),
     });
 
     promise.finally(() => setIsProcessing(null)).catch(() => undefined);
@@ -97,14 +98,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId }),
       });
-      if (!res.ok) throw new Error('Prep failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Prep failed'));
       await refreshDashboard();
     })();
 
     toast.promise(promise, {
       loading: `Prepping for meeting with ${contactName}...`,
       success: `Battle card ready for ${contactName}`,
-      error: 'Prep failed',
+      error: (error) => clientErrorMessage(error, 'Prep failed'),
     });
 
     promise.finally(() => setIsProcessing(null)).catch(() => undefined);
@@ -118,14 +119,14 @@ export default function DashboardPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ leadId }),
       });
-      if (!res.ok) throw new Error('Memo generation failed');
+      if (!res.ok) throw new Error(await apiErrorMessage(res, 'Memo generation failed'));
       await refreshDashboard();
     })();
 
     toast.promise(promise, {
       loading: `Generating memo for ${contactName}...`,
       success: `Investor memo ready for ${contactName}`,
-      error: 'Memo generation failed',
+      error: (error) => clientErrorMessage(error, 'Memo generation failed'),
     });
 
     promise.finally(() => setIsProcessing(null)).catch(() => undefined);
