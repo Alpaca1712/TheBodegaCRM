@@ -129,7 +129,7 @@ export default function EmailPage() {
           </div>
           <h2 className="mt-4 text-xl font-semibold text-zinc-950 dark:text-zinc-50">Connect Gmail</h2>
           <p className="mx-auto mt-2 max-w-lg text-sm leading-6 text-zinc-500 dark:text-zinc-400">
-            Rocoto only searches conversations for contacts already saved as leads. It stores those messages on the lead profile and can update campaign stages from the thread.
+            Pigeon only searches conversations for contacts already saved as leads. It stores those messages on the lead profile and can update campaign stages from the thread.
           </p>
           <a
             href="/api/gmail/connect"

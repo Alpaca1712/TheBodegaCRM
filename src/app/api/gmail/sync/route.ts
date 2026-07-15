@@ -539,7 +539,7 @@ async function analyzeConversation(
     ? `Type: Customer\nCompany: ${lead.company_name}${lead.company_description ? `\nDescription: ${lead.company_description}` : ''}${lead.attack_surface_notes ? `\nSecurity notes: ${lead.attack_surface_notes}` : ''}`
     : `Type: Investor\nFund/Firm: ${lead.company_name}${lead.investment_thesis_notes ? `\nThesis: ${lead.investment_thesis_notes}` : ''}`
 
-  const systemPrompt = `You are an expert sales intelligence analyst for Rocoto, an AI agent security company.
+  const systemPrompt = `You are an expert sales intelligence analyst for Pigeon, a SaaS security company.
 
 Read the FULL email conversation history and determine:
 1. Where this relationship stands (pipeline stage)

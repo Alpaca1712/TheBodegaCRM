@@ -20,7 +20,7 @@ interface MeetingSummary {
   deal_signals: Array<{ type: 'positive' | 'negative' | 'neutral'; signal: string }>
 }
 
-const SYSTEM_PROMPT = `You are a sales meeting analyst for Rocoto (AI agent security company).
+const SYSTEM_PROMPT = `You are a sales meeting analyst for Pigeon (SaaS security company).
 
 Analyze meeting notes/transcript and extract structured intelligence.
 

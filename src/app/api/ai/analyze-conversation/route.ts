@@ -79,7 +79,7 @@ export async function POST(req: NextRequest) {
     }
     const leadContext = leadContextMap[parsed.lead.type] || leadContextMap.customer
 
-    const systemPrompt = `You are an expert sales intelligence analyst for Rocoto, an AI agent security company doing cold email outreach.
+    const systemPrompt = `You are an expert sales intelligence analyst for Pigeon, a SaaS security company doing cold outreach.
 
 Your job: Read the FULL email conversation history between us and a lead, understand exactly where the relationship stands, and recommend the correct pipeline stage.
 

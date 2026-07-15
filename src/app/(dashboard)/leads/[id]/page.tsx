@@ -746,7 +746,7 @@ function ChallengeProfilePanel({ profile }: { profile: ChallengeProfile }) {
           <div>
             <h3 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Challenge Profile</h3>
             <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400">
-              {updatedAt ? `Last application signal: ${updatedAt}` : 'Application context from Rocoto Landing'}
+              {updatedAt ? `Last application signal: ${updatedAt}` : 'Application context from Pigeon Landing'}
             </p>
           </div>
         </div>

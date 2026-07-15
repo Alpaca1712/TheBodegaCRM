@@ -266,7 +266,7 @@ export async function POST(request: NextRequest) {
         ? `Type: Investor\nFund/Firm: ${lead.company_name}${lead.investment_thesis_notes ? `\nThesis: ${lead.investment_thesis_notes}` : ''}`
         : `Type: Partnership\nCompany: ${lead.company_name}${lead.investment_thesis_notes ? `\nPartnership notes: ${lead.investment_thesis_notes}` : ''}`
 
-      const systemPrompt = `You are an expert sales intelligence analyst for Rocoto, an AI agent security company.
+      const systemPrompt = `You are an expert sales intelligence analyst for Pigeon, a SaaS security company.
 
 Read the FULL email conversation history and determine:
 1. Where this relationship stands (pipeline stage)

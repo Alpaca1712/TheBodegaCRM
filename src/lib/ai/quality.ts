@@ -35,8 +35,8 @@ const LOW_VALUE_CTA_PATTERNS = [
 ]
 
 const CONCRETE_VALUE_PATTERNS = [
-  /\b(?:free|short|quick|specific|custom|personalized)\b.{0,80}\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource)\b/i,
-  /\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource)\b.{0,80}\b(?:for|of|about|on)\b/i,
+  /\b(?:free|short|quick|specific|custom|personalized)\b.{0,80}\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource|guide|playbook|template|teardown|scorecard)\b/i,
+  /\b(?:test|walkthrough|write-up|breakdown|checklist|assessment|scan|report|one-pager|market map|analysis|finding|resource|guide|playbook|template|teardown|scorecard)\b.{0,80}\b(?:for|of|about|on)\b/i,
   /want me to send (?:it|that|this)/i,
 ]
 
@@ -94,10 +94,10 @@ export function checkEmailQuality(
   // Word count check
   if (type === 'initial') {
     if (words < 60) {
-      issues.push(`Body is only ${words} words. SMYKM target: 80-150.`)
+      issues.push(`Body is only ${words} words. Initial outreach target: 60-120.`)
       score -= 10
-    } else if (words > 160) {
-      issues.push(`Body is ${words} words. Keep it under 150 for SMYKM.`)
+    } else if (words > 125) {
+      issues.push(`Body is ${words} words. Keep initial outreach under 120.`)
       score -= 10
     }
   } else {
@@ -110,7 +110,7 @@ export function checkEmailQuality(
 
   // Em dash check (McKenna Rule)
   if (/[\u2013\u2014]/.test(body) || /[\u2013\u2014]/.test(subject)) {
-    issues.push('Contains em dashes. McKenna rules say use commas or periods.')
+    issues.push('Contains em dashes. Use commas or periods.')
     score -= 15
   }
 
@@ -129,16 +129,15 @@ export function checkEmailQuality(
     score -= 15
   }
 
-  const mentionsMason = /\bmason\b/i.test(body)
   const hasUnsupportedTraction = UNSUPPORTED_TRACTION_PATTERNS.some(pattern => pattern.test(body))
-  if (hasUnsupportedTraction && !mentionsMason) {
-    issues.push('Contains unsupported traction claim. Only the Mason pilot may be referenced as a real result.')
+  if (hasUnsupportedTraction) {
+    issues.push('Contains a traction claim that must be verified against lead or campaign context.')
     score -= 20
   }
 
   const hasUnsupportedFinding = UNSUPPORTED_FINDING_PATTERNS.some(pattern => pattern.test(body))
-  if (hasUnsupportedFinding && !mentionsMason) {
-    issues.push('Contains unsupported finding claim. Specific vulnerabilities or assessment results must come from lead research or the Mason pilot.')
+  if (hasUnsupportedFinding) {
+    issues.push('Contains a specific security finding that must be verified against lead or campaign context.')
     score -= 20
   }
 
@@ -149,10 +148,9 @@ export function checkEmailQuality(
     }
   }
 
-  // Opening line check (Initial only)
-  if (type === 'initial' && !body.startsWith("We've yet to be properly introduced")) {
-    issues.push('Missing the required SMYKM opener: "We\'ve yet to be properly introduced".')
-    score -= 10
+  if (/\b(?:rocoto|artoo)\b/i.test(body) || /\b(?:rocoto|artoo)\b/i.test(subject)) {
+    issues.push('Uses an old company name. The current brand is Pigeon.')
+    score -= 20
   }
 
   // Long sentence check (>25 words)
@@ -169,6 +167,11 @@ export function checkEmailQuality(
   // Sign-off check
   if (!body.includes('Best,\nDaniel Chalco') && !body.includes('Best, Daniel Chalco')) {
     issues.push('Missing standard sign-off (Best, Daniel Chalco).')
+    score -= 5
+  }
+
+  if (type === 'initial' && !/\bpigeon\b/i.test(body)) {
+    issues.push('Missing Pigeon in the initial outreach sign-off or company context.')
     score -= 5
   }
 

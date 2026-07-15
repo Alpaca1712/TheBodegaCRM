@@ -228,7 +228,7 @@ function formatEmailContextForAi(emails: LeadEmailContext[]) {
 
   return recentEmails
     .map((email, index) => {
-      const direction = email.direction === 'outbound' ? 'ROCOTO SENT' : 'LEAD REPLIED'
+      const direction = email.direction === 'outbound' ? 'PIGEON SENT' : 'LEAD REPLIED'
       const happenedAt = email.sent_at || email.replied_at || email.created_at
       const body = (email.reply_content || email.body || '').replace(/\s+/g, ' ').trim().slice(0, 2200)
       return [

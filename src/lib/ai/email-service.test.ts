@@ -9,7 +9,7 @@ vi.mock('./anthropic', () => ({
   generateJSON: mockGenerateJSON,
 }))
 
-import { buildFollowupUserPrompt, generateInitialOutreach } from './email-service'
+import { buildFollowupUserPrompt, buildInitialUserPrompt, generateInitialOutreach } from './email-service'
 
 const baseLead: Lead = {
   id: 'lead-1',
@@ -67,14 +67,27 @@ const baseLead: Lead = {
 }
 
 const bodyWithNormalizedDash = [
-  "We've yet to be properly introduced, but I'm Daniel, co-founder of Rocoto.",
-  'Your note about making property management feel human stuck with me because resident trust is fragile when an agent handles urgent repairs.',
-  'Mason Voice sits in the exact spot where a rushed resident, a clever stranger, or a confused workflow can push an AI helper into doing the wrong thing.',
-  'Rocoto tries to break agents through the same voice, chat, and email paths their users already use, then helps teams fix each gap before customers feel it.',
-  'I put together a short walkthrough of the three ways resident agents can be tricked — and how to fix each one. Want me to send it?',
+  'Hi Alex,',
+  'Your note about making property management feel human stuck with me. Resident trust gets fragile when an automated helper handles an urgent repair.',
+  'Pigeon helps SaaS teams test the voice, chat, and email paths customers can reach, then fix the weaknesses before attackers find them.',
+  'I can send a short walkthrough of three ways resident agents can be tricked — and how to prevent each one. Want it?',
   'Best,',
   'Daniel Chalco',
+  'CEO, Pigeon',
 ].join('\n')
+
+describe('buildInitialUserPrompt', () => {
+  it('makes the core offer and lead magnet variants do different jobs', () => {
+    const coreOffer = buildInitialUserPrompt(baseLead, 'mckenna')
+    const leadMagnet = buildInitialUserPrompt(baseLead, 'hormozi', 'Offer the AI Security Playbook')
+
+    expect(coreOffer).toContain('OFFER MODE: CORE SECURITY OFFER')
+    expect(coreOffer).toContain("offers Pigeon's hands-on security work")
+    expect(leadMagnet).toContain('OFFER MODE: LEAD MAGNET')
+    expect(leadMagnet).toContain('AI Security Playbook')
+    expect(leadMagnet).toContain('Do not pretend it already exists')
+  })
+})
 
 describe('generateInitialOutreach', () => {
   beforeEach(() => {
@@ -89,12 +102,12 @@ describe('generateInitialOutreach', () => {
     const result = await generateInitialOutreach(baseLead)
 
     expect(result.mckenna.subject).toBe('resident repair agent, trust')
-    expect(result.mckenna.body).toContain('tricked, and how to fix each one')
+    expect(result.mckenna.body).toContain('tricked, and how to prevent each one')
     expect(result.mckenna.quality).toBeDefined()
-    expect(result.mckenna.quality?.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
+    expect(result.mckenna.quality?.issues).not.toContain('Contains em dashes. Use commas or periods.')
     expect(result.mckenna.wordCount).toBe(result.mckenna.body.trim().split(/\s+/).length)
     expect(result.hormozi.quality).toBeDefined()
-    expect(result.hormozi.quality?.issues).not.toContain('Contains em dashes. McKenna rules say use commas or periods.')
+    expect(result.hormozi.quality?.issues).not.toContain('Contains em dashes. Use commas or periods.')
   })
 })
 

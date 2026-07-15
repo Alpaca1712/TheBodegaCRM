@@ -33,7 +33,7 @@ export const FOLLOW_UP_STAGES = ['researched', 'email_drafted', 'email_sent', 'r
 export const ACTION_LABELS: Record<FollowUpType, { label: string; short: string; description: string }> = {
   run_research: { label: 'Run AI Research', short: 'Research', description: 'Perform deep research to find SMYKM hooks and personal details.' },
   prep_meeting: { label: 'Prep for Meeting', short: 'Prep', description: 'Generate a battle card and prep research for the upcoming call.' },
-  initial_outreach: { label: 'Initial SMYKM Outreach', short: 'Initial', description: 'Start the conversation with deep research and a McKenna/Hormozi CTA.' },
+  initial_outreach: { label: 'Initial cold outreach', short: 'Initial', description: 'Start with real research, then offer Pigeon\'s core service or a useful lead magnet.' },
   review_draft: { label: 'Review Drafted Email', short: 'Review', description: 'An email is drafted and ready for human review before sending.' },
   follow_up_1: { label: 'Bump (Day 4)', short: 'Bump', description: 'Short 2-3 sentence bump with a new SMYKM hook. No reference to the original.' },
   follow_up_2: { label: 'Lead Magnet (Day 9)', short: 'Value Drop', description: 'Hormozi approach: deliver value, offer a free breakdown or resource.' },

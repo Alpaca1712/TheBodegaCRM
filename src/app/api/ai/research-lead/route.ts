@@ -18,7 +18,7 @@ const requestSchema = z.object({
   { message: 'Provide leadId, (contact_name + company_name), or a linkedin_url' }
 )
 
-const RESEARCH_SYSTEM_PROMPT = `You are a research assistant for Rocoto. Rocoto tries to break AI agents before bad actors do by talking to them the same way users do (email, text, voice, chat, Slack) and finding ways to take them over. Then they help fix everything. Your job is to find deep, specific details about a person and their company using web search for Sam McKenna's "Show Me You Know Me" cold email methodology.
+const RESEARCH_SYSTEM_PROMPT = `You are a research assistant for Pigeon. Pigeon helps SaaS companies like Subgraph stay secure by finding practical weaknesses before attackers do and helping teams fix them. Your job is to find specific, verifiable details about a person, their company, and the security problems relevant to their role.
 
 You MUST actively search the web. Do NOT rely on your training data alone. Run multiple searches:
 1. Search their full name + company name
@@ -111,8 +111,8 @@ function buildResearchPrompt(input: z.infer<typeof requestSchema>): string {
 
   const focusMap: Record<string, string> = {
     customer: 'Focus on: how their AI agent/product works, what channels it uses, what data it accesses, what tools it connects to, and specifically how it could be vulnerable to prompt injection, jailbreaking, data exfiltration, or tool abuse. Search their product docs, blog, and any technical content.',
-    investor: 'Focus on: their investment thesis, what kinds of founders they back, their stated beliefs about the market, blog posts they have written, and how Rocoto (testing AI agents for security holes through their user-facing channels) fits their worldview. Search for their writing, interviews, and portfolio.',
-    partnership: 'Focus on: what services/products they offer, their client base, how a partnership with Rocoto (testing AI agents for security holes through their user-facing channels) would create mutual value. For agencies: what kind of leads they generate and for whom. For cyber insurance: their coverage areas and how AI agent testing fits. For resellers/integrators: their technology stack and distribution channels. Search for their case studies, partnerships, and market positioning.',
+    investor: 'Focus on: their investment thesis, what kinds of founders they back, their stated beliefs about the market, blog posts they have written, and how Pigeon (helping SaaS teams find and fix practical security weaknesses) fits their worldview. Search for their writing, interviews, and portfolio.',
+    partnership: 'Focus on: what services/products they offer, their client base, how a partnership with Pigeon would create mutual value. For agencies: what kind of leads they generate and for whom. For cyber insurance: their coverage areas and how SaaS security testing fits. For resellers/integrators: their technology stack and distribution channels. Search for their case studies, partnerships, and market positioning.',
   }
 
   const linkedInInstruction = linkedInOnly

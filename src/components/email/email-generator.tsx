@@ -9,7 +9,7 @@ import { checkEmailQuality, countWords } from '@/lib/ai/quality';
 type EmailMode = 'initial' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
 
 const MODE_CONFIG: Record<EmailMode, { label: string; description: string; followUpNumber: number; isFollowUp: boolean }> = {
-  initial: { label: 'Initial SMYKM Email', description: 'First cold outreach with McKenna + Hormozi CTAs', followUpNumber: 0, isFollowUp: false },
+  initial: { label: 'Initial cold email', description: 'Choose between Pigeon\'s core offer and a useful lead magnet', followUpNumber: 0, isFollowUp: false },
   review_draft: { label: 'Review Drafted Email', description: 'Check and refine the already drafted email before sending', followUpNumber: 0, isFollowUp: false },
   follow_up_1: { label: 'Follow-up #1 (Day 4 Bump)', description: 'Short bump with a new SMYKM hook, no reference to the original', followUpNumber: 1, isFollowUp: true },
   follow_up_2: { label: 'Follow-up #2 (Day 9 Value Drop)', description: 'Hormozi-style lead magnet or free resource offer', followUpNumber: 2, isFollowUp: true },
@@ -201,6 +201,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             lead,
+            campaignId: campaignId || existingDraft?.campaign_id || undefined,
             customContext: mergedCtx || undefined,
           }),
         });
@@ -632,8 +633,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
 
       <div className={editedHormozi ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : "max-w-2xl mx-auto"}>
         <VariantCard
-          title={mode === 'review_draft' ? 'Existing Draft' : (config.isFollowUp ? 'Variant A' : 'McKenna CTA')}
-          subtitle={mode === 'review_draft' ? 'Refine and send' : (config.isFollowUp ? 'Edit and send' : 'Sell the conversation')}
+          title={mode === 'review_draft' ? 'Existing Draft' : (config.isFollowUp ? 'Variant A' : 'Core offer')}
+          subtitle={mode === 'review_draft' ? 'Refine and send' : (config.isFollowUp ? 'Edit and send' : 'Offer Pigeon\'s security work')}
           variant={editedMckenna!}
           mode={mode}
           onSubjectChange={(s) => setEditedMckenna((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
@@ -646,8 +647,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
 
         {editedHormozi && (
           <VariantCard
-            title={config.isFollowUp ? 'Variant B' : 'Hormozi CTA'}
-            subtitle={config.isFollowUp ? 'Alternative version' : 'Lead with value'}
+            title={config.isFollowUp ? 'Variant B' : 'Lead magnet'}
+            subtitle={config.isFollowUp ? 'Alternative version' : 'Offer a useful resource'}
             variant={editedHormozi!}
             mode={mode}
             onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}

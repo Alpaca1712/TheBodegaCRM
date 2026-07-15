@@ -187,7 +187,7 @@ export default function AnalyticsPage() {
               return (
                 <div key={cta} className={`p-4 rounded-lg ${isMck ? 'bg-amber-50 dark:bg-amber-950/20' : 'bg-red-50 dark:bg-red-950/20'}`}>
                   <p className={`text-xs font-semibold mb-2 ${isMck ? 'text-amber-700 dark:text-amber-300' : 'text-red-700 dark:text-red-300'}`}>
-                    {isMck ? 'McKenna CTA' : 'Hormozi CTA'}
+                    {isMck ? 'Core offer' : 'Lead magnet'}
                   </p>
                   <p className={`text-2xl font-bold tabular-nums ${isMck ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}`}>
                     {stats.rate.toFixed(1)}%

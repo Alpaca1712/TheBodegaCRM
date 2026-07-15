@@ -128,9 +128,9 @@ export default function DashboardLayoutClient({
           <div className="flex items-center h-14 px-5">
             <Link href="/dashboard" className="flex items-center gap-2.5 group">
               <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-red-500 to-red-700 flex items-center justify-center shadow-sm shadow-red-600/25 group-hover:shadow-red-600/40 transition-shadow">
-                <span className="text-white font-bold text-xs">R</span>
+                <span className="text-white font-bold text-xs">P</span>
               </div>
-              <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Rocoto</span>
+              <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Pigeon</span>
             </Link>
           </div>
 

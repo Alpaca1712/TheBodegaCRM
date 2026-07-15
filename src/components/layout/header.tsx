@@ -48,7 +48,7 @@ export default function Header({ userEmail, userName }: HeaderProps) {
     <>
       <header className="sticky top-0 z-40 flex h-14 items-center justify-between border-b border-zinc-200/80 dark:border-zinc-800/80 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-xl px-6">
         <div className="flex items-center md:hidden">
-          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Rocoto</span>
+          <span className="text-sm font-semibold text-zinc-800 dark:text-zinc-200">Pigeon</span>
         </div>
 
         <div className="hidden md:block" />

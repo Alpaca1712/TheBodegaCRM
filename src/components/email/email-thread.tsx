@@ -64,7 +64,7 @@ export default function EmailThread({ emails }: EmailThreadProps) {
                 </span>
                 {email.cta_type && (
                   <span className="text-[10px] px-1.5 py-0.5 rounded bg-zinc-200 dark:bg-zinc-700 text-zinc-600 dark:text-zinc-400">
-                    {email.cta_type === 'mckenna' ? 'McKenna CTA' : 'Hormozi CTA'}
+                    {email.cta_type === 'mckenna' ? 'Core offer' : 'Lead magnet'}
                   </span>
                 )}
               </div>

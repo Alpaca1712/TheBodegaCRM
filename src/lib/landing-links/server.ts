@@ -9,7 +9,7 @@ type SupabaseServerClient = Awaited<ReturnType<typeof createClient>>
 function getLeadTokenSecret() {
   const secret = process.env.LEAD_TOKEN_SECRET
   if (!secret) {
-    throw new Error('Missing LEAD_TOKEN_SECRET server env var. Use the same secret as Rocoto Landing.')
+    throw new Error('Missing LEAD_TOKEN_SECRET server env var. Use the same secret as Pigeon Landing.')
   }
   return secret
 }
