@@ -25,6 +25,7 @@ import {
   Send,
   Sparkles,
   Trash2,
+  UserMinus,
   UserPlus,
   Users,
   X,
@@ -126,6 +127,8 @@ export default function CampaignDetailPage() {
   const [loading, setLoading] = useState(true)
   const [enrolling, setEnrolling] = useState(false)
   const [movingId, setMovingId] = useState<string | null>(null)
+  const [removingId, setRemovingId] = useState<string | null>(null)
+  const [removeCandidate, setRemoveCandidate] = useState<CampaignEnrollmentWithLead | null>(null)
   const [draggingEnrollmentId, setDraggingEnrollmentId] = useState<string | null>(null)
   const [dragOverStageKey, setDragOverStageKey] = useState<string | null>(null)
   const [deleting, setDeleting] = useState(false)
@@ -274,6 +277,27 @@ export default function CampaignDetailPage() {
       toast.error(error instanceof Error ? error.message : 'Failed to update stage')
     } finally {
       setMovingId(null)
+    }
+  }
+
+  const removeEnrollment = async () => {
+    if (!removeCandidate) return
+
+    setRemovingId(removeCandidate.id)
+    try {
+      const res = await fetch(`/api/campaigns/${campaignId}/enrollments/${removeCandidate.id}`, {
+        method: 'DELETE',
+      })
+      const data = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(data?.error || 'Failed to remove lead from campaign')
+
+      toast.success(`${removeCandidate.lead?.contact_name || 'Lead'} removed from campaign`)
+      setRemoveCandidate(null)
+      await load()
+    } catch (error) {
+      toast.error(error instanceof Error ? error.message : 'Failed to remove lead from campaign')
+    } finally {
+      setRemovingId(null)
     }
   }
 
@@ -486,6 +510,18 @@ export default function CampaignDetailPage() {
         onConfirm={() => void deleteCampaign()}
       />
 
+      <ConfirmDialog
+        open={Boolean(removeCandidate)}
+        title={`Remove ${removeCandidate?.lead?.contact_name || 'this lead'} from the campaign?`}
+        description="Their CRM profile, email history, and deal record will stay. Their enrollment, funnel history, attribution, and scheduled sequence activity for this campaign will be removed."
+        confirmLabel="Remove lead"
+        loading={Boolean(removingId)}
+        onClose={() => {
+          if (!removingId) setRemoveCandidate(null)
+        }}
+        onConfirm={() => void removeEnrollment()}
+      />
+
       <div className="grid min-w-0 gap-2 sm:grid-cols-2 lg:grid-cols-5">
         <MetricCard icon={Users} label="Enrolled" value={campaign.metrics.leads_enrolled} tone="red" />
         <MetricCard icon={Send} label="Emails sent" value={campaign.metrics.initial_emails_sent} tone="amber" />
@@ -526,9 +562,11 @@ export default function CampaignDetailPage() {
                 sequenceExecutions={campaign.sequence_executions || []}
                 events={campaign.events}
                 movingId={movingId}
+                removingId={removingId}
                 draggingEnrollmentId={draggingEnrollmentId}
                 isDropTarget={dragOverStageKey === stage.stage_key}
                 onMove={moveEnrollment}
+                onRemove={setRemoveCandidate}
                 onDragStart={startDraggingEnrollment}
                 onDragEnd={stopDraggingEnrollment}
                 onDragOverStage={dragOverStage}
@@ -2551,9 +2589,11 @@ function StageColumn({
   sequenceExecutions,
   events,
   movingId,
+  removingId,
   draggingEnrollmentId,
   isDropTarget,
   onMove,
+  onRemove,
   onDragStart,
   onDragEnd,
   onDragOverStage,
@@ -2570,9 +2610,11 @@ function StageColumn({
   sequenceExecutions: CampaignSequenceExecution[]
   events: CampaignEvent[]
   movingId: string | null
+  removingId: string | null
   draggingEnrollmentId: string | null
   isDropTarget: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
+  onRemove: (enrollment: CampaignEnrollmentWithLead) => void
   onDragStart: (event: DragEvent<HTMLElement>, enrollment: CampaignEnrollmentWithLead) => void
   onDragEnd: () => void
   onDragOverStage: (event: DragEvent<HTMLElement>, stageKey: string) => void
@@ -2614,8 +2656,10 @@ function StageColumn({
             sequenceExecutions={sequenceExecutions}
             events={events}
             moving={movingId === enrollment.id}
+            removing={removingId === enrollment.id}
             dragging={draggingEnrollmentId === enrollment.id}
             onMove={onMove}
+            onRemove={onRemove}
             onDragStart={onDragStart}
             onDragEnd={onDragEnd}
           />
@@ -2639,8 +2683,10 @@ function EnrollmentCard({
   sequenceExecutions,
   events,
   moving,
+  removing,
   dragging,
   onMove,
+  onRemove,
   onDragStart,
   onDragEnd,
 }: {
@@ -2652,8 +2698,10 @@ function EnrollmentCard({
   sequenceExecutions: CampaignSequenceExecution[]
   events: CampaignEvent[]
   moving: boolean
+  removing: boolean
   dragging: boolean
   onMove: (enrollment: CampaignEnrollmentWithLead, stageKey: string) => Promise<void>
+  onRemove: (enrollment: CampaignEnrollmentWithLead) => void
   onDragStart: (event: DragEvent<HTMLElement>, enrollment: CampaignEnrollmentWithLead) => void
   onDragEnd: () => void
 }) {
@@ -2668,12 +2716,12 @@ function EnrollmentCard({
 
   return (
     <article
-      draggable={!moving}
+      draggable={!moving && !removing}
       onDragStart={(event) => onDragStart(event, enrollment)}
       onDragEnd={onDragEnd}
       aria-grabbed={dragging}
       className={`rounded-md border border-zinc-200 bg-white p-2.5 shadow-sm transition dark:border-zinc-800 dark:bg-zinc-950 ${
-        moving
+        moving || removing
           ? 'opacity-60'
           : dragging
             ? 'cursor-grabbing opacity-55 ring-2 ring-red-500/20'
@@ -2690,6 +2738,16 @@ function EnrollmentCard({
         </div>
         <div className="flex shrink-0 items-center gap-1 text-zinc-300 dark:text-zinc-600">
           {enrollment.status === 'completed' && <CheckCircle2 className="h-4 w-4 text-emerald-500" />}
+          <button
+            type="button"
+            onClick={() => onRemove(enrollment)}
+            disabled={moving || removing}
+            title="Remove from campaign"
+            aria-label={`Remove ${lead?.contact_name || 'lead'} from campaign`}
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 transition hover:bg-red-50 hover:text-red-600 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-red-950/35 dark:hover:text-red-300"
+          >
+            {removing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <UserMinus className="h-3.5 w-3.5" />}
+          </button>
           <GripVertical className="h-4 w-4" aria-hidden="true" />
         </div>
       </div>
@@ -2738,7 +2796,7 @@ function EnrollmentCard({
       <select
         value={enrollment.stage_key}
         onChange={(event) => void onMove(enrollment, event.target.value)}
-        disabled={moving}
+        disabled={moving || removing}
         aria-label={`Move ${lead?.contact_name || 'lead'} to campaign stage`}
         className="mt-3 h-8 w-full rounded-md border border-zinc-200 bg-zinc-50 px-2 text-xs text-zinc-900 outline-none transition focus:ring-2 focus:ring-red-500/25 disabled:opacity-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-100"
       >

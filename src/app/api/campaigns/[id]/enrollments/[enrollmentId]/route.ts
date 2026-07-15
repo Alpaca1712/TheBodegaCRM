@@ -128,3 +128,42 @@ export async function PATCH(
     return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to update enrollment' }, { status: 500 })
   }
 }
+
+export async function DELETE(
+  _request: NextRequest,
+  { params }: { params: Promise<{ id: string; enrollmentId: string }> },
+) {
+  try {
+    const { id, enrollmentId } = await params
+    const { supabase, user, orgId } = await getOrgScopedClient()
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!orgId) return NextResponse.json({ error: 'No organization found. Please complete setup.' }, { status: 400 })
+
+    const { data: enrollment, error: enrollmentError } = await supabase
+      .from('campaign_enrollments')
+      .select('id,lead_id')
+      .eq('id', enrollmentId)
+      .eq('campaign_id', id)
+      .eq('org_id', orgId)
+      .maybeSingle()
+
+    if (enrollmentError) throw enrollmentError
+    if (!enrollment) return NextResponse.json({ error: 'Enrollment not found' }, { status: 404 })
+
+    // Campaign events, attribution, and sequence executions cascade from this
+    // enrollment. The canonical CRM lead and its email history remain intact.
+    const { error: deleteError } = await supabase
+      .from('campaign_enrollments')
+      .delete()
+      .eq('id', enrollmentId)
+      .eq('campaign_id', id)
+      .eq('org_id', orgId)
+
+    if (deleteError) throw deleteError
+
+    return NextResponse.json({ data: enrollment })
+  } catch (error) {
+    console.error('DELETE /api/campaigns/[id]/enrollments/[enrollmentId] failed', error)
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'Failed to remove lead from campaign' }, { status: 500 })
+  }
+}
