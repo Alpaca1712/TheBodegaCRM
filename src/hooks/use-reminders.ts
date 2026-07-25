@@ -6,7 +6,6 @@ import {
   markAsRead,
   markAsResolved,
   deleteReminder,
-  generateAllReminders,
   GetRemindersFilters
 } from '@/lib/api/reminders'
 import type { ReminderUpdate } from '@/types/database'
@@ -92,18 +91,6 @@ export function useDeleteReminder() {
   
   return useMutation({
     mutationFn: deleteReminder,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['reminders'] })
-      queryClient.invalidateQueries({ queryKey: ['reminders', 'unread'] })
-    }
-  })
-}
-
-export function useGenerateAllReminders() {
-  const queryClient = useQueryClient()
-  
-  return useMutation({
-    mutationFn: generateAllReminders,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['reminders'] })
       queryClient.invalidateQueries({ queryKey: ['reminders', 'unread'] })

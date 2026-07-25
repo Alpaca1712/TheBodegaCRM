@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { AlertCircle, ArrowRight, CheckCircle2, Loader2, Mail, RefreshCw, Users } from 'lucide-react'
 import { toast } from 'sonner'
-import { createClient } from '@/lib/supabase/client'
+import { apiRequest } from '@/lib/api/request'
 
 interface EmailAccount {
   id: string
@@ -33,21 +33,19 @@ export default function EmailPage() {
   const error = searchParams.get('error')
 
   const loadAccounts = async () => {
-    const supabase = createClient()
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    try {
+      const result = await apiRequest<{ accounts: EmailAccount[] }>(
+        '/api/gmail/accounts',
+        {},
+        'Failed to load Gmail accounts',
+      )
+      setAccounts(result.accounts)
+    } catch (loadError) {
+      console.error('[Gmail Accounts] Error:', loadError)
       setAccounts([])
+    } finally {
       setLoading(false)
-      return
     }
-
-    const { data: accts } = await supabase
-      .from('email_accounts')
-      .select('id, email_address, sync_enabled, last_synced_at')
-      .eq('user_id', user.id)
-
-    setAccounts(accts || [])
-    setLoading(false)
   }
 
   const handleSync = async () => {

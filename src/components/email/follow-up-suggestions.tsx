@@ -9,13 +9,12 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
-import { createClient } from '@/lib/supabase/client';
+import { apiRequest } from '@/lib/api/request';
 import { STAGE_LABELS, LEAD_TYPE_LABELS, type PipelineStage } from '@/types/leads';
 import type { Lead, LeadEmail } from '@/types/leads';
 import { CopyButton } from '@/components/ui/copy-button';
 import {
   ACTION_LABELS,
-  FOLLOW_UP_STAGES,
   computeFollowUp,
   filterFollowUps,
   getFollowUpCounts,
@@ -52,41 +51,26 @@ export default function FollowUpSuggestions({ compact = false, typeFilter }: Fol
 
   const loadFollowUps = useCallback(async () => {
     try {
-      const supabase = createClient();
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      let query = supabase
-        .from('leads')
-        .select('*')
-        .eq('user_id', user.id)
-        .in('stage', FOLLOW_UP_STAGES);
-
-      if (typeFilter && typeFilter !== 'all') {
-        query = query.eq('type', typeFilter);
-      }
-
-      const { data: leads } = await query.order('last_contacted_at', { ascending: true });
+      const params = new URLSearchParams();
+      if (typeFilter && typeFilter !== 'all') params.set('type', typeFilter);
+      const { leads, emails } = await apiRequest<{ leads: Lead[]; emails: LeadEmail[] }>(
+        `/api/follow-ups${params.size ? `?${params}` : ''}`,
+        {},
+        'Failed to load follow-ups',
+      );
 
       if (!leads?.length) { setLoading(false); return; }
-
-      const leadIds = leads.map(l => l.id);
-      const { data: emails } = await supabase
-        .from('lead_emails')
-        .select('*')
-        .in('lead_id', leadIds)
-        .order('created_at', { ascending: false });
 
       const emailsByLead = new Map<string, LeadEmail[]>();
       for (const email of emails || []) {
         const existing = emailsByLead.get(email.lead_id) || [];
-        existing.push(email as LeadEmail);
+        existing.push(email);
         emailsByLead.set(email.lead_id, existing);
       }
 
       const computed: FollowUpItem[] = [];
       for (const lead of leads) {
-        const item = computeFollowUp(lead as Lead, emailsByLead.get(lead.id) || []);
+        const item = computeFollowUp(lead, emailsByLead.get(lead.id) || []);
         if (item) computed.push(item);
       }
 

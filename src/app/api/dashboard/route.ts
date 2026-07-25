@@ -109,6 +109,10 @@ export async function GET(req: Request) {
     const followUpLeads = leads.filter(l =>
       ['email_sent', 'follow_up', 'no_response'].includes(l.stage)
     )
+    const followUpsDue = followUpLeads.filter((lead) => {
+      if (!lead.last_contacted_at) return true
+      return new Date(lead.last_contacted_at).getTime() <= now.getTime() - (3 * 24 * 60 * 60 * 1000)
+    }).length
     let leadsWithMultipleOutbound = 0
     for (const l of followUpLeads) {
       if ((outboundByLead.get(l.id)?.length ?? 0) >= 2) leadsWithMultipleOutbound++
@@ -223,6 +227,7 @@ export async function GET(req: Request) {
       meetingsBooked: meetingLeads.length,
       meetingConversion: leadsWithReplies.size > 0 ? (meetingLeads.length / leadsWithReplies.size) * 100 : 0,
       avgDaysToReply: Math.round(avgDaysToReply * 10) / 10,
+      followUpsDue,
       followUpCompliance: Math.round(followUpCompliance),
       avgTouchpoints: Math.round(avgTouchpoints * 10) / 10,
       hotLeads,

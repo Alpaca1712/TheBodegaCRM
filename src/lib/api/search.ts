@@ -1,87 +1,62 @@
-import { createClient } from '@/lib/supabase/client'
+import { apiRequest } from '@/lib/api/request'
 
-type SearchResult = {
-  id: string;
-  type: 'customer' | 'investor' | 'partnership';
-  title: string;
-  subtitle?: string;
-  route: string;
-};
+export type SearchResult = {
+  id: string
+  type: 'customer' | 'investor' | 'partnership'
+  title: string
+  subtitle?: string
+  route: string
+}
 
-type SearchCategory = {
-  type: 'customer' | 'investor' | 'partnership';
-  title: string;
-  icon: React.ReactNode;
-  results: SearchResult[];
-};
+export type SearchCategory = {
+  type: 'customer' | 'investor' | 'partnership'
+  title: string
+  icon: React.ReactNode
+  results: SearchResult[]
+}
+
+type SearchLead = {
+  id: string
+  type: SearchResult['type']
+  contact_name: string
+  company_name: string
+  stage: string
+}
 
 export async function searchAll(query: string): Promise<SearchCategory[]> {
-  if (!query.trim()) return [];
-
-  const supabase = createClient()
-  const lowerQuery = `%${query.toLowerCase()}%`
+  const trimmed = query.trim()
+  if (!trimmed) return []
 
   try {
-    const { data: leads, error } = await supabase
-      .from('leads')
-      .select('id, type, contact_name, company_name, contact_email, stage')
-      .or(`contact_name.ilike.${lowerQuery},company_name.ilike.${lowerQuery},contact_email.ilike.${lowerQuery}`)
-      .limit(20)
+    const response = await apiRequest<{ data: SearchLead[] }>(
+      `/api/leads?search=${encodeURIComponent(trimmed)}&limit=20`,
+      {},
+      'Search failed',
+    )
+    const categories: Array<{
+      type: SearchResult['type']
+      title: string
+    }> = [
+      { type: 'customer', title: 'Customers' },
+      { type: 'partnership', title: 'Partnerships' },
+      { type: 'investor', title: 'Investors' },
+    ]
 
-    if (error || !leads) return []
-
-    const customers = leads.filter(l => l.type === 'customer')
-    const investors = leads.filter(l => l.type === 'investor')
-    const partnerships = leads.filter(l => l.type === 'partnership')
-
-    const results: SearchCategory[] = []
-
-    if (customers.length > 0) {
-      results.push({
-        type: 'customer',
-        title: 'Customers',
+    return categories.flatMap((category) => {
+      const leads = response.data.filter((lead) => lead.type === category.type)
+      if (leads.length === 0) return []
+      return [{
+        ...category,
         icon: null,
-        results: customers.map(l => ({
-          id: l.id,
-          type: 'customer' as const,
-          title: l.contact_name,
-          subtitle: `${l.company_name} · ${l.stage}`,
-          route: `/leads/${l.id}`,
+        results: leads.map((lead) => ({
+          id: lead.id,
+          type: category.type,
+          title: lead.contact_name,
+          subtitle: `${lead.company_name} · ${lead.stage}`,
+          route: `/leads/${lead.id}`,
         })),
-      })
-    }
-
-    if (partnerships.length > 0) {
-      results.push({
-        type: 'partnership',
-        title: 'Partnerships',
-        icon: null,
-        results: partnerships.map(l => ({
-          id: l.id,
-          type: 'partnership' as const,
-          title: l.contact_name,
-          subtitle: `${l.company_name} · ${l.stage}`,
-          route: `/leads/${l.id}`,
-        })),
-      })
-    }
-
-    if (investors.length > 0) {
-      results.push({
-        type: 'investor',
-        title: 'Investors',
-        icon: null,
-        results: investors.map(l => ({
-          id: l.id,
-          type: 'investor' as const,
-          title: l.contact_name,
-          subtitle: `${l.company_name} · ${l.stage}`,
-          route: `/leads/${l.id}`,
-        })),
-      })
-    }
-
-    return results
+      }]
+    })
   } catch (error) {
     console.error('Search error:', error)
     return []

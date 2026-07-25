@@ -4,14 +4,11 @@ import { useState, useEffect } from 'react'
 import { Users, Mail, Shield, Trash2, UserPlus, Building, Copy, Check } from 'lucide-react'
 import Link from 'next/link'
 import {
-  getActiveOrg,
-  getOrgMembers,
-  getOrgInvites,
+  getOrganizationWorkspace,
   inviteMember,
   removeMember,
   updateMemberRole,
   cancelInvite,
-  getCurrentUserRole,
   updateOrg,
   type Organization,
   type OrgMember,
@@ -52,23 +49,16 @@ export default function TeamSettingsPage() {
 
   useEffect(() => {
     async function load() {
-      const [orgRes, roleRes] = await Promise.all([
-        getActiveOrg(),
-        getCurrentUserRole(),
-      ])
-
-      if (orgRes.data) {
-        setOrg(orgRes.data)
-        setOrgName(orgRes.data.name)
-
-        const [membersRes, invitesRes] = await Promise.all([
-          getOrgMembers(orgRes.data.id),
-          getOrgInvites(orgRes.data.id),
-        ])
-        setMembers(membersRes.data)
-        setInvites(invitesRes.data)
+      const result = await getOrganizationWorkspace()
+      if (result.data) {
+        setOrg(result.data.organization)
+        setOrgName(result.data.organization.name)
+        setMembers(result.data.members)
+        setInvites(result.data.invites)
+        setCurrentRole(result.data.currentRole)
+      } else if (result.error) {
+        setError(result.error)
       }
-      setCurrentRole(roleRes)
       setLoading(false)
     }
     load()

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
-import { createClient } from '@/lib/supabase/client'
+import { apiRequest } from '@/lib/api/request'
 import { signOut } from '@/lib/auth/actions'
 
 type UserProfile = {
@@ -24,6 +24,10 @@ type NotificationPreferences = {
   weekly_reports: boolean
 }
 
+type AccountResponse = UserProfile & {
+  notification_preferences: NotificationPreferences
+}
+
 export default function SettingsPage() {
   const [user, setUser] = useState<UserProfile | null>(null)
   const [notifications, setNotifications] = useState<NotificationPreferences>({
@@ -37,17 +41,24 @@ export default function SettingsPage() {
   
   useEffect(() => {
     async function loadUser() {
-      const supabase = createClient()
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
+      try {
+        const account = await apiRequest<AccountResponse>(
+          '/api/settings/account',
+          {},
+          'Failed to load account',
+        )
         setUser({
-          id: session.user.id,
-          name: session.user.user_metadata?.name || null,
-          email: session.user.email || '',
-          avatar_url: session.user.user_metadata?.avatar_url || null,
+          id: account.id,
+          name: account.name,
+          email: account.email,
+          avatar_url: account.avatar_url,
         })
+        setNotifications(account.notification_preferences)
+      } catch (error) {
+        console.error('Failed to load account:', error)
+      } finally {
+        setLoading(false)
       }
-      setLoading(false)
     }
     loadUser()
   }, [])
@@ -55,11 +66,20 @@ export default function SettingsPage() {
   const handleSaveProfile = async () => {
     if (!user) return
     try {
-      const supabase = createClient()
-      const { error } = await supabase.auth.updateUser({
-        data: { name: user.name },
+      const account = await apiRequest<AccountResponse>(
+        '/api/settings/account',
+        {
+          method: 'PATCH',
+          body: JSON.stringify({ name: user.name }),
+        },
+        'Failed to save profile',
+      )
+      setUser({
+        id: account.id,
+        name: account.name,
+        email: account.email,
+        avatar_url: account.avatar_url,
       })
-      if (error) throw error
       setEditing(false)
     } catch (err) {
       console.error('Failed to save profile:', err)
@@ -224,11 +244,14 @@ export default function SettingsPage() {
               <div className="pt-4">
                 <Button onClick={async () => {
                   try {
-                    const supabase = createClient()
-                    const { error } = await supabase.auth.updateUser({
-                      data: { notification_preferences: notifications },
-                    })
-                    if (error) throw error
+                    await apiRequest<AccountResponse>(
+                      '/api/settings/account',
+                      {
+                        method: 'PATCH',
+                        body: JSON.stringify({ notification_preferences: notifications }),
+                      },
+                      'Failed to save preferences',
+                    )
                   } catch (err) {
                     console.error('Failed to save preferences:', err)
                   }

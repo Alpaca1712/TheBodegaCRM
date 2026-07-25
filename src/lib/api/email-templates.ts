@@ -1,7 +1,6 @@
-// src/lib/api/email-templates.ts
-import { supabase } from '@/lib/supabase/client'
-// EmailTemplate types defined locally since not in database types
-type EmailTemplate = {
+import { apiRequest } from '@/lib/api/request'
+
+export type EmailTemplate = {
   id: string
   user_id: string
   org_id: string | null
@@ -16,15 +15,10 @@ type EmailTemplate = {
   created_at: string
   updated_at: string
 }
+
 type EmailTemplateInsert = Omit<EmailTemplate, 'id' | 'created_at' | 'updated_at'>
 type EmailTemplateUpdate = Partial<Omit<EmailTemplateInsert, 'user_id'>> & { id: string }
-
-type EmailTemplateWithUser = EmailTemplate & {
-  profiles: {
-    full_name: string | null
-    avatar_url: string | null
-  }
-}
+type ApiResult<T> = { data: T | null; error: Error | null }
 
 export async function getEmailTemplates({
   category,
@@ -32,173 +26,141 @@ export async function getEmailTemplates({
 }: {
   category?: EmailTemplate['category']
   isShared?: boolean
-} = {}) {
-  let query = supabase
-    .from('email_templates')
-    .select(
-      `
-      *,
-      profiles (full_name, avatar_url)
-    `
+} = {}): Promise<ApiResult<EmailTemplate[]>> {
+  try {
+    const params = new URLSearchParams()
+    if (category) params.set('category', category)
+    if (isShared !== undefined) params.set('isShared', String(isShared))
+    const response = await apiRequest<{ data: EmailTemplate[] }>(
+      `/api/email-templates${params.size ? `?${params}` : ''}`,
+      {},
+      'Failed to load email templates',
     )
-    .order('name', { ascending: true })
-
-  if (category) {
-    query = query.eq('category', category)
+    return { data: response.data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  if (isShared !== undefined) {
-    query = query.eq('is_shared', isShared)
-  }
-
-  const { data, error } = await query
-
-  if (error) {
-    console.error('Error fetching email templates:', error)
-    return { data: null, error }
-  }
-
-  return { data: data as EmailTemplateWithUser[], error: null }
 }
 
-export async function getEmailTemplate(id: string) {
-  const { data, error } = await supabase
-    .from('email_templates')
-    .select(
-      `
-      *,
-      profiles (full_name, avatar_url)
-    `
+export async function getEmailTemplate(id: string): Promise<ApiResult<EmailTemplate>> {
+  try {
+    const data = await apiRequest<EmailTemplate>(
+      `/api/email-templates/${id}`,
+      {},
+      'Failed to load email template',
     )
-    .eq('id', id)
-    .single()
-
-  if (error) {
-    console.error('Error fetching email template:', error)
-    return { data: null, error }
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  return { data: data as EmailTemplateWithUser, error: null }
 }
 
 export async function createEmailTemplate(
-  template: Omit<EmailTemplateInsert, 'user_id' | 'usage_count'>
-) {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
-
-  if (!user) {
-    return { data: null, error: new Error('User not authenticated') }
-  }
-
-  const { data, error } = await supabase
-    .from('email_templates')
-    .insert([
+  template: Omit<EmailTemplateInsert, 'user_id' | 'usage_count'>,
+): Promise<ApiResult<EmailTemplate>> {
+  try {
+    const data = await apiRequest<EmailTemplate>(
+      '/api/email-templates',
       {
-        ...template,
-        user_id: user.id,
-        usage_count: 0,
+        method: 'POST',
+        body: JSON.stringify({
+          name: template.name,
+          subject: template.subject,
+          body: template.body,
+          category: template.category,
+          is_shared: template.is_shared,
+          tags: template.tags,
+        }),
       },
-    ])
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error creating email template:', error)
-    return { data: null, error }
+      'Failed to create email template',
+    )
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  return { data: data as EmailTemplate, error: null }
 }
 
 export async function updateEmailTemplate(
   id: string,
-  updates: EmailTemplateUpdate
-) {
-  const { data, error } = await supabase
-    .from('email_templates')
-    .update(updates)
-    .eq('id', id)
-    .select()
-    .single()
-
-  if (error) {
-    console.error('Error updating email template:', error)
-    return { data: null, error }
+  updates: EmailTemplateUpdate,
+): Promise<ApiResult<EmailTemplate>> {
+  try {
+    const {
+      name,
+      subject,
+      body,
+      category,
+      is_shared,
+      tags,
+    } = updates
+    const data = await apiRequest<EmailTemplate>(
+      `/api/email-templates/${id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({
+          ...(name !== undefined ? { name } : {}),
+          ...(subject !== undefined ? { subject } : {}),
+          ...(body !== undefined ? { body } : {}),
+          ...(category !== undefined ? { category } : {}),
+          ...(is_shared !== undefined ? { is_shared } : {}),
+          ...(tags !== undefined ? { tags } : {}),
+        }),
+      },
+      'Failed to update email template',
+    )
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  return { data: data as EmailTemplate, error: null }
 }
 
-export async function deleteEmailTemplate(id: string) {
-  const { error } = await supabase
-    .from('email_templates')
-    .delete()
-    .eq('id', id)
-
-  if (error) {
-    console.error('Error deleting email template:', error)
-    return { error }
+export async function deleteEmailTemplate(id: string): Promise<{ error: Error | null }> {
+  try {
+    await apiRequest<{ success: true }>(
+      `/api/email-templates/${id}`,
+      { method: 'DELETE' },
+      'Failed to delete email template',
+    )
+    return { error: null }
+  } catch (error) {
+    return { error: error as Error }
   }
-
-  return { error: null }
 }
 
 export async function incrementTemplateUsage(id: string) {
-  const { data, error } = await supabase
-    .from('email_templates')
-    .update({
-      usage_count: supabase.rpc('increment', { x: 1 }),
-      last_used_at: new Date().toISOString(),
-    })
-    .eq('id', id)
-    .select('usage_count, last_used_at')
-    .single()
-
-  if (error) {
-    console.error('Error incrementing template usage:', error)
-    return { data: null, error }
+  try {
+    const data = await apiRequest<EmailTemplate>(
+      `/api/email-templates/${id}`,
+      {
+        method: 'PATCH',
+        body: JSON.stringify({ increment_usage: true }),
+      },
+      'Failed to update template usage',
+    )
+    return { data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  return { data, error: null }
 }
 
 export async function getTemplateCategories() {
-  const { data, error } = await supabase
-    .from('email_templates')
-    .select('category')
-    .order('category', { ascending: true })
-
-  if (error) {
-    console.error('Error fetching template categories:', error)
-    return { data: null, error }
+  const result = await getEmailTemplates()
+  if (!result.data) return { data: null, error: result.error }
+  return {
+    data: Array.from(new Set(result.data.map((template) => template.category))),
+    error: null,
   }
-
-  // Get unique categories
-  const categories = Array.from(
-    new Set(data.map((item) => item.category))
-  ) as EmailTemplate['category'][]
-
-  return { data: categories, error: null }
 }
 
-export async function getPopularTemplates(limit = 5) {
-  const { data, error } = await supabase
-    .from('email_templates')
-    .select(
-      `
-      *,
-      profiles (full_name, avatar_url)
-    `
+export async function getPopularTemplates(limit = 5): Promise<ApiResult<EmailTemplate[]>> {
+  try {
+    const response = await apiRequest<{ data: EmailTemplate[] }>(
+      `/api/email-templates?popular=true&limit=${Math.min(Math.max(limit, 1), 20)}`,
+      {},
+      'Failed to load popular email templates',
     )
-    .order('usage_count', { ascending: false })
-    .limit(limit)
-
-  if (error) {
-    console.error('Error fetching popular templates:', error)
-    return { data: null, error }
+    return { data: response.data, error: null }
+  } catch (error) {
+    return { data: null, error: error as Error }
   }
-
-  return { data: data as EmailTemplateWithUser[], error: null }
 }
