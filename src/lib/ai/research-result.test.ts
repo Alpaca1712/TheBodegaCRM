@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { normalizeResearchResultEnvelope } from './research-result'
+import {
+  compactResearchUpdates,
+  hasCompleteResearchResultShape,
+  normalizeResearchResultEnvelope,
+} from './research-result'
 
 describe('normalizeResearchResultEnvelope', () => {
   const research = {
@@ -32,5 +36,50 @@ describe('normalizeResearchResultEnvelope', () => {
     const wrapped = { result: research, confidence: 0.8 }
 
     expect(normalizeResearchResultEnvelope(wrapped)).toBe(wrapped)
+  })
+})
+
+describe('hasCompleteResearchResultShape', () => {
+  it('accepts a complete research payload', () => {
+    expect(hasCompleteResearchResultShape({
+      contact_name: 'Ada Lovelace',
+      company_name: 'Analytical Engines',
+      company_description: 'Builds analytical engines.',
+      grounded_personal_facts: [],
+      research_sources: [{ url: 'https://example.com' }],
+    })).toBe(true)
+  })
+
+  it('rejects a partial source-only payload', () => {
+    expect(hasCompleteResearchResultShape({
+      research_sources: [{ url: 'https://example.com' }],
+    })).toBe(false)
+  })
+
+  it('rejects a payload with empty profile content', () => {
+    expect(hasCompleteResearchResultShape({
+      contact_name: 'Ada Lovelace',
+      company_name: 'Analytical Engines',
+      company_description: '',
+      grounded_personal_facts: [],
+      research_sources: [{ url: 'https://example.com' }],
+    })).toBe(false)
+  })
+})
+
+describe('compactResearchUpdates', () => {
+  it('keeps meaningful enrichment and removes empty model defaults', () => {
+    expect(compactResearchUpdates({
+      company_description: 'Verified description',
+      attack_surface_notes: '',
+      investment_thesis_notes: null,
+      smykm_hooks: [],
+      research_sources: [{ url: 'https://example.com' }],
+      icp_score: 0,
+    })).toEqual({
+      company_description: 'Verified description',
+      research_sources: [{ url: 'https://example.com' }],
+      icp_score: 0,
+    })
   })
 })

@@ -2,8 +2,12 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ModelJSONParseError, researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 import { attachGroundedFacts } from '@/lib/ai/research-grounding'
-import { normalizeResearchResultEnvelope } from '@/lib/ai/research-result'
-import { createClient } from '@/lib/supabase/server'
+import {
+  compactResearchUpdates,
+  hasCompleteResearchResultShape,
+  normalizeResearchResultEnvelope,
+} from '@/lib/ai/research-result'
+import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 
 const requestSchema = z.object({
   leadId: z.string().uuid().optional(),
@@ -178,10 +182,15 @@ type ResearchResult = z.infer<typeof researchResultSchema> & {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient()
-    const { data: { user }, error: authError } = await supabase.auth.getUser()
-    if (authError || !user) {
+    const { supabase, user, orgId } = await getOrgScopedClient()
+    if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    if (!orgId) {
+      return NextResponse.json(
+        { error: 'No organization found. Please complete setup.' },
+        { status: 400 },
+      )
     }
 
     const body = await request.json()
@@ -201,7 +210,7 @@ export async function POST(request: NextRequest) {
         .from('leads')
         .select('*')
         .eq('id', leadId)
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
         .single()
 
       if (!lead) {
@@ -240,9 +249,10 @@ export async function POST(request: NextRequest) {
         temperature: 0.3,
         maxSearches: 10,
         match: (candidate) => {
-          const parsed = researchResultSchema.safeParse(
-            normalizeResearchResultEnvelope(candidate),
-          )
+          const normalized = normalizeResearchResultEnvelope(candidate)
+          if (!hasCompleteResearchResultShape(normalized)) return undefined
+
+          const parsed = researchResultSchema.safeParse(normalized)
           return parsed.success ? parsed.data : undefined
         },
       }
@@ -274,7 +284,7 @@ export async function POST(request: NextRequest) {
     }
 
     if (leadId) {
-      const updateData: Record<string, unknown> = {
+      const updateData = compactResearchUpdates({
         contact_name: result.contact_name || researchInput.contact_name,
         company_name: result.company_name || researchInput.company_name,
         company_description: result.company_description,
@@ -291,7 +301,7 @@ export async function POST(request: NextRequest) {
         company_website: result.company_website || researchInput.website,
         contact_photo_url: result.contact_photo_url,
         company_logo_url: result.company_logo_url,
-      }
+      })
 
       if (result.team_members?.length) {
         updateData.org_chart = result.team_members.map(m => ({
@@ -305,14 +315,20 @@ export async function POST(request: NextRequest) {
         }))
       }
 
-      const { error: updateError } = await supabase
+      const { data: updatedLead, error: updateError } = await supabase
         .from('leads')
         .update(updateData)
         .eq('id', leadId)
-        .eq('user_id', user.id)
+        .eq('org_id', orgId)
+        .select('id')
+        .single()
 
       if (updateError) {
         console.error('Failed to update lead with research:', updateError)
+        throw updateError
+      }
+      if (!updatedLead) {
+        throw new Error('Research completed, but the lead profile was not updated.')
       }
     }
 
