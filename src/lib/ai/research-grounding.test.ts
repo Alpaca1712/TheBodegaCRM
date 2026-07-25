@@ -11,12 +11,14 @@ describe('research grounding', () => {
       }],
       [
         {
-          fact: 'Alex described resident trust as the core product constraint.',
+          fact: 'Alex said resident trust shaped the product design.',
+          evidence_quote: 'Alex described resident trust as the core product constraint.',
           source_url: 'https://example.com/interview#quote',
           use_as_hook: true,
         },
         {
           fact: 'Alex was secretly a student pilot.',
+          evidence_quote: 'Alex described resident trust as the core product constraint.',
           source_url: 'https://made-up.example/fake',
           use_as_hook: true,
         },
@@ -28,13 +30,13 @@ describe('research grounding', () => {
     )
 
     expect(result.personalDetails).toBe(
-      'Alex described resident trust as the core product constraint.',
+      'Alex said resident trust shaped the product design.',
     )
     expect(result.smykmHooks).toEqual([
-      'Alex described resident trust as the core product constraint.',
+      'Alex said resident trust shaped the product design.',
     ])
     expect(result.sources[0].facts).toEqual([
-      'Alex described resident trust as the core product constraint.',
+      'Alex said resident trust shaped the product design.',
     ])
     expect(result.sources[0].detail).toBe(
       'Alex described resident trust as the core product constraint.',
@@ -50,6 +52,7 @@ describe('research grounding', () => {
       }],
       [{
         fact: 'Alex was a student pilot.',
+        evidence_quote: 'Alex discussed how the company handles resident requests.',
         source_url: 'https://example.com/interview',
         use_as_hook: true,
       }],

@@ -64,7 +64,8 @@ Also search for their contact information, company details, and visual identity:
 
 SOURCING RULES:
 - Every personal fact or personalization hook MUST appear in grounded_personal_facts with the exact URL that supports it.
-- The fact MUST be copied verbatim from the cited source text returned by web search. Do not paraphrase, combine, infer, summarize, or complete a thought.
+- The fact may concisely summarize one cited source passage, but it must not add a claim, interpretation, causal link, or detail that is absent from that passage.
+- evidence_quote MUST be one exact, contiguous, verbatim quote copied from the cited source text. It must directly support the complete fact.
 - The source_url on every grounded fact MUST exactly match a URL in research_sources.
 - Each source should have: the URL you found it at, a short title, and a one-sentence description of what you found there.
 - Include ALL URLs you found useful during research (blog posts, GitHub repos, podcast pages, news articles, company pages, etc.)
@@ -85,7 +86,8 @@ After searching, return exactly ONE JSON object, never an array or a list of can
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
   "grounded_personal_facts": [
     {
-      "fact": "One atomic personal or professional fact copied verbatim from cited source text",
+      "fact": "A concise summary of one atomic personal or professional fact",
+      "evidence_quote": "An exact contiguous quote from the source that fully supports the fact",
       "source_url": "https://the-exact-source-url.com/page",
       "use_as_hook": true
     }
@@ -155,6 +157,7 @@ const researchResultSchema = z.object({
   investment_thesis_notes: z.string().nullable().default(null),
   grounded_personal_facts: z.array(z.object({
     fact: z.string().min(1),
+    evidence_quote: z.string().min(8),
     source_url: z.string().url(),
     use_as_hook: z.boolean().optional().default(false),
   })).default([]),

@@ -2,6 +2,7 @@ import type { ResearchSource } from '@/types/leads'
 
 export interface GroundedFactInput {
   fact: string
+  evidence_quote: string
   source_url: string
   use_as_hook?: boolean
 }
@@ -37,6 +38,48 @@ function normalizeEvidenceText(value: string): string {
     .toLowerCase()
     .replace(/[^\p{L}\p{N}]+/gu, ' ')
     .trim()
+}
+
+const SUMMARY_STOP_WORDS = new Set([
+  'about',
+  'after',
+  'also',
+  'been',
+  'being',
+  'from',
+  'have',
+  'into',
+  'that',
+  'their',
+  'them',
+  'they',
+  'this',
+  'with',
+  'would',
+])
+
+function contentTokens(value: string): string[] {
+  return [...new Set(
+    normalizeEvidenceText(value)
+      .split(' ')
+      .filter(token => token.length >= 4 && !SUMMARY_STOP_WORDS.has(token)),
+  )]
+}
+
+function summaryIsSupportedByQuote(summary: string, quote: string): boolean {
+  const normalizedQuote = normalizeEvidenceText(quote)
+  const numbers = summary.match(/\d[\d,.]*/g) || []
+  if (numbers.some(number => !normalizedQuote.includes(number.toLowerCase()))) {
+    return false
+  }
+
+  const summaryTokens = contentTokens(summary)
+  const quoteTokens = new Set(contentTokens(quote))
+  if (summaryTokens.length === 0) return false
+
+  const overlap = summaryTokens.filter(token => quoteTokens.has(token)).length
+  const requiredOverlap = Math.max(1, Math.ceil(summaryTokens.length / 2))
+  return overlap >= requiredOverlap
 }
 
 export function attachGroundedFacts(
@@ -87,17 +130,21 @@ export function attachGroundedFacts(
     const normalizedUrl = normalizeUrl(candidate.source_url)
     const fact = cleanFact(candidate.fact)
     const factEvidence = normalizeEvidenceText(fact)
+    const evidenceQuote = cleanFact(candidate.evidence_quote)
+    const normalizedQuote = normalizeEvidenceText(evidenceQuote)
     const source = normalizedUrl ? sourceByUrl.get(normalizedUrl) : undefined
     const key = fact.toLowerCase()
     const citationTexts = normalizedUrl ? citationsByUrl.get(normalizedUrl) || [] : []
     const isQuotedByTrustedCitation = citationTexts.some(text =>
-      text.includes(factEvidence),
+      text.includes(normalizedQuote),
     )
 
     if (
       !source ||
       factEvidence.length < 8 ||
+      normalizedQuote.length < 8 ||
       !isQuotedByTrustedCitation ||
+      !summaryIsSupportedByQuote(fact, evidenceQuote) ||
       seen.has(key)
     ) continue
 
