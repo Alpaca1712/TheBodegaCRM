@@ -1,10 +1,17 @@
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
-import { buildSalesActionPlan, type SalesAction } from '@/lib/dashboard/sales-actions'
-import { isMissingRelation } from '@/lib/supabase/missing-column'
+import { buildSalesActionPlan, type ActionLead, type SalesAction } from '@/lib/dashboard/sales-actions'
+import { isMissingColumn, isMissingRelation } from '@/lib/supabase/missing-column'
 import { NextResponse } from 'next/server'
 import type { LeadType, PipelineStage } from '@/types/leads'
 
+const DASHBOARD_CORE_LEAD_FIELDS = 'id, contact_name, company_name, stage, type, icp_score, last_contacted_at, last_inbound_at, last_outbound_at, updated_at, conversation_next_step, conversation_signals, smykm_hooks, company_description, battle_card, total_emails_out' as const
 const DASHBOARD_LEAD_FIELDS = 'id, contact_name, company_name, stage, type, icp_score, last_contacted_at, last_inbound_at, last_outbound_at, updated_at, conversation_next_step, conversation_signals, smykm_hooks, company_description, battle_card, investor_memo, total_emails_out' as const
+
+let investorMemoColumnAvailable: boolean | null = null
+
+type DashboardLeadRow = Omit<ActionLead, 'investor_memo'> & {
+  investor_memo?: ActionLead['investor_memo']
+}
 
 type ConversationSignal = {
   type?: string
@@ -25,12 +32,16 @@ export async function GET(req: Request) {
     const weekAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000)
     const twoWeeksAgo = new Date(now.getTime() - 14 * 24 * 60 * 60 * 1000)
 
-    let leadsQuery = supabase.from('leads').select(DASHBOARD_LEAD_FIELDS).eq('org_id', orgId)
+    const requestedInvestorMemo = investorMemoColumnAvailable !== false
+    let leadsQuery = supabase
+      .from('leads')
+      .select(requestedInvestorMemo ? DASHBOARD_LEAD_FIELDS : DASHBOARD_CORE_LEAD_FIELDS)
+      .eq('org_id', orgId)
     if (type) {
       leadsQuery = leadsQuery.eq('type', type)
     }
 
-    const [leadsRes, emailsRes, interactionsRes, automationFailuresRes] = await Promise.all([
+    const [initialLeadsRes, emailsRes, interactionsRes, automationFailuresRes] = await Promise.all([
       leadsQuery,
       supabase
         .from('lead_emails')
@@ -48,14 +59,36 @@ export async function GET(req: Request) {
         .limit(10),
     ])
 
-    if (leadsRes.error) throw leadsRes.error
+    let leadsError = initialLeadsRes.error
+    let leadsData = initialLeadsRes.data as DashboardLeadRow[] | null
+    let supportsInvestorMemo = requestedInvestorMemo
+
+    if (leadsError && requestedInvestorMemo && isMissingColumn(leadsError, 'investor_memo')) {
+      investorMemoColumnAvailable = false
+      supportsInvestorMemo = false
+
+      let fallbackQuery = supabase
+        .from('leads')
+        .select(DASHBOARD_CORE_LEAD_FIELDS)
+        .eq('org_id', orgId)
+      if (type) {
+        fallbackQuery = fallbackQuery.eq('type', type)
+      }
+      const fallbackLeadsRes = await fallbackQuery
+      leadsError = fallbackLeadsRes.error
+      leadsData = fallbackLeadsRes.data as DashboardLeadRow[] | null
+    } else if (!leadsError && requestedInvestorMemo) {
+      investorMemoColumnAvailable = true
+    }
+
+    if (leadsError) throw leadsError
     if (emailsRes.error) throw emailsRes.error
     if (interactionsRes.error) throw interactionsRes.error
     if (automationFailuresRes.error && !isMissingRelation(automationFailuresRes.error, 'campaign_sequence_executions')) {
       throw automationFailuresRes.error
     }
 
-    const leads = leadsRes.data || []
+    const leads = leadsData || []
     const leadIds = new Set(leads.map(l => l.id))
 
     const emails = (emailsRes.data || []).filter(e => leadIds.has(e.lead_id))
@@ -206,11 +239,19 @@ export async function GET(req: Request) {
         return actions
       }, [])
 
+    const actionLeads = leads.map((lead) => ({
+      ...lead,
+      investor_memo: supportsInvestorMemo && 'investor_memo' in lead
+        ? lead.investor_memo ?? null
+        : null,
+    }))
+
     const salesActionPlan = [...automationActions, ...buildSalesActionPlan({
-      leads,
+      leads: actionLeads,
       outboundEmails,
       inboundEmails,
       now,
+      includeInvestorMemoActions: supportsInvestorMemo,
     })]
       .sort((a, b) => b.score - a.score)
       .slice(0, 7)

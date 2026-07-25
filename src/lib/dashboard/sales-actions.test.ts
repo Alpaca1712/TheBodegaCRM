@@ -240,6 +240,32 @@ describe('buildSalesActionPlan', () => {
     })
   })
 
+  it('falls back to a supported action when investor memo storage is unavailable', () => {
+    const actions = buildSalesActionPlan({
+      leads: [
+        {
+          ...baseLead,
+          id: 'lead-investor-without-memo-column',
+          type: 'investor',
+          stage: 'researched',
+          smykm_hooks: ['Hook 1'],
+          company_description: 'Fund',
+          investor_memo: null,
+        },
+      ],
+      outboundEmails: [],
+      inboundEmails: [],
+      now: new Date('2026-05-06T12:00:00Z'),
+      includeInvestorMemoActions: false,
+    })
+
+    expect(actions).toHaveLength(1)
+    expect(actions[0]).toMatchObject({
+      leadId: 'lead-investor-without-memo-column',
+      category: 'prospecting',
+    })
+  })
+
   it('upgrades prospecting to high priority if positive signals exist', () => {
     const actions = buildSalesActionPlan({
       leads: [

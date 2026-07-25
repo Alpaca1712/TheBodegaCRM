@@ -91,6 +91,7 @@ export function useDashboard(type: DashboardLeadTypeFilter | string) {
     queryFn: () => fetchDashboard(type),
     staleTime: DASHBOARD_QUERY_STALE_TIME_MS,
     placeholderData: (previousData) => previousData,
+    retry: 1,
   })
 }
 

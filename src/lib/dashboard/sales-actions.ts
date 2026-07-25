@@ -64,6 +64,7 @@ export interface SalesActionPlanInput {
   outboundEmails: ActionEmail[]
   inboundEmails: ActionEmail[]
   now?: Date
+  includeInvestorMemoActions?: boolean
 }
 
 const DAY_MS = 24 * 60 * 60 * 1000
@@ -75,12 +76,14 @@ export function getLeadBestAction({
   latestOutboundAt,
   outboundCount,
   now = new Date(),
+  includeInvestorMemoActions = true,
 }: {
   lead: ActionLead
   latestInboundAt: Date | null
   latestOutboundAt: Date | null
   outboundCount: number
   now?: Date
+  includeInvestorMemoActions?: boolean
 }): SalesAction | null {
   const icp = lead.icp_score ?? 0
   const daysSinceInbound = daysSince(latestInboundAt, now)
@@ -147,7 +150,7 @@ export function getLeadBestAction({
         ctaHref: `/leads/${lead.id}`,
         score: 950 + icp + recencyBoost(daysSinceInbound ?? daysSinceOutbound),
       })
-    } else if (lead.type === 'investor' && !lead.investor_memo) {
+    } else if (includeInvestorMemoActions && lead.type === 'investor' && !lead.investor_memo) {
       actions.push({
         id: `${lead.id}:investor_memo`,
         leadId: lead.id,
@@ -185,7 +188,7 @@ export function getLeadBestAction({
   }
 
   if (lead.stage === 'meeting_held') {
-    if (lead.type === 'investor' && !lead.investor_memo) {
+    if (includeInvestorMemoActions && lead.type === 'investor' && !lead.investor_memo) {
       actions.push({
         id: `${lead.id}:investor_memo`,
         leadId: lead.id,
@@ -229,7 +232,7 @@ export function getLeadBestAction({
   }
 
   // Investor memo action for other stages
-  if (lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
+  if (includeInvestorMemoActions && lead.type === 'investor' && !lead.investor_memo && ['researched', 'email_sent', 'follow_up', 'no_response'].includes(lead.stage)) {
     actions.push({
       id: `${lead.id}:investor_memo`,
       leadId: lead.id,
@@ -328,6 +331,7 @@ export function buildSalesActionPlan({
   outboundEmails,
   inboundEmails,
   now = new Date(),
+  includeInvestorMemoActions = true,
 }: SalesActionPlanInput): SalesAction[] {
   const outboundByLead = latestEmailByLead(outboundEmails)
   const inboundByLead = latestEmailByLead(inboundEmails)
@@ -350,6 +354,7 @@ export function buildSalesActionPlan({
       latestOutboundAt,
       outboundCount,
       now,
+      includeInvestorMemoActions,
     })
 
     if (action) {
