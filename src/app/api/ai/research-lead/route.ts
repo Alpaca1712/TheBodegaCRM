@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { ModelJSONParseError, researchWithWebSearchJSON } from '@/lib/ai/anthropic'
 import { attachGroundedFacts } from '@/lib/ai/research-grounding'
+import { normalizeResearchResultEnvelope } from '@/lib/ai/research-result'
 import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
@@ -67,7 +68,7 @@ WRITING RULES FOR ALL TEXT FIELDS:
 - Write in plain, conversational English. No corporate jargon.
 - Be specific and cite real sources (blog post titles, podcast names, repo names).
 
-After searching, return ONLY valid JSON with this structure:
+After searching, return exactly ONE JSON object, never an array or a list of candidates. Return ONLY valid JSON with this structure:
 {
   "contact_name": "The person's full name (ALWAYS include this, even if it was provided in the input)",
   "company_name": "The company they work at (ALWAYS include this, even if it was provided in the input)",
@@ -236,7 +237,8 @@ export async function POST(request: NextRequest) {
       buildResearchPrompt(researchInput),
       { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
     )
-    const parsedResult = researchResultSchema.safeParse(rawResult)
+    const normalizedResult = normalizeResearchResultEnvelope(rawResult)
+    const parsedResult = researchResultSchema.safeParse(normalizedResult)
     if (!parsedResult.success) {
       console.error('Research response failed schema validation:', parsedResult.error.flatten())
       throw new ModelJSONParseError()
