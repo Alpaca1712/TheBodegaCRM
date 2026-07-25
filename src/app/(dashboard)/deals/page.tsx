@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState, type ComponentType } from 'react'
 import Link from 'next/link'
 import {
   ArrowRight,
+  BarChart3,
   BriefcaseBusiness,
   CalendarCheck,
   DollarSign,
@@ -17,9 +18,11 @@ import { Button } from '@/components/ui/button'
 import {
   DEAL_STAGE_LABELS,
   DEAL_STAGES,
+  type CampaignRevenueAttribution,
   type DealStage,
   type OpportunityWithRelations,
 } from '@/types/deals'
+import { CAMPAIGN_TYPE_LABELS } from '@/types/campaigns'
 
 const currency = new Intl.NumberFormat('en-US', {
   style: 'currency',
@@ -29,16 +32,25 @@ const currency = new Intl.NumberFormat('en-US', {
 
 export default function DealsPage() {
   const [deals, setDeals] = useState<OpportunityWithRelations[]>([])
+  const [attribution, setAttribution] = useState<CampaignRevenueAttribution | null>(null)
   const [loading, setLoading] = useState(true)
   const [movingId, setMovingId] = useState<string | null>(null)
 
   const loadDeals = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/deals')
-      const data = await res.json()
-      if (!res.ok) throw new Error(data?.error || 'Failed to load deal flow')
-      setDeals(data.data || [])
+      const [dealsRes, attributionRes] = await Promise.all([
+        fetch('/api/deals'),
+        fetch('/api/deals/attribution'),
+      ])
+      const [dealsData, attributionData] = await Promise.all([
+        dealsRes.json(),
+        attributionRes.json(),
+      ])
+      if (!dealsRes.ok) throw new Error(dealsData?.error || 'Failed to load deal flow')
+      if (!attributionRes.ok) throw new Error(attributionData?.error || 'Failed to load revenue attribution')
+      setDeals(dealsData.data || [])
+      setAttribution(attributionData.data || null)
     } catch (error) {
       toast.error(error instanceof Error ? error.message : 'Failed to load deal flow')
     } finally {
@@ -120,6 +132,8 @@ export default function DealsPage() {
         <Metric icon={ArrowRight} label="Won" value={currency.format(metrics.won)} />
       </div>
 
+      <RevenueAttributionSection attribution={attribution} loading={loading} />
+
       {loading && deals.length === 0 ? (
         <div className="flex min-h-[320px] items-center justify-center text-sm text-zinc-500">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -151,6 +165,88 @@ export default function DealsPage() {
         </div>
       )}
     </div>
+  )
+}
+
+function RevenueAttributionSection({
+  attribution,
+  loading,
+}: {
+  attribution: CampaignRevenueAttribution | null
+  loading: boolean
+}) {
+  return (
+    <section className="overflow-hidden border-y border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900/40">
+      <div className="flex flex-col gap-2 px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <BarChart3 className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+            <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Revenue attribution</h2>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+            Pipeline and closed revenue credited to the campaign that created the opportunity.
+          </p>
+        </div>
+        {attribution && (
+          <div className="flex items-center gap-4 text-xs tabular-nums text-zinc-500 dark:text-zinc-400">
+            <span><strong className="font-semibold text-zinc-900 dark:text-zinc-100">{attribution.totals.lead_to_deal_rate}%</strong> lead to deal</span>
+            <span><strong className="font-semibold text-zinc-900 dark:text-zinc-100">{currency.format(attribution.totals.won_revenue)}</strong> won</span>
+          </div>
+        )}
+      </div>
+
+      {loading && !attribution ? (
+        <div className="flex h-24 items-center justify-center border-t border-zinc-100 text-xs text-zinc-500 dark:border-zinc-800">
+          <Loader2 className="mr-2 h-3.5 w-3.5 animate-spin" />
+          Loading attribution
+        </div>
+      ) : !attribution || attribution.campaigns.length === 0 ? (
+        <div className="border-t border-zinc-100 px-4 py-8 text-center dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No attributed revenue yet</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Campaign meetings and linked deals will appear here.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border-t border-zinc-100 dark:border-zinc-800">
+          <table className="w-full min-w-[900px] text-left text-xs">
+            <thead className="bg-zinc-50 text-[10px] font-semibold uppercase text-zinc-400 dark:bg-zinc-950/50">
+              <tr>
+                <th className="px-4 py-2.5">Campaign</th>
+                <th className="px-3 py-2.5 text-right">Leads</th>
+                <th className="px-3 py-2.5 text-right">Deals</th>
+                <th className="px-3 py-2.5 text-right">Lead to deal</th>
+                <th className="px-3 py-2.5 text-right">Open pipeline</th>
+                <th className="px-3 py-2.5 text-right">Weighted</th>
+                <th className="px-4 py-2.5 text-right">Won revenue</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {attribution.campaigns.map((row) => (
+                <tr key={row.campaign_id || 'unattributed'} className="text-zinc-700 dark:text-zinc-300">
+                  <td className="px-4 py-3">
+                    {row.campaign_id ? (
+                      <Link href={`/campaigns/${row.campaign_id}`} className="font-semibold text-zinc-950 hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
+                        {row.campaign_name}
+                      </Link>
+                    ) : (
+                      <span className="font-semibold text-zinc-950 dark:text-zinc-100">{row.campaign_name}</span>
+                    )}
+                    <p className="mt-0.5 text-[10px] text-zinc-400">
+                      {row.campaign_type ? CAMPAIGN_TYPE_LABELS[row.campaign_type] : 'No campaign source'}
+                    </p>
+                  </td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.enrolled_leads}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.opportunities}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{row.lead_to_deal_rate}%</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{currency.format(row.pipeline_value)}</td>
+                  <td className="px-3 py-3 text-right tabular-nums">{currency.format(row.weighted_pipeline)}</td>
+                  <td className="px-4 py-3 text-right font-semibold tabular-nums text-emerald-700 dark:text-emerald-300">{currency.format(row.won_revenue)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
   )
 }
 

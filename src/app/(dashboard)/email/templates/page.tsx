@@ -7,7 +7,7 @@ import { Plus, FileText, Sparkles } from 'lucide-react'
 import Link from 'next/link'
 
 export const metadata: Metadata = {
-  title: 'Email Templates | TheBodegaCRM',
+  title: 'Email Templates | Bodega',
   description: 'Manage your reusable email templates for follow-ups and communications',
 }
 

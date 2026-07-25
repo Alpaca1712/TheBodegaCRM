@@ -83,7 +83,10 @@ export async function POST(request: NextRequest) {
 
     if (!lead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
 
-    if (input.campaign_id) {
+    let campaignId = input.campaign_id || null
+    let campaignEnrollmentId: string | null = null
+
+    if (campaignId) {
       const { data: campaign } = await supabase
         .from('campaigns')
         .select('id')
@@ -93,6 +96,24 @@ export async function POST(request: NextRequest) {
       if (!campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
     }
 
+    let enrollmentQuery = supabase
+      .from('campaign_enrollments')
+      .select('id,campaign_id,status,last_event_at')
+      .eq('lead_id', input.lead_id)
+      .eq('org_id', orgId)
+      .in('status', ['active', 'completed'])
+      .order('last_event_at', { ascending: false })
+      .limit(1)
+
+    if (campaignId) enrollmentQuery = enrollmentQuery.eq('campaign_id', campaignId)
+
+    const { data: attributedEnrollment, error: enrollmentError } = await enrollmentQuery.maybeSingle()
+    if (enrollmentError) throw enrollmentError
+    if (attributedEnrollment) {
+      campaignId = campaignId || attributedEnrollment.campaign_id
+      campaignEnrollmentId = attributedEnrollment.id
+    }
+
     const stage = input.stage as DealStage
     const { data, error } = await supabase
       .from('opportunities')
@@ -100,7 +121,8 @@ export async function POST(request: NextRequest) {
         org_id: orgId,
         user_id: user.id,
         lead_id: input.lead_id,
-        campaign_id: input.campaign_id || null,
+        campaign_id: campaignId,
+        campaign_enrollment_id: campaignEnrollmentId,
         name: input.name || `${lead.company_name || lead.contact_name} Deal`,
         stage,
         status: statusForDealStage(stage),
@@ -113,6 +135,8 @@ export async function POST(request: NextRequest) {
         source: input.source || lead.source || 'manual',
         attribution: {
           lead_token: lead.lead_token,
+          campaign_id: campaignId,
+          campaign_enrollment_id: campaignEnrollmentId,
           ...(input.attribution || {}),
         },
       })

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { enrollLeadInCampaign, recordCampaignEvent } from '@/lib/campaigns/server'
+import { enrollLeadInCampaign, getActiveCampaignEnrollment, recordCampaignEvent } from '@/lib/campaigns/server'
 import {
   buildLeadProfilePatchFromChallenge,
   hasChallengeProfile,
@@ -309,7 +309,7 @@ export async function POST(request: NextRequest) {
       utm_campaign: input.utm_campaign,
       referrer: input.referrer,
     }
-    const initialCampaignStageKey = await resolveCampaignStageForIntent(
+    let initialCampaignStageKey = await resolveCampaignStageForIntent(
       supabase,
       resolvedCampaign.id,
       orgId,
@@ -450,29 +450,56 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    let enrollmentCampaign = resolvedCampaign
+    const activeEnrollment = await getActiveCampaignEnrollment(supabase, orgId, lead.id)
+    if (activeEnrollment && activeEnrollment.campaign_id !== resolvedCampaign.id) {
+      const { data: activeCampaign, error: activeCampaignError } = await supabase
+        .from('campaigns')
+        .select('*')
+        .eq('id', activeEnrollment.campaign_id)
+        .eq('org_id', orgId)
+        .single()
+      if (activeCampaignError) throw activeCampaignError
+      enrollmentCampaign = activeCampaign as Campaign
+      initialCampaignStageKey = await resolveCampaignStageForIntent(
+        supabase,
+        enrollmentCampaign.id,
+        orgId,
+        input.intent,
+      )
+    }
+
+    const enrollmentAttributionMetadata = {
+      ...attributionMetadata,
+      requested_campaign_id: resolvedCampaign.id,
+      requested_campaign_slug: resolvedCampaign.slug,
+      campaign_id: enrollmentCampaign.id,
+      campaign_slug: enrollmentCampaign.slug,
+    }
+
     const enrollment = await enrollLeadInCampaign({
       supabase,
-      campaign: resolvedCampaign,
+      campaign: enrollmentCampaign,
       leadId: lead.id,
       userId,
       orgId,
       stageKey: initialCampaignStageKey,
-      metadata: attributionMetadata,
+      metadata: enrollmentAttributionMetadata,
     })
 
     const campaignEvent = await recordCampaignEvent({
       supabase,
-      campaignId: resolvedCampaign.id,
+      campaignId: enrollmentCampaign.id,
       enrollmentId: enrollment.id,
       leadId: lead.id,
       orgId,
       userId,
       eventType: campaignEventForIntent(input.intent),
-      metadata: attributionMetadata,
+      metadata: enrollmentAttributionMetadata,
     })
 
     await supabase.from('campaign_attribution_events').insert({
-      campaign_id: resolvedCampaign.id,
+      campaign_id: enrollmentCampaign.id,
       lead_id: lead.id,
       campaign_enrollment_id: enrollment.id,
       org_id: orgId,
@@ -482,14 +509,14 @@ export async function POST(request: NextRequest) {
       lead_token: lead.lead_token || leadToken,
       source,
       medium: input.utm_medium || (input.intent === 'conference_scan' ? 'in_person' : 'landing'),
-      campaign_slug: resolvedCampaign.slug,
+      campaign_slug: enrollmentCampaign.slug,
       utm_source: input.utm_source,
       utm_medium: input.utm_medium,
       utm_campaign: input.utm_campaign,
       referrer: input.referrer,
       user_agent: request.headers.get('user-agent'),
       metadata: {
-        ...attributionMetadata,
+        ...enrollmentAttributionMetadata,
         campaign_event_id: campaignEvent.id,
       },
     })
@@ -497,8 +524,8 @@ export async function POST(request: NextRequest) {
     return json({
       data: {
         lead_id: lead.id,
-        campaign_id: resolvedCampaign.id,
-        campaign_slug: resolvedCampaign.slug,
+        campaign_id: enrollmentCampaign.id,
+        campaign_slug: enrollmentCampaign.slug,
         campaign_enrollment_id: enrollment.id,
         lead_token: lead.lead_token || leadToken,
         created: leadWasCreated,

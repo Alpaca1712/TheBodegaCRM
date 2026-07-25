@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { Mail } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Check Your Email | TheBodegaCRM',
+  title: 'Check Your Email | Bodega',
   description: 'Verify your email address to complete signup',
 };
 

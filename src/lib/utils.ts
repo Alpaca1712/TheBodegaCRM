@@ -1,5 +1,5 @@
 /**
- * Utility functions for TheBodegaCRM
+ * Utility functions for Bodega
  */
 
 export function cn(...classes: (string | boolean | undefined | null)[]) {

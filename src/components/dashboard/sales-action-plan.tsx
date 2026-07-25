@@ -40,6 +40,7 @@ const CATEGORY_ICONS: Record<string, React.ReactNode> = {
   meeting_recap: <MessageSquare className="h-4 w-4 text-purple-500" />,
   review: <ClipboardCheck className="h-4 w-4 text-emerald-500" />,
   investor_memo: <FileText className="h-4 w-4 text-indigo-500" />,
+  automation: <AlertCircle className="h-4 w-4 text-red-500" />,
 };
 
 const PRIORITY_CONFIG: Record<string, { color: string; label: string; dot: string }> = {
@@ -72,8 +73,8 @@ export default function SalesActionPlan({
     return (
       <div className="rounded-xl border border-dashed border-zinc-200 dark:border-zinc-700 p-8 text-center bg-white dark:bg-zinc-900/50">
         <CheckCircle2 className="h-8 w-8 text-emerald-500 mx-auto mb-3" />
-        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Action plan clear</p>
-        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">You&apos;re all caught up on critical sales actions.</p>
+        <p className="text-sm font-semibold text-zinc-900 dark:text-zinc-100">Today is clear</p>
+        <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-1">No urgent sales or automation work needs attention.</p>
       </div>
     );
   }
@@ -83,9 +84,9 @@ export default function SalesActionPlan({
       <div className="flex items-center justify-between mb-4">
         <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2">
           <Target className="h-4 w-4 text-red-500" />
-          Sales Action Plan
+          Today
         </h2>
-        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">Prioritized by AI</span>
+        <span className="text-[10px] font-bold text-zinc-400 uppercase tracking-widest">{actions.length} prioritized actions</span>
       </div>
 
       <div className="space-y-3">

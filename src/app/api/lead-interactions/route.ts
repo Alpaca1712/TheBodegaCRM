@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { enrollLeadInCampaign, getCampaignByIdOrSlug, recordCampaignEvent } from '@/lib/campaigns/server'
+import { isActiveCampaignConflictError } from '@/lib/campaigns/enrollment-policy'
 import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
 import { generateJSON } from '@/lib/ai/anthropic'
 import { INTERACTION_CHANNELS, INTERACTION_TYPES } from '@/types/leads'
@@ -340,6 +341,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ interaction, lead: updatedLead, analysis })
   } catch (error) {
     console.error('POST /api/lead-interactions error:', error)
+    if (isActiveCampaignConflictError(error)) {
+      return NextResponse.json({ error: error.message, conflict: error.conflict }, { status: 409 })
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to create interaction' },
       { status: 500 }

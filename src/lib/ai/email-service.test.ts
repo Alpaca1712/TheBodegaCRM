@@ -29,7 +29,12 @@ const baseLead: Lead = {
   investment_thesis_notes: null,
   personal_details: 'Alex wrote about making property management feel more human.',
   smykm_hooks: ['Alex wrote about making property management feel more human.'],
-  research_sources: [],
+  research_sources: [{
+    url: 'https://example.com/alex-interview',
+    title: 'Alex Rivera interview',
+    detail: 'Alex wrote about making property management feel more human.',
+    facts: ['Alex wrote about making property management feel more human.'],
+  }],
   stage: 'researched',
   source_type: 'manual',
   source: null,
@@ -87,6 +92,19 @@ describe('buildInitialUserPrompt', () => {
     expect(leadMagnet).toContain('AI Security Playbook')
     expect(leadMagnet).toContain('Do not pretend it already exists')
   })
+
+  it('excludes legacy unsourced personal details and hooks from the draft context', () => {
+    const prompt = buildInitialUserPrompt({
+      ...baseLead,
+      personal_details: 'Alex lived on a $13 weekly food budget.',
+      smykm_hooks: ['Alex was a student pilot at Lunken.'],
+      research_sources: [],
+    }, 'mckenna')
+
+    expect(prompt).not.toContain('$13')
+    expect(prompt).not.toContain('student pilot')
+    expect(prompt).toContain('Use no recipient or company facts outside that list')
+  })
 })
 
 describe('generateInitialOutreach', () => {
@@ -96,8 +114,16 @@ describe('generateInitialOutreach', () => {
 
   it('scores initial variants against the normalized copy the user sees', async () => {
     mockGenerateJSON
-      .mockResolvedValueOnce({ subject: 'resident repair agent — trust', body: bodyWithNormalizedDash })
-      .mockResolvedValueOnce({ subject: 'resident repair agent — checklist', body: bodyWithNormalizedDash })
+      .mockResolvedValueOnce({
+        subject: 'resident repair agent — trust',
+        body: bodyWithNormalizedDash,
+        evidence_used: ['Alex wrote about making property management feel more human.'],
+      })
+      .mockResolvedValueOnce({
+        subject: 'resident repair agent — checklist',
+        body: bodyWithNormalizedDash,
+        evidence_used: ['Alex wrote about making property management feel more human.'],
+      })
 
     const result = await generateInitialOutreach(baseLead)
 

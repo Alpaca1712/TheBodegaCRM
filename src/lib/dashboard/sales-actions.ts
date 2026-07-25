@@ -11,6 +11,7 @@ export type SalesActionCategory =
   | 'meeting_recap'
   | 'review'
   | 'investor_memo'
+  | 'automation'
 
 export interface SalesAction {
   id: string

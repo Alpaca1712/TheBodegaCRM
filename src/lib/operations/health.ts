@@ -4,7 +4,7 @@ type HealthEnv = Record<string, string | undefined>
 
 export interface ServiceHealth {
   status: ServiceHealthStatus
-  service: 'pigeon-crm'
+  service: 'bodega-crm'
   timestamp: string
   checks: {
     supabase: CapabilityStatus
@@ -67,7 +67,7 @@ export function getServiceHealth(
 
   return {
     status,
-    service: 'pigeon-crm',
+    service: 'bodega-crm',
     timestamp: now.toISOString(),
     checks,
   }

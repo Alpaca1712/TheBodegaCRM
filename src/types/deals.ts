@@ -100,3 +100,23 @@ export interface DealFlowMetrics {
   won: number
   weighted_value: number
 }
+
+export interface CampaignRevenueAttributionRow {
+  campaign_id: string | null
+  campaign_name: string
+  campaign_type: import('@/types/campaigns').CampaignType | null
+  enrolled_leads: number
+  opportunities: number
+  open_deals: number
+  won_deals: number
+  pipeline_value: number
+  weighted_pipeline: number
+  won_revenue: number
+  lead_to_deal_rate: number
+  win_rate: number
+}
+
+export interface CampaignRevenueAttribution {
+  campaigns: CampaignRevenueAttributionRow[]
+  totals: Omit<CampaignRevenueAttributionRow, 'campaign_id' | 'campaign_name' | 'campaign_type'>
+}

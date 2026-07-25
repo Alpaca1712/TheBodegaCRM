@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
+import { ModelJSONParseError } from '@/lib/ai/anthropic'
+import { UngroundedEmailError } from '@/lib/ai/email-grounding'
 import { generateFollowupOutreach } from '@/lib/ai/email-service'
-import { Lead } from '@/types/leads'
+import { Lead, LeadEmail } from '@/types/leads'
 
 const requestSchema = z.object({
   lead: z.any(),
@@ -31,39 +33,57 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Fetch agent memories for progressive personalization
-    let memories: Array<{ memory_type: string; content: string }> = []
-    if (validation.data.lead.id) {
-      try {
-        const { data: ownedLead } = await supabase
+    let lead = validation.data.lead as Lead
+    let emailThread = validation.data.emailThread as LeadEmail[]
+    if (lead.id) {
+      const [leadResult, emailResult] = await Promise.all([
+        supabase
           .from('leads')
-          .select('id')
-          .eq('id', validation.data.lead.id)
+          .select('*')
+          .eq('id', lead.id)
           .eq('user_id', user.id)
-          .single()
-        if (ownedLead) {
-          const { data } = await supabase
-            .from('agent_memory')
-            .select('memory_type, content')
-            .eq('lead_id', validation.data.lead.id)
-            .order('relevance_score', { ascending: false })
-            .limit(10)
-          memories = data || []
-        }
-      } catch {
-        // Non-critical
+          .maybeSingle(),
+        supabase
+          .from('lead_emails')
+          .select('*')
+          .eq('lead_id', lead.id)
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: true }),
+      ])
+
+      if (leadResult.error) throw leadResult.error
+      if (emailResult.error) throw emailResult.error
+      if (!leadResult.data) {
+        return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
       }
+
+      lead = leadResult.data as Lead
+      emailThread = (emailResult.data || []) as LeadEmail[]
     }
 
     const result = await generateFollowupOutreach({
       ...validation.data,
-      lead: validation.data.lead as Lead,
-      memories
+      lead,
+      emailThread,
     })
 
     return NextResponse.json(result)
   } catch (error) {
     console.error('Generate follow-up error:', error)
+    if (error instanceof ModelJSONParseError) {
+      return NextResponse.json(
+        { error: 'The AI returned an invalid email format. Please retry.' },
+        { status: 502 },
+      )
+    }
+    if (error instanceof UngroundedEmailError) {
+      return NextResponse.json(
+        {
+          error: 'Draft blocked because it included an unsupported fact. Re-run research or use only source-linked details.',
+        },
+        { status: 422 },
+      )
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate follow-up' },
       { status: 500 }

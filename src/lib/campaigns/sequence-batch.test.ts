@@ -47,7 +47,7 @@ describe('runCampaignSequenceBatch', () => {
 
   it('labels expired Gmail credentials without stopping later campaigns', async () => {
     const runCampaign = vi.fn(async ({ campaignId }: { campaignId: string }) => {
-      if (campaignId === 'campaign-a') throw new GmailTokenExpiredError('Reconnect Gmail')
+      if (campaignId === 'campaign-a') throw new GmailTokenExpiredError()
       return {
         campaign_id: campaignId,
         due: 0,

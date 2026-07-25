@@ -1,6 +1,8 @@
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
-import { buildSalesActionPlan } from '@/lib/dashboard/sales-actions'
+import { buildSalesActionPlan, type SalesAction } from '@/lib/dashboard/sales-actions'
+import { isMissingRelation } from '@/lib/supabase/missing-column'
 import { NextResponse } from 'next/server'
+import type { LeadType, PipelineStage } from '@/types/leads'
 
 const DASHBOARD_LEAD_FIELDS = 'id, contact_name, company_name, stage, type, icp_score, last_contacted_at, last_inbound_at, last_outbound_at, updated_at, conversation_next_step, conversation_signals, smykm_hooks, company_description, battle_card, investor_memo, total_emails_out' as const
 
@@ -28,7 +30,7 @@ export async function GET(req: Request) {
       leadsQuery = leadsQuery.eq('type', type)
     }
 
-    const [leadsRes, emailsRes, interactionsRes] = await Promise.all([
+    const [leadsRes, emailsRes, interactionsRes, automationFailuresRes] = await Promise.all([
       leadsQuery,
       supabase
         .from('lead_emails')
@@ -36,11 +38,22 @@ export async function GET(req: Request) {
         .eq('org_id', orgId)
         .order('created_at', { ascending: true }),
       supabase.from('lead_interactions').select('lead_id').eq('org_id', orgId),
+      supabase
+        .from('campaign_sequence_executions')
+        .select('id,campaign_id,lead_id,error_message,created_at,campaign:campaigns(name),lead:leads(contact_name,company_name,type,stage)')
+        .eq('org_id', orgId)
+        .eq('status', 'failed')
+        .gte('created_at', weekAgo.toISOString())
+        .order('created_at', { ascending: false })
+        .limit(10),
     ])
 
     if (leadsRes.error) throw leadsRes.error
     if (emailsRes.error) throw emailsRes.error
     if (interactionsRes.error) throw interactionsRes.error
+    if (automationFailuresRes.error && !isMissingRelation(automationFailuresRes.error, 'campaign_sequence_executions')) {
+      throw automationFailuresRes.error
+    }
 
     const leads = leadsRes.data || []
     const leadIds = new Set(leads.map(l => l.id))
@@ -164,12 +177,39 @@ export async function GET(req: Request) {
       if (!['researched', 'email_drafted', 'closed_won', 'closed_lost'].includes(lead.stage)) activePipeline++
     }
 
-    const salesActionPlan = buildSalesActionPlan({
+    const leadIdsForDashboard = new Set(leads.map((lead) => lead.id))
+    const automationActions = (automationFailuresRes.error ? [] : automationFailuresRes.data || [])
+      .reduce<SalesAction[]>((actions, failure) => {
+        const failureLead = Array.isArray(failure.lead) ? failure.lead[0] : failure.lead
+        const failureCampaign = Array.isArray(failure.campaign) ? failure.campaign[0] : failure.campaign
+        if (!failureLead || !leadIdsForDashboard.has(failure.lead_id)) return actions
+        actions.push({
+          id: `automation:${failure.id}`,
+          leadId: failure.lead_id,
+          leadName: failureLead.contact_name,
+          leadType: failureLead.type as LeadType,
+          leadStage: failureLead.stage as PipelineStage,
+          companyName: failureLead.company_name,
+          priority: 'critical' as const,
+          category: 'automation' as const,
+          title: `Fix automation for ${failureLead.contact_name}`,
+          reason: `${failureCampaign?.name || 'Campaign'} could not deliver a sequence step.`,
+          recommendedAction: failure.error_message || 'Open the campaign run inspector, fix the rule, then run due automations again.',
+          ctaLabel: 'Inspect run',
+          ctaHref: `/campaigns/${failure.campaign_id}`,
+          score: 1_500,
+        })
+        return actions
+      }, [])
+
+    const salesActionPlan = [...automationActions, ...buildSalesActionPlan({
       leads,
       outboundEmails,
       inboundEmails,
       now,
-    })
+    })]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 7)
 
     const response = NextResponse.json({
       totalLeads: leads.length,

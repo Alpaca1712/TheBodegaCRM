@@ -5,10 +5,10 @@ export default function Home() {
     <div className="flex min-h-screen flex-col items-center justify-center bg-zinc-50 px-4 py-12 sm:px-6 lg:px-8">
       <main className="flex w-full max-w-lg flex-col items-center gap-8 text-center">
         <h1 className="text-4xl font-bold tracking-tight text-zinc-900 sm:text-5xl">
-          TheBodegaCRM
+          Bodega
         </h1>
         <p className="text-lg leading-8 text-zinc-600">
-          Manage your contacts, companies, deals, and activities—all in one place.
+          Pigeon&apos;s campaign CRM for outreach, attribution, automation, and revenue.
         </p>
         <div className="flex flex-col gap-4 sm:flex-row">
           <Link

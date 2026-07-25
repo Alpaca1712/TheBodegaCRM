@@ -1,5 +1,11 @@
 import { generateJSON } from './anthropic'
 import { checkEmailQuality, countWords, normalizeGeneratedEmail } from './quality'
+import {
+  buildEmailEvidence,
+  EvidenceAwareDraft,
+  formatEmailEvidence,
+  validateEvidenceAwareDraft,
+} from './email-grounding'
 import { Lead, LeadEmail, EmailVariant, CtaType, GeneratedEmail } from '@/types/leads'
 
 export const PIGEON_IDENTITY = `=== ABOUT PIGEON (use ONLY these facts, never invent capabilities or results) ===
@@ -24,7 +30,10 @@ const INITIAL_OUTREACH_RULES = `RESEARCH AND RELEVANCE PRINCIPLES:
 - Show Me You Know Me: use one verifiable detail that proves this was written for the recipient. A second detail is allowed only in a short P.S.
 - Do not force the personal detail to explain the security problem. Personalization earns attention; relevance earns the reply.
 - Lead with the problem the buyer feels and the useful outcome, not a description of Pigeon.
-- Use the recipient's language when the research provides it. Never embellish a fact or pretend you used their product.
+- Use the recipient's language only when it appears in VERIFIED EVIDENCE. Never embellish a fact or pretend you used their product.
+- Treat VERIFIED EVIDENCE as a closed book. Do not add facts from memory, training data, assumptions, or likely-sounding biography.
+- If VERIFIED EVIDENCE has no personal detail, skip personal biography and use only their CRM role, company, or product.
+- Copy every factual detail used in the subject or body into evidence_used exactly as it appears in VERIFIED EVIDENCE.
 - The offer must match the requested mode: either a lead magnet or Pigeon's core security offer.
 
 SUBJECT:
@@ -49,7 +58,7 @@ CEO, Pigeon
 BANNED PHRASES: "the question nobody's asking," "in today's landscape," "at the intersection of," "game-changer," "revolutionize," "I hope this finds you well," "I came across your," "I was impressed by," "I noticed that," "I wanted to reach out," "I'd love to connect," "fascinating intersection," "fascinating attack surface," "fun contrast," "perfect storm," "massive attack surface," "just checking in," "circling back," "wanted to follow up," "bumping this," "inspired by."
 
 Respond with ONLY valid JSON:
-{"subject": "...", "body": "..."}`
+{"subject": "...", "body": "...", "evidence_used": ["exact fact copied from VERIFIED EVIDENCE"]}`
 
 export const CUSTOMER_SYSTEM_PROMPT = `You are Daniel Chalco, CEO of Pigeon, writing a first cold email to a SaaS buyer.
 
@@ -80,16 +89,17 @@ ${PIGEON_IDENTITY}
 
 LANGUAGE: Write like you're texting a smart friend. No jargon. No "agentic pentesting," "adversarial inputs," "prompt injection," "data exfiltration," or "attack surface" unless the lead uses those terms first.
 
-CRITICAL: Never invent clients, findings, or results.
+CRITICAL: Never invent clients, findings, results, biography, quotes, numbers, employers, hobbies, or life events.
+GROUNDING: Treat VERIFIED EVIDENCE and the FULL EMAIL THREAD as a closed book. Do not use facts from training data, old unsourced hooks, assumptions, or likely-sounding biography. Copy every factual detail used in the draft into evidence_used exactly as it appears in VERIFIED EVIDENCE.
 ===
 
-You have the FULL conversation history, deep research, SMYKM hooks, and sometimes STRATEGIC DIRECTION with a specific angle or offer Daniel wants to use.
+You have the FULL conversation history, source-linked research, and sometimes STRATEGIC DIRECTION with a specific angle or offer Daniel wants to use.
 
 CORE PRINCIPLE: Every follow-up must deliver or offer VALUE. Never just "check in." Each touchpoint should give them something useful: a relevant insight, a free resource, a case study, a specific finding, or a concrete offer. The reader should think "this person keeps giving me useful stuff" not "this person keeps asking for my time."
 
 PRIORITY ORDER:
 1. If STRATEGIC DIRECTION is provided, that IS the email. Build the entire follow-up around that strategy, offer, or angle. Don't just mention it. Make it the core pitch. Write it like Daniel would actually write it: direct, confident, a little provocative, with a clear offer that has teeth.
-2. If no strategic direction, use SMYKM hooks and the conversation history to write a short, personally specific follow-up that STILL leads with value (a new insight, a relevant article, a finding about their product, a case study of a similar company).
+2. If no strategic direction, use VERIFIED EVIDENCE and the conversation history to write a short, personally specific follow-up that STILL leads with value.
 
 TONE: Direct, confident, slightly provocative. You're a founder making a real offer, not a marketer writing copy. Think bar conversation, not LinkedIn post. Short sentences. No filler.
 
@@ -111,36 +121,14 @@ HARD RULES:
 - Every follow-up MUST contain a value offer (free resource, insight, case study, assessment, finding). No empty asks.
 
 Respond with ONLY valid JSON:
-{"subject": "...", "body": "...", "channel": "email|linkedin|twitter"}`
+{"subject": "...", "body": "...", "channel": "email|linkedin|twitter", "evidence_used": ["exact fact copied from VERIFIED EVIDENCE"]}`
 
 export function buildInitialUserPrompt(
   lead: Lead,
   ctaStyle: CtaType,
   customContext?: string,
-  memories?: Array<{ memory_type: string; content: string }>
 ): string {
-  const bc = lead.battle_card;
-
-  const research = [
-    lead.company_description && `Company: ${lead.company_description}`,
-    lead.product_name && `Product: ${lead.product_name}`,
-    lead.fund_name && `Fund: ${lead.fund_name}`,
-    lead.attack_surface_notes && `Attack Surface: ${lead.attack_surface_notes}`,
-    lead.investment_thesis_notes && `Investment Thesis: ${lead.investment_thesis_notes}`,
-    lead.personal_details && `Personal Details: ${lead.personal_details}`,
-    lead.smykm_hooks?.length && `SMYKM Hooks: ${lead.smykm_hooks.join('; ')}`,
-    lead.icp_score != null && `ICP Score: ${lead.icp_score}/100`,
-    lead.icp_reasons?.length && `ICP Fit Reasons: ${lead.icp_reasons.join(', ')}`,
-    bc?.our_angle && `STRATEGIC ANGLE: ${bc.our_angle}`,
-    bc?.their_product && `PRODUCT INTEL: ${bc.their_product}`,
-    bc?.tech_stack?.length && `TECH STACK: ${bc.tech_stack.join(', ')}`,
-    bc?.their_weaknesses?.length && `TARGET WEAKNESSES: ${bc.their_weaknesses.join(', ')}`,
-    bc?.competitive_landscape?.length && `COMPETITIVE LANDSCAPE: ${bc.competitive_landscape.join(', ')}`,
-    bc?.trigger_events?.length && `TRIGGER EVENTS (use for urgency): ${bc.trigger_events.join(', ')}`,
-    bc?.decision_makers?.length && `DECISION MAKERS & CONCERNS: ${bc.decision_makers.map(dm => `${dm.role}: ${dm.concerns}`).join('; ')}`,
-  ]
-    .filter(Boolean)
-    .join('\n')
+  const evidence = buildEmailEvidence({ lead, customContext })
 
   const ctaInstruction =
     ctaStyle === 'mckenna'
@@ -157,23 +145,14 @@ export function buildInitialUserPrompt(
 - Keep the ask tiny and permission-based: "Want me to send it?" or similarly natural language.
 - Do not ask for a meeting in this version. The lead magnet must be useful without a sales call.`
 
-  const customSection = customContext?.trim()
-    ? `\n\nCAMPAIGN AND OFFER CONTEXT (use this to select the exact problem, asset, or core offer):
-DANIEL'S NOTES:
-${customContext.trim()}`
-    : ''
-
-  const memorySection = memories?.length
-    ? `\n\nAGENT MEMORIES (facts remembered from past interactions, use to deepen personalization):
-${memories.map(m => `- [${m.memory_type}] ${m.content}`).join('\n')}`
-    : ''
-
   return `Write a cold email to ${lead.contact_name}${lead.contact_title ? ` (${lead.contact_title})` : ''} at ${lead.company_name}.
 
 ${ctaInstruction}
 
-LEAD RESEARCH:
-${research}${memorySection}${customSection}`
+VERIFIED EVIDENCE:
+${formatEmailEvidence(evidence)}
+
+Use no recipient or company facts outside that list. Old personal details, SMYKM hooks, battle cards, ICP analysis, and agent memories are intentionally excluded because they are not source-level evidence.`
 }
 
 export function buildFollowupUserPrompt(input: {
@@ -181,11 +160,8 @@ export function buildFollowupUserPrompt(input: {
   emailThread: LeadEmail[];
   followUpNumber: number;
   customContext?: string;
-  memories?: Array<{ memory_type: string; content: string }>;
 }): string {
   const { lead, emailThread, followUpNumber, customContext } = input
-  const bc = lead.battle_card;
-
   const sections: string[] = []
 
   sections.push(`=== LEAD ===
@@ -193,52 +169,13 @@ Name: ${lead.contact_name}
 Title: ${lead.contact_title || 'Unknown'}
 Company: ${lead.company_name}
 Type: ${lead.type}
-Stage: ${lead.stage}${lead.icp_score ? `\nICP Score: ${lead.icp_score}/100` : ''}${lead.icp_reasons?.length ? `\nICP Reasons: ${lead.icp_reasons.join(', ')}` : ''}`)
+Stage: ${lead.stage}`)
 
-  if (bc?.our_angle) {
-    sections.push(`=== STRATEGIC GTM ANGLE (Use this to shape the pitch) ===\n${bc.our_angle}`)
-  }
+  const evidence = buildEmailEvidence({ lead, customContext, emailThread })
+  sections.push(`=== VERIFIED EVIDENCE (closed book) ===
+${formatEmailEvidence(evidence)}
 
-  if (lead.company_description) {
-    sections.push(`=== COMPANY ===\n${lead.company_description}`)
-  }
-
-  if (bc?.our_angle || bc?.their_product || bc?.their_weaknesses?.length || bc?.trigger_events?.length) {
-    sections.push(`=== BATTLE CARD / STRATEGY ===
-${bc?.our_angle ? `OUR ANGLE: ${bc.our_angle}\n` : ''}${bc?.their_product ? `PRODUCT INTEL: ${bc.their_product}\n` : ''}${bc?.their_weaknesses?.length ? `TARGET WEAKNESSES: ${bc.their_weaknesses.join(', ')}\n` : ''}${bc?.trigger_events?.length ? `TRIGGER EVENTS (use for urgency): ${bc.trigger_events.join(', ')}\n` : ''}${bc?.decision_makers?.length ? `DECISION MAKERS: ${bc.decision_makers.map(dm => `${dm.role}: ${dm.concerns}`).join('; ')}` : ''}`)
-  }
-
-  if (lead.type === 'customer' && lead.attack_surface_notes) {
-    sections.push(`=== ATTACK SURFACE (how their AI is vulnerable) ===\n${lead.attack_surface_notes}`)
-  }
-  if (lead.type === 'investor' && lead.investment_thesis_notes) {
-    sections.push(`=== INVESTMENT THESIS ===\n${lead.investment_thesis_notes}`)
-  }
-  if (lead.type === 'partnership' && lead.investment_thesis_notes) {
-    sections.push(`=== PARTNERSHIP NOTES ===\n${lead.investment_thesis_notes}`)
-  }
-
-  if (lead.personal_details) {
-    sections.push(`=== PERSONAL DETAILS (career arc, blog posts, podcasts, side projects) ===\n${lead.personal_details}`)
-  }
-
-  if (lead.smykm_hooks?.length) {
-    sections.push(`=== SMYKM HOOKS (use these, they're details only this person would recognize) ===\n${lead.smykm_hooks.map((h, i) => `${i + 1}. ${h}`).join('\n')}`)
-  }
-
-  if (lead.conversation_summary) {
-    sections.push(`=== AI CONVERSATION SUMMARY ===\n${lead.conversation_summary}`)
-  }
-  if (lead.conversation_next_step) {
-    sections.push(`=== RECOMMENDED NEXT STEP ===\n${lead.conversation_next_step}`)
-  }
-  if (lead.notes) {
-    sections.push(`=== MANUAL NOTES ===\n${lead.notes}`)
-  }
-
-  if (input.memories?.length) {
-    sections.push(`=== AGENT MEMORIES (facts from past interactions, use for deeper personalization) ===\n${input.memories.map(m => `- [${m.memory_type}] ${m.content}`).join('\n')}`)
-  }
+Do not add recipient or company facts outside this list and the literal email thread below. Old personal details, SMYKM hooks, battle cards, summaries, and agent memories are intentionally excluded because they are not source-level evidence.`)
 
   if (emailThread.length > 0) {
     const threadStr = emailThread
@@ -275,7 +212,7 @@ ${lead.type === 'investor' ? 'If they want more info: "I have a one-pager with o
 If "let's chat": "What works for you? I'll send an invite. In the meantime, here's a quick overview of what we'd cover so you can see if it's worth your time."
 If "not now": Be graceful. One sentence. Leave a standing offer: "If you ever want a free assessment of [their agent], the offer stands."
 
-${hasStrategy ? 'The STRATEGIC DIRECTION above should inform your response angle.' : 'Weave in a SMYKM hook if it fits naturally. Don\'t force it.'}
+${hasStrategy ? 'The STRATEGIC DIRECTION above should inform your response angle.' : 'Use verified evidence if it fits naturally. Do not force personalization.'}
 ${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : 'MAX: 40-60 words.'}`
   }
 
@@ -291,7 +228,7 @@ Structure:
 2. Deliver on a promise or add new value: send the thing you said you'd send, share a relevant finding, or offer a concrete next step with a deliverable attached. Be specific: what, who, when.
 3. Close with a clear, low-friction ask. Always attach value: "I'll have the assessment results by Friday" or "Here's the case study I mentioned."
 
-${hasStrategy ? 'The STRATEGIC DIRECTION above should shape the angle of this follow-up.' : 'Use SMYKM hooks from the meeting if you have them.'}
+${hasStrategy ? 'The STRATEGIC DIRECTION above should shape the angle of this follow-up.' : 'Use only details from verified evidence or the literal email thread.'}
 - Tone: warm but direct. You're building on momentum, not restarting.
 - Do NOT summarize the entire meeting. Pick the one thing that matters most.
 - The follow-up should make them feel like working with you is already underway, not like they still need to decide.`
@@ -303,8 +240,8 @@ ${hasStrategy ? 'The STRATEGIC DIRECTION above should shape the angle of this fo
 === TASK: FOLLOW-UP #1 (Day 4, The Bump + New Insight) ===
 ${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : '40-70 words. Two to three sentences.'}
 - Do NOT reference the original email ("as I mentioned," "following up on my last email"). They know.
-${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle. Build the whole email around it.' : `- Lead with a NEW piece of value: a relevant insight about their industry, a stat about AI agent vulnerabilities in their space, or something new you noticed about their product.
-- Then connect it to a specific free resource or offer: "We just finished an assessment for a similar [their industry] company. Happy to share the anonymized findings if useful."`}
+${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle. Build the whole email around it.' : `- Lead with a useful general risk pattern Pigeon would test. Do not add a statistic, product observation, case study, or completed finding unless it is in VERIFIED EVIDENCE.
+- Then connect it to a specific free resource or offer without claiming it came from a completed client assessment.`}
 - Be the person they'd want to grab coffee with.
 - The reader should learn something new or get offered something useful. No empty bumps.`
   }
@@ -316,14 +253,14 @@ ${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle. Build th
       ? `Offer a concrete deliverable: a one-page market map of the AI agent security space, a breakdown of how their portfolio companies are exposed, or a memo on why this category is about to explode. Frame it casually: "easier to skim than another email from me."`
       : lead.type === 'partnership'
       ? `Offer a concrete deliverable: a co-branded assessment template, a joint case study outline, or a breakdown of how their clients' AI agents are exposed. Frame it around what THEIR clients get.`
-      : `Offer a concrete deliverable: a free security assessment of one of their AI agents, a vulnerability report template, or a case study of how a similar company found and fixed critical issues. Frame it as "I already put this together" energy.`
+      : `Offer a concrete deliverable: a free security assessment outline, a report template, or a checklist for the product path named in VERIFIED EVIDENCE. Mention a case study only if that case study is explicitly present in VERIFIED EVIDENCE.`
 
     return `${context}
 
 === TASK: FOLLOW-UP #2 (Day 9, The Value Drop) ===
 ${hasStrategy ? 'Length: as long as the strategy needs, but tight.' : '40-60 words. Two to three sentences.'}
 ${typeSpecific}
-- New SMYKM hook. Don't recycle.
+- Use a different verified detail only if one is available. Do not recycle or invent one.
 - Don't ask for a meeting. Just offer the deliverable.
 - The deliverable must be SPECIFIC to their situation (name their product, their industry, their agent type). Not generic.
 - Slightly funny or clever framing. Not corporate.`
@@ -338,7 +275,7 @@ ${hasStrategy ? 'Keep it short but let the strategy breathe. DMs are casual.' : 
 - Acknowledge you emailed. Don't apologize for it.
 ${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle.' : `- Drop grounded proof only. Use a verified example from the supplied context, or share a general risk pattern you would test without claiming a completed finding.
 - Never invent a completed assessment, client result, or specific vulnerability count. Say "we would test" or "I can send a checklist" unless the fact appears in the thread or lead research.
-- One SMYKM hook that proves you're not mass-blasting.`}
+- One source-linked detail that proves you're not mass-blasting, if one is available.`}
 - Offer value, not a meeting. Even the DM should give them something.
 - Tone: casual, like you're DMing someone you met at a conference`
   }
@@ -349,7 +286,7 @@ ${hasStrategy ? '- The STRATEGIC DIRECTION above is your primary angle.' : `- Dr
 ${hasStrategy ? 'Short but make the offer land. Every word counts.' : '20-35 words. Two to three sentences.'}
 - Give them an easy out. Be memorable.
 ${hasStrategy ? '- Use the STRATEGIC DIRECTION as your final angle.' : `- Leave a STANDING OFFER: something they can take you up on anytime. "If you ever want a free assessment of [their specific agent], the offer stands. No expiration."
-- One final cheeky SMYKM reference if it fits.`}
+- One final source-linked reference if it fits.`}
 - Leave the door open without being needy. The standing offer does the work.
 - They should feel like they're losing access to something valuable, not being pestered.`
 }
@@ -357,7 +294,6 @@ ${hasStrategy ? '- Use the STRATEGIC DIRECTION as your final angle.' : `- Leave 
 export async function generateInitialOutreach(
   lead: Lead,
   customContext?: string,
-  memories?: Array<{ memory_type: string; content: string }>
 ): Promise<GeneratedEmail> {
   const systemPromptMap: Record<string, string> = {
     customer: CUSTOMER_SYSTEM_PROMPT,
@@ -367,19 +303,21 @@ export async function generateInitialOutreach(
   const systemPrompt = systemPromptMap[lead.type] || CUSTOMER_SYSTEM_PROMPT
 
   const [mckennaResult, hormoziResult] = await Promise.all([
-    generateJSON<{ subject: string; body: string }>(
+    generateJSON<EvidenceAwareDraft>(
       systemPrompt,
-      buildInitialUserPrompt(lead, 'mckenna', customContext, memories),
+      buildInitialUserPrompt(lead, 'mckenna', customContext),
       { temperature: 0.95, maxTokens: 4096 }
     ),
-    generateJSON<{ subject: string; body: string }>(
+    generateJSON<EvidenceAwareDraft>(
       systemPrompt,
-      buildInitialUserPrompt(lead, 'hormozi', customContext, memories),
+      buildInitialUserPrompt(lead, 'hormozi', customContext),
       { temperature: 0.95, maxTokens: 4096 }
     ),
   ])
 
-  const normalizeResult = (result: { subject: string; body: string }, ctaType: CtaType): EmailVariant => {
+  const evidence = buildEmailEvidence({ lead, customContext })
+  const normalizeResult = (result: EvidenceAwareDraft, ctaType: CtaType): EmailVariant => {
+    validateEvidenceAwareDraft(result, evidence)
     const subject = normalizeGeneratedEmail(result.subject)
     const body = normalizeGeneratedEmail(result.body)
 
@@ -403,23 +341,30 @@ export async function generateFollowupOutreach(input: {
   emailThread: LeadEmail[];
   followUpNumber: number;
   customContext?: string;
-  memories?: Array<{ memory_type: string; content: string }>;
 }): Promise<{ subject: string; body: string; channel: string; quality: ReturnType<typeof checkEmailQuality>; wordCount: number }> {
-  const result = await generateJSON<{
-    subject: string
-    body: string
-    channel: 'email' | 'linkedin' | 'twitter'
-  }>(FOLLOWUP_SYSTEM_PROMPT, buildFollowupUserPrompt(input), {
-    temperature: 0.95,
-    maxTokens: 4096,
-  })
+  const result = await generateJSON<EvidenceAwareDraft>(
+    FOLLOWUP_SYSTEM_PROMPT,
+    buildFollowupUserPrompt(input),
+    {
+      temperature: 0.95,
+      maxTokens: 4096,
+    },
+  )
 
+  validateEvidenceAwareDraft(
+    result,
+    buildEmailEvidence({
+      lead: input.lead,
+      customContext: input.customContext,
+      emailThread: input.emailThread,
+    }),
+  )
   const subject = normalizeGeneratedEmail(result.subject)
   const body = normalizeGeneratedEmail(result.body)
   const quality = checkEmailQuality(subject, body, 'follow_up')
 
   return {
-    ...result,
+    channel: result.channel || 'email',
     subject,
     body,
     wordCount: countWords(body),

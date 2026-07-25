@@ -87,6 +87,7 @@ export interface ResearchSource {
   url: string
   title: string
   detail: string
+  facts?: string[]
 }
 
 export const PRIORITIES = ['high', 'medium', 'low'] as const
@@ -294,6 +295,7 @@ export const leadFormSchema = z.object({
     url: z.string(),
     title: z.string(),
     detail: z.string(),
+    facts: z.array(z.string()).optional(),
   })).default([]),
   stage: z.enum(PIPELINE_STAGES).default('researched'),
   source_type: z.enum(LEAD_SOURCE_TYPES).default('manual'),

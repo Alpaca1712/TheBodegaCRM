@@ -3,7 +3,7 @@ import Link from 'next/link';
 import AuthForm from '@/components/auth/auth-form';
 
 export const metadata: Metadata = {
-  title: 'Login | TheBodegaCRM',
+  title: 'Login | Bodega',
   description: 'Sign in to your CRM account',
 };
 
@@ -21,7 +21,7 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       <div className="w-full max-w-md space-y-8">
         <div>
           <h1 className="text-center text-3xl font-bold tracking-tight text-zinc-900">
-            TheBodegaCRM
+            Bodega
           </h1>
           <h2 className="mt-6 text-center text-2xl font-bold text-zinc-900">
             Sign in to your account

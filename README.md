@@ -1,6 +1,6 @@
-# Pigeon CRM
+# Bodega CRM
 
-Pigeon is a campaign-focused CRM for running outbound and inbound funnels, tracking attributed landing-page activity, automating Gmail follow-ups, and moving qualified leads into deal flow.
+Bodega is Pigeon's campaign-focused CRM for running outbound and inbound funnels, tracking attributed landing-page activity, automating Gmail follow-ups, and moving qualified leads into deal flow.
 
 ## Stack
 
@@ -69,7 +69,7 @@ npm run build
 1. Apply all pending Supabase migrations before deploying application code.
 2. Configure every production variable from `.env.example` in Vercel.
 3. Confirm the Google OAuth callback matches the production domain and that Gmail, Drive, and Docs APIs are enabled.
-4. Confirm Pigeon CRM and Pigeon Landing share the same `LEAD_TOKEN_SECRET` and Supabase project.
+4. Confirm Bodega and Pigeon Landing share the same `LEAD_TOKEN_SECRET` and Supabase project.
 5. Check `/api/health` after deployment.
 6. Run the sequence endpoint manually with `Authorization: Bearer $CRON_SECRET` and inspect its per-campaign outcome summary.
 

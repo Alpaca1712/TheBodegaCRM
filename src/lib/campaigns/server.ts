@@ -1,6 +1,10 @@
 import { createClient } from '@/lib/supabase/server'
 import { ensureOpportunityForCampaignMeeting } from '@/lib/deals/server'
 import {
+  ActiveCampaignConflictError,
+  isActiveCampaignUniqueViolation,
+} from '@/lib/campaigns/enrollment-policy'
+import {
   CAMPAIGN_TEMPLATES,
   DEFAULT_TEMPLATE_BY_CAMPAIGN_TYPE,
   type Campaign,
@@ -145,6 +149,24 @@ export async function getCampaignTemplateKey(supabase: SupabaseServerClient, cam
   return (data?.template_key || null) as CampaignTemplateKey | null
 }
 
+export async function getActiveCampaignEnrollment(
+  supabase: SupabaseServerClient,
+  orgId: string,
+  leadId: string,
+) {
+  const { data, error } = await supabase
+    .from('campaign_enrollments')
+    .select('id,campaign_id,stage_key,status,campaign:campaigns(name)')
+    .eq('lead_id', leadId)
+    .eq('org_id', orgId)
+    .eq('status', 'active')
+    .limit(1)
+    .maybeSingle()
+
+  if (error) throw error
+  return data
+}
+
 export async function enrollLeadInCampaign({
   supabase,
   campaign,
@@ -162,7 +184,21 @@ export async function enrollLeadInCampaign({
   stageKey?: string | null
   metadata?: Record<string, unknown>
 }) {
-  const { data: existing } = await supabase
+  const activeEnrollment = await getActiveCampaignEnrollment(supabase, orgId, leadId)
+
+  if (activeEnrollment && activeEnrollment.campaign_id !== campaign.id) {
+    const relatedCampaign = Array.isArray(activeEnrollment.campaign)
+      ? activeEnrollment.campaign[0]
+      : activeEnrollment.campaign
+    throw new ActiveCampaignConflictError({
+      enrollmentId: activeEnrollment.id,
+      campaignId: activeEnrollment.campaign_id,
+      campaignName: relatedCampaign?.name || 'another campaign',
+      stageKey: activeEnrollment.stage_key,
+    })
+  }
+
+  const { data: existing, error: existingError } = await supabase
     .from('campaign_enrollments')
     .select('*')
     .eq('campaign_id', campaign.id)
@@ -170,7 +206,8 @@ export async function enrollLeadInCampaign({
     .eq('org_id', orgId)
     .maybeSingle()
 
-  if (existing) return existing
+  if (existingError) throw existingError
+  if (existing?.status === 'active') return existing
 
   const { data: firstStage } = await supabase
     .from('campaign_stages')
@@ -181,23 +218,46 @@ export async function enrollLeadInCampaign({
     .limit(1)
     .single()
 
+  const initialStageKey = stageKey || firstStage?.stage_key || 'to_send'
   const insert = {
     campaign_id: campaign.id,
     lead_id: leadId,
     org_id: orgId,
     user_id: userId,
-    stage_key: stageKey || firstStage?.stage_key || 'to_send',
+    stage_key: initialStageKey,
+    status: 'active',
     metadata: metadata || {},
     last_event_at: new Date().toISOString(),
   }
 
-  const { data, error } = await supabase
-    .from('campaign_enrollments')
-    .insert(insert)
-    .select()
-    .single()
+  const query = existing
+    ? supabase
+        .from('campaign_enrollments')
+        .update({
+          stage_key: initialStageKey,
+          status: 'active',
+          enrolled_at: new Date().toISOString(),
+          completed_at: null,
+          last_event_at: insert.last_event_at,
+          metadata: metadata || {},
+        })
+        .eq('id', existing.id)
+        .eq('org_id', orgId)
+    : supabase.from('campaign_enrollments').insert(insert)
 
-  if (error) throw error
+  const { data, error } = await query.select().single()
+
+  if (error) {
+    if (isActiveCampaignUniqueViolation(error)) {
+      throw new ActiveCampaignConflictError({
+        enrollmentId: activeEnrollment?.id || '',
+        campaignId: activeEnrollment?.campaign_id || '',
+        campaignName: 'another campaign',
+        stageKey: activeEnrollment?.stage_key || '',
+      })
+    }
+    throw error
+  }
 
   await recordCampaignEvent({
     supabase,
@@ -253,7 +313,7 @@ export async function recordCampaignEvent({
       .eq('org_id', orgId)
       .maybeSingle()
 
-    if (enrollment?.status === 'completed') lockedStageKey = enrollment.stage_key
+    if (enrollment && enrollment.status !== 'active') lockedStageKey = enrollment.stage_key
   }
 
   if (!resolvedEnrollmentId && leadId) {
@@ -265,7 +325,7 @@ export async function recordCampaignEvent({
       .eq('org_id', orgId)
       .maybeSingle()
     resolvedEnrollmentId = enrollment?.id || null
-    if (enrollment?.status === 'completed') lockedStageKey = enrollment.stage_key
+    if (enrollment && enrollment.status !== 'active') lockedStageKey = enrollment.stage_key
   }
 
   const nextStageKey = lockedStageKey || stageKey || stageForCampaignEvent(templateKey, eventType)
@@ -291,7 +351,7 @@ export async function recordCampaignEvent({
         .update({
           stage_key: nextStageKey,
           status,
-          completed_at: stage.is_goal ? now : null,
+          completed_at: stage.is_goal || stage.is_terminal ? now : null,
           last_event_at: now,
         })
         .eq('id', resolvedEnrollmentId)

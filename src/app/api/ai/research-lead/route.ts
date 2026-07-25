@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { researchWithWebSearchJSON } from '@/lib/ai/anthropic'
+import { ModelJSONParseError, researchWithWebSearchJSON } from '@/lib/ai/anthropic'
+import { attachGroundedFacts } from '@/lib/ai/research-grounding'
 import { createClient } from '@/lib/supabase/server'
 
 const requestSchema = z.object({
@@ -54,10 +55,12 @@ Also search for their contact information, company details, and visual identity:
 - Key team members at the company: search the company's team/about page and LinkedIn company page. Find names, titles, departments, and LinkedIn URLs of key people (executives, VPs, directors, product leads). This is critical for building an org chart.
 
 SOURCING RULES:
-- For EVERY fact you include in personal_details, smykm_hooks, attack_surface_notes, or investment_thesis_notes, you MUST include the source URL in the "research_sources" array.
+- Every personal fact or personalization hook MUST appear in grounded_personal_facts with the exact URL that supports it.
+- The source_url on every grounded fact MUST exactly match a URL in research_sources.
 - Each source should have: the URL you found it at, a short title, and a one-sentence description of what you found there.
 - Include ALL URLs you found useful during research (blog posts, GitHub repos, podcast pages, news articles, company pages, etc.)
-- If you found a detail but can't provide a URL, still include it in the text fields but don't fabricate a URL.
+- If you cannot provide a real source URL for a detail, omit the detail completely. Never save an unsourced biography, quote, number, employer, hobby, life event, or anecdote.
+- Do not combine facts from multiple people with similar names. Confirm the source refers to this exact person and company.
 
 WRITING RULES FOR ALL TEXT FIELDS:
 - NEVER use em dashes (\u2014) or en dashes (\u2013) anywhere in any field. Use commas, periods, "and", colons, or parentheses instead. This is critical because this research feeds directly into cold emails.
@@ -71,8 +74,13 @@ After searching, return ONLY valid JSON with this structure:
   "company_description": "What the company does, in 2-3 sentences. Be specific about their product.",
   "attack_surface_notes": "For customers: specific ways their AI agent/product could be vulnerable. Name channels, tools, data access patterns. For investors: null",
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
-  "personal_details": "Personal story, career arc, interesting background details. Include specific blog post titles, podcast episode names, conference talk titles, GitHub repos. Cite real sources you found.",
-  "smykm_hooks": ["3-5 specific details that ONLY this person would recognize in a subject line or email opener. These should reference real things you found: a specific blog post title, a quote from a podcast, a GitHub repo name, an old company they founded, etc."],
+  "grounded_personal_facts": [
+    {
+      "fact": "One atomic, verifiable personal or professional fact copied without embellishment",
+      "source_url": "https://the-exact-source-url.com/page",
+      "use_as_hook": true
+    }
+  ],
   "research_sources": [
     {"url": "https://example.com/article", "title": "Article or page title", "detail": "What you found here (1 sentence)"},
     {"url": "https://github.com/user/repo", "title": "GitHub repo name", "detail": "What this repo is about"}
@@ -130,37 +138,41 @@ IMPORTANT: Always return "contact_name" and "company_name" in your JSON response
 ${focusMap[leadType]}`
 }
 
-interface ResearchSource {
-  url: string
-  title: string
-  detail: string
-}
+const researchResultSchema = z.object({
+  contact_name: z.string().nullable().default(null),
+  company_name: z.string().nullable().default(null),
+  company_description: z.string().default(''),
+  attack_surface_notes: z.string().nullable().default(null),
+  investment_thesis_notes: z.string().nullable().default(null),
+  grounded_personal_facts: z.array(z.object({
+    fact: z.string().min(1),
+    source_url: z.string().url(),
+    use_as_hook: z.boolean().optional().default(false),
+  })).default([]),
+  research_sources: z.array(z.object({
+    url: z.string().url(),
+    title: z.string().default('Source'),
+    detail: z.string().default(''),
+  })).default([]),
+  contact_email: z.string().nullable().default(null),
+  contact_linkedin: z.string().nullable().default(null),
+  contact_twitter: z.string().nullable().default(null),
+  contact_title: z.string().nullable().default(null),
+  contact_phone: z.string().nullable().default(null),
+  company_website: z.string().nullable().default(null),
+  contact_photo_url: z.string().nullable().default(null),
+  company_logo_url: z.string().nullable().default(null),
+  team_members: z.array(z.object({
+    name: z.string(),
+    title: z.string(),
+    department: z.string().nullable().default(null),
+    linkedin_url: z.string().nullable().default(null),
+  })).default([]),
+})
 
-interface TeamMember {
-  name: string
-  title: string
-  department: string | null
-  linkedin_url: string | null
-}
-
-interface ResearchResult {
-  contact_name: string | null
-  company_name: string | null
-  company_description: string
-  attack_surface_notes: string | null
-  investment_thesis_notes: string | null
+type ResearchResult = z.infer<typeof researchResultSchema> & {
   personal_details: string
   smykm_hooks: string[]
-  research_sources: ResearchSource[]
-  contact_email: string | null
-  contact_linkedin: string | null
-  contact_twitter: string | null
-  contact_title: string | null
-  contact_phone: string | null
-  company_website: string | null
-  contact_photo_url: string | null
-  company_logo_url: string | null
-  team_members: TeamMember[]
 }
 
 export async function POST(request: NextRequest) {
@@ -219,11 +231,27 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const result = await researchWithWebSearchJSON<ResearchResult>(
+    const rawResult = await researchWithWebSearchJSON<unknown>(
       RESEARCH_SYSTEM_PROMPT,
       buildResearchPrompt(researchInput),
       { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
     )
+    const parsedResult = researchResultSchema.safeParse(rawResult)
+    if (!parsedResult.success) {
+      console.error('Research response failed schema validation:', parsedResult.error.flatten())
+      throw new ModelJSONParseError()
+    }
+
+    const grounded = attachGroundedFacts(
+      parsedResult.data.research_sources,
+      parsedResult.data.grounded_personal_facts,
+    )
+    const result: ResearchResult = {
+      ...parsedResult.data,
+      research_sources: grounded.sources,
+      personal_details: grounded.personalDetails,
+      smykm_hooks: grounded.smykmHooks,
+    }
 
     const strip = (s: string | null) => s ? s.replace(/[\u2013\u2014]/g, ',') : s
     result.company_description = strip(result.company_description) ?? result.company_description
@@ -238,8 +266,6 @@ export async function POST(request: NextRequest) {
         result.company_logo_url = `https://logo.clearbit.com/${domain}`
       } catch { /* ignore */ }
     }
-
-    if (!result.team_members) result.team_members = []
 
     if (leadId) {
       const updateData: Record<string, unknown> = {
@@ -287,6 +313,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(result)
   } catch (error) {
     console.error('Research lead error:', error)
+    if (error instanceof ModelJSONParseError) {
+      return NextResponse.json(
+        { error: 'The AI returned invalid research data. Please retry.' },
+        { status: 502 },
+      )
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to research lead' },
       { status: 500 }

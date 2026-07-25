@@ -47,7 +47,7 @@ export async function GET(
 
     if (campaignError || !campaign) return NextResponse.json({ error: 'Campaign not found' }, { status: 404 })
 
-    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes, sequenceExecutionsRes, leadMagnetsRes] = await Promise.all([
+    const [pipelineRes, stagesRes, enrollmentsRes, eventsRes, sequenceStepsRes, sequenceExecutionsRes, leadMagnetsRes, activeElsewhereRes] = await Promise.all([
       supabase
         .from('campaign_pipelines')
         .select('*')
@@ -107,6 +107,12 @@ export async function GET(
         .eq('org_id', orgId)
         .order('is_default', { ascending: false })
         .order('created_at', { ascending: true }),
+      supabase
+        .from('campaign_enrollments')
+        .select('lead_id')
+        .eq('org_id', orgId)
+        .eq('status', 'active')
+        .neq('campaign_id', id),
     ])
 
     if (pipelineRes.error) throw pipelineRes.error
@@ -122,6 +128,7 @@ export async function GET(
     if (leadMagnetsRes.error && !isMissingRelation(leadMagnetsRes.error, 'campaign_lead_magnets')) {
       throw leadMagnetsRes.error
     }
+    if (activeElsewhereRes.error) throw activeElsewhereRes.error
 
     let enrollments = (enrollmentsRes.data || []) as CampaignEnrollmentWithLead[]
     const events = (eventsRes.data || []) as CampaignEvent[]
@@ -169,6 +176,7 @@ export async function GET(
       sequence_steps: (sequenceStepsRes.error ? [] : sequenceStepsRes.data || []) as CampaignAutomationStep[],
       sequence_executions: (sequenceExecutionsRes.error ? [] : sequenceExecutionsRes.data || []) as CampaignSequenceExecution[],
       lead_magnets: (leadMagnetsRes.error ? [] : leadMagnetsRes.data || []) as CampaignLeadMagnet[],
+      blocked_lead_ids: Array.from(new Set((activeElsewhereRes.data || []).map((row) => row.lead_id))),
       metrics: campaignMetricsFromRows(
         enrollments.map((row) => ({ campaign_id: row.campaign_id, stage_key: row.stage_key })),
         events.map((event) => ({

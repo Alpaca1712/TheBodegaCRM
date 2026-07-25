@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireUser, rateLimitResponse } from '@/lib/api/auth-guard'
+import { ModelJSONParseError } from '@/lib/ai/anthropic'
+import { UngroundedEmailError } from '@/lib/ai/email-grounding'
 import { generateInitialOutreach, generateFollowupOutreach } from '@/lib/ai/email-service'
 import { computeFollowUp } from '@/lib/follow-ups/follow-up-engine'
 import { Lead, LeadEmail, EmailType } from '@/types/leads'
@@ -42,19 +44,11 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No immediate outreach step recommended' }, { status: 400 })
     }
 
-    // 3. Fetch agent memories
-    const { data: memories } = await supabase
-      .from('agent_memory')
-      .select('memory_type, content')
-      .eq('lead_id', leadId)
-      .order('relevance_score', { ascending: false })
-      .limit(10)
-
-    // 4. Generate variants
+    // 3. Generate variants
     let bestVariant: { subject: string; body: string; ctaType?: string }
 
     if (followUpItem.suggestedType === 'initial_outreach') {
-      const result = await generateInitialOutreach(lead as Lead, undefined, memories || [])
+      const result = await generateInitialOutreach(lead as Lead)
       // Pick the one with the higher quality score
       bestVariant = (result.mckenna.quality?.score || 0) >= (result.hormozi.quality?.score || 0)
         ? result.mckenna
@@ -84,12 +78,11 @@ export async function POST(request: NextRequest) {
         lead: effectiveLead as Lead,
         emailThread,
         followUpNumber,
-        memories: memories || []
       })
       bestVariant = result
     }
 
-    // 5. Save as draft
+    // 4. Save as draft
     const emailType: EmailType = followUpItem.suggestedType === 'initial_outreach' ? 'initial'
       : followUpItem.suggestedType === 'reply_needed' ? 'reply_response'
       : followUpItem.suggestedType === 'post_meeting' ? 'reply_response'
@@ -114,7 +107,7 @@ export async function POST(request: NextRequest) {
 
     if (saveError) throw saveError
 
-    // 6. Update lead stage
+    // 5. Update lead stage
     const { error: updateError } = await supabase.from('leads').update({
       stage: 'email_drafted',
       updated_at: new Date().toISOString()
@@ -126,6 +119,20 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, variant: bestVariant })
   } catch (error) {
     console.error('Draft next step error:', error)
+    if (error instanceof ModelJSONParseError) {
+      return NextResponse.json(
+        { error: 'The AI returned an invalid email format. Please retry.' },
+        { status: 502 },
+      )
+    }
+    if (error instanceof UngroundedEmailError) {
+      return NextResponse.json(
+        {
+          error: 'Draft blocked because it included an unsupported fact. Re-run research or use only source-linked details.',
+        },
+        { status: 422 },
+      )
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to draft next step' },
       { status: 500 }

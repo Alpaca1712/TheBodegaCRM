@@ -13,6 +13,90 @@ type ResearchOptions = GenerationOptions & {
   maxSearches?: number
 }
 
+export class ModelJSONParseError extends Error {
+  constructor() {
+    super('The AI returned an invalid structured response. Please retry.')
+    this.name = 'ModelJSONParseError'
+  }
+}
+
+function stripMarkdownFences(text: string): string {
+  return text
+    .replace(/```(?:json)?\s*/gi, '')
+    .replace(/```\s*/g, '')
+    .trim()
+}
+
+function extractJSONCandidates(text: string): string[] {
+  const candidates: string[] = []
+
+  for (let start = 0; start < text.length; start++) {
+    const opening = text[start]
+    if (opening !== '{' && opening !== '[') continue
+
+    const stack: string[] = []
+    let inString = false
+    let escaped = false
+
+    for (let index = start; index < text.length; index++) {
+      const char = text[index]
+
+      if (inString) {
+        if (escaped) {
+          escaped = false
+        } else if (char === '\\') {
+          escaped = true
+        } else if (char === '"') {
+          inString = false
+        }
+        continue
+      }
+
+      if (char === '"') {
+        inString = true
+        continue
+      }
+
+      if (char === '{' || char === '[') {
+        stack.push(char)
+        continue
+      }
+
+      if (char !== '}' && char !== ']') continue
+
+      const expectedOpening = char === '}' ? '{' : '['
+      if (stack.pop() !== expectedOpening) break
+
+      if (stack.length === 0) {
+        candidates.push(text.slice(start, index + 1))
+        break
+      }
+    }
+  }
+
+  return candidates
+}
+
+export function parseModelJSON<T>(text: string): T {
+  const cleaned = stripMarkdownFences(text)
+
+  try {
+    return JSON.parse(cleaned) as T
+  } catch {
+    // Some models wrap an otherwise valid response in a short explanation.
+  }
+
+  for (const candidate of extractJSONCandidates(cleaned)) {
+    try {
+      return JSON.parse(candidate) as T
+    } catch {
+      // Keep looking in case an earlier brace belonged to prose or an example.
+    }
+  }
+
+  throw new ModelJSONParseError()
+}
+
 function supportsSamplingParams(model: string): boolean {
   return !(
     model.startsWith('claude-fable-') ||
@@ -71,8 +155,7 @@ export async function generateJSON<T>(
   options?: GenerationOptions
 ): Promise<T> {
   const result = await generateCompletion(systemPrompt, userPrompt, options)
-  const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  return JSON.parse(cleaned)
+  return parseModelJSON<T>(result)
 }
 
 /**
@@ -112,24 +195,8 @@ export async function researchWithWebSearch(
 }
 
 /**
- * Try to extract a JSON object from text that may contain prose around it.
- * Finds the outermost { ... } pair by tracking brace depth.
- */
-function extractJSON(text: string): string | null {
-  const start = text.indexOf('{')
-  if (start === -1) return null
-  let depth = 0
-  for (let i = start; i < text.length; i++) {
-    if (text[i] === '{') depth++
-    else if (text[i] === '}') depth--
-    if (depth === 0) return text.slice(start, i + 1)
-  }
-  return null
-}
-
-/**
  * Like researchWithWebSearch, but parses the final text as JSON.
- * Uses a three-layer strategy: direct parse, regex extraction, then
+ * Uses a two-layer strategy: robust local extraction, then
  * a cheap AI call to reformat prose into JSON as a last resort.
  */
 export async function researchWithWebSearchJSON<T>(
@@ -138,21 +205,11 @@ export async function researchWithWebSearchJSON<T>(
   options?: ResearchOptions
 ): Promise<T> {
   const result = await researchWithWebSearch(systemPrompt, userPrompt, options)
-  const cleaned = result.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
 
   try {
-    return JSON.parse(cleaned)
-  } catch {
-    // Claude wrapped JSON in prose — try extracting the object
-  }
-
-  const jsonStr = extractJSON(cleaned)
-  if (jsonStr) {
-    try {
-      return JSON.parse(jsonStr)
-    } catch {
-      // Malformed JSON inside braces — fall through to AI extraction
-    }
+    return parseModelJSON<T>(result)
+  } catch (error) {
+    if (!(error instanceof ModelJSONParseError)) throw error
   }
 
   // Last resort: ask a fast model to extract/reformat the JSON
@@ -161,6 +218,5 @@ export async function researchWithWebSearchJSON<T>(
     result,
     { maxTokens: 4096, temperature: 0 }
   )
-  const extractedCleaned = extracted.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-  return JSON.parse(extractedCleaned)
+  return parseModelJSON<T>(extracted)
 }

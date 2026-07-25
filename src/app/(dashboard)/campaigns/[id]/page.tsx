@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState, type ComponentType, type DragEven
 import Link from 'next/link'
 import { useParams, useRouter } from 'next/navigation'
 import {
+  Activity,
   ArrowLeft,
   CalendarCheck,
   CheckCircle2,
@@ -114,7 +115,7 @@ interface SequenceStepForm {
   attachments: CampaignAutomationAttachment[]
 }
 
-type CampaignToolKey = 'lead_magnets' | 'sequences' | 'onboarding' | 'activity'
+type CampaignToolKey = 'lead_magnets' | 'sequences' | 'automation' | 'onboarding' | 'activity'
 
 export default function CampaignDetailPage() {
   const params = useParams<{ id: string }>()
@@ -174,9 +175,14 @@ export default function CampaignDetailPage() {
     [campaign?.enrollments],
   )
 
+  const blockedLeadIds = useMemo(
+    () => new Set(campaign?.blocked_lead_ids || []),
+    [campaign?.blocked_lead_ids],
+  )
+
   const availableLeads = useMemo(
-    () => leads.filter((lead) => !enrolledLeadIds.has(lead.id)),
-    [leads, enrolledLeadIds],
+    () => leads.filter((lead) => !enrolledLeadIds.has(lead.id) && !blockedLeadIds.has(lead.id)),
+    [leads, enrolledLeadIds, blockedLeadIds],
   )
 
   const filteredAvailableLeads = useMemo(() => {
@@ -587,11 +593,15 @@ export default function CampaignDetailPage() {
         activeSequenceCount={sequenceSteps.filter((step) => step.active).length}
         availableLeadCount={availableLeads.length}
         eventCount={campaign.events.length}
+        executionCount={campaign.sequence_executions?.length || 0}
+        automationFailureCount={(campaign.sequence_executions || []).filter((execution) => execution.status === 'failed').length}
       />
 
       {activeTool === 'lead_magnets' && <LeadMagnetsPanel campaign={campaign} onChanged={load} />}
 
       {activeTool === 'sequences' && <SequencePanel campaign={campaign} steps={sequenceSteps} onChanged={load} />}
+
+      {activeTool === 'automation' && <AutomationRunsPanel campaign={campaign} />}
 
       {activeTool === 'onboarding' && (
         <LeadOnboardingPanel
@@ -805,6 +815,8 @@ function CampaignToolStrip({
   activeSequenceCount,
   availableLeadCount,
   eventCount,
+  executionCount,
+  automationFailureCount,
 }: {
   activeTool: CampaignToolKey | null
   onToggleTool: (tool: CampaignToolKey) => void
@@ -814,6 +826,8 @@ function CampaignToolStrip({
   activeSequenceCount: number
   availableLeadCount: number
   eventCount: number
+  executionCount: number
+  automationFailureCount: number
 }) {
   const tools: Array<{
     key: CampaignToolKey
@@ -835,6 +849,13 @@ function CampaignToolStrip({
       label: 'Sequences',
       value: `${activeSequenceCount} on / ${sequenceCount} total`,
       hint: 'Automation rules',
+    },
+    {
+      key: 'automation',
+      icon: Activity,
+      label: 'Automation runs',
+      value: automationFailureCount > 0 ? `${automationFailureCount} need attention` : `${executionCount} runs`,
+      hint: automationFailureCount > 0 ? 'Review failed deliveries' : 'Delivery history',
     },
     {
       key: 'onboarding',
@@ -873,7 +894,7 @@ function CampaignToolStrip({
         )}
       </div>
 
-      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-5">
         {tools.map((tool) => (
           <CampaignToolButton
             key={tool.key}
@@ -3019,9 +3040,114 @@ function EventFeed({ events }: { events: CampaignEvent[] }) {
   )
 }
 
+function AutomationRunsPanel({ campaign }: { campaign: CampaignDetail }) {
+  const executions = campaign.sequence_executions || []
+  const stepsById = new Map(campaign.sequence_steps.map((step) => [step.id, step]))
+  const enrollmentsById = new Map(campaign.enrollments.map((enrollment) => [enrollment.id, enrollment]))
+  const counts = executions.reduce(
+    (result, execution) => {
+      result[execution.status] += 1
+      return result
+    },
+    { scheduled: 0, sent: 0, skipped: 0, failed: 0 },
+  )
+
+  const statusStyles: Record<CampaignSequenceExecution['status'], string> = {
+    scheduled: 'bg-blue-50 text-blue-700 dark:bg-blue-950/35 dark:text-blue-300',
+    sent: 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/35 dark:text-emerald-300',
+    skipped: 'bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-300',
+    failed: 'bg-red-50 text-red-700 dark:bg-red-950/35 dark:text-red-300',
+  }
+
+  return (
+    <section className="overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-sm dark:border-zinc-800 dark:bg-zinc-900/70">
+      <div className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-end sm:justify-between">
+        <div>
+          <div className="flex items-center gap-2">
+            <Activity className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <h2 className="text-sm font-semibold text-zinc-950 dark:text-zinc-100">Automation runs</h2>
+          </div>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">The latest sequence delivery result for every lead and rule.</p>
+        </div>
+        <div className="flex flex-wrap gap-2 text-[11px] font-medium">
+          {(['sent', 'scheduled', 'skipped', 'failed'] as const).map((status) => (
+            <span key={status} className={`rounded px-2 py-1 capitalize ${statusStyles[status]}`}>
+              {counts[status]} {status}
+            </span>
+          ))}
+        </div>
+      </div>
+
+      {executions.length === 0 ? (
+        <div className="border-t border-zinc-100 px-4 py-10 text-center dark:border-zinc-800">
+          <p className="text-sm font-medium text-zinc-900 dark:text-zinc-100">No automation runs yet</p>
+          <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">Active sequence rules will appear here after they are evaluated.</p>
+        </div>
+      ) : (
+        <div className="overflow-x-auto border-t border-zinc-100 dark:border-zinc-800">
+          <table className="w-full min-w-[780px] text-left text-xs">
+            <thead className="bg-zinc-50 text-[10px] font-semibold uppercase text-zinc-400 dark:bg-zinc-950/50">
+              <tr>
+                <th className="px-4 py-2.5">Lead</th>
+                <th className="px-3 py-2.5">Rule</th>
+                <th className="px-3 py-2.5">Result</th>
+                <th className="px-3 py-2.5">Detail</th>
+                <th className="px-4 py-2.5 text-right">When</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-zinc-100 dark:divide-zinc-800">
+              {executions.slice(0, 50).map((execution) => {
+                const enrollment = enrollmentsById.get(execution.campaign_enrollment_id)
+                const step = stepsById.get(execution.campaign_sequence_step_id)
+                const metadataReason = typeof execution.metadata?.reason === 'string' ? execution.metadata.reason : null
+                const detail = execution.error_message || metadataReason || (execution.status === 'sent' ? 'Delivered through Gmail' : 'Waiting for due time')
+                return (
+                  <tr key={execution.id} className="text-zinc-700 dark:text-zinc-300">
+                    <td className="px-4 py-3">
+                      {enrollment?.lead ? (
+                        <Link href={`/leads/${enrollment.lead.id}`} className="font-semibold text-zinc-950 hover:text-red-600 dark:text-zinc-100 dark:hover:text-red-400">
+                          {enrollment.lead.contact_name}
+                        </Link>
+                      ) : (
+                        <span className="font-medium">Removed lead</span>
+                      )}
+                      {enrollment?.lead?.company_name && <p className="mt-0.5 text-[10px] text-zinc-400">{enrollment.lead.company_name}</p>}
+                    </td>
+                    <td className="px-3 py-3 font-medium text-zinc-900 dark:text-zinc-100">{step?.name || 'Removed rule'}</td>
+                    <td className="px-3 py-3">
+                      <span className={`rounded px-2 py-1 text-[10px] font-semibold capitalize ${statusStyles[execution.status]}`}>
+                        {execution.status}
+                      </span>
+                    </td>
+                    <td className={`max-w-[360px] px-3 py-3 ${execution.status === 'failed' ? 'text-red-600 dark:text-red-300' : 'text-zinc-500 dark:text-zinc-400'}`}>
+                      <span className="line-clamp-2">{detail}</span>
+                    </td>
+                    <td className="px-4 py-3 text-right text-zinc-400">
+                      {formatDateTime(execution.executed_at || execution.due_at)}
+                    </td>
+                  </tr>
+                )
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </section>
+  )
+}
+
 function formatShortDate(value: string) {
   return new Intl.DateTimeFormat(undefined, {
     month: 'short',
     day: 'numeric',
+  }).format(new Date(value))
+}
+
+function formatDateTime(value: string) {
+  return new Intl.DateTimeFormat(undefined, {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
   }).format(new Date(value))
 }

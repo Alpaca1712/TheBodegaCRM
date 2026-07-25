@@ -138,7 +138,7 @@ export default function MobileBottomNav({
                   <div className="h-7 w-7 rounded-lg bg-red-600 flex items-center justify-center shadow-sm">
                     <span className="text-white font-bold text-xs">P</span>
                   </div>
-                  <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Pigeon</span>
+                  <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100 tracking-tight">Bodega</span>
                 </div>
                 <button
                   onClick={onToggleSidebar}

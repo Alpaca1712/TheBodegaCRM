@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { getServiceHealth } from './health'
 
 const completeEnv: NodeJS.ProcessEnv = {
+  NODE_ENV: 'test',
   NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
   SUPABASE_SERVICE_ROLE_KEY: 'service-role',
@@ -20,7 +21,7 @@ describe('getServiceHealth', () => {
 
     expect(health).toEqual({
       status: 'healthy',
-      service: 'pigeon-crm',
+      service: 'bodega-crm',
       timestamp: '2026-07-15T12:00:00.000Z',
       checks: {
         supabase: 'ready',

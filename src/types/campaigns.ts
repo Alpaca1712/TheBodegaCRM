@@ -201,7 +201,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'initial', label: 'Personalized opener', timing: 'Day 0', channel: 'email', goal: 'Send a SMYKM email that asks permission to share the free challenge.' },
@@ -225,7 +225,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'initial', label: 'Direct offer', timing: 'Day 0', channel: 'email', goal: 'Send the tracked challenge link for this specific lead.' },
@@ -248,7 +248,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'opt_in', label: 'Landing opt-in', timing: 'Instant', channel: 'landing', goal: 'Capture the lead from the campaign landing page.' },
@@ -271,7 +271,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'opt_in', label: 'Inbound opt-in', timing: 'Instant', channel: 'landing', goal: 'Capture the lead from the inbound source.' },
@@ -296,7 +296,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'message', label: 'Manual LinkedIn opener', timing: 'Day 0', channel: 'linkedin', goal: 'Send the first LinkedIn message manually and track the response.' },
@@ -320,7 +320,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'challenge_link_clicked', label: 'Challenge Link Clicked' },
       { key: 'application_completed', label: 'Application Completed' },
       { key: 'meeting_booked', label: 'Meeting Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'message', label: 'Manual LinkedIn opener', timing: 'Day 0', channel: 'linkedin', goal: 'Send the first LinkedIn message manually and track the response.' },
@@ -342,7 +342,7 @@ export const CAMPAIGN_TEMPLATES: Record<CampaignTemplateKey, CampaignTemplate> =
       { key: 'in_person_conversation', label: 'Met In Person' },
       { key: 'diagnostic_offered', label: 'Diagnostic Offered' },
       { key: 'discovery_booked', label: 'Discovery Booked', terminal: true, goal: true },
-      { key: 'nurture_lost', label: 'Nurture / Lost' },
+      { key: 'nurture_lost', label: 'Nurture / Lost', terminal: true },
     ],
     sequenceSteps: [
       { key: 'target', label: 'Dream 100 list', timing: '2 weeks before', channel: 'in_person', goal: 'Pick target accounts and reasons to meet.' },
@@ -486,4 +486,5 @@ export interface CampaignDetail extends CampaignListItem {
   sequence_steps: CampaignAutomationStep[]
   sequence_executions: CampaignSequenceExecution[]
   lead_magnets: CampaignLeadMagnet[]
+  blocked_lead_ids: string[]
 }

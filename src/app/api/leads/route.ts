@@ -4,6 +4,7 @@ import type { SupabaseClient } from '@supabase/supabase-js'
 import { isMissingColumn } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { enrollLeadInCampaign, getCampaignByIdOrSlug, recordCampaignEvent } from '@/lib/campaigns/server'
+import { isActiveCampaignConflictError } from '@/lib/campaigns/enrollment-policy'
 import { LEAD_SOURCE_TYPES, LEAD_TYPES, PIPELINE_STAGES, PRIORITIES } from '@/types/leads'
 
 const createSchema = z.object({
@@ -265,6 +266,9 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: 201 })
   } catch (error) {
     console.error('POST /api/leads error:', error)
+    if (isActiveCampaignConflictError(error)) {
+      return NextResponse.json({ error: error.message, conflict: error.conflict }, { status: 409 })
+    }
     return NextResponse.json(
       { error: getErrorMessage(error, 'Failed to create lead') },
       { status: 500 }

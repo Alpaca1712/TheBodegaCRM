@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { rateLimitResponse } from '@/lib/api/auth-guard'
+import { ModelJSONParseError } from '@/lib/ai/anthropic'
+import { UngroundedEmailError } from '@/lib/ai/email-grounding'
 import { generateInitialOutreach } from '@/lib/ai/email-service'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { isMissingRelation } from '@/lib/supabase/missing-column'
@@ -74,30 +76,20 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const { lead, campaignId, customContext } = validation.data
+    const { lead: incomingLead, campaignId, customContext } = validation.data
+    let lead = incomingLead as Lead
 
-    // Fetch agent memories for progressive personalization
-    let memories: Array<{ memory_type: string; content: string }> = []
-    if (lead.id) {
-      try {
-        const { data: ownedLead } = await supabase
-          .from('leads')
-          .select('id')
-          .eq('id', lead.id)
-          .eq('org_id', orgId)
-          .single()
-        if (ownedLead) {
-          const { data } = await supabase
-            .from('agent_memory')
-            .select('memory_type, content')
-            .eq('lead_id', lead.id)
-            .order('relevance_score', { ascending: false })
-            .limit(10)
-          memories = data || []
-        }
-      } catch {
-        // Non-critical
-      }
+    if (incomingLead.id) {
+      const { data: ownedLead, error: leadError } = await supabase
+        .from('leads')
+        .select('*')
+        .eq('id', incomingLead.id)
+        .eq('org_id', orgId)
+        .maybeSingle()
+
+      if (leadError) throw leadError
+      if (!ownedLead) return NextResponse.json({ error: 'Lead not found' }, { status: 404 })
+      lead = ownedLead as Lead
     }
 
     let campaignContext = ''
@@ -144,11 +136,25 @@ export async function POST(request: NextRequest) {
     }
 
     const fullContext = [campaignContext, customContext].filter(Boolean).join('\n\n')
-    const result = await generateInitialOutreach(lead as Lead, fullContext, memories)
+    const result = await generateInitialOutreach(lead, fullContext)
 
     return NextResponse.json(result)
   } catch (error) {
     console.error('Generate email error:', error)
+    if (error instanceof ModelJSONParseError) {
+      return NextResponse.json(
+        { error: 'The AI returned an invalid email format. Please retry.' },
+        { status: 502 },
+      )
+    }
+    if (error instanceof UngroundedEmailError) {
+      return NextResponse.json(
+        {
+          error: 'Draft blocked because it included an unsupported fact. Re-run research or use only source-linked details.',
+        },
+        { status: 422 },
+      )
+    }
     return NextResponse.json(
       { error: error instanceof Error ? error.message : 'Failed to generate email' },
       { status: 500 }
