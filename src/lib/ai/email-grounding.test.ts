@@ -13,6 +13,7 @@ const lead = {
     url: 'https://example.com/interview',
     title: 'Founder interview',
     detail: 'Alex described resident trust as the core product constraint.',
+    facts: ['Alex described resident trust as the core product constraint.'],
   }],
 } as Lead
 

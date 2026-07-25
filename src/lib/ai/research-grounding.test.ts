@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest'
 import { attachGroundedFacts, getGroundedResearchEvidence } from './research-grounding'
 
 describe('research grounding', () => {
-  it('keeps only facts tied to a returned source URL', () => {
+  it('keeps only facts quoted by a trusted citation for the returned source URL', () => {
     const result = attachGroundedFacts(
       [{
         url: 'https://example.com/interview',
@@ -21,6 +21,10 @@ describe('research grounding', () => {
           use_as_hook: true,
         },
       ],
+      [{
+        url: 'https://example.com/interview',
+        citedText: 'Alex described resident trust as the core product constraint.',
+      }],
     )
 
     expect(result.personalDetails).toBe(
@@ -34,16 +38,35 @@ describe('research grounding', () => {
     ])
   })
 
-  it('uses a source detail as conservative evidence for legacy research records', () => {
+  it('rejects a fact when the model attaches a URL without citation evidence', () => {
+    const result = attachGroundedFacts(
+      [{
+        url: 'https://example.com/interview',
+        title: 'Founder interview',
+        detail: 'A model-written source summary.',
+      }],
+      [{
+        fact: 'Alex was a student pilot.',
+        source_url: 'https://example.com/interview',
+        use_as_hook: true,
+      }],
+      [{
+        url: 'https://example.com/interview',
+        citedText: 'Alex discussed how the company handles resident requests.',
+      }],
+    )
+
+    expect(result.personalDetails).toBe('')
+    expect(result.smykmHooks).toEqual([])
+    expect(result.sources[0].facts).toEqual([])
+  })
+
+  it('does not use source summaries as evidence for legacy research records', () => {
     expect(getGroundedResearchEvidence([{
       url: 'https://example.com/product',
       title: 'Product page',
       detail: 'The product handles resident requests by voice and chat.',
-    }])).toEqual([{
-      fact: 'The product handles resident requests by voice and chat.',
-      sourceUrl: 'https://example.com/product',
-      sourceTitle: 'Product page',
-    }])
+    }])).toEqual([])
   })
 
   it('does not promote a new source summary when no fact was linked to it', () => {

@@ -135,6 +135,21 @@ describe('generateInitialOutreach', () => {
     expect(result.hormozi.quality).toBeDefined()
     expect(result.hormozi.quality?.issues).not.toContain('Contains em dashes. Use commas or periods.')
   })
+
+  it('returns conservative usable variants when generated personalization is unsupported', async () => {
+    mockGenerateJSON.mockResolvedValue({
+      subject: 'Startup lessons',
+      body: 'Hi Alex. Your $13.00-a-week food budget and time as a student pilot stood out.',
+      evidence_used: [],
+    })
+
+    const result = await generateInitialOutreach(baseLead)
+
+    expect(result.mckenna.body).toContain('Pigeon helps SaaS companies like Subgraph')
+    expect(result.mckenna.body).not.toContain('$13')
+    expect(result.hormozi.body).toContain('short checklist')
+    expect(result.hormozi.body).not.toContain('student pilot')
+  })
 })
 
 describe('buildFollowupUserPrompt', () => {

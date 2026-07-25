@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
-import { ModelJSONParseError, researchWithWebSearchJSON } from '@/lib/ai/anthropic'
+import {
+  ModelJSONParseError,
+  researchWithWebSearchJSONAndCitations,
+} from '@/lib/ai/anthropic'
 import { attachGroundedFacts } from '@/lib/ai/research-grounding'
 import {
   compactResearchUpdates,
@@ -61,6 +64,7 @@ Also search for their contact information, company details, and visual identity:
 
 SOURCING RULES:
 - Every personal fact or personalization hook MUST appear in grounded_personal_facts with the exact URL that supports it.
+- The fact MUST be copied verbatim from the cited source text returned by web search. Do not paraphrase, combine, infer, summarize, or complete a thought.
 - The source_url on every grounded fact MUST exactly match a URL in research_sources.
 - Each source should have: the URL you found it at, a short title, and a one-sentence description of what you found there.
 - Include ALL URLs you found useful during research (blog posts, GitHub repos, podcast pages, news articles, company pages, etc.)
@@ -81,7 +85,7 @@ After searching, return exactly ONE JSON object, never an array or a list of can
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
   "grounded_personal_facts": [
     {
-      "fact": "One atomic, verifiable personal or professional fact copied without embellishment",
+      "fact": "One atomic personal or professional fact copied verbatim from cited source text",
       "source_url": "https://the-exact-source-url.com/page",
       "use_as_hook": true
     }
@@ -241,7 +245,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const parsedResult = await researchWithWebSearchJSON<z.infer<typeof researchResultSchema>>(
+    const research = await researchWithWebSearchJSONAndCitations<z.infer<typeof researchResultSchema>>(
       RESEARCH_SYSTEM_PROMPT,
       buildResearchPrompt(researchInput),
       {
@@ -257,10 +261,12 @@ export async function POST(request: NextRequest) {
         },
       }
     )
+    const parsedResult = research.data
 
     const grounded = attachGroundedFacts(
       parsedResult.research_sources,
       parsedResult.grounded_personal_facts,
+      research.citations,
     )
     const result: ResearchResult = {
       ...parsedResult,
@@ -302,6 +308,9 @@ export async function POST(request: NextRequest) {
         contact_photo_url: result.contact_photo_url,
         company_logo_url: result.company_logo_url,
       })
+      updateData.personal_details = result.personal_details
+      updateData.smykm_hooks = result.smykm_hooks
+      updateData.research_sources = result.research_sources
 
       if (result.team_members?.length) {
         updateData.org_chart = result.team_members.map(m => ({

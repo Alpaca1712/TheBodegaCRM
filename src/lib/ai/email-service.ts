@@ -4,6 +4,7 @@ import {
   buildEmailEvidence,
   EvidenceAwareDraft,
   formatEmailEvidence,
+  UngroundedEmailError,
   validateEvidenceAwareDraft,
 } from './email-grounding'
 import { Lead, LeadEmail, EmailVariant, CtaType, GeneratedEmail } from '@/types/leads'
@@ -316,10 +317,40 @@ export async function generateInitialOutreach(
   ])
 
   const evidence = buildEmailEvidence({ lead, customContext })
+  const conservativeDraft = (ctaType: CtaType): EvidenceAwareDraft => {
+    const firstName = lead.contact_name.trim().split(/\s+/)[0] || lead.contact_name
+    const offer = ctaType === 'mckenna'
+      ? `Would it be useful to map the first product paths worth testing at ${lead.company_name}?`
+      : 'I can send a short checklist for finding security gaps in customer-facing SaaS workflows. Want me to send it?'
+
+    return {
+      subject: ctaType === 'mckenna' ? 'Product security paths' : 'SaaS security checklist',
+      body: `Hi ${firstName},
+
+Security gaps can hide in the same product paths customers and connected tools can reach.
+
+Pigeon helps SaaS companies like Subgraph find those weaknesses and fix them before attackers do.
+
+${offer}
+
+Best,
+Daniel Chalco
+CEO, Pigeon`,
+      evidence_used: [],
+    }
+  }
   const normalizeResult = (result: EvidenceAwareDraft, ctaType: CtaType): EmailVariant => {
-    validateEvidenceAwareDraft(result, evidence)
-    const subject = normalizeGeneratedEmail(result.subject)
-    const body = normalizeGeneratedEmail(result.body)
+    let safeResult = result
+    try {
+      validateEvidenceAwareDraft(safeResult, evidence)
+    } catch (error) {
+      if (!(error instanceof UngroundedEmailError)) throw error
+      safeResult = conservativeDraft(ctaType)
+      validateEvidenceAwareDraft(safeResult, evidence)
+    }
+
+    const subject = normalizeGeneratedEmail(safeResult.subject)
+    const body = normalizeGeneratedEmail(safeResult.body)
 
     return {
       subject,

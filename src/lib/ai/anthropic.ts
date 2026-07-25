@@ -17,6 +17,17 @@ type ResearchJSONOptions<T> = ResearchOptions & {
   match?: (value: unknown) => T | undefined
 }
 
+export interface WebResearchCitation {
+  url: string
+  title: string
+  citedText: string
+}
+
+interface WebResearchResponse {
+  text: string
+  citations: WebResearchCitation[]
+}
+
 export class ModelJSONParseError extends Error {
   constructor() {
     super('The AI returned an invalid structured response. Please retry.')
@@ -188,11 +199,11 @@ export async function generateJSON<T>(
  * server-side, and Claude synthesizes all results into a final answer.
  * Returns the final text block (after all search iterations are done).
  */
-export async function researchWithWebSearch(
+async function researchWithWebSearchResponse(
   systemPrompt: string,
   userPrompt: string,
   options?: ResearchOptions
-): Promise<string> {
+): Promise<WebResearchResponse> {
   const client = getClient()
   const model = options?.model || RESEARCH_MODEL
   const response = await client.messages.create(withTemperature({
@@ -215,7 +226,32 @@ export async function researchWithWebSearch(
     (block): block is Anthropic.TextBlock => block.type === 'text'
   )
   const finalText = textBlocks[textBlocks.length - 1]?.text || ''
-  return finalText
+  const citations = textBlocks.flatMap(block =>
+    (block.citations || []).flatMap(citation =>
+      citation.type === 'web_search_result_location'
+        ? [{
+            url: citation.url,
+            title: citation.title || citation.url,
+            citedText: citation.cited_text,
+          }]
+        : [],
+    ),
+  )
+
+  return { text: finalText, citations }
+}
+
+export async function researchWithWebSearch(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: ResearchOptions
+): Promise<string> {
+  const response = await researchWithWebSearchResponse(
+    systemPrompt,
+    userPrompt,
+    options,
+  )
+  return response.text
 }
 
 /**
@@ -228,13 +264,33 @@ export async function researchWithWebSearchJSON<T>(
   userPrompt: string,
   options?: ResearchJSONOptions<T>
 ): Promise<T> {
-  const result = await researchWithWebSearch(systemPrompt, userPrompt, options)
+  const result = await researchWithWebSearchJSONAndCitations(
+    systemPrompt,
+    userPrompt,
+    options,
+  )
+  return result.data
+}
+
+export async function researchWithWebSearchJSONAndCitations<T>(
+  systemPrompt: string,
+  userPrompt: string,
+  options?: ResearchJSONOptions<T>
+): Promise<{ data: T; citations: WebResearchCitation[] }> {
+  const research = await researchWithWebSearchResponse(
+    systemPrompt,
+    userPrompt,
+    options,
+  )
   const parseResult = (text: string) => options?.match
     ? parseModelJSONMatching(text, options.match)
     : parseModelJSON<T>(text)
 
   try {
-    return parseResult(result)
+    return {
+      data: parseResult(research.text),
+      citations: research.citations,
+    }
   } catch (error) {
     if (!(error instanceof ModelJSONParseError)) throw error
   }
@@ -242,8 +298,11 @@ export async function researchWithWebSearchJSON<T>(
   // Last resort: ask a fast model to extract/reformat the JSON
   const extracted = await generateCompletion(
     'Extract the JSON object from the following text. Return ONLY the raw JSON object, no markdown fences, no explanation, no prose. If the text contains research findings but no JSON, reformat the findings into the JSON structure described in the text.',
-    result,
+    research.text,
     { maxTokens: 4096, temperature: 0 }
   )
-  return parseResult(extracted)
+  return {
+    data: parseResult(extracted),
+    citations: research.citations,
+  }
 }
