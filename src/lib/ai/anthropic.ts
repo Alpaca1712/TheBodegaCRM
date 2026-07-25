@@ -13,6 +13,10 @@ type ResearchOptions = GenerationOptions & {
   maxSearches?: number
 }
 
+type ResearchJSONOptions<T> = ResearchOptions & {
+  match?: (value: unknown) => T | undefined
+}
+
 export class ModelJSONParseError extends Error {
   constructor() {
     super('The AI returned an invalid structured response. Please retry.')
@@ -69,6 +73,7 @@ function extractJSONCandidates(text: string): string[] {
 
       if (stack.length === 0) {
         candidates.push(text.slice(start, index + 1))
+        start = index
         break
       }
     }
@@ -77,21 +82,40 @@ function extractJSONCandidates(text: string): string[] {
   return candidates
 }
 
-export function parseModelJSON<T>(text: string): T {
+function getParsedJSONCandidates(text: string): unknown[] {
   const cleaned = stripMarkdownFences(text)
 
   try {
-    return JSON.parse(cleaned) as T
+    return [JSON.parse(cleaned)]
   } catch {
     // Some models wrap an otherwise valid response in a short explanation.
   }
 
+  const parsed: unknown[] = []
   for (const candidate of extractJSONCandidates(cleaned)) {
     try {
-      return JSON.parse(candidate) as T
+      parsed.push(JSON.parse(candidate))
     } catch {
       // Keep looking in case an earlier brace belonged to prose or an example.
     }
+  }
+  return parsed
+}
+
+export function parseModelJSON<T>(text: string): T {
+  const [first] = getParsedJSONCandidates(text)
+  if (first !== undefined) return first as T
+
+  throw new ModelJSONParseError()
+}
+
+export function parseModelJSONMatching<T>(
+  text: string,
+  match: (value: unknown) => T | undefined,
+): T {
+  for (const candidate of getParsedJSONCandidates(text)) {
+    const matched = match(candidate)
+    if (matched !== undefined) return matched
   }
 
   throw new ModelJSONParseError()
@@ -202,12 +226,15 @@ export async function researchWithWebSearch(
 export async function researchWithWebSearchJSON<T>(
   systemPrompt: string,
   userPrompt: string,
-  options?: ResearchOptions
+  options?: ResearchJSONOptions<T>
 ): Promise<T> {
   const result = await researchWithWebSearch(systemPrompt, userPrompt, options)
+  const parseResult = (text: string) => options?.match
+    ? parseModelJSONMatching(text, options.match)
+    : parseModelJSON<T>(text)
 
   try {
-    return parseModelJSON<T>(result)
+    return parseResult(result)
   } catch (error) {
     if (!(error instanceof ModelJSONParseError)) throw error
   }
@@ -218,5 +245,5 @@ export async function researchWithWebSearchJSON<T>(
     result,
     { maxTokens: 4096, temperature: 0 }
   )
-  return parseModelJSON<T>(extracted)
+  return parseResult(extracted)
 }

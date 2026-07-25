@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { ModelJSONParseError, parseModelJSON } from './anthropic'
+import { ModelJSONParseError, parseModelJSON, parseModelJSONMatching } from './anthropic'
 
 describe('parseModelJSON', () => {
   it('parses a clean JSON response', () => {
@@ -36,5 +36,36 @@ describe('parseModelJSON', () => {
     expect(() => parseModelJSON('I need to ask a question first.')).toThrow(
       'The AI returned an invalid structured response. Please retry.',
     )
+  })
+})
+
+describe('parseModelJSONMatching', () => {
+  const matchSubject = (value: unknown) => {
+    if (
+      typeof value === 'object'
+      && value !== null
+      && !Array.isArray(value)
+      && typeof (value as { subject?: unknown }).subject === 'string'
+    ) {
+      return value as { subject: string }
+    }
+    return undefined
+  }
+
+  it('skips an earlier JSON array and selects the matching top-level object', () => {
+    const response = [
+      'Sources: [{"url":"https://example.com"}]',
+      'Research: {"subject":"Verified result"}',
+    ].join('\n')
+
+    expect(parseModelJSONMatching(response, matchSubject)).toEqual({
+      subject: 'Verified result',
+    })
+  })
+
+  it('does not select a nested object from an ambiguous array', () => {
+    const response = '[{"subject":"First person"},{"subject":"Second person"}]'
+
+    expect(() => parseModelJSONMatching(response, matchSubject)).toThrow(ModelJSONParseError)
   })
 })

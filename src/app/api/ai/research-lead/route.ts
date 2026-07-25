@@ -232,24 +232,28 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    const rawResult = await researchWithWebSearchJSON<unknown>(
+    const parsedResult = await researchWithWebSearchJSON<z.infer<typeof researchResultSchema>>(
       RESEARCH_SYSTEM_PROMPT,
       buildResearchPrompt(researchInput),
-      { maxTokens: 4096, temperature: 0.3, maxSearches: 10 }
+      {
+        maxTokens: 4096,
+        temperature: 0.3,
+        maxSearches: 10,
+        match: (candidate) => {
+          const parsed = researchResultSchema.safeParse(
+            normalizeResearchResultEnvelope(candidate),
+          )
+          return parsed.success ? parsed.data : undefined
+        },
+      }
     )
-    const normalizedResult = normalizeResearchResultEnvelope(rawResult)
-    const parsedResult = researchResultSchema.safeParse(normalizedResult)
-    if (!parsedResult.success) {
-      console.error('Research response failed schema validation:', parsedResult.error.flatten())
-      throw new ModelJSONParseError()
-    }
 
     const grounded = attachGroundedFacts(
-      parsedResult.data.research_sources,
-      parsedResult.data.grounded_personal_facts,
+      parsedResult.research_sources,
+      parsedResult.grounded_personal_facts,
     )
     const result: ResearchResult = {
-      ...parsedResult.data,
+      ...parsedResult,
       research_sources: grounded.sources,
       personal_details: grounded.personalDetails,
       smykm_hooks: grounded.smykmHooks,
