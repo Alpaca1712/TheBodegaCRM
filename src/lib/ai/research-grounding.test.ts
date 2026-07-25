@@ -36,6 +36,9 @@ describe('research grounding', () => {
     expect(result.sources[0].facts).toEqual([
       'Alex described resident trust as the core product constraint.',
     ])
+    expect(result.sources[0].detail).toBe(
+      'Alex described resident trust as the core product constraint.',
+    )
   })
 
   it('rejects a fact when the model attaches a URL without citation evidence', () => {
@@ -59,6 +62,9 @@ describe('research grounding', () => {
     expect(result.personalDetails).toBe('')
     expect(result.smykmHooks).toEqual([])
     expect(result.sources[0].facts).toEqual([])
+    expect(result.sources[0].detail).toBe(
+      'Alex discussed how the company handles resident requests.',
+    )
   })
 
   it('does not use source summaries as evidence for legacy research records', () => {

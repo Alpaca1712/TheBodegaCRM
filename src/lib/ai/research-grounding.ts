@@ -50,6 +50,22 @@ export function attachGroundedFacts(
 } {
   const sourceByUrl = new Map<string, ResearchSource>()
   const citationsByUrl = new Map<string, string[]>()
+  const sourceDetailByUrl = new Map<string, string>()
+
+  for (const citation of citations) {
+    const normalizedUrl = normalizeUrl(citation.url)
+    const cleanCitation = cleanFact(citation.citedText)
+    const citedText = normalizeEvidenceText(cleanCitation)
+    if (!normalizedUrl || citedText.length < 8) continue
+
+    citationsByUrl.set(normalizedUrl, [
+      ...(citationsByUrl.get(normalizedUrl) || []),
+      citedText,
+    ])
+    if (!sourceDetailByUrl.has(normalizedUrl)) {
+      sourceDetailByUrl.set(normalizedUrl, cleanCitation)
+    }
+  }
 
   for (const source of sources) {
     const normalizedUrl = normalizeUrl(source.url)
@@ -59,20 +75,9 @@ export function attachGroundedFacts(
       ...source,
       url: source.url.trim(),
       title: source.title.trim(),
-      detail: cleanFact(source.detail),
+      detail: sourceDetailByUrl.get(normalizedUrl) || '',
       facts: [],
     })
-  }
-
-  for (const citation of citations) {
-    const normalizedUrl = normalizeUrl(citation.url)
-    const citedText = normalizeEvidenceText(citation.citedText)
-    if (!normalizedUrl || citedText.length < 8) continue
-
-    citationsByUrl.set(normalizedUrl, [
-      ...(citationsByUrl.get(normalizedUrl) || []),
-      citedText,
-    ])
   }
 
   const acceptedFacts: Array<{ fact: string; useAsHook: boolean }> = []
