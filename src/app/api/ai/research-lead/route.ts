@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   ModelJSONParseError,
+  researchPersonalFactsWithWebSearch,
   researchWithWebSearchJSONAndCitations,
 } from '@/lib/ai/anthropic'
 import { attachGroundedFacts } from '@/lib/ai/research-grounding'
@@ -265,11 +266,28 @@ export async function POST(request: NextRequest) {
       }
     )
     const parsedResult = research.data
+    let personalResearch = {
+      facts: parsedResult.grounded_personal_facts,
+      citations: research.citations,
+      sources: [] as Array<{ url: string; title: string; detail: string }>,
+    }
+
+    try {
+      personalResearch = await researchPersonalFactsWithWebSearch(
+        parsedResult.contact_name || researchInput.contact_name || '',
+        parsedResult.company_name || researchInput.company_name || '',
+      )
+    } catch (error) {
+      console.warn(
+        'Dedicated personal research failed; using cited facts from the primary pass:',
+        error instanceof Error ? error.message : error,
+      )
+    }
 
     const grounded = attachGroundedFacts(
-      parsedResult.research_sources,
-      parsedResult.grounded_personal_facts,
-      research.citations,
+      [...parsedResult.research_sources, ...personalResearch.sources],
+      personalResearch.facts,
+      personalResearch.citations,
     )
     const result: ResearchResult = {
       ...parsedResult,

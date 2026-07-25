@@ -95,6 +95,7 @@ export default function LeadForm({ defaultValues, leadId, mode }: LeadFormProps)
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          leadId: mode === 'edit' ? leadId : undefined,
           type: form.getValues('type'),
           contact_name: contactName || null,
           company_name: companyName || null,
