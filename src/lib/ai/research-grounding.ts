@@ -18,6 +18,22 @@ export interface GroundedResearchEvidence {
   sourceTitle: string
 }
 
+export interface GroundedResearchPass {
+  sources: ResearchSource[]
+  facts: GroundedFactInput[]
+  citations: TrustedResearchCitation[]
+}
+
+export function combineGroundedResearchPasses(
+  ...passes: GroundedResearchPass[]
+): GroundedResearchPass {
+  return {
+    sources: passes.flatMap(pass => pass.sources),
+    facts: passes.flatMap(pass => pass.facts),
+    citations: passes.flatMap(pass => pass.citations),
+  }
+}
+
 function normalizeUrl(value: string): string | null {
   try {
     const url = new URL(value)
@@ -82,6 +98,15 @@ function summaryIsSupportedByQuote(summary: string, quote: string): boolean {
   return overlap >= requiredOverlap
 }
 
+function isRecognitionHook(fact: string): boolean {
+  const titleContext =
+    /\b(?:is|serves as|works as|joined as)\b.{0,50}\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
+  const specificAction =
+    /\b(?:built|designed|created|launched|reads?|sends?|submits?|scores?|ranks?|routes?|schedules?|integrates?|wrote|said|spoke|published|authored|explained|described)\b/i
+
+  return !titleContext.test(fact) || specificAction.test(fact)
+}
+
 export function attachGroundedFacts(
   sources: ResearchSource[],
   facts: GroundedFactInput[],
@@ -123,7 +148,7 @@ export function attachGroundedFacts(
     })
   }
 
-  const acceptedFacts: Array<{ fact: string; useAsHook: boolean }> = []
+  const acceptedFacts: Array<{ fact: string; useAsHook: boolean; isPersonal: boolean }> = []
   const seen = new Set<string>()
 
   for (const candidate of facts) {
@@ -150,12 +175,19 @@ export function attachGroundedFacts(
 
     seen.add(key)
     source.facts = [...(source.facts || []), fact]
-    acceptedFacts.push({ fact, useAsHook: candidate.use_as_hook === true })
+    acceptedFacts.push({
+      fact,
+      useAsHook: candidate.use_as_hook === true && isRecognitionHook(fact),
+      isPersonal: /\b(?:founder|cofounder|co-founder|cto|ceo|wrote|said|spoke|published|authored|joined|worked|studied)\b/i.test(fact),
+    })
   }
 
   return {
     sources: [...sourceByUrl.values()],
-    personalDetails: acceptedFacts.map(item => item.fact).join('\n'),
+    personalDetails: acceptedFacts
+      .filter(item => item.isPersonal)
+      .map(item => item.fact)
+      .join('\n'),
     smykmHooks: acceptedFacts.filter(item => item.useAsHook).map(item => item.fact),
   }
 }

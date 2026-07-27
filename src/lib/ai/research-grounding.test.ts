@@ -1,5 +1,9 @@
 import { describe, expect, it } from 'vitest'
-import { attachGroundedFacts, getGroundedResearchEvidence } from './research-grounding'
+import {
+  attachGroundedFacts,
+  combineGroundedResearchPasses,
+  getGroundedResearchEvidence,
+} from './research-grounding'
 
 describe('research grounding', () => {
   it('keeps only facts quoted by a trusted citation for the returned source URL', () => {
@@ -85,5 +89,71 @@ describe('research grounding', () => {
       detail: 'A model-written summary that was not approved as a grounded fact.',
       facts: [],
     }])).toEqual([])
+  })
+
+  it('keeps primary product facts when a second outreach pass also succeeds', () => {
+    const combined = combineGroundedResearchPasses(
+      {
+        sources: [{ url: 'https://example.com/product', title: 'Product', detail: '' }],
+        facts: [{
+          fact: 'The product reads resumes and sends candidate outreach.',
+          evidence_quote: 'The product reads resumes and sends candidate outreach.',
+          source_url: 'https://example.com/product',
+          use_as_hook: true,
+        }],
+        citations: [{
+          url: 'https://example.com/product',
+          citedText: 'The product reads resumes and sends candidate outreach.',
+        }],
+      },
+      {
+        sources: [{ url: 'https://example.com/person', title: 'Founder', detail: '' }],
+        facts: [{
+          fact: 'Alex wrote about recruiting operations.',
+          evidence_quote: 'Alex wrote about recruiting operations.',
+          source_url: 'https://example.com/person',
+          use_as_hook: true,
+        }],
+        citations: [{
+          url: 'https://example.com/person',
+          citedText: 'Alex wrote about recruiting operations.',
+        }],
+      },
+    )
+    const grounded = attachGroundedFacts(
+      combined.sources,
+      combined.facts,
+      combined.citations,
+    )
+
+    expect(getGroundedResearchEvidence(grounded.sources).map(item => item.fact)).toEqual([
+      'The product reads resumes and sends candidate outreach.',
+      'Alex wrote about recruiting operations.',
+    ])
+  })
+
+  it('keeps a sourced job title as detail but never labels it as an outreach hook', () => {
+    const result = attachGroundedFacts(
+      [{
+        url: 'https://example.com/team',
+        title: 'Team',
+        detail: '',
+      }],
+      [{
+        fact: 'Alex Rivera is CTO and co-founder of Mason Voice.',
+        evidence_quote: 'Alex Rivera is CTO and co-founder of Mason Voice.',
+        source_url: 'https://example.com/team',
+        use_as_hook: true,
+      }],
+      [{
+        url: 'https://example.com/team',
+        citedText: 'Alex Rivera is CTO and co-founder of Mason Voice.',
+      }],
+    )
+
+    expect(result.personalDetails).toBe(
+      'Alex Rivera is CTO and co-founder of Mason Voice.',
+    )
+    expect(result.smykmHooks).toEqual([])
   })
 })

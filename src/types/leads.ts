@@ -402,6 +402,10 @@ export interface EmailVariant {
   wordCount: number
   offerMode?: 'direct_pentest' | 'lead_magnet'
   offerName?: string
+  attachLeadMagnet?: boolean
+  hookFact?: string
+  hookSourceUrl?: string
+  specificityPassed?: boolean
   realDetailPrompts?: string[]
   quality?: {
     issues: string[]

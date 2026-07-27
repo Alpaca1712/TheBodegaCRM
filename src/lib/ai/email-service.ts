@@ -9,6 +9,7 @@ import {
   validateEvidenceAwareDraft,
 } from './email-grounding'
 import {
+  draftUsesTopHook,
   formatInitialOutreachPlan,
   InitialOutreachPlan,
   prepareInitialOutreach,
@@ -16,7 +17,8 @@ import {
 import { Lead, LeadEmail, EmailVariant, CtaType, GeneratedEmail } from '@/types/leads'
 
 export const PIGEON_IDENTITY = `=== ABOUT PIGEON (use ONLY these facts, never invent capabilities or results) ===
-Company: Pigeon helps SaaS companies like Subgraph stay secure.
+Company: Pigeon helps SaaS companies stay secure.
+Positioning: When you describe Pigeon, call it a cybersecurity startup, not a pentest company.
 
 What Pigeon does: Pigeon finds practical security weaknesses in SaaS products before attackers do and helps the team fix them. This is especially relevant to products that use AI agents, automations, APIs, support tools, or sensitive customer data.
 
@@ -31,7 +33,7 @@ Named resources:
 - "Don't Let Security Reviews Kill Your Deals" explains compliance and pentest timing for SaaS teams before SOC 2 or a first enterprise security review.
 - Never offer a named resource unless VERIFIED OUTREACH PREP selects that exact loaded resource.
 
-Proof rule: You may say Pigeon helps SaaS companies like Subgraph stay secure. Do not claim a specific Subgraph finding, client result, vulnerability count, percentage, or outcome unless it appears in the lead research or Daniel's notes.
+Proof rule: Do not name a client, reference customer work, or claim a result unless that exact fact appears in verified evidence or Daniel's notes.
 
 LANGUAGE RULES:
 - Write like you're explaining to a smart friend who isn't technical. No jargon.
@@ -45,6 +47,12 @@ CRITICAL: Never invent a completed test, client, case study, finding, or result.
 const INITIAL_OUTREACH_RULES = `RESEARCH AND RELEVANCE PRINCIPLES:
 - Follow VERIFIED OUTREACH PREP. It has already ranked the hooks and selected the offer.
 - Use the top safe hook when one exists. Product decisions beat authored writing, authored writing beats owned social posts, and ambiguous likes or reshares are never usable.
+- A job title is context, never the hook.
+- Put the top safe hook in the first paragraph and copy that exact fact into evidence_used.
+- The first paragraph and product pivot must fail the swap test. If either would still work after replacing only the company name, rewrite it.
+- Never open with a general truth about SaaS teams, founders, CTOs, security, or moving fast.
+- Look for a natural, non-factual overlap between their sourced product workflow and Pigeon's work. Do not force a pun.
+- If their verified product workflow naturally mirrors Pigeon's offer, use one plain comparison. Do not invent a demo, customer outcome, or shared history.
 - Show Me You Know Me: use one verifiable detail that proves this was written for the recipient. A second detail is allowed only in a short P.S.
 - Do not force the personal detail to explain the security problem. Personalization earns attention; relevance earns the reply.
 - Lead with the problem the buyer feels and the useful outcome, not a description of Pigeon.
@@ -164,12 +172,13 @@ export function buildInitialUserPrompt(
   })
 
   const offerInstruction = plan.offerMode === 'lead_magnet'
-    ? `OFFER MODE: ATTACHED LEAD MAGNET
-- Offer "${plan.offerName}" as an attachment. Use that exact name.
+    ? `OFFER MODE: OFFER A LEAD MAGNET ON REPLY
+- Offer to send "${plan.offerName}". Use that exact name.
+- Do not say it is attached and do not attach it to this first email.
 - It is free, has no signup, and does not require a call.
 - Do not say what is inside it or how long it takes unless that statement appears in VERIFIED EVIDENCE or the offer constraints below.
-- The final CTA is still the free Pigeon pentest. Ask them to reply if they want it, and state that findings arrive within 48 hours.
-- Do not ask permission to send the resource because it is already attached.`
+- End with one short reply CTA for the resource. Prefer a playful phrase tied to their product or industry when the verified hook supports one.
+- Do not add a second CTA for the pentest in this variant.`
     : `OFFER MODE: FREE PIGEON PENTEST
 - Offer Pigeon's free pentest directly. Do not invent or mention a downloadable resource.
 - Frame it as a way to verify the product path discussed in the email, never as proof their product is vulnerable.
@@ -344,15 +353,13 @@ Rewrite only what sounds artificial:
 
 Use simple spoken words and contractions. Keep the subject lowercase, boring, and about the recipient. Keep evidence_used exactly unchanged.
 
-Return exactly three short suggestions for where Daniel could later add a true lived detail. Do not insert placeholders into the email itself.
-
 Respond with ONLY valid JSON:
-{"subject":"...","body":"...","evidence_used":["exact unchanged facts"],"real_detail_prompts":["...","...","..."]}`
+{"subject":"...","body":"...","evidence_used":["exact unchanged facts"]}`
 
 const DEFAULT_REAL_DETAIL_PROMPTS = [
-  'After the opening, add the honest reason this product detail caught your attention.',
-  'After the Pigeon introduction, add one true lesson from your own security work.',
-  'In the P.S., add a real callback you would actually say out loud.',
+  'Add your honest reason the verified product detail caught your eye.',
+  'Add one true, non-client-specific lesson from your own security work.',
+  'Add a small callback you would genuinely say, or leave it blank.',
 ]
 
 function sameEvidenceClaims(left: string[], right: string[]): boolean {
@@ -397,12 +404,7 @@ ${JSON.stringify(draft, null, 2)}`,
     validateEvidenceAwareDraft(result, evidence)
     return {
       ...result,
-      real_detail_prompts:
-        Array.isArray(result.real_detail_prompts) &&
-        result.real_detail_prompts.length === 3 &&
-        result.real_detail_prompts.every(item => typeof item === 'string' && item.trim())
-          ? result.real_detail_prompts.map(item => item.trim())
-          : DEFAULT_REAL_DETAIL_PROMPTS,
+      real_detail_prompts: DEFAULT_REAL_DETAIL_PROMPTS,
     }
   } catch {
     return { ...draft, real_detail_prompts: DEFAULT_REAL_DETAIL_PROMPTS }
@@ -435,15 +437,19 @@ export async function generateInitialOutreach(
     }),
   }
 
+  const userPrompts: Record<CtaType, string> = {
+    mckenna: buildInitialUserPrompt(lead, 'mckenna', customContext),
+    hormozi: buildInitialUserPrompt(lead, 'hormozi', customContext),
+  }
   const [mckennaResult, hormoziResult] = await Promise.all([
     generateJSON<EvidenceAwareDraft>(
       systemPrompt,
-      buildInitialUserPrompt(lead, 'mckenna', customContext),
+      userPrompts.mckenna,
       { temperature: 0.95, maxTokens: 4096 }
     ),
     generateJSON<EvidenceAwareDraft>(
       systemPrompt,
-      buildInitialUserPrompt(lead, 'hormozi', customContext),
+      userPrompts.hormozi,
       { temperature: 0.95, maxTokens: 4096 }
     ),
   ])
@@ -453,51 +459,96 @@ export async function generateInitialOutreach(
     plan: InitialOutreachPlan,
   ): EvidenceAwareDraft => {
     const firstName = lead.contact_name.trim().split(/\s+/)[0] || lead.contact_name
+    const opening = plan.topHook?.fact ||
+      `${lead.company_name} has a product path worth looking at closely.`
     const give = plan.offerMode === 'lead_magnet'
-      ? `${plan.offerName} is attached. It's free, and there's no signup or call.`
-      : `Here's the thing, the fastest way to settle that question is to test the product path itself.`
+      ? `I have a short resource called ${plan.offerName}. It's free, with no signup or call. Reply "send it" and I'll send it over.`
+      : `Here's the thing, the fastest way to settle that question is to test that product path itself. Reply if you want the free pentest. Pigeon sends the findings within 48 hours.`
 
     return {
       subject: ctaType === 'mckenna' ? 'a product security question' : 'one useful security check',
       body: `Hi ${firstName},
 
-The useful product paths are usually the ones worth protecting most. They make the product easier to use, and they give security teams more to check.
+${opening}
 
 I'm Daniel, founder of Pigeon. I've spent 14 years breaking into systems, including AI agents.
 
-${give}
+That product choice is useful for a reason. It is also the kind of path we pressure-test, because the easiest paths for real users deserve the closest look.
 
-Reply here if you want the free pentest. Pigeon will send the findings within 48 hours.
+${give}
 
 Best,
 Daniel Chalco
 Founder, Pigeon`,
       evidence_used: [
+        ...(plan.topHook ? [plan.topHook.fact] : []),
         'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
-        'Pigeon offers a free pentest and delivers the findings within 48 hours.',
+        ...(plan.offerMode === 'direct_pentest'
+          ? ['Pigeon offers a free pentest and delivers the findings within 48 hours.']
+          : []),
       ],
     }
   }
 
-  const getGroundedDraft = (
+  const draftPassesSpecificity = (
     result: EvidenceAwareDraft,
     ctaType: CtaType,
-  ): EvidenceAwareDraft => {
-    let safeResult = result
-    try {
-      validateEvidenceAwareDraft(safeResult, evidence)
-    } catch (error) {
-      if (!(error instanceof UngroundedEmailError)) throw error
-      safeResult = conservativeDraft(ctaType, plans[ctaType])
-      validateEvidenceAwareDraft(safeResult, evidence)
-    }
-
-    return safeResult
+  ) => {
+    const plan = plans[ctaType]
+    return !plan.topHook || draftUsesTopHook({
+      body: result.body,
+      evidenceUsed: result.evidence_used,
+      plan,
+      lead,
+    })
   }
 
+  const getGroundedDraft = async (
+    result: EvidenceAwareDraft,
+    ctaType: CtaType,
+  ): Promise<EvidenceAwareDraft> => {
+    const plan = plans[ctaType]
+    try {
+      validateEvidenceAwareDraft(result, evidence)
+      if (draftPassesSpecificity(result, ctaType)) return result
+    } catch (error) {
+      if (!(error instanceof UngroundedEmailError)) throw error
+    }
+
+    if (plan.topHook) {
+      try {
+        const repaired = await generateJSON<EvidenceAwareDraft>(
+          systemPrompt,
+          `${userPrompts[ctaType]}
+
+The previous draft failed the specificity gate. Rewrite it from scratch.
+- Put this exact verified fact at the center of the first paragraph: ${plan.topHook.fact}
+- Copy that exact fact into evidence_used.
+- The opening and product pivot must not work for another company after changing only the name.
+- Keep the selected offer and all grounding rules unchanged.`,
+          { temperature: 0.65, maxTokens: 4096 },
+        )
+        validateEvidenceAwareDraft(repaired, evidence)
+        if (draftPassesSpecificity(repaired, ctaType)) return repaired
+      } catch (error) {
+        if (!(error instanceof UngroundedEmailError)) {
+          console.warn('Initial outreach specificity repair failed:', error)
+        }
+      }
+    }
+
+    const fallback = conservativeDraft(ctaType, plan)
+    validateEvidenceAwareDraft(fallback, evidence)
+    return fallback
+  }
+
+  const [mckennaGrounded, hormoziGrounded] = await Promise.all([
+    getGroundedDraft(mckennaResult, 'mckenna'),
+    getGroundedDraft(hormoziResult, 'hormozi'),
+  ])
   const groundedDrafts: Record<CtaType, EvidenceAwareDraft> = {
-    mckenna: getGroundedDraft(mckennaResult, 'mckenna'),
-    hormozi: getGroundedDraft(hormoziResult, 'hormozi'),
+    mckenna: mckennaGrounded,
+    hormozi: hormoziGrounded,
   }
   const [mckennaHumanized, hormoziHumanized] = await Promise.all([
     humanizeInitialDraft({
@@ -516,18 +567,40 @@ Founder, Pigeon`,
     result: HumanizedInitialDraft,
     ctaType: CtaType,
   ): EmailVariant => {
-    const subject = normalizeInitialEmailText(result.subject).trim().toLowerCase()
-    const body = normalizeInitialEmailText(result.body)
     const plan = plans[ctaType]
+    const specificResult = draftPassesSpecificity(result, ctaType)
+      ? result
+      : groundedDrafts[ctaType]
+    const subject = normalizeInitialEmailText(specificResult.subject).trim().toLowerCase()
+    const body = normalizeInitialEmailText(specificResult.body)
+    const specificityPassed = draftPassesSpecificity(specificResult, ctaType)
+    const quality = checkEmailQuality(subject, body, 'initial')
+
+    if (!plan.topHook) {
+      quality.issues.unshift(
+        'No source-verified product or authored hook is available. Re-run research before sending.',
+      )
+      quality.score = Math.max(0, quality.score - 35)
+    } else if (!specificityPassed) {
+      quality.issues.unshift(
+        'The opening does not use the verified product hook and would survive a company-name swap.',
+      )
+      quality.score = Math.max(0, quality.score - 35)
+    }
+
     return {
       subject,
       body,
       ctaType,
       offerMode: plan.offerMode,
       offerName: plan.offerName,
-      realDetailPrompts: result.real_detail_prompts || DEFAULT_REAL_DETAIL_PROMPTS,
+      attachLeadMagnet: false,
+      hookFact: plan.topHook?.fact,
+      hookSourceUrl: plan.topHook?.sourceUrl,
+      specificityPassed,
+      realDetailPrompts: DEFAULT_REAL_DETAIL_PROMPTS,
       wordCount: countWords(body),
-      quality: checkEmailQuality(subject, body, 'initial'),
+      quality,
     }
   }
 

@@ -11,6 +11,8 @@ vi.mock('./anthropic', () => ({
 
 import { buildFollowupUserPrompt, buildInitialUserPrompt, generateInitialOutreach } from './email-service'
 
+const productFact = 'Mason Voice built an AI agent that reads resident voice messages and sends work orders into property workflows.'
+
 const baseLead: Lead = {
   id: 'lead-1',
   user_id: 'user-1',
@@ -34,6 +36,11 @@ const baseLead: Lead = {
     title: 'Alex Rivera interview',
     detail: 'Alex wrote about making property management feel more human.',
     facts: ['Alex wrote about making property management feel more human.'],
+  }, {
+    url: 'https://masonvoice.com/product',
+    title: 'Mason Voice product',
+    detail: productFact,
+    facts: [productFact],
   }],
   stage: 'researched',
   source_type: 'manual',
@@ -73,7 +80,7 @@ const baseLead: Lead = {
 
 const bodyWithNormalizedDash = [
   'Hi Alex,',
-  'Your note about making property management feel human stuck with me. Resident trust gets fragile when an automated helper handles an urgent repair.',
+  'Mason Voice reads resident voice messages and sends work orders into property workflows. That is a useful shortcut when an urgent repair cannot wait.',
   'Pigeon helps SaaS teams test the voice, chat, and email paths customers can reach, then fix the weaknesses before attackers find them.',
   'I can send a short walkthrough of three ways resident agents can be tricked — and how to prevent each one. Want it?',
   'Best,',
@@ -93,8 +100,9 @@ describe('buildInitialUserPrompt', () => {
 
     expect(coreOffer).toContain('OFFER MODE: FREE PIGEON PENTEST')
     expect(coreOffer).toContain('findings arrive within 48 hours')
-    expect(leadMagnet).toContain('OFFER MODE: ATTACHED LEAD MAGNET')
+    expect(leadMagnet).toContain('OFFER MODE: OFFER A LEAD MAGNET ON REPLY')
     expect(leadMagnet).toContain('We Hack AI Agents')
+    expect(leadMagnet).toContain('Do not say it is attached')
     expect(leadMagnet).toContain('Do not say what is inside it or how long it takes unless')
   })
 
@@ -122,12 +130,12 @@ describe('generateInitialOutreach', () => {
       .mockResolvedValueOnce({
         subject: 'resident repair agent — trust',
         body: bodyWithNormalizedDash,
-        evidence_used: ['Alex wrote about making property management feel more human.'],
+        evidence_used: [productFact],
       })
       .mockResolvedValueOnce({
         subject: 'resident repair agent — checklist',
         body: bodyWithNormalizedDash,
-        evidence_used: ['Alex wrote about making property management feel more human.'],
+        evidence_used: [productFact],
       })
 
     const result = await generateInitialOutreach(baseLead)
@@ -139,6 +147,44 @@ describe('generateInitialOutreach', () => {
     expect(result.mckenna.wordCount).toBe(result.mckenna.body.trim().split(/\s+/).length)
     expect(result.hormozi.quality).toBeDefined()
     expect(result.hormozi.quality?.issues).not.toContain('Contains em dashes. Use commas or periods.')
+    expect(result.hormozi.attachLeadMagnet).toBe(false)
+  })
+
+  it('repairs a grounded but generic draft that does not use the top product hook', async () => {
+    const genericDraft = {
+      subject: 'security check',
+      body: [
+        'Hi Alex,',
+        'SaaS teams move fast, so security often gets pushed until later.',
+        'I am Daniel, founder of Pigeon. I have spent 14 years breaking into systems, including AI agents.',
+        'Reply if you want a free pentest. Pigeon sends the findings within 48 hours.',
+        'Best,',
+        'Daniel Chalco',
+        'Founder, Pigeon',
+      ].join('\n\n'),
+      evidence_used: [
+        'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
+        'Pigeon offers a free pentest and delivers the findings within 48 hours.',
+      ],
+    }
+    const repairedDraft = {
+      subject: 'resident work orders',
+      body: bodyWithNormalizedDash,
+      evidence_used: [productFact],
+    }
+
+    mockGenerateJSON
+      .mockResolvedValueOnce(genericDraft)
+      .mockResolvedValueOnce(genericDraft)
+      .mockResolvedValueOnce(repairedDraft)
+      .mockResolvedValueOnce(repairedDraft)
+
+    const result = await generateInitialOutreach(baseLead)
+
+    expect(result.mckenna.body).toContain('resident voice messages')
+    expect(result.mckenna.body).not.toContain('SaaS teams move fast')
+    expect(result.mckenna.specificityPassed).toBe(true)
+    expect(result.mckenna.quality?.score).toBeGreaterThanOrEqual(70)
   })
 
   it('returns conservative usable variants when generated personalization is unsupported', async () => {

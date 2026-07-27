@@ -248,8 +248,10 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
         : mode === 'reply_needed' ? 'reply_response'
         : mode === 'post_meeting' ? 'reply_response'
         : mode;
+      const shouldAttachLeadMagnet =
+        variant.offerMode === 'lead_magnet' && variant.attachLeadMagnet === true;
       const resolvedEmailType =
-        variant.offerMode === 'lead_magnet' ? 'lead_magnet' : emailType;
+        shouldAttachLeadMagnet ? 'lead_magnet' : emailType;
 
       const resolvedCampaignId = campaignId || existingDraft?.campaign_id || null;
       const saveWithoutGmail = async () => {
@@ -302,7 +304,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           subject: variant.subject,
           body: variant.body,
           lead_magnet_name:
-            variant.offerMode === 'lead_magnet' ? variant.offerName : null,
+            shouldAttachLeadMagnet ? variant.offerName : null,
         }),
       });
       const gmailData = await gmailRes.json().catch(() => null);
@@ -657,14 +659,14 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
               config.isFollowUp
                 ? 'Variant B'
                 : editedHormozi.offerMode === 'lead_magnet'
-                  ? 'Lead magnet'
+                  ? 'Lead magnet offer'
                   : 'Direct offer'
             }
             subtitle={
               config.isFollowUp
                 ? 'Alternative version'
                 : editedHormozi.offerMode === 'lead_magnet'
-                  ? editedHormozi.offerName || 'Offer a useful resource'
+                  ? `${editedHormozi.offerName || 'Useful resource'} after they reply`
                   : 'No matched lead magnet, so this stays direct'
             }
             variant={editedHormozi!}

@@ -143,4 +143,61 @@ describe('outreach preparation', () => {
     expect(plan.offerMode).toBe('lead_magnet')
     expect(plan.offerName).toBe("Don't Let Security Reviews Kill Your Deals")
   })
+
+  it('builds a product hook and selects the AI guide for an action-taking recruiting agent', () => {
+    const subgraphLead = {
+      ...lead,
+      contact_name: 'Tucker Atkinson',
+      contact_title: 'CTO and co-founder',
+      company_name: 'Subgraph',
+      company_website: 'https://subgraph.tech',
+      product_name: 'Subgraph recruiting agent',
+      research_sources: [{
+        url: 'https://subgraph.tech',
+        title: 'Subgraph product',
+        detail: 'Subgraph reads candidate profiles, sends outreach, and submits interested candidates to a customer Slack workspace.',
+        facts: ['Subgraph reads candidate profiles, sends outreach, and submits interested candidates to a customer Slack workspace.'],
+      }, {
+        url: 'https://example.com/tucker-connelly',
+        title: 'Tucker Connelly resume',
+        detail: 'Tucker Connelly worked on document pipelines.',
+        facts: ['Tucker Connelly worked on document pipelines.'],
+      }],
+    } as Lead
+    const evidence = buildEmailEvidence({ lead: subgraphLead })
+    const plan = prepareInitialOutreach({
+      lead: subgraphLead,
+      evidence,
+      customContext: `Loaded lead magnets (use an exact name; never invent another asset):
+- AI Vertical SaaS Security Playbook (default); linked CTA text: Pentest Challenge`,
+      ctaType: 'hormozi',
+    })
+
+    expect(plan.topHook?.fact).toContain('reads candidate profiles')
+    expect(plan.offerMode).toBe('lead_magnet')
+    expect(plan.offerName).toBe('AI Vertical SaaS Security Playbook')
+    expect(plan.identityConflicts).toHaveLength(1)
+    expect(evidence.map(item => item.fact)).not.toContain(
+      'Tucker Connelly worked on document pipelines.',
+    )
+  })
+
+  it('never promotes a job-title fact into the top hook', () => {
+    const titleOnlyLead = {
+      ...lead,
+      research_sources: [{
+        url: 'https://masonvoice.com/about',
+        title: 'Mason Voice team',
+        detail: 'Alex Rivera is CTO and co-founder of Mason Voice.',
+        facts: ['Alex Rivera is CTO and co-founder of Mason Voice.'],
+      }],
+    } as Lead
+    const plan = prepareInitialOutreach({
+      lead: titleOnlyLead,
+      evidence: buildEmailEvidence({ lead: titleOnlyLead }),
+      ctaType: 'mckenna',
+    })
+
+    expect(plan.topHook).toBeNull()
+  })
 })

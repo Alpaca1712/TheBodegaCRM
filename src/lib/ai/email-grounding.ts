@@ -1,5 +1,9 @@
 import type { Lead, LeadEmail } from '@/types/leads'
 import { getGroundedResearchEvidence } from './research-grounding'
+import {
+  conflictingResearchSourceUrls,
+  isConflictingResearchSource,
+} from './research-identity'
 
 export interface EmailEvidence {
   fact: string
@@ -60,7 +64,15 @@ export function buildEmailEvidence(input: {
   add('CRM product name', lead.product_name)
   add('CRM fund name', lead.fund_name)
 
-  for (const source of getGroundedResearchEvidence(lead.research_sources)) {
+  const conflictingSourceUrls = conflictingResearchSourceUrls(
+    lead.contact_name,
+    lead.research_sources,
+  )
+  const identitySafeSources = (lead.research_sources || []).filter(
+    source => !isConflictingResearchSource(source.url, conflictingSourceUrls),
+  )
+
+  for (const source of getGroundedResearchEvidence(identitySafeSources)) {
     add(`Verified research: ${source.sourceTitle}`, source.fact, source.sourceUrl)
   }
 
@@ -79,7 +91,7 @@ export function buildEmailEvidence(input: {
     }
   }
 
-  add('Pigeon identity', 'Pigeon helps SaaS companies like Subgraph stay secure.')
+  add('Pigeon identity', 'Pigeon helps SaaS companies stay secure.')
   add(
     'Pigeon identity',
     'Pigeon finds practical security weaknesses in SaaS products before attackers do and helps the team fix them.',

@@ -1,5 +1,6 @@
-import { ExternalLink } from 'lucide-react';
+import { AlertTriangle, ExternalLink } from 'lucide-react';
 import type { Lead } from '@/types/leads';
+import { findResearchIdentityConflicts } from '@/lib/ai/research-identity';
 
 function ResearchField({ label, value }: { label: string; value: string | null }) {
   if (!value) return <div><p className="text-xs font-medium text-zinc-500 dark:text-zinc-400 mb-1">{label}</p><p className="text-sm text-zinc-400 italic">Not filled in yet</p></div>;
@@ -7,8 +8,26 @@ function ResearchField({ label, value }: { label: string; value: string | null }
 }
 
 export function ResearchSection({ lead }: { lead: Lead }) {
+  const identityConflicts = findResearchIdentityConflicts(
+    lead.contact_name,
+    lead.research_sources,
+  );
+
   return (
     <div className="space-y-4">
+      {identityConflicts.length > 0 && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold">Identity conflict quarantined</p>
+            <p className="mt-0.5 text-xs leading-5">
+              {identityConflicts.map(conflict =>
+                `${conflict.sourceTitle} appears to refer to ${conflict.conflictingName}, not ${conflict.expectedName}.`,
+              ).join(' ')} Facts from these sources are excluded from hooks and email drafts.
+            </p>
+          </div>
+        </div>
+      )}
       <ResearchField label="Company Description" value={lead.company_description} />
       {lead.type === 'customer' && <ResearchField label="Attack Surface Notes" value={lead.attack_surface_notes} />}
       {lead.type === 'investor' && <ResearchField label="Investment Thesis Notes" value={lead.investment_thesis_notes} />}

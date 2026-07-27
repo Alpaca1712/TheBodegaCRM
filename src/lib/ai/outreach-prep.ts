@@ -1,5 +1,9 @@
 import type { Lead } from '@/types/leads'
 import type { EmailEvidence } from './email-grounding'
+import {
+  findResearchIdentityConflicts,
+  type ResearchIdentityConflict,
+} from './research-identity'
 
 export type HookTier =
   | 'product_decision'
@@ -10,6 +14,7 @@ export type HookTier =
 
 export type SecurityPosture = 'pre_compliance' | 'already_compliant' | 'unknown'
 export type InitialOfferMode = 'direct_pentest' | 'lead_magnet'
+export type InitialOfferDelivery = 'direct' | 'offer_on_reply'
 
 export interface RankedOutreachHook {
   fact: string
@@ -32,24 +37,31 @@ export interface InitialOutreachPlan {
   securityPosture: SecurityPosture
   securityPostureFacts: string[]
   useRestaurantSharedExperience: boolean
+  identityConflicts: ResearchIdentityConflict[]
   offerMode: InitialOfferMode
+  offerDelivery: InitialOfferDelivery
   offerName: string
   offerReason: string
   offerDetails: string[]
 }
 
 const PRODUCT_LANGUAGE =
-  /\b(?:built|building|designed|design|product|platform|feature|workflow|agent|automation|integrates?|connects?|routes?|handles?|lets?|allows?|users?|customers?)\b/i
+  /\b(?:built|building|designed|design|product|platform|feature|workflow|agent|automation|integrates?|connects?|reads?|sends?|submits?|scores?|ranks?|schedules?|routes?|handles?|lets?|allows?|users?|customers?)\b/i
 const AUTHORED_LANGUAGE =
   /\b(?:wrote|authored|published|said|explained|described|spoke|presented|appeared|interviewed|podcast|talk)\b/i
 const SOCIAL_AUTHORSHIP_LANGUAGE = /\b(?:wrote|posted|published|shared)\b/i
 const SOCIAL_ENGAGEMENT_LANGUAGE = /\b(?:liked|reshared|reposted|reacted|engaged)\b/i
 const HOSPITALITY_LANGUAGE =
   /\b(?:restaurant|hospitality|hotel|server|waiter|waitress|host|busser|barback|kitchen|dining|reservation|food service)\b/i
-const TECHNICAL_ROLE = /\b(?:cto|technical|engineer|engineering|developer|founder|product)\b/i
 const AI_AGENT_LANGUAGE = /\b(?:ai agent|agentic|copilot|voice agent|assistant)\b/i
 const AGENT_ACTION_LANGUAGE =
-  /\b(?:action|tool|workflow|automation|api|integrat|connect|email|text|sms|voice|chat|slack|book|order|payment|transaction)\w*/i
+  /\b(?:acts?|action|sends?|submits?|scores?|ranks?|routes?|schedules?|writes?|updates?|approves?|books?|orders?|payments?|transactions?|tools?|workflows?|automations?|apis?|integrates?|connects?|slack)\w*/i
+const UNTRUSTED_INPUT_LANGUAGE =
+  /\b(?:resume|candidate profile|profile|uploaded document|upload|pdf|email|text|sms|voice|call|chat|web page|public web|customer message|user input|inbound message)\w*/i
+const JOB_TITLE_ONLY_LANGUAGE =
+  /\b(?:is|serves as|works as|joined as)\b.{0,40}\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
+const AI_MAGNET_LANGUAGE =
+  /\b(?:we hack ai agents|ai agent|agent security|ai security)\b|\bai\b.{0,40}\b(?:agent|security|playbook|guide)\b/i
 
 const PRE_COMPLIANCE_LANGUAGE =
   /\b(?:pre[- ]?soc ?2|not (?:yet )?soc ?2|without soc ?2|working toward soc ?2|preparing for (?:their )?first (?:enterprise )?security review|first enterprise security review|has not (?:yet )?(?:completed|passed) (?:a )?(?:pentest|security review))\b/i
@@ -102,6 +114,21 @@ function isFirstPartyProductFact(item: EmailEvidence, lead: Lead): boolean {
 
 function rankHook(item: EmailEvidence, lead: Lead): RankedOutreachHook {
   const social = isSocialUrl(item.sourceUrl)
+
+  if (
+    JOB_TITLE_ONLY_LANGUAGE.test(item.fact) &&
+    !PRODUCT_LANGUAGE.test(item.fact) &&
+    !AUTHORED_LANGUAGE.test(item.fact)
+  ) {
+    return {
+      fact: item.fact,
+      sourceUrl: item.sourceUrl,
+      tier: 'secondary_source',
+      score: 10,
+      usable: false,
+      overclaimWarning: 'A job title is context, not a recognition hook. Use a sourced product decision instead.',
+    }
+  }
 
   if (social && SOCIAL_ENGAGEMENT_LANGUAGE.test(item.fact)) {
     return {
@@ -226,10 +253,14 @@ function getOfferPlan(input: {
   customContext?: string
   ctaType: 'mckenna' | 'hormozi'
   securityPosture: SecurityPosture
-}): Pick<InitialOutreachPlan, 'offerMode' | 'offerName' | 'offerReason' | 'offerDetails'> {
-  const { lead, evidence, customContext, ctaType, securityPosture } = input
+}): Pick<
+  InitialOutreachPlan,
+  'offerMode' | 'offerDelivery' | 'offerName' | 'offerReason' | 'offerDetails'
+> {
+  const { evidence, customContext, ctaType, securityPosture } = input
   const directOffer = {
     offerMode: 'direct_pentest' as const,
+    offerDelivery: 'direct' as const,
     offerName: 'Free Pigeon pentest',
     offerReason: securityPosture === 'already_compliant'
       ? 'The lead has explicit compliance or prior-review evidence, so position the pentest as product differentiation rather than catch-up.'
@@ -255,25 +286,28 @@ function getOfferPlan(input: {
     )
     .map(item => item.fact)
     .join(' ')
-  const technicalAiLead =
-    TECHNICAL_ROLE.test(lead.contact_title || '') &&
+  const actionTakingAiProduct =
     AI_AGENT_LANGUAGE.test(evidenceText) &&
-    AGENT_ACTION_LANGUAGE.test(evidenceText)
-  const aiMagnet = findMagnet(magnets, /\b(?:ai agent|hack ai|agent security|ai security)\b/i)
+    AGENT_ACTION_LANGUAGE.test(evidenceText) &&
+    UNTRUSTED_INPUT_LANGUAGE.test(evidenceText)
+  const aiMagnet = findMagnet(magnets, AI_MAGNET_LANGUAGE)
   const complianceMagnet = findMagnet(
     magnets,
     /\b(?:security review|compliance|soc ?2|kill your deals|pentest timing)\b/i,
   )
 
-  if (technicalAiLead && aiMagnet) {
+  if (actionTakingAiProduct && aiMagnet) {
     return {
       offerMode: 'lead_magnet',
+      offerDelivery: 'offer_on_reply',
       offerName: aiMagnet.name,
-      offerReason: 'The lead is technical and the verified evidence describes an AI agent that can take real actions.',
+      offerReason: 'Verified product facts describe an AI agent that takes actions after reading input controlled by people outside the company.',
       offerDetails: [
         `Offer the loaded lead magnet named exactly "${aiMagnet.name}".`,
         aiMagnet.ctaText ? `Its linked call to action is "${aiMagnet.ctaText}".` : '',
-        'Say it is attached, free, and has no signup or call.',
+        'Do not attach it to the first cold email. Offer to send it after they reply.',
+        'Ask for one short, playful reply phrase tied to their product or industry.',
+        'Say there is no signup or call.',
         'Only mention its contents or completion time when those details appear in verified evidence.',
       ].filter(Boolean),
     }
@@ -282,12 +316,14 @@ function getOfferPlan(input: {
   if (securityPosture === 'pre_compliance' && complianceMagnet) {
     return {
       offerMode: 'lead_magnet',
+      offerDelivery: 'offer_on_reply',
       offerName: complianceMagnet.name,
       offerReason: 'Verified evidence says the lead is before SOC 2 or a first enterprise security review.',
       offerDetails: [
         `Offer the loaded lead magnet named exactly "${complianceMagnet.name}".`,
         complianceMagnet.ctaText ? `Its linked call to action is "${complianceMagnet.ctaText}".` : '',
-        'Say it is attached, free, and has no signup or call.',
+        'Do not attach it to the first cold email. Offer to send it after they reply.',
+        'Say it is free and requires no signup or call.',
         'Do not imply the lead is behind or unprepared.',
       ].filter(Boolean),
     }
@@ -301,12 +337,14 @@ function getOfferPlan(input: {
   ) {
     return {
       offerMode: 'lead_magnet',
+      offerDelivery: 'offer_on_reply',
       offerName: defaultMagnet.name,
       offerReason: 'The campaign has a generic default resource that does not depend on an unsupported compliance or AI-agent assumption.',
       offerDetails: [
         `Offer the loaded lead magnet named exactly "${defaultMagnet.name}".`,
         defaultMagnet.ctaText ? `Its linked call to action is "${defaultMagnet.ctaText}".` : '',
-        'Say it is attached, free, and has no signup or call.',
+        'Do not attach it to the first cold email. Offer to send it after they reply.',
+        'Say it is free and requires no signup or call.',
       ].filter(Boolean),
     }
   }
@@ -323,6 +361,10 @@ export function prepareInitialOutreach(input: {
   const { lead, evidence, customContext, ctaType } = input
   const rankedHooks = rankOutreachHooks(evidence, lead)
   const security = getSecurityPosture(evidence)
+  const identityConflicts = findResearchIdentityConflicts(
+    lead.contact_name,
+    lead.research_sources,
+  )
   const evidenceText = evidence
     .filter(
       item =>
@@ -346,8 +388,88 @@ export function prepareInitialOutreach(input: {
     securityPosture: security.posture,
     securityPostureFacts: security.facts,
     useRestaurantSharedExperience: HOSPITALITY_LANGUAGE.test(evidenceText),
+    identityConflicts,
     ...offer,
   }
+}
+
+const GENERIC_HOOK_TOKENS = new Set([
+  'about',
+  'after',
+  'agent',
+  'allows',
+  'before',
+  'built',
+  'company',
+  'connects',
+  'customers',
+  'designed',
+  'founder',
+  'helps',
+  'platform',
+  'product',
+  'their',
+  'there',
+  'these',
+  'they',
+  'users',
+  'with',
+  'workflow',
+])
+
+function textTokens(value: string): Set<string> {
+  return new Set(
+    normalize(value)
+      .split(' ')
+      .filter(token => token.length >= 4),
+  )
+}
+
+function distinctiveHookTokens(hook: RankedOutreachHook, lead: Lead): string[] {
+  const excluded = textTokens(
+    `${lead.contact_name} ${lead.company_name}`,
+  )
+
+  return [...textTokens(hook.fact)].filter(
+    token => !excluded.has(token) && !GENERIC_HOOK_TOKENS.has(token),
+  )
+}
+
+function firstEmailParagraph(body: string): string {
+  return body
+    .split(/\n\s*\n/)
+    .map(paragraph => paragraph.trim())
+    .find(paragraph =>
+      paragraph.length > 0 &&
+      !/^(?:hi|hey|hello)\b[^.!?]*[,!]?\s*$/i.test(paragraph) &&
+      !/^best,\s*/i.test(paragraph),
+    ) || ''
+}
+
+export function draftUsesTopHook(input: {
+  body: string
+  evidenceUsed: string[]
+  plan: InitialOutreachPlan
+  lead: Lead
+}): boolean {
+  const { body, evidenceUsed, plan, lead } = input
+  if (!plan.topHook) return false
+  if (!evidenceUsed.includes(plan.topHook.fact)) return false
+
+  const requiredTokens = distinctiveHookTokens(plan.topHook, lead)
+  if (requiredTokens.length === 0) return false
+
+  const openingTokens = textTokens(firstEmailParagraph(body))
+  const bodyTokens = textTokens(body)
+  const openingMatches = requiredTokens.filter(token => openingTokens.has(token)).length
+  const totalMatches = requiredTokens.filter(token => bodyTokens.has(token)).length
+  const requiredOpeningMatches = Math.min(2, requiredTokens.length)
+  const requiredTotalMatches = Math.min(3, requiredTokens.length)
+
+  return (
+    openingMatches >= requiredOpeningMatches &&
+    totalMatches >= requiredTotalMatches
+  )
 }
 
 export function formatInitialOutreachPlan(plan: InitialOutreachPlan): string {
@@ -363,14 +485,25 @@ export function formatInitialOutreachPlan(plan: InitialOutreachPlan): string {
   const postureFacts = plan.securityPostureFacts.length > 0
     ? plan.securityPostureFacts.map(fact => `- ${fact}`).join('\n')
     : '- No explicit SOC 2, pentest, or enterprise-review status is verified. Do not guess.'
+  const identityWarnings = plan.identityConflicts.length > 0
+    ? plan.identityConflicts
+        .map(conflict =>
+          `- DO NOT USE ${conflict.sourceTitle}. It appears to refer to ${conflict.conflictingName}, not ${conflict.expectedName}.`,
+        )
+        .join('\n')
+    : '- No conflicting identity was detected in the saved sources.'
 
   return `${hook}
 Restaurant shared-experience hook allowed: ${plan.useRestaurantSharedExperience ? 'yes' : 'no'}
+
+Identity check:
+${identityWarnings}
 
 Security posture: ${plan.securityPosture}
 ${postureFacts}
 
 Selected offer mode: ${plan.offerMode}
+Offer delivery: ${plan.offerDelivery}
 Selected offer: ${plan.offerName}
 Why it fits: ${plan.offerReason}
 Offer facts and constraints:

@@ -2,10 +2,17 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import {
   ModelJSONParseError,
-  researchPersonalFactsWithWebSearch,
+  researchOutreachFactsWithWebSearch,
   researchWithWebSearchJSONAndCitations,
 } from '@/lib/ai/anthropic'
-import { attachGroundedFacts } from '@/lib/ai/research-grounding'
+import {
+  attachGroundedFacts,
+  combineGroundedResearchPasses,
+} from '@/lib/ai/research-grounding'
+import {
+  conflictingResearchSourceUrls,
+  isConflictingResearchSource,
+} from '@/lib/ai/research-identity'
 import {
   compactResearchUpdates,
   hasCompleteResearchResultShape,
@@ -64,7 +71,10 @@ Also search for their contact information, company details, and visual identity:
 - Key team members at the company: search the company's team/about page and LinkedIn company page. Find names, titles, departments, and LinkedIn URLs of key people (executives, VPs, directors, product leads). This is critical for building an org chart.
 
 SOURCING RULES:
-- Every personal fact or personalization hook MUST appear in grounded_personal_facts with the exact URL that supports it.
+- Every product decision, personal fact, or personalization hook that could support outreach MUST appear in grounded_personal_facts with the exact URL that supports it.
+- Include at least two grounded product facts when first-party product pages support them. Product workflows, inputs, outputs, integrations, and actions are stronger hooks than a job title.
+- A job title, founding date, funding fact, or generic company category must have use_as_hook set to false. Do not return a title-only SMYKM hook.
+- Product facts may use use_as_hook true even when the source does not attribute the decision to one person.
 - The fact may concisely summarize one cited source passage, but it must not add a claim, interpretation, causal link, or detail that is absent from that passage.
 - evidence_quote MUST be one exact, contiguous, verbatim quote copied from the cited source text. It must directly support the complete fact.
 - The source_url on every grounded fact MUST exactly match a URL in research_sources.
@@ -72,6 +82,7 @@ SOURCING RULES:
 - Include ALL URLs you found useful during research (blog posts, GitHub repos, podcast pages, news articles, company pages, etc.)
 - If you cannot provide a real source URL for a detail, omit the detail completely. Never save an unsourced biography, quote, number, employer, hobby, life event, or anecdote.
 - Do not combine facts from multiple people with similar names. Confirm the source refers to this exact person and company.
+- If sources show a conflicting surname, social handle, or employer for the named person, do not use those sources for grounded facts.
 
 WRITING RULES FOR ALL TEXT FIELDS:
 - NEVER use em dashes (\u2014) or en dashes (\u2013) anywhere in any field. Use commas, periods, "and", colons, or parentheses instead. This is critical because this research feeds directly into cold emails.
@@ -87,7 +98,7 @@ After searching, return exactly ONE JSON object, never an array or a list of can
   "investment_thesis_notes": "For investors: what they invest in, their stated beliefs, their thesis with specific quotes if found. For customers: null",
   "grounded_personal_facts": [
     {
-      "fact": "A concise summary of one atomic personal or professional fact",
+      "fact": "A concise summary of one atomic product, personal, or professional fact",
       "evidence_quote": "An exact contiguous quote from the source that fully supports the fact",
       "source_url": "https://the-exact-source-url.com/page",
       "use_as_hook": true
@@ -266,28 +277,44 @@ export async function POST(request: NextRequest) {
       }
     )
     const parsedResult = research.data
-    let personalResearch = {
-      facts: parsedResult.grounded_personal_facts,
-      citations: research.citations,
+    let outreachResearch = {
+      facts: [] as typeof parsedResult.grounded_personal_facts,
+      citations: [] as typeof research.citations,
       sources: [] as Array<{ url: string; title: string; detail: string }>,
     }
 
     try {
-      personalResearch = await researchPersonalFactsWithWebSearch(
+      outreachResearch = await researchOutreachFactsWithWebSearch(
         parsedResult.contact_name || researchInput.contact_name || '',
         parsedResult.company_name || researchInput.company_name || '',
+        parsedResult.company_website || researchInput.website,
       )
     } catch (error) {
       console.warn(
-        'Dedicated personal research failed; using cited facts from the primary pass:',
+        'Dedicated outreach-hook research failed; using cited facts from the primary pass:',
         error instanceof Error ? error.message : error,
       )
     }
 
+    const combined = combineGroundedResearchPasses(
+      {
+        sources: parsedResult.research_sources,
+        facts: parsedResult.grounded_personal_facts,
+        citations: research.citations,
+      },
+      outreachResearch,
+    )
+    const conflictingUrls = conflictingResearchSourceUrls(
+      parsedResult.contact_name || researchInput.contact_name || '',
+      combined.sources,
+    )
+    const identitySafeFacts = combined.facts.filter(
+      fact => !isConflictingResearchSource(fact.source_url, conflictingUrls),
+    )
     const grounded = attachGroundedFacts(
-      [...parsedResult.research_sources, ...personalResearch.sources],
-      personalResearch.facts,
-      personalResearch.citations,
+      combined.sources,
+      identitySafeFacts,
+      combined.citations,
     )
     const result: ResearchResult = {
       ...parsedResult,

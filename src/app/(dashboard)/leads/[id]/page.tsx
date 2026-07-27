@@ -19,6 +19,7 @@ import {
   MessageSquare,
   TrendingUp,
   AlertCircle,
+  AlertTriangle,
   CheckCircle2,
   Clock,
   Plus,
@@ -64,6 +65,7 @@ import { postLeadAiAction } from '@/lib/api/lead-ai-actions';
 import { getLeadBestAction, mostRecentDate, type SalesAction, type ActionLead } from '@/lib/dashboard/sales-actions';
 import { getLeadChallengeProfile, type ChallengeProfile } from '@/lib/leads/challenge-profile';
 import { getDealReadiness, type DealReadinessSummary } from '@/lib/sales/deal-readiness';
+import { findResearchIdentityConflicts } from '@/lib/ai/research-identity';
 import {
   leadDetailQueryKey,
   leadMemoriesQueryKey,
@@ -1413,8 +1415,26 @@ function RelatedLeadsCard({ leads, domain }: { leads: RelatedLead[]; domain: str
 
 // --- Research Section ---
 function ResearchSection({ lead }: { lead: Lead }) {
+  const identityConflicts = findResearchIdentityConflicts(
+    lead.contact_name,
+    lead.research_sources,
+  );
+
   return (
     <div className="space-y-4">
+      {identityConflicts.length > 0 && (
+        <div role="alert" className="flex items-start gap-2.5 rounded-lg border border-amber-200 bg-amber-50 p-3 text-amber-900 dark:border-amber-900/70 dark:bg-amber-950/30 dark:text-amber-200">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div>
+            <p className="text-xs font-semibold">Identity conflict quarantined</p>
+            <p className="mt-0.5 text-xs leading-5">
+              {identityConflicts.map(conflict =>
+                `${conflict.sourceTitle} appears to refer to ${conflict.conflictingName}, not ${conflict.expectedName}.`,
+              ).join(' ')} Facts from these sources are excluded from hooks and email drafts.
+            </p>
+          </div>
+        </div>
+      )}
       <ResearchField label="Company Description" value={lead.company_description} />
       {lead.type === 'customer' && <ResearchField label="Attack Surface Notes" value={lead.attack_surface_notes} />}
       {lead.type === 'investor' && <ResearchField label="Investment Thesis Notes" value={lead.investment_thesis_notes} />}
