@@ -10,7 +10,7 @@ import { apiErrorMessage, clientErrorMessage } from '@/lib/api/client-error';
 type EmailMode = 'initial' | 'review_draft' | 'follow_up_1' | 'follow_up_2' | 'follow_up_3' | 'break_up' | 'reply_needed' | 'post_meeting';
 
 const MODE_CONFIG: Record<EmailMode, { label: string; description: string; followUpNumber: number; isFollowUp: boolean }> = {
-  initial: { label: 'Initial cold email', description: 'Choose between Pigeon\'s core offer and a useful lead magnet', followUpNumber: 0, isFollowUp: false },
+  initial: { label: 'Initial cold email', description: 'Choose between grounded offer options matched to this lead', followUpNumber: 0, isFollowUp: false },
   review_draft: { label: 'Review Drafted Email', description: 'Check and refine the already drafted email before sending', followUpNumber: 0, isFollowUp: false },
   follow_up_1: { label: 'Follow-up #1 (Day 4 Bump)', description: 'Short bump with a new SMYKM hook, no reference to the original', followUpNumber: 1, isFollowUp: true },
   follow_up_2: { label: 'Follow-up #2 (Day 9 Value Drop)', description: 'Hormozi-style lead magnet or free resource offer', followUpNumber: 2, isFollowUp: true },
@@ -248,6 +248,8 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
         : mode === 'reply_needed' ? 'reply_response'
         : mode === 'post_meeting' ? 'reply_response'
         : mode;
+      const resolvedEmailType =
+        variant.offerMode === 'lead_magnet' ? 'lead_magnet' : emailType;
 
       const resolvedCampaignId = campaignId || existingDraft?.campaign_id || null;
       const saveWithoutGmail = async () => {
@@ -274,7 +276,7 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           body: JSON.stringify({
             lead_id: lead.id,
             campaign_id: resolvedCampaignId,
-            email_type: emailType,
+            email_type: resolvedEmailType,
             cta_type: side,
             subject: variant.subject,
             body: variant.body,
@@ -295,10 +297,12 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
           lead_id: lead.id,
           lead_email_id: existingDraft?.id || null,
           campaign_id: resolvedCampaignId,
-          email_type: emailType,
+          email_type: resolvedEmailType,
           cta_type: side,
           subject: variant.subject,
           body: variant.body,
+          lead_magnet_name:
+            variant.offerMode === 'lead_magnet' ? variant.offerName : null,
         }),
       });
       const gmailData = await gmailRes.json().catch(() => null);
@@ -649,8 +653,20 @@ export default function EmailGenerator({ lead, emails = [], followUpType, campai
 
         {editedHormozi && (
           <VariantCard
-            title={config.isFollowUp ? 'Variant B' : 'Lead magnet'}
-            subtitle={config.isFollowUp ? 'Alternative version' : 'Offer a useful resource'}
+            title={
+              config.isFollowUp
+                ? 'Variant B'
+                : editedHormozi.offerMode === 'lead_magnet'
+                  ? 'Lead magnet'
+                  : 'Direct offer'
+            }
+            subtitle={
+              config.isFollowUp
+                ? 'Alternative version'
+                : editedHormozi.offerMode === 'lead_magnet'
+                  ? editedHormozi.offerName || 'Offer a useful resource'
+                  : 'No matched lead magnet, so this stays direct'
+            }
             variant={editedHormozi!}
             mode={mode}
             onSubjectChange={(s) => setEditedHormozi((v) => v ? { ...v, subject: s, quality: checkEmailQuality(s, v.body, mode === 'initial' ? 'initial' : 'follow_up') } : v)}
@@ -759,6 +775,27 @@ function VariantCard({
           className="w-full rounded-lg border border-zinc-200 dark:border-zinc-700 bg-zinc-50 dark:bg-zinc-800 px-3 py-2 text-sm text-zinc-900 dark:text-zinc-100 focus:outline-none focus:ring-2 focus:ring-red-500/20 focus:border-red-500 resize-y"
         />
       </div>
+
+      {mode === 'initial' && variant.realDetailPrompts?.length === 3 && (
+        <details className="group border-t border-zinc-200 dark:border-zinc-800 pt-3">
+          <summary className="flex cursor-pointer list-none items-center gap-2 text-xs font-medium text-zinc-600 dark:text-zinc-300">
+            <Target className="h-3.5 w-3.5 text-red-500" />
+            Make it yours
+            <ChevronDown className="ml-auto h-3.5 w-3.5 text-zinc-400 transition-transform group-open:rotate-180" />
+          </summary>
+          <p className="mt-2 text-[11px] text-zinc-500 dark:text-zinc-400">
+            The draft is grounded. These are optional places where one true detail from you would make it stronger.
+          </p>
+          <ol className="mt-2 space-y-1.5 text-[11px] text-zinc-600 dark:text-zinc-300">
+            {variant.realDetailPrompts.map((prompt, index) => (
+              <li key={prompt} className="flex items-start gap-2">
+                <span className="mt-px font-mono text-zinc-400">{index + 1}.</span>
+                <span>{prompt}</span>
+              </li>
+            ))}
+          </ol>
+        </details>
+      )}
 
       <div className="flex items-center gap-2">
         <button

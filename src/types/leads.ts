@@ -400,6 +400,9 @@ export interface EmailVariant {
   body: string
   ctaType: CtaType
   wordCount: number
+  offerMode?: 'direct_pentest' | 'lead_magnet'
+  offerName?: string
+  realDetailPrompts?: string[]
   quality?: {
     issues: string[]
     score: number

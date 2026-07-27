@@ -135,9 +135,9 @@ describe('Email Quality Check', () => {
     it('should pass a perfect email', () => {
       const body = 'Hi John. Your cooking robot handles voice commands in a busy kitchen. Pigeon helps teams test what those controls can be tricked into doing. I have a report on robot security. Want me to send it? Best, Daniel Chalco CEO, Pigeon';
       // This is still short but let's see. 33 words.
-      const result = checkEmailQuality('Robot hack', body, 'initial');
+      const result = checkEmailQuality('robot hack', body, 'initial');
       // Should have word count issue but not others
-      expect(result.issues).toEqual([`Body is only ${countWords(body)} words. Initial outreach target: 60-120.`]);
+      expect(result.issues).toEqual([`Body is only ${countWords(body)} words. Initial outreach target: 75-145.`]);
     });
   });
 

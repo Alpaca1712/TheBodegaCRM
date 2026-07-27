@@ -4,7 +4,9 @@ import { rateLimitResponse } from '@/lib/api/auth-guard'
 import { GmailTokenExpiredError, refreshAccessToken, sendGmailMessage } from '@/lib/api/gmail'
 import { recordCampaignEvent } from '@/lib/campaigns/server'
 import { recordOpportunityEvent } from '@/lib/deals/server'
-import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
+import { generateLeadMagnetPdfFromGoogleDoc, type GoogleDocLeadMagnet } from '@/lib/google/lead-magnets'
+import { buildChallengeTrackingUrl, ensureLeadToken } from '@/lib/landing-links/server'
+import { isMissingColumn, isMissingRelation, omitColumn } from '@/lib/supabase/missing-column'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import type { CampaignEventType } from '@/types/campaigns'
 
@@ -25,6 +27,7 @@ const sendSchema = z.object({
   to_address: z.string().email().optional().nullable(),
   subject: z.string().min(1),
   body: z.string().min(1),
+  lead_magnet_name: z.string().trim().min(1).max(160).optional().nullable(),
   attachments: z.array(attachmentSchema).max(10).optional(),
 })
 
@@ -54,7 +57,7 @@ export async function POST(request: NextRequest) {
     const input = validation.data
     const { data: lead } = await supabase
       .from('leads')
-      .select('id,contact_name,contact_email,stage')
+      .select('id,contact_name,contact_email,contact_title,company_name,lead_token,stage')
       .eq('id', input.lead_id)
       .eq('org_id', orgId)
       .single()
@@ -132,13 +135,67 @@ export async function POST(request: NextRequest) {
       .limit(1)
       .maybeSingle()
 
+    const attachments = [...(input.attachments || [])]
+    if (input.lead_magnet_name) {
+      if (!campaignId) {
+        return NextResponse.json(
+          { error: 'A campaign is required to attach a tracked lead magnet.' },
+          { status: 400 },
+        )
+      }
+
+      const { data: leadMagnet, error: leadMagnetError } = await supabase
+        .from('campaign_lead_magnets')
+        .select('*')
+        .eq('campaign_id', campaignId)
+        .eq('org_id', orgId)
+        .eq('name', input.lead_magnet_name)
+        .maybeSingle()
+
+      if (leadMagnetError && isMissingRelation(leadMagnetError, 'campaign_lead_magnets')) {
+        return NextResponse.json(
+          { error: 'Run migration 040_campaign_lead_magnets.sql to attach campaign lead magnets.' },
+          { status: 400 },
+        )
+      }
+      if (leadMagnetError) throw leadMagnetError
+      if (!leadMagnet) {
+        return NextResponse.json(
+          { error: `Lead magnet "${input.lead_magnet_name}" is not loaded in this campaign.` },
+          { status: 404 },
+        )
+      }
+
+      const leadToken = await ensureLeadToken({
+        supabase,
+        leadId: lead.id,
+        orgId,
+        existingToken: lead.lead_token,
+      })
+      const challengeLink = buildChallengeTrackingUrl({
+        leadToken,
+        campaignId,
+      })
+      const pdf = await generateLeadMagnetPdfFromGoogleDoc({
+        accessToken,
+        leadMagnet: leadMagnet as GoogleDocLeadMagnet,
+        lead,
+        challengeLink,
+      })
+      attachments.push({
+        filename: pdf.filename,
+        contentType: pdf.contentType,
+        data: pdf.base64,
+      })
+    }
+
     const sent = await sendGmailMessage(accessToken, {
       from: account.email_address,
       to: toAddress,
       subject: input.subject,
       body: input.body,
       threadId: latestThreadEmail?.gmail_thread_id || null,
-      attachments: input.attachments,
+      attachments,
     })
 
     const sentAt = new Date().toISOString()

@@ -84,6 +84,26 @@ export function buildEmailEvidence(input: {
     'Pigeon identity',
     'Pigeon finds practical security weaknesses in SaaS products before attackers do and helps the team fix them.',
   )
+  add(
+    'Pigeon identity',
+    'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
+  )
+  add(
+    'Pigeon identity',
+    'Daniel Chalco previously worked in restaurants as a host, busser, and barback.',
+  )
+  add(
+    'Pigeon identity',
+    'Pigeon offers a free pentest and delivers the findings within 48 hours.',
+  )
+  add(
+    'Pigeon identity',
+    'The "We Hack AI Agents" guide covers three recurring AI-agent security issues and includes checks that take about 15 minutes.',
+  )
+  add(
+    'Pigeon identity',
+    'The "Don\'t Let Security Reviews Kill Your Deals" guide explains compliance and pentest timing for SaaS teams before SOC 2 or a first enterprise security review.',
+  )
 
   return evidence
 }

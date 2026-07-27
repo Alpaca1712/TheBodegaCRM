@@ -4,6 +4,9 @@ export const BANNED_PHRASES = [
   'at the intersection of',
   'game-changer',
   'revolutionize',
+  'unlock',
+  'seamless',
+  'at the end of the day',
   'I hope this finds you well',
   'I came across your',
   'I was impressed by',
@@ -93,11 +96,11 @@ export function checkEmailQuality(
 
   // Word count check
   if (type === 'initial') {
-    if (words < 60) {
-      issues.push(`Body is only ${words} words. Initial outreach target: 60-120.`)
+    if (words < 75) {
+      issues.push(`Body is only ${words} words. Initial outreach target: 75-145.`)
       score -= 10
-    } else if (words > 125) {
-      issues.push(`Body is ${words} words. Keep initial outreach under 120.`)
+    } else if (words > 150) {
+      issues.push(`Body is ${words} words. Keep initial outreach under 145.`)
       score -= 10
     }
   } else {
@@ -112,6 +115,22 @@ export function checkEmailQuality(
   if (/[\u2013\u2014]/.test(body) || /[\u2013\u2014]/.test(subject)) {
     issues.push('Contains em dashes. Use commas or periods.')
     score -= 15
+  }
+
+  if (type === 'initial' && /:/.test(`${subject}\n${body}`)) {
+    issues.push('Contains a colon. Initial outreach should sound spoken, not formatted.')
+    score -= 10
+  }
+
+  if (type === 'initial' && subject !== subject.toLowerCase()) {
+    issues.push('Subject should be lowercase and boring on purpose.')
+    score -= 5
+  }
+
+  const punchyFragments = body.match(/(?:^|[.!?]\s+|\n)(?:no|not|never|zero)\s+[^.!?\n]{1,35}[.!?]/gi) || []
+  if (punchyFragments.length >= 3) {
+    issues.push('Uses stacked short fragments for punch. Combine them into a natural sentence.')
+    score -= 10
   }
 
   // Banned phrases check

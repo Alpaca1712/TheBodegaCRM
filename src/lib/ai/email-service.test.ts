@@ -84,13 +84,18 @@ const bodyWithNormalizedDash = [
 describe('buildInitialUserPrompt', () => {
   it('makes the core offer and lead magnet variants do different jobs', () => {
     const coreOffer = buildInitialUserPrompt(baseLead, 'mckenna')
-    const leadMagnet = buildInitialUserPrompt(baseLead, 'hormozi', 'Offer the AI Security Playbook')
+    const leadMagnet = buildInitialUserPrompt(
+      baseLead,
+      'hormozi',
+      `Loaded lead magnets (use an exact name; never invent another asset):
+- We Hack AI Agents (default); linked CTA text: Pentest Challenge`,
+    )
 
-    expect(coreOffer).toContain('OFFER MODE: CORE SECURITY OFFER')
-    expect(coreOffer).toContain("offers Pigeon's hands-on security work")
-    expect(leadMagnet).toContain('OFFER MODE: LEAD MAGNET')
-    expect(leadMagnet).toContain('AI Security Playbook')
-    expect(leadMagnet).toContain('Do not pretend it already exists')
+    expect(coreOffer).toContain('OFFER MODE: FREE PIGEON PENTEST')
+    expect(coreOffer).toContain('findings arrive within 48 hours')
+    expect(leadMagnet).toContain('OFFER MODE: ATTACHED LEAD MAGNET')
+    expect(leadMagnet).toContain('We Hack AI Agents')
+    expect(leadMagnet).toContain('Do not say what is inside it or how long it takes unless')
   })
 
   it('excludes legacy unsourced personal details and hooks from the draft context', () => {
@@ -145,10 +150,13 @@ describe('generateInitialOutreach', () => {
 
     const result = await generateInitialOutreach(baseLead)
 
-    expect(result.mckenna.body).toContain('Pigeon helps SaaS companies like Subgraph')
+    expect(result.mckenna.body).toContain("I've spent 14 years breaking into systems")
     expect(result.mckenna.body).not.toContain('$13')
-    expect(result.hormozi.body).toContain('short checklist')
+    expect(result.hormozi.body).toContain('free pentest')
+    expect(result.hormozi.body).not.toContain('checklist')
     expect(result.hormozi.body).not.toContain('student pilot')
+    expect(result.hormozi.offerMode).toBe('direct_pentest')
+    expect(result.hormozi.realDetailPrompts).toHaveLength(3)
   })
 })
 
