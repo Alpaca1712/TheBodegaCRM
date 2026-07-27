@@ -25,6 +25,15 @@ export class UngroundedEmailError extends Error {
   }
 }
 
+export class MissingOutreachHookError extends Error {
+  constructor() {
+    super(
+      'Auto-Research did not capture a source-backed product hook. Run Auto-Research again before generating the first email.',
+    )
+    this.name = 'MissingOutreachHookError'
+  }
+}
+
 function clean(value: string): string {
   return value.replace(/\s+/g, ' ').trim()
 }
@@ -98,7 +107,15 @@ export function buildEmailEvidence(input: {
   )
   add(
     'Pigeon identity',
-    'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
+    'Pigeon is a new cybersecurity startup founded by Daniel Chalco.',
+  )
+  add(
+    'Pigeon identity',
+    'Daniel Chalco has 15 years of cybersecurity experience.',
+  )
+  add(
+    'Pigeon identity',
+    'Pigeon tests the security of AI agents and SaaS products.',
   )
   add(
     'Pigeon identity',
@@ -170,6 +187,15 @@ function hasUnsupportedBiography(body: string, usedEvidence: string[]): boolean 
     })
 }
 
+function misattributesFounderExperience(body: string): boolean {
+  return body
+    .split(/[.!?\n]+/)
+    .filter(sentence => /\b15 years\b/i.test(sentence))
+    .some(sentence =>
+      /\b(?:pigeon|we|we've|we have|our company|the company)\b/i.test(sentence),
+    )
+}
+
 export function validateEvidenceAwareDraft(
   value: EvidenceAwareDraft,
   evidence: EmailEvidence[],
@@ -193,6 +219,10 @@ export function validateEvidenceAwareDraft(
   }
 
   if (hasUnsupportedBiography(value.body, value.evidence_used)) {
+    throw new UngroundedEmailError()
+  }
+
+  if (misattributesFounderExperience(value.body)) {
     throw new UngroundedEmailError()
   }
 }

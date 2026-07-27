@@ -156,14 +156,14 @@ describe('generateInitialOutreach', () => {
       body: [
         'Hi Alex,',
         'SaaS teams move fast, so security often gets pushed until later.',
-        'I am Daniel, founder of Pigeon. I have spent 14 years breaking into systems, including AI agents.',
+        'I am Daniel, founder of Pigeon. I have 15 years of cybersecurity experience.',
         'Reply if you want a free pentest. Pigeon sends the findings within 48 hours.',
         'Best,',
         'Daniel Chalco',
         'Founder, Pigeon',
       ].join('\n\n'),
       evidence_used: [
-        'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
+        'Daniel Chalco has 15 years of cybersecurity experience.',
         'Pigeon offers a free pentest and delivers the findings within 48 hours.',
       ],
     }
@@ -187,22 +187,41 @@ describe('generateInitialOutreach', () => {
     expect(result.mckenna.quality?.score).toBeGreaterThanOrEqual(70)
   })
 
-  it('returns conservative usable variants when generated personalization is unsupported', async () => {
+  it('blocks the draft when generation and repair cannot produce source-backed specificity', async () => {
     mockGenerateJSON.mockResolvedValue({
       subject: 'Startup lessons',
       body: 'Hi Alex. Your $13.00-a-week food budget and time as a student pilot stood out.',
       evidence_used: [],
     })
 
+    await expect(generateInitialOutreach(baseLead)).rejects.toThrow(
+      'Auto-Research did not capture a source-backed product hook',
+    )
+  })
+
+  it('repairs a product-specific body when the subject is still generic', async () => {
+    const genericSubjectDraft = {
+      subject: 'security check for mason voice',
+      body: bodyWithNormalizedDash,
+      evidence_used: [productFact],
+    }
+    const repairedDraft = {
+      subject: 'resident work orders',
+      body: bodyWithNormalizedDash,
+      evidence_used: [productFact],
+    }
+
+    mockGenerateJSON
+      .mockResolvedValueOnce(genericSubjectDraft)
+      .mockResolvedValueOnce(genericSubjectDraft)
+      .mockResolvedValueOnce(repairedDraft)
+      .mockResolvedValueOnce(repairedDraft)
+
     const result = await generateInitialOutreach(baseLead)
 
-    expect(result.mckenna.body).toContain("I've spent 14 years breaking into systems")
-    expect(result.mckenna.body).not.toContain('$13')
-    expect(result.hormozi.body).toContain('free pentest')
-    expect(result.hormozi.body).not.toContain('checklist')
-    expect(result.hormozi.body).not.toContain('student pilot')
-    expect(result.hormozi.offerMode).toBe('direct_pentest')
-    expect(result.hormozi.realDetailPrompts).toHaveLength(3)
+    expect(result.mckenna.subject).toBe('resident work orders')
+    expect(result.hormozi.subject).toBe('resident work orders')
+    expect(result.mckenna.specificityPassed).toBe(true)
   })
 })
 

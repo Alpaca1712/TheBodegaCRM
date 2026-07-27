@@ -59,7 +59,7 @@ const AGENT_ACTION_LANGUAGE =
 const UNTRUSTED_INPUT_LANGUAGE =
   /\b(?:resume|candidate profile|profile|uploaded document|upload|pdf|email|text|sms|voice|call|chat|web page|public web|customer message|user input|inbound message)\w*/i
 const JOB_TITLE_ONLY_LANGUAGE =
-  /\b(?:is|serves as|works as|joined as)\b.{0,40}\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
+  /\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
 const AI_MAGNET_LANGUAGE =
   /\b(?:we hack ai agents|ai agent|agent security|ai security)\b|\bai\b.{0,40}\b(?:agent|security|playbook|guide)\b/i
 
@@ -416,6 +416,10 @@ const GENERIC_HOOK_TOKENS = new Set([
   'with',
   'workflow',
 ])
+const GENERIC_INITIAL_SUBJECT =
+  /\b(?:security|pentest|free|check|quick thought|quick question|cybersecurity)\b/i
+const GENERIC_ROLE_OPENING =
+  /\b(?:being|as)\s+(?:the\s+)?(?:cto|ceo|founder)\b|\byou(?:'re| are) probably\b/i
 
 function textTokens(value: string): Set<string> {
   return new Set(
@@ -447,26 +451,35 @@ function firstEmailParagraph(body: string): string {
 }
 
 export function draftUsesTopHook(input: {
+  subject: string
   body: string
   evidenceUsed: string[]
   plan: InitialOutreachPlan
   lead: Lead
 }): boolean {
-  const { body, evidenceUsed, plan, lead } = input
+  const { subject, body, evidenceUsed, plan, lead } = input
   if (!plan.topHook) return false
   if (!evidenceUsed.includes(plan.topHook.fact)) return false
 
   const requiredTokens = distinctiveHookTokens(plan.topHook, lead)
   if (requiredTokens.length === 0) return false
 
-  const openingTokens = textTokens(firstEmailParagraph(body))
+  const subjectTokens = textTokens(subject)
+  const opening = firstEmailParagraph(body)
+  const openingTokens = textTokens(opening)
   const bodyTokens = textTokens(body)
+  const subjectMatches = requiredTokens.filter(token => subjectTokens.has(token)).length
   const openingMatches = requiredTokens.filter(token => openingTokens.has(token)).length
   const totalMatches = requiredTokens.filter(token => bodyTokens.has(token)).length
   const requiredOpeningMatches = Math.min(2, requiredTokens.length)
   const requiredTotalMatches = Math.min(3, requiredTokens.length)
 
   return (
+    subject.trim().split(/\s+/).length >= 2 &&
+    subject.trim().split(/\s+/).length <= 7 &&
+    !GENERIC_INITIAL_SUBJECT.test(subject) &&
+    !GENERIC_ROLE_OPENING.test(opening) &&
+    subjectMatches >= 1 &&
     openingMatches >= requiredOpeningMatches &&
     totalMatches >= requiredTotalMatches
   )

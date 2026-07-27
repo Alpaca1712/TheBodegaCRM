@@ -96,11 +96,11 @@ export function checkEmailQuality(
 
   // Word count check
   if (type === 'initial') {
-    if (words < 75) {
-      issues.push(`Body is only ${words} words. Initial outreach target: 75-145.`)
+    if (words < 120) {
+      issues.push(`Body is only ${words} words. Initial outreach target: 140-230.`)
       score -= 10
-    } else if (words > 150) {
-      issues.push(`Body is ${words} words. Keep initial outreach under 145.`)
+    } else if (words > 250) {
+      issues.push(`Body is ${words} words. Keep initial outreach under 230.`)
       score -= 10
     }
   } else {

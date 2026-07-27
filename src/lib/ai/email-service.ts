@@ -5,6 +5,7 @@ import {
   EvidenceAwareDraft,
   EmailEvidence,
   formatEmailEvidence,
+  MissingOutreachHookError,
   UngroundedEmailError,
   validateEvidenceAwareDraft,
 } from './email-grounding'
@@ -18,13 +19,14 @@ import { Lead, LeadEmail, EmailVariant, CtaType, GeneratedEmail } from '@/types/
 
 export const PIGEON_IDENTITY = `=== ABOUT PIGEON (use ONLY these facts, never invent capabilities or results) ===
 Company: Pigeon helps SaaS companies stay secure.
-Positioning: When you describe Pigeon, call it a cybersecurity startup, not a pentest company.
+Positioning: Pigeon is a new cybersecurity startup founded by Daniel Chalco. Never imply Pigeon itself has operated for 15 years.
 
 What Pigeon does: Pigeon finds practical security weaknesses in SaaS products before attackers do and helps the team fix them. This is especially relevant to products that use AI agents, automations, APIs, support tools, or sensitive customer data.
+AI-agent work: Pigeon tests the security of AI agents and SaaS products.
 
 How Pigeon works: Pigeon tests the same product paths real users and connected systems can reach. For an AI product, those paths may include email, text, chat, voice, Slack, APIs, and tools the AI can use.
 
-Founder context: Daniel Chalco has spent 14 years breaking into systems, including AI agents. Before software, Daniel worked in restaurants as a host, busser, and barback. Use the restaurant detail only when VERIFIED OUTREACH PREP explicitly allows that shared-experience hook.
+Founder context: Daniel Chalco has 15 years of cybersecurity experience. This experience belongs to Daniel, not to Pigeon. Before software, Daniel worked in restaurants as a host, busser, and barback. Use the restaurant detail only when VERIFIED OUTREACH PREP explicitly allows that shared-experience hook.
 
 Core offer: Pigeon offers a free pentest and delivers the findings within 48 hours. The call to action is a simple reply, never a call or calendar link.
 
@@ -48,11 +50,15 @@ const INITIAL_OUTREACH_RULES = `RESEARCH AND RELEVANCE PRINCIPLES:
 - Follow VERIFIED OUTREACH PREP. It has already ranked the hooks and selected the offer.
 - Use the top safe hook when one exists. Product decisions beat authored writing, authored writing beats owned social posts, and ambiguous likes or reshares are never usable.
 - A job title is context, never the hook.
+- Build the subject from the top safe product hook. It must contain at least one distinctive product word from that fact.
+- Keep the subject lowercase and 2-7 words. Never use "security check", "free security check", "quick security thought", "pentest", or the offer as the subject.
 - Put the top safe hook in the first paragraph and copy that exact fact into evidence_used.
 - The first paragraph and product pivot must fail the swap test. If either would still work after replacing only the company name, rewrite it.
 - Never open with a general truth about SaaS teams, founders, CTOs, security, or moving fast.
+- Never open with "being a CTO", "as CTO", "you probably", or a guess about the recipient's responsibilities.
 - Look for a natural, non-factual overlap between their sourced product workflow and Pigeon's work. Do not force a pun.
 - If their verified product workflow naturally mirrors Pigeon's offer, use one plain comparison. Do not invent a demo, customer outcome, or shared history.
+- When the product itself sends outreach, schedules work, ranks people, or performs another action that mirrors this email, a brief self-aware observation is encouraged. Keep it warm and specific, not flattering.
 - Show Me You Know Me: use one verifiable detail that proves this was written for the recipient. A second detail is allowed only in a short P.S.
 - Do not force the personal detail to explain the security problem. Personalization earns attention; relevance earns the reply.
 - Lead with the problem the buyer feels and the useful outcome, not a description of Pigeon.
@@ -63,21 +69,24 @@ const INITIAL_OUTREACH_RULES = `RESEARCH AND RELEVANCE PRINCIPLES:
 - The offer must match the requested mode: either a lead magnet or Pigeon's core security offer.
 
 SUBJECT:
-- 2 to 6 words.
+- 2 to 7 words.
 - Lowercase and boring on purpose, like a real person's email.
-- Reference the recipient, their product, or the selected problem, never Pigeon.
+- Reference the same verified product behavior used in the opening, never Pigeon or the offer.
 - No clickbait, fake reply prefixes, vague "quick question," or company-name mashups.
+- Never use "security check," "free security check," "quick security thought," "pentest," or a generic company-name subject.
 - No colon.
 
 BODY:
-- 75 to 145 words, excluding greeting and sign-off.
+- 140 to 230 words, excluding greeting and sign-off.
 - Start with "Hi [First name]," or "Hey [First name],".
-- Write in this order: hook about them, one-line Daniel/Pigeon intro, empathetic product tradeoff, the selected give or pentest, one reply CTA, optional P.S.
+- Write in this order: conversational product-specific observation, one-line Daniel/Pigeon intro, verified product mechanism, clearly caveated security question, selected give or pentest, one reply CTA, optional P.S.
+- Use 5 to 7 short paragraphs. Let the opening observation breathe for 2 or 3 sentences when the product creates a natural irony.
 - Agree with why the product decision is useful before naming the risk it can create.
+- A threat hypothesis is allowed only when it follows directly from the verified product mechanism and is explicitly caveated. Say "that is the path we would test" or "I am not saying this works on your product." Never state or imply that Pigeon found a vulnerability.
 - Never diagnose their product. Generalize from what Pigeon tests and let the lead verify the point.
 - Use at most one plausible consequence in plain language. Never include an attack walkthrough.
-- Keep each sentence under 25 words.
-- Sound like Daniel typed it in one sitting and read it out loud. Use simple spoken words and contractions.
+- Keep most sentences under 25 words. A conversational setup may use one sentence up to 32 words.
+- Sound like Daniel typed it in one sitting and read it out loud. Use simple spoken words, contractions, and short conversational paragraphs.
 - Include one natural transition such as "Anyway," "Here's the thing," or "Quick backstory so this makes sense."
 - Include one small self-aware aside. It should feel human, not clever.
 - No bullets, em dashes, colons, jargon, flattery, or biography dump.
@@ -95,14 +104,14 @@ BANNED PHRASES: "the question nobody's asking," "in today's landscape," "at the 
 Respond with ONLY valid JSON:
 {"subject": "...", "body": "...", "evidence_used": ["exact fact copied from VERIFIED EVIDENCE"]}`
 
-export const CUSTOMER_SYSTEM_PROMPT = `You are Daniel Chalco, CEO of Pigeon, writing a first cold email to a SaaS buyer.
+export const CUSTOMER_SYSTEM_PROMPT = `You are Daniel Chalco, founder of Pigeon, writing a first cold email to a SaaS buyer.
 
 ${PIGEON_IDENTITY}
 
 ${INITIAL_OUTREACH_RULES}
 `
 
-export const INVESTOR_SYSTEM_PROMPT = `You are Daniel Chalco, CEO of Pigeon, writing a first cold email to an investor.
+export const INVESTOR_SYSTEM_PROMPT = `You are Daniel Chalco, founder of Pigeon, writing a first cold email to an investor.
 
 ${PIGEON_IDENTITY}
 
@@ -110,7 +119,7 @@ Connect Pigeon to a belief, portfolio pattern, or market problem the investor ha
 
 ${INITIAL_OUTREACH_RULES}`
 
-export const PARTNERSHIP_SYSTEM_PROMPT = `You are Daniel Chalco, CEO of Pigeon, writing a first cold email to a potential partner.
+export const PARTNERSHIP_SYSTEM_PROMPT = `You are Daniel Chalco, founder of Pigeon, writing a first cold email to a potential partner.
 
 ${PIGEON_IDENTITY}
 
@@ -437,6 +446,10 @@ export async function generateInitialOutreach(
     }),
   }
 
+  if (!plans.mckenna.topHook || !plans.hormozi.topHook) {
+    throw new MissingOutreachHookError()
+  }
+
   const userPrompts: Record<CtaType, string> = {
     mckenna: buildInitialUserPrompt(lead, 'mckenna', customContext),
     hormozi: buildInitialUserPrompt(lead, 'hormozi', customContext),
@@ -454,48 +467,13 @@ export async function generateInitialOutreach(
     ),
   ])
 
-  const conservativeDraft = (
-    ctaType: CtaType,
-    plan: InitialOutreachPlan,
-  ): EvidenceAwareDraft => {
-    const firstName = lead.contact_name.trim().split(/\s+/)[0] || lead.contact_name
-    const opening = plan.topHook?.fact ||
-      `${lead.company_name} has a product path worth looking at closely.`
-    const give = plan.offerMode === 'lead_magnet'
-      ? `I have a short resource called ${plan.offerName}. It's free, with no signup or call. Reply "send it" and I'll send it over.`
-      : `Here's the thing, the fastest way to settle that question is to test that product path itself. Reply if you want the free pentest. Pigeon sends the findings within 48 hours.`
-
-    return {
-      subject: ctaType === 'mckenna' ? 'a product security question' : 'one useful security check',
-      body: `Hi ${firstName},
-
-${opening}
-
-I'm Daniel, founder of Pigeon. I've spent 14 years breaking into systems, including AI agents.
-
-That product choice is useful for a reason. It is also the kind of path we pressure-test, because the easiest paths for real users deserve the closest look.
-
-${give}
-
-Best,
-Daniel Chalco
-Founder, Pigeon`,
-      evidence_used: [
-        ...(plan.topHook ? [plan.topHook.fact] : []),
-        'Daniel Chalco has spent 14 years breaking into systems, including AI agents.',
-        ...(plan.offerMode === 'direct_pentest'
-          ? ['Pigeon offers a free pentest and delivers the findings within 48 hours.']
-          : []),
-      ],
-    }
-  }
-
   const draftPassesSpecificity = (
     result: EvidenceAwareDraft,
     ctaType: CtaType,
   ) => {
     const plan = plans[ctaType]
-    return !plan.topHook || draftUsesTopHook({
+    return draftUsesTopHook({
+      subject: result.subject,
       body: result.body,
       evidenceUsed: result.evidence_used,
       plan,
@@ -524,7 +502,9 @@ Founder, Pigeon`,
 The previous draft failed the specificity gate. Rewrite it from scratch.
 - Put this exact verified fact at the center of the first paragraph: ${plan.topHook.fact}
 - Copy that exact fact into evidence_used.
+- Write a 2-7 word lowercase subject containing a distinctive product word from that fact. Do not use security, pentest, free, check, or quick thought.
 - The opening and product pivot must not work for another company after changing only the name.
+- If the product action naturally mirrors receiving this email, use that irony as a short, conversational opening.
 - Keep the selected offer and all grounding rules unchanged.`,
           { temperature: 0.65, maxTokens: 4096 },
         )
@@ -537,9 +517,7 @@ The previous draft failed the specificity gate. Rewrite it from scratch.
       }
     }
 
-    const fallback = conservativeDraft(ctaType, plan)
-    validateEvidenceAwareDraft(fallback, evidence)
-    return fallback
+    throw new MissingOutreachHookError()
   }
 
   const [mckennaGrounded, hormoziGrounded] = await Promise.all([
@@ -576,14 +554,9 @@ The previous draft failed the specificity gate. Rewrite it from scratch.
     const specificityPassed = draftPassesSpecificity(specificResult, ctaType)
     const quality = checkEmailQuality(subject, body, 'initial')
 
-    if (!plan.topHook) {
+    if (!specificityPassed) {
       quality.issues.unshift(
-        'No source-verified product or authored hook is available. Re-run research before sending.',
-      )
-      quality.score = Math.max(0, quality.score - 35)
-    } else if (!specificityPassed) {
-      quality.issues.unshift(
-        'The opening does not use the verified product hook and would survive a company-name swap.',
+        'The subject or opening does not use the verified product hook and would survive a company-name swap.',
       )
       quality.score = Math.max(0, quality.score - 35)
     }

@@ -1,5 +1,10 @@
 import { describe, expect, it } from 'vitest'
-import { ModelJSONParseError, parseModelJSON, parseModelJSONMatching } from './anthropic'
+import {
+  buildOutreachFactsFromCitedPassages,
+  ModelJSONParseError,
+  parseModelJSON,
+  parseModelJSONMatching,
+} from './anthropic'
 
 describe('parseModelJSON', () => {
   it('parses a clean JSON response', () => {
@@ -67,5 +72,23 @@ describe('parseModelJSONMatching', () => {
     const response = '[{"subject":"First person"},{"subject":"Second person"}]'
 
     expect(() => parseModelJSONMatching(response, matchSubject)).toThrow(ModelJSONParseError)
+  })
+})
+
+describe('buildOutreachFactsFromCitedPassages', () => {
+  it('stores the verbatim cited product excerpt instead of an unsupported paraphrase', () => {
+    const facts = buildOutreachFactsFromCitedPassages([{
+      text: 'Subgraph automates recruiting outreach and candidate delivery.',
+      url: 'https://subgraph.tech/product',
+      title: 'Subgraph product',
+      citedText: 'The agent reads candidate profiles, sends outreach, and submits interested candidates directly to Slack.',
+    }])
+
+    expect(facts).toEqual([{
+      fact: 'The agent reads candidate profiles, sends outreach, and submits interested candidates directly to Slack.',
+      evidence_quote: 'The agent reads candidate profiles, sends outreach, and submits interested candidates directly to Slack.',
+      source_url: 'https://subgraph.tech/product',
+      use_as_hook: true,
+    }])
   })
 })

@@ -23,7 +23,7 @@ export interface WebResearchCitation {
   citedText: string
 }
 
-interface CitedResearchPassage extends WebResearchCitation {
+export interface CitedResearchPassage extends WebResearchCitation {
   text: string
 }
 
@@ -360,19 +360,7 @@ Official website: ${companyWebsite || 'Unknown'}`,
     },
   )
 
-  const cleanPassage = (value: string) => value
-    .replace(/\*\*/g, '')
-    .replace(/\s+/g, ' ')
-    .trim()
-
-  const facts = research.citedPassages
-    .map(passage => ({
-      fact: cleanPassage(passage.text),
-      evidence_quote: passage.citedText,
-      source_url: passage.url,
-      use_as_hook: true,
-    }))
-    .filter(item => item.fact.length >= 12 && item.fact.length <= 600)
+  const facts = buildOutreachFactsFromCitedPassages(research.citedPassages)
 
   const sourceByUrl = new Map<string, { url: string; title: string; detail: string }>()
   for (const passage of research.citedPassages) {
@@ -390,6 +378,39 @@ Official website: ${companyWebsite || 'Unknown'}`,
     citations: research.citations,
     sources: [...sourceByUrl.values()],
   }
+}
+
+export function buildOutreachFactsFromCitedPassages(
+  passages: CitedResearchPassage[],
+): Array<{
+  fact: string
+  evidence_quote: string
+  source_url: string
+  use_as_hook: boolean
+}> {
+  const seen = new Set<string>()
+  const cleanPassage = (value: string) => value
+    .replace(/\*\*/g, '')
+    .replace(/\s+/g, ' ')
+    .trim()
+
+  return passages
+    .map(passage => ({
+      // The citation excerpt is verbatim source material. Saving it directly
+      // prevents a useful product fact from being lost to paraphrase overlap.
+      fact: cleanPassage(passage.citedText),
+      evidence_quote: passage.citedText,
+      source_url: passage.url,
+      use_as_hook: true,
+    }))
+    .filter(item => {
+      const key = `${item.source_url}:${item.fact.toLowerCase()}`
+      if (item.fact.length < 12 || item.fact.length > 600 || seen.has(key)) {
+        return false
+      }
+      seen.add(key)
+      return true
+    })
 }
 
 export async function researchPersonalFactsWithWebSearch(

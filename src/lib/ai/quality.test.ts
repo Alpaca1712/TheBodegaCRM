@@ -137,7 +137,7 @@ describe('Email Quality Check', () => {
       // This is still short but let's see. 33 words.
       const result = checkEmailQuality('robot hack', body, 'initial');
       // Should have word count issue but not others
-      expect(result.issues).toEqual([`Body is only ${countWords(body)} words. Initial outreach target: 75-145.`]);
+      expect(result.issues).toEqual([`Body is only ${countWords(body)} words. Initial outreach target: 140-230.`]);
     });
   });
 

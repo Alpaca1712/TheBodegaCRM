@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import type { Lead } from '@/types/leads'
 import { buildEmailEvidence } from './email-grounding'
 import {
+  draftUsesTopHook,
   parseLoadedLeadMagnets,
   prepareInitialOutreach,
   rankOutreachHooks,
@@ -199,5 +200,43 @@ describe('outreach preparation', () => {
     })
 
     expect(plan.topHook).toBeNull()
+  })
+
+  it('requires the verified product hook in both the subject and opening', () => {
+    const evidence = buildEmailEvidence({ lead })
+    const plan = prepareInitialOutreach({
+      lead,
+      evidence,
+      ctaType: 'mckenna',
+    })
+    const body = `Hi Alex,
+
+Mason Voice built a resident voice agent that connects to property workflows.
+
+That resident workflow is the path we would test.`
+
+    expect(draftUsesTopHook({
+      subject: 'resident voice workflow',
+      body,
+      evidenceUsed: [plan.topHook!.fact],
+      plan,
+      lead,
+    })).toBe(true)
+    expect(draftUsesTopHook({
+      subject: 'security check for mason voice',
+      body,
+      evidenceUsed: [plan.topHook!.fact],
+      plan,
+      lead,
+    })).toBe(false)
+    expect(draftUsesTopHook({
+      subject: 'resident voice workflow',
+      body: `Hi Alex,
+
+Being CTO means the resident voice workflow is probably your responsibility.`,
+      evidenceUsed: [plan.topHook!.fact],
+      plan,
+      lead,
+    })).toBe(false)
   })
 })

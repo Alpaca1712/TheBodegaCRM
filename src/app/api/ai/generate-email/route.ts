@@ -2,7 +2,10 @@ import { NextRequest, NextResponse } from 'next/server'
 import { z } from 'zod'
 import { rateLimitResponse } from '@/lib/api/auth-guard'
 import { ModelJSONParseError } from '@/lib/ai/anthropic'
-import { UngroundedEmailError } from '@/lib/ai/email-grounding'
+import {
+  MissingOutreachHookError,
+  UngroundedEmailError,
+} from '@/lib/ai/email-grounding'
 import { generateInitialOutreach } from '@/lib/ai/email-service'
 import { getOrgScopedClient } from '@/lib/supabase/org-scope'
 import { isMissingRelation } from '@/lib/supabase/missing-column'
@@ -152,6 +155,12 @@ export async function POST(request: NextRequest) {
         {
           error: 'Draft blocked because it included an unsupported fact. Re-run research or use only source-linked details.',
         },
+        { status: 422 },
+      )
+    }
+    if (error instanceof MissingOutreachHookError) {
+      return NextResponse.json(
+        { error: error.message },
         { status: 422 },
       )
     }

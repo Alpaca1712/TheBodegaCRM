@@ -100,7 +100,7 @@ function summaryIsSupportedByQuote(summary: string, quote: string): boolean {
 
 function isRecognitionHook(fact: string): boolean {
   const titleContext =
-    /\b(?:is|serves as|works as|joined as)\b.{0,50}\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
+    /\b(?:cto|ceo|founder|cofounder|co-founder|president|director|vp|vice president|engineer)\b/i
   const specificAction =
     /\b(?:built|designed|created|launched|reads?|sends?|submits?|scores?|ranks?|routes?|schedules?|integrates?|wrote|said|spoke|published|authored|explained|described)\b/i
 

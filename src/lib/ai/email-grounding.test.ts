@@ -50,4 +50,20 @@ describe('email grounding', () => {
       evidence_used: [],
     }, evidence)).toThrow(UngroundedEmailError)
   })
+
+  it('allows Daniel to own his experience but blocks attributing it to Pigeon', () => {
+    const evidence = buildEmailEvidence({ lead })
+
+    expect(() => validateEvidenceAwareDraft({
+      subject: 'resident trust',
+      body: "I'm Daniel, and I have 15 years of cybersecurity experience.",
+      evidence_used: ['Daniel Chalco has 15 years of cybersecurity experience.'],
+    }, evidence)).not.toThrow()
+
+    expect(() => validateEvidenceAwareDraft({
+      subject: 'resident trust',
+      body: "At Pigeon, we've spent 15 years in cybersecurity.",
+      evidence_used: ['Daniel Chalco has 15 years of cybersecurity experience.'],
+    }, evidence)).toThrow(UngroundedEmailError)
+  })
 })
