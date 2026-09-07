@@ -8,7 +8,7 @@ interface SettingsMap {
 }
 
 const DEFAULTS: SettingsMap = {
-  ai: { default_model: 'deepseek/deepseek-v3.2' },
+  ai: { default_model: 'deepseek/deepseek-v4-flash' },
   sender: {
     from_name: 'Pigeon Labs',
     from_email: process.env.DEFAULT_FROM_EMAIL || 'hello@mail.pigeonlabs.nyc',

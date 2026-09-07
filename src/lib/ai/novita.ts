@@ -7,13 +7,14 @@ const BASE_URL = 'https://api.novita.ai/openai/v1'
  * Novita's `/models` endpoint is also accepted when set explicitly.
  */
 export const MODEL_PRESETS: { id: string; label: string; note: string }[] = [
-  { id: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2', note: 'Default. Fast, cheap, reliable JSON.' },
-  { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash', note: 'Newer, very cheap, 1M context.' },
-  { id: 'zai-org/glm-4.7', label: 'GLM 4.7', note: 'Strong reasoning at mid cost.' },
-  { id: 'zai-org/glm-5.3-flash', label: 'GLM 5.3 Flash', note: 'Cheapest of the current GLM line.' },
+  { id: 'deepseek/deepseek-v4-flash', label: 'DeepSeek V4 Flash', note: 'Default. Fast, cheap, 1M context.' },
+  { id: 'deepseek/deepseek-v4-pro', label: 'DeepSeek V4 Pro', note: 'Flagship reasoning — use when Flash is wrong.' },
+  { id: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6', note: 'Strong judgement, pricier.' },
+  { id: 'zai-org/glm-5.3-flash', label: 'GLM 5.3 Flash', note: 'Cheap GLM classifier.' },
+  { id: 'zai-org/glm-4.7', label: 'GLM 4.7', note: 'Solid mid-cost reasoning.' },
   { id: 'qwen/qwen3-235b-a22b-instruct-2507', label: 'Qwen3 235B Instruct', note: 'Good instruction following, cheap.' },
-  { id: 'moonshotai/kimi-k2.6', label: 'Kimi K2.6', note: 'Higher quality judgement, pricier.' },
-  { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B', note: 'Very cheap, decent classifier.' },
+  { id: 'openai/gpt-oss-120b', label: 'GPT-OSS 120B', note: 'Ultra-cheap classifier.' },
+  { id: 'deepseek/deepseek-v3.2', label: 'DeepSeek V3.2', note: 'Legacy. Still ok for simple JSON.' },
 ]
 
 export function novitaConfigured() {

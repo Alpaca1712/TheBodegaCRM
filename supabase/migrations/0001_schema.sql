@@ -319,6 +319,6 @@ alter table public.email_events enable row level security;
 alter table public.attribution_events enable row level security;
 
 insert into public.settings (key, value) values
-  ('ai', '{"default_model": "deepseek/deepseek-v3.2"}'::jsonb),
+  ('ai', '{"default_model": "deepseek/deepseek-v4-flash"}'::jsonb),
   ('sender', '{"from_name": "Daniel Chalco", "from_email": "daniel@mail.pigeonlabs.nyc", "reply_to": null, "signature": ""}'::jsonb),
   ('landing', '{"base_url": "https://www.artoo.love"}'::jsonb);
