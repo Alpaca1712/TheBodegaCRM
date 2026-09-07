@@ -44,8 +44,15 @@ export async function handleResendEvent(payload: WebhookEventPayload, svixId: st
   if (payload.type === 'email.received') {
     const fresh = await recordEvent(svixId, payload, null)
     if (!fresh) return { handled: false, reason: 'duplicate' }
-    const email = await processReceivedEmail(payload.data)
-    return { handled: true, email_id: email?.id || null }
+    try {
+      const email = await processReceivedEmail(payload.data)
+      if (email && svixId) await db().from('email_events').update({ email_id: email.id }).eq('svix_id', svixId)
+      return { handled: true, email_id: email?.id || null }
+    } catch (error) {
+      // Forget the event so Resend's retry is not treated as a duplicate.
+      if (svixId) await db().from('email_events').delete().eq('svix_id', svixId)
+      throw error
+    }
   }
 
   if (!payload.type.startsWith('email.')) {

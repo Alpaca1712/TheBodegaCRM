@@ -3,6 +3,7 @@ import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
 import { getSetting } from '@/lib/settings'
 import { ensureLeadToken, unsubscribeUrl } from '@/lib/leads/tokens'
+import { leadTemplateVars, renderTemplate } from '@/lib/sequences/templating'
 import type { Email, EmailAttachment, EmailSource, Lead } from '@/types'
 import { formatAddress, resend } from './resend'
 import { appendSignature, renderBody, replySubject, type RenderedBody } from './render'
@@ -68,13 +69,16 @@ export async function sendEmail(input: SendEmailInput): Promise<Email> {
   const replyTo = input.reply_to ?? sender.reply_to ?? null
 
   const previous = input.in_reply_to_email || null
-  const subject = input.subject.trim() || (previous ? replySubject(previous.subject) : '')
-  if (!subject) throw ApiError.badRequest('Subject is required for a new thread')
-
   const leadToken = await ensureLeadToken(lead)
   const unsubscribe = unsubscribeUrl(leadToken)
 
-  let rendered: RenderedBody = renderBody(input.body, input.body_format || 'text')
+  // Every send path gets {{variables}} resolved, so one-off emails written by
+  // an agent can use the same tokens as sequence steps.
+  const vars = leadTemplateVars(lead, { unsubscribe_url: unsubscribe })
+  const subject = renderTemplate(input.subject, vars).trim() || (previous ? replySubject(previous.subject) : '')
+  if (!subject) throw ApiError.badRequest('Subject is required for a new thread')
+
+  let rendered: RenderedBody = renderBody(renderTemplate(input.body, vars), input.body_format || 'text')
   if (input.include_signature !== false) rendered = appendSignature(rendered, sender.signature)
 
   const threading = threadHeaders(previous)
