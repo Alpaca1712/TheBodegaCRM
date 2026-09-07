@@ -43,7 +43,7 @@ const destructive = { readOnlyHint: false, destructiveHint: true, openWorldHint:
 const external = { readOnlyHint: false, destructiveHint: false, openWorldHint: true }
 
 export const SERVER_INSTRUCTIONS = `Bodega is Pigeon Labs' cold-email CRM. Typical workflow:
-1. Create or import leads (create_lead / bulk_import_leads). Use find_lead_email / verify_lead_email (Hunter.io) when the address is unknown or unverified.
+1. Create or import leads (create_lead / bulk_import_leads). Use find_lead_email / verify_lead_email (Hunter.io) when the address is unknown or unverified. Outbound send and sequence enrollment require a verified status (valid, accept_all, or webmail) — unverified leads are rejected.
 2. Write the sequence: create_sequence with steps, or add_sequence_step. Bodies support {{first_name}}, {{company_name}}, {{title}}, {{first_name|there}} (fallback), and {{research.<key>}} from the lead's research JSON. Leave a follow-up's subject empty and thread_with_previous=true to send it as a reply in the same thread. condition_prompt lets you gate a step with a natural-language rule evaluated by an LLM before sending.
 3. preview_sequence for a real lead to proofread every rendered step, then activate the sequence (update_sequence status=active) and enroll_leads. The cron sends due steps every 15 minutes inside the send window.
 4. Replies arrive via Resend webhooks: check list_inbox, read get_lead_thread, answer with send_email (reply_to_email_id keeps the thread), then mark_email_handled.
@@ -161,7 +161,7 @@ export function registerBodegaTools(server: McpServer) {
     async ({ sequence, force }) => runDueSteps({ sequence_id: sequence ? (await resolveSequence(sequence)).id : undefined, ignore_window: force, limit: 100 }))
 
   // ----- Email ---------------------------------------------------------------
-  tool('send_email', 'Send a one-off email to a lead via Resend. Set reply_to_email_id to answer in an existing thread (subject may then be empty). Optional lead_magnet_id attaches a personalized PDF.',
+  tool('send_email', 'Send a one-off email to a lead via Resend. Lead email must be verified first (valid/accept_all/webmail) via verify_lead_email. Set reply_to_email_id to answer in an existing thread (subject may then be empty). Optional lead_magnet_id attaches a personalized PDF.',
     sendEmailSchema, external, (args) => sendOneOff(args))
   tool('list_inbox', 'Inbound replies, newest first. Defaults to unhandled only.', inboxQuerySchema, readOnly, (args) => listInbox(args))
   tool('list_emails', 'Delivery log of sent/received emails with filters.', emailListQuerySchema, readOnly, (args) => listEmails(args))

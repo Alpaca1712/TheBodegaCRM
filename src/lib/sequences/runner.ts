@@ -139,7 +139,12 @@ async function processEnrollment(enrollment: SequenceEnrollment, sequence: Seque
 
   const blocked = leadBlockedReason(lead)
   if (blocked) {
-    const status = blocked === 'bounced' || blocked === 'invalid_email' ? 'bounced' : 'unsubscribed'
+    const status =
+      blocked === 'bounced' || blocked === 'invalid_email' || blocked === 'disposable_email'
+        ? 'bounced'
+        : blocked === 'unverified_email'
+          ? 'exited'
+          : 'unsubscribed'
     await transitionEnrollment(enrollment.id, status, blocked)
     return { ...base, result: 'exited', detail: blocked }
   }

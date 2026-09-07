@@ -2,6 +2,7 @@ import { randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
 import { getSetting } from '@/lib/settings'
+import { leadSendBlockReason } from '@/lib/leads/email-guard'
 import { ensureLeadToken, unsubscribeUrl } from '@/lib/leads/tokens'
 import { leadTemplateVars, renderTemplate } from '@/lib/sequences/templating'
 import type { Email, EmailAttachment, EmailSource, Lead } from '@/types'
@@ -59,9 +60,19 @@ async function fetchMessageId(resendId: string): Promise<string | null> {
 
 export async function sendEmail(input: SendEmailInput): Promise<Email> {
   const lead = input.lead
-  if (lead.do_not_contact || lead.unsubscribed_at) throw ApiError.unprocessable(`${lead.email} is unsubscribed / do-not-contact`)
-  if (lead.email_status === 'invalid') throw ApiError.unprocessable(`${lead.email} is marked invalid`)
-  if (lead.bounced_at) throw ApiError.unprocessable(`${lead.email} previously bounced`)
+  const blocked = leadSendBlockReason(lead)
+  if (blocked === 'do_not_contact' || blocked === 'unsubscribed') {
+    throw ApiError.unprocessable(`${lead.email} is unsubscribed / do-not-contact`)
+  }
+  if (blocked === 'invalid_email') throw ApiError.unprocessable(`${lead.email} is marked invalid`)
+  if (blocked === 'disposable_email') throw ApiError.unprocessable(`${lead.email} is a disposable address`)
+  if (blocked === 'bounced') throw ApiError.unprocessable(`${lead.email} previously bounced`)
+  if (blocked === 'unverified_email') {
+    throw ApiError.unprocessable(
+      `${lead.email} is not verified (status: ${lead.email_status}). Call verify_lead_email before sending.`,
+    )
+  }
+  if (blocked) throw ApiError.unprocessable(`${lead.email} cannot be emailed (${blocked})`)
 
   const sender = await getSetting('sender')
   const fromEmail = input.from_email || sender.from_email

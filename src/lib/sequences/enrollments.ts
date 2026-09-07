@@ -1,5 +1,6 @@
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
+import { leadSendBlockReason } from '@/lib/leads/email-guard'
 import { findLeadByEmail, getLead } from '@/lib/leads/service'
 import type { EnrollmentStatus, Lead, Sequence, SequenceEnrollment, SequenceStep } from '@/types'
 import { nextSendableTime, normalizeSendWindow } from './send-window'
@@ -16,11 +17,7 @@ export function dueAtForStep(sequence: Sequence, step: SequenceStep, from: Date)
 }
 
 export function leadBlockedReason(lead: Lead): string | null {
-  if (lead.do_not_contact) return 'do_not_contact'
-  if (lead.unsubscribed_at) return 'unsubscribed'
-  if (lead.bounced_at) return 'bounced'
-  if (lead.email_status === 'invalid') return 'invalid_email'
-  return null
+  return leadSendBlockReason(lead)
 }
 
 export async function liveEnrollmentForLead(leadId: string): Promise<SequenceEnrollment | null> {
