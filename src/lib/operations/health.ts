@@ -4,14 +4,16 @@ type HealthEnv = Record<string, string | undefined>
 
 export interface ServiceHealth {
   status: ServiceHealthStatus
-  service: 'bodega-crm'
+  service: 'bodega'
   timestamp: string
   checks: {
     supabase: CapabilityStatus
-    automation: CapabilityStatus
-    ai: CapabilityStatus
-    google: CapabilityStatus
-    landingAttribution: CapabilityStatus
+    resend: CapabilityStatus
+    resend_webhook: CapabilityStatus
+    hunter: CapabilityStatus
+    novita: CapabilityStatus
+    cron: CapabilityStatus
+    landing: CapabilityStatus
   }
 }
 
@@ -26,37 +28,25 @@ function getRuntimeHealthEnv(): HealthEnv {
     NEXT_PUBLIC_SUPABASE_URL: process.env.NEXT_PUBLIC_SUPABASE_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: process.env.SUPABASE_SERVICE_ROLE_KEY,
+    RESEND_API_KEY: process.env.RESEND_API_KEY,
+    RESEND_WEBHOOK_SECRET: process.env.RESEND_WEBHOOK_SECRET,
+    HUNTER_API_KEY: process.env.HUNTER_API_KEY,
+    NOVITA_API_KEY: process.env.NOVITA_API_KEY,
     CRON_SECRET: process.env.CRON_SECRET,
-    ANTHROPIC_API_KEY: process.env.ANTHROPIC_API_KEY,
-    GOOGLE_CLIENT_ID: process.env.GOOGLE_CLIENT_ID,
-    GOOGLE_CLIENT_SECRET: process.env.GOOGLE_CLIENT_SECRET,
-    GOOGLE_REDIRECT_URI: process.env.GOOGLE_REDIRECT_URI,
     LEAD_TOKEN_SECRET: process.env.LEAD_TOKEN_SECRET,
-    ROCOTO_LANDING_URL: process.env.ROCOTO_LANDING_URL,
+    LANDING_WEBHOOK_SECRET: process.env.LANDING_WEBHOOK_SECRET,
   }
 }
 
-export function getServiceHealth(
-  env: HealthEnv = getRuntimeHealthEnv(),
-  now = new Date(),
-): ServiceHealth {
+export function getServiceHealth(env: HealthEnv = getRuntimeHealthEnv(), now = new Date()): ServiceHealth {
   const checks: ServiceHealth['checks'] = {
-    supabase: hasAll(env, [
-      'NEXT_PUBLIC_SUPABASE_URL',
-      'NEXT_PUBLIC_SUPABASE_ANON_KEY',
-      'SUPABASE_SERVICE_ROLE_KEY',
-    ]) ? 'ready' : 'unavailable',
-    automation: hasAll(env, ['CRON_SECRET']) ? 'ready' : 'unavailable',
-    ai: hasAll(env, ['ANTHROPIC_API_KEY']) ? 'ready' : 'unavailable',
-    google: hasAll(env, [
-      'GOOGLE_CLIENT_ID',
-      'GOOGLE_CLIENT_SECRET',
-      'GOOGLE_REDIRECT_URI',
-    ]) ? 'ready' : 'unavailable',
-    landingAttribution: hasAll(env, [
-      'LEAD_TOKEN_SECRET',
-      'ROCOTO_LANDING_URL',
-    ]) ? 'ready' : 'unavailable',
+    supabase: hasAll(env, ['NEXT_PUBLIC_SUPABASE_URL', 'NEXT_PUBLIC_SUPABASE_ANON_KEY', 'SUPABASE_SERVICE_ROLE_KEY']) ? 'ready' : 'unavailable',
+    resend: hasAll(env, ['RESEND_API_KEY']) ? 'ready' : 'unavailable',
+    resend_webhook: hasAll(env, ['RESEND_WEBHOOK_SECRET']) ? 'ready' : 'unavailable',
+    hunter: hasAll(env, ['HUNTER_API_KEY']) ? 'ready' : 'unavailable',
+    novita: hasAll(env, ['NOVITA_API_KEY']) ? 'ready' : 'unavailable',
+    cron: hasAll(env, ['CRON_SECRET']) ? 'ready' : 'unavailable',
+    landing: hasAll(env, ['LEAD_TOKEN_SECRET', 'LANDING_WEBHOOK_SECRET']) ? 'ready' : 'unavailable',
   }
 
   const status = checks.supabase === 'unavailable'
@@ -65,10 +55,5 @@ export function getServiceHealth(
       ? 'healthy'
       : 'degraded'
 
-  return {
-    status,
-    service: 'bodega-crm',
-    timestamp: now.toISOString(),
-    checks,
-  }
+  return { status, service: 'bodega', timestamp: now.toISOString(), checks }
 }

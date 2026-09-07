@@ -1,83 +1,87 @@
-# Bodega CRM
+# Bodega
 
-Bodega is Pigeon's campaign-focused CRM for running outbound and inbound funnels, tracking attributed landing-page activity, automating Gmail follow-ups, and moving qualified leads into deal flow.
+Pigeon Labs' API-first cold email CRM. Leads, sequences, and replies live in Supabase; Resend sends and receives the mail; Claude (or any agent) drives everything through the REST API or the MCP server. The web console is a thin read-mostly view for checking on things.
+
+## What it does
+
+- **Leads** with Hunter.io email finding and verification, freeform `research` JSON for whatever the agent digs up, and a strict one-live-sequence-per-lead rule.
+- **Sequences** of steps with delays, send windows, `{{first_name|there}}` templating, threaded follow-ups, optional Markdown-to-PDF lead magnets, and optional natural-language send conditions evaluated by a Novita model.
+- **Resend** for delivery, plus a webhook that records delivery/open/bounce events and turns inbound replies into inbox items, stops the lead's sequence, and moves the lead to `replied`.
+- **MCP server** at `/api/mcp` and a REST API at `/api/v1` (spec at `/api/v1/openapi.json`), both authenticated with API keys.
+- **Landing webhook** at `/api/landing/leads` for artoo.love form submissions (shared-secret protected).
+
+There is no AI email writing in Bodega on purpose: Claude writes the copy, Bodega stores and sends it.
 
 ## Stack
 
-- Next.js 16 and React 19
-- Supabase Auth and Postgres with organization-scoped RLS
-- Gmail, Google Drive, and Google Docs APIs
-- Anthropic for research, email drafting, and conditional sequence rules
-- Vercel for hosting and the scheduled sequence runner
+Next.js 16, React 19, Supabase (Postgres + Auth, service-role access only), Resend, Hunter.io, Novita (OpenAI-compatible), `mcp-handler` + MCP SDK v2, `@react-pdf/renderer`, Vercel cron.
 
-## Local Setup
+## Setup
 
-1. Install dependencies:
+1. `pnpm install`
+2. `cp .env.example .env.local` and fill it in (see [Configuration](#configuration)).
+3. Database. This schema replaces the old one entirely. On an existing Supabase project, open the SQL editor and run `supabase/reset.sql` (drops everything in `public`), then `supabase/migrations/0001_schema.sql`. On a fresh project or a linked CLI, `supabase db push` works too.
+4. Create your console login in Supabase Auth (Dashboard → Authentication → Users → Add user). There is no sign-up page.
+5. `pnpm dev`, sign in at `/login`, go to **Settings**, set the sender identity, and create an API key.
 
-   ```bash
-   npm ci
-   ```
+## Connecting Claude
 
-2. Create local configuration:
+**Claude.ai (web / desktop):** Settings → Connectors → Add custom connector. URL: `https://<your-deployment>/api/mcp`. Under request headers add `Authorization` with the value `Bearer bdg_...` (include the word Bearer and a space).
 
-   ```bash
-   cp .env.example .env.local
-   ```
-
-3. Apply the Supabase migrations in `supabase/migrations` in filename order. With a linked Supabase CLI project:
-
-   ```bash
-   npx supabase db push
-   ```
-
-4. Start the app:
-
-   ```bash
-   npm run dev
-   ```
-
-The app is available at [http://localhost:3000](http://localhost:3000).
-
-## Required Configuration
-
-Start from `.env.example`. Production requires these groups:
-
-- **Supabase:** public URL, anon key, and service-role key.
-- **Landing attribution:** `LEAD_TOKEN_SECRET` must exactly match Pigeon Landing. Set `ROCOTO_LANDING_URL` to the landing origin.
-- **Google:** OAuth client ID, client secret, and callback URL. Enable the Gmail, Drive, and Docs APIs in the same Google Cloud project. The callback path is `/api/gmail/callback`.
-- **AI:** an Anthropic API key. Model variables are optional overrides; the application defaults live in `src/lib/ai/anthropic.ts`.
-- **Automation:** `CRON_SECRET` protects the scheduled sequence endpoint.
-
-Never expose the Supabase service-role key, Google client secret, lead-token secret, or cron secret to client-side variables.
-
-## Runtime Operations
-
-`GET /api/health` is public and returns `healthy`, `degraded`, or `unhealthy` with capability-level configuration status. It never returns secret values. A missing Supabase configuration returns HTTP 503; optional capability outages return HTTP 200 with a degraded status.
-
-Vercel calls `/api/campaigns/sequences/run` every 15 minutes from `vercel.json`. The runner executes campaigns sequentially to limit Gmail and database bursts, and isolates campaign failures so one expired Gmail connection does not stop other organizations.
-
-Useful checks before deployment:
+**Claude Code:**
 
 ```bash
-npm run test:run
-npm run lint
-npm run build
+claude mcp add --transport http bodega https://<your-deployment>/api/mcp \
+  --header "Authorization: Bearer bdg_..."
 ```
 
-## Deployment Checklist
+**Codex / anything else:** use the REST API directly with the same bearer token; `/api/v1/openapi.json` describes every endpoint.
 
-1. Apply all pending Supabase migrations before deploying application code.
-2. Configure every production variable from `.env.example` in Vercel.
-3. Confirm the Google OAuth callback matches the production domain and that Gmail, Drive, and Docs APIs are enabled.
-4. Confirm Bodega and Pigeon Landing share the same `LEAD_TOKEN_SECRET` and Supabase project.
-5. Check `/api/health` after deployment.
-6. Run the sequence endpoint manually with `Authorization: Bearer $CRON_SECRET` and inspect its per-campaign outcome summary.
+See [docs/agent-workflow.md](docs/agent-workflow.md) for the intended cold-email workflow and tool names.
 
-## Important Areas
+## Configuration
 
-- `src/app/api/campaigns`: campaign, enrollment, lead-magnet, and sequence APIs
-- `src/lib/campaigns`: automation execution and campaign behavior
-- `src/app/api/gmail`: OAuth, sync, and send endpoints
-- `src/lib/landing-links`: signed lead attribution and landing destinations
-- `src/app/api/dashboard`: CRM summary metrics and action planning
-- `supabase/migrations`: database schema and cleanup history
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY` | Database and console auth. All data access is server-side with the service role. |
+| `RESEND_API_KEY` | Sending and fetching received emails. |
+| `RESEND_WEBHOOK_SECRET` | Signing secret for the `/api/webhooks/resend` webhook. |
+| `DEFAULT_FROM_EMAIL` | Fallback sender before Settings are saved. |
+| `HUNTER_API_KEY` | Email finder / verifier. |
+| `NOVITA_API_KEY` | Step conditions. Model is chosen in Settings or per step. |
+| `CRON_SECRET` | Protects `/api/cron/run-sequences`. |
+| `LEAD_TOKEN_SECRET` | HMAC for lead tokens (unsubscribe links, landing prefill). Must match the landing site. |
+| `LANDING_WEBHOOK_SECRET` | Required header (`X-Webhook-Secret`) on landing form submissions. |
+| `NEXT_PUBLIC_SITE_URL` | Public URL used in unsubscribe links. |
+
+### Resend
+
+1. Verify `mail.pigeonlabs.nyc` in Resend with sending (SPF/DKIM) **and receiving (MX)** records.
+2. Webhooks → Add webhook → URL `https://<your-deployment>/api/webhooks/resend`, select every `email.*` event including `email.received`. Copy the signing secret into `RESEND_WEBHOOK_SECRET`.
+3. Send from an address on that domain (Settings → Sender identity). Replies to it come back through the webhook.
+
+### Vercel
+
+`vercel.json` runs `/api/cron/run-sequences` every 15 minutes with `Authorization: Bearer $CRON_SECRET`. The runner only sends inside each sequence's send window, one enrollment at a time, and never sends to leads that replied, bounced, complained, or unsubscribed.
+
+## Operations
+
+- `GET /api/health` — public, reports which integrations are configured.
+- `POST /api/v1/sequences/:id/run?force=true` — process due steps now, ignoring the send window.
+- `GET /api/unsubscribe?token=...` — one-click unsubscribe target (also advertised via `List-Unsubscribe`).
+
+```bash
+pnpm test:run
+pnpm lint
+pnpm build
+```
+
+## Layout
+
+- `src/app/api/v1` — REST routes (thin wrappers over `src/lib`)
+- `src/app/api/mcp` + `src/lib/mcp/server.ts` — MCP tools
+- `src/lib/sequences` — schemas, CRUD, enrollments, runner, templating, send windows
+- `src/lib/email` — Resend send, inbound processing, webhook handling, rendering
+- `src/lib/enrichment/hunter.ts`, `src/lib/ai/novita.ts`, `src/lib/magnets/pdf.tsx`
+- `src/app/(console)` — the web console
+- `supabase/migrations/0001_schema.sql` — the whole schema

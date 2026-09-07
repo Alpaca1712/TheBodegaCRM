@@ -1,45 +1,28 @@
 import { describe, expect, it } from 'vitest'
 import { getServiceHealth } from './health'
 
-const completeEnv: NodeJS.ProcessEnv = {
-  NODE_ENV: 'test',
-  NEXT_PUBLIC_SUPABASE_URL: 'https://example.supabase.co',
+const full = {
+  NEXT_PUBLIC_SUPABASE_URL: 'https://x.supabase.co',
   NEXT_PUBLIC_SUPABASE_ANON_KEY: 'anon',
-  SUPABASE_SERVICE_ROLE_KEY: 'service-role',
-  CRON_SECRET: 'cron',
-  ANTHROPIC_API_KEY: 'ai',
-  GOOGLE_CLIENT_ID: 'google-client',
-  GOOGLE_CLIENT_SECRET: 'google-secret',
-  GOOGLE_REDIRECT_URI: 'https://example.com/api/gmail/callback',
-  LEAD_TOKEN_SECRET: 'lead-secret',
-  ROCOTO_LANDING_URL: 'https://landing.example.com',
+  SUPABASE_SERVICE_ROLE_KEY: 'service',
+  RESEND_API_KEY: 're_x',
+  RESEND_WEBHOOK_SECRET: 'whsec_x',
+  HUNTER_API_KEY: 'h',
+  NOVITA_API_KEY: 'n',
+  CRON_SECRET: 'c',
+  LEAD_TOKEN_SECRET: 'l',
+  LANDING_WEBHOOK_SECRET: 'w',
 }
 
 describe('getServiceHealth', () => {
-  it('reports healthy when all runtime capabilities are configured', () => {
-    const health = getServiceHealth(completeEnv, new Date('2026-07-15T12:00:00.000Z'))
-
-    expect(health).toEqual({
-      status: 'healthy',
-      service: 'bodega-crm',
-      timestamp: '2026-07-15T12:00:00.000Z',
-      checks: {
-        supabase: 'ready',
-        automation: 'ready',
-        ai: 'ready',
-        google: 'ready',
-        landingAttribution: 'ready',
-      },
-    })
+  it('is healthy when everything is configured', () => {
+    const health = getServiceHealth(full, new Date('2026-01-01T00:00:00Z'))
+    expect(health.status).toBe('healthy')
+    expect(health.timestamp).toBe('2026-01-01T00:00:00.000Z')
   })
 
-  it('distinguishes an optional capability outage from missing core storage', () => {
-    const degraded = getServiceHealth({ ...completeEnv, ANTHROPIC_API_KEY: '' })
-    expect(degraded.status).toBe('degraded')
-    expect(degraded.checks.ai).toBe('unavailable')
-
-    const unhealthy = getServiceHealth({ ...completeEnv, SUPABASE_SERVICE_ROLE_KEY: '' })
-    expect(unhealthy.status).toBe('unhealthy')
-    expect(unhealthy.checks.supabase).toBe('unavailable')
+  it('degrades when an optional integration is missing and fails without Supabase', () => {
+    expect(getServiceHealth({ ...full, HUNTER_API_KEY: '' }).status).toBe('degraded')
+    expect(getServiceHealth({ ...full, SUPABASE_SERVICE_ROLE_KEY: undefined }).status).toBe('unhealthy')
   })
 })

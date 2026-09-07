@@ -1,7 +1,7 @@
 {
   "crons": [
     {
-      "path": "/api/campaigns/sequences/run",
+      "path": "/api/cron/run-sequences",
       "schedule": "*/15 * * * *"
     }
   ]

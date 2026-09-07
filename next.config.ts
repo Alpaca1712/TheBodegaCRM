@@ -2,8 +2,9 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   turbopack: {
-    root: process.cwd(),
+    root: __dirname,
   },
+  serverExternalPackages: ["@react-pdf/renderer"],
 };
 
 export default nextConfig;

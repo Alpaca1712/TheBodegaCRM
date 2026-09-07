@@ -1,46 +1,39 @@
-import { NextRequest, NextResponse } from 'next/server'
+import { NextResponse, type NextRequest } from 'next/server'
 import { z } from 'zod'
-import { enrollLeadInCampaign, getActiveCampaignEnrollment, recordCampaignEvent } from '@/lib/campaigns/server'
-import {
-  buildLeadProfilePatchFromChallenge,
-  hasChallengeProfile,
-  normalizeLandingChallengeProfile,
-  shouldTreatNotesAsChallengeProfile,
-} from '@/lib/leads/challenge-profile'
-import { createAdminClient } from '@/lib/supabase/admin'
-import { isMissingColumn, omitColumn } from '@/lib/supabase/missing-column'
-import type { Campaign, CampaignEventType } from '@/types/campaigns'
+import { db } from '@/lib/db'
+import { getCampaign } from '@/lib/content/service'
+import type { LeadUpdateInput } from '@/lib/leads/schemas'
+import { createLead, findLeadByEmail, splitName, updateLead } from '@/lib/leads/service'
+import { createLeadToken, verifyLeadToken } from '@/lib/leads/tokens'
+import { enrollLeads } from '@/lib/sequences/enrollments'
+import type { Campaign, Lead, LeadStage } from '@/types'
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type',
+  'Access-Control-Allow-Headers': 'Content-Type, Authorization, X-Webhook-Secret',
 }
 
-const landingLeadSchema = z.object({
-  campaign_id: z.string().uuid().optional().nullable(),
-  campaign_slug: z.string().optional().nullable(),
-  landing_slug: z.string().optional().nullable(),
-  lead_token: z.string().optional().nullable(),
-  intent: z.enum(['lead_magnet', 'application', 'application_completed', 'discovery', 'conference_scan']).default('lead_magnet'),
+const schema = z.object({
+  campaign_id: z.string().uuid().nullable().optional(),
+  campaign_slug: z.string().nullable().optional(),
+  sequence_id: z.string().nullable().optional(),
+  landing_slug: z.string().nullable().optional(),
+  lead_token: z.string().nullable().optional(),
+  intent: z.string().default('lead_magnet'),
   contact_name: z.string().min(1),
   contact_email: z.string().email(),
-  contact_title: z.string().optional().nullable(),
-  contact_phone: z.string().optional().nullable(),
-  contact_linkedin: z.string().optional().nullable(),
-  contact_twitter: z.string().optional().nullable(),
-  company_name: z.string().optional().nullable(),
-  product_name: z.string().optional().nullable(),
-  company_website: z.string().optional().nullable(),
-  company_description: z.string().optional().nullable(),
-  attack_surface_notes: z.string().optional().nullable(),
-  personal_details: z.string().optional().nullable(),
-  smykm_hooks: z.array(z.string()).optional(),
-  notes: z.string().optional().nullable(),
-  utm_source: z.string().optional().nullable(),
-  utm_medium: z.string().optional().nullable(),
-  utm_campaign: z.string().optional().nullable(),
-  referrer: z.string().optional().nullable(),
+  contact_title: z.string().nullable().optional(),
+  contact_phone: z.string().nullable().optional(),
+  contact_linkedin: z.string().nullable().optional(),
+  company_name: z.string().nullable().optional(),
+  company_website: z.string().nullable().optional(),
+  company_description: z.string().nullable().optional(),
+  notes: z.string().nullable().optional(),
+  utm_source: z.string().nullable().optional(),
+  utm_medium: z.string().nullable().optional(),
+  utm_campaign: z.string().nullable().optional(),
+  referrer: z.string().nullable().optional(),
   metadata: z.record(z.string(), z.unknown()).optional(),
 }).passthrough()
 
@@ -54,488 +47,122 @@ export async function OPTIONS() {
   return new NextResponse(null, { status: 204, headers: corsHeaders })
 }
 
+function authorized(request: NextRequest) {
+  const secret = process.env.LANDING_WEBHOOK_SECRET
+  if (!secret) return process.env.NODE_ENV !== 'production'
+  const provided = request.headers.get('x-webhook-secret') || /^Bearer\s+(.+)$/i.exec(request.headers.get('authorization') || '')?.[1]
+  return provided === secret
+}
+
+/** Hydrates a known lead from its signed token so the landing page can prefill forms. */
 export async function GET(request: NextRequest) {
-  try {
-    const token = (
-      request.nextUrl.searchParams.get('lead_token') ||
-      request.nextUrl.searchParams.get('leadToken') ||
-      request.nextUrl.searchParams.get('lead') ||
-      ''
-    ).trim()
-    const campaignId = request.nextUrl.searchParams.get('campaign_id')?.trim() || ''
-
-    if (!token) return json({ success: false, error: 'lead_token is required' }, { status: 400 })
-
-    const supabase = createAdminClient()
-    let campaign: Campaign | null = null
-
-    if (campaignId) {
-      const { data, error } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', campaignId)
-        .maybeSingle()
-
-      if (error) throw error
-      if (!data) return json({ success: false, error: 'Campaign not found' }, { status: 404 })
-      campaign = data as Campaign
-    }
-
-    let leadQuery = supabase
-      .from('leads')
-      .select('id,org_id,contact_name,contact_email,company_name,contact_phone,lead_token')
-      .eq('lead_token', token)
-      .limit(1)
-
-    if (campaign) leadQuery = leadQuery.eq('org_id', campaign.org_id)
-
-    const { data: lead, error: leadError } = await leadQuery.maybeSingle()
-
-    if (isMissingColumn(leadError, 'lead_token')) {
-      return json({ success: false, error: 'Lead tokens are not enabled' }, { status: 500 })
-    }
-    if (leadError) throw leadError
-    if (!lead) return json({ success: false, error: 'Lead not found' }, { status: 404 })
-
-    return json({
-      success: true,
-      leadToken: lead.lead_token || token,
-      lead: {
-        name: lead.contact_name || '',
-        email: lead.contact_email || '',
-        company: lead.company_name || '',
-        phone: lead.contact_phone || '',
-      },
-    })
-  } catch (error) {
-    console.error('GET /api/landing/leads error:', error)
-    return json(
-      { success: false, error: error instanceof Error ? error.message : 'Failed to lookup landing lead' },
-      { status: 500 },
-    )
-  }
+  const token = request.nextUrl.searchParams.get('lead_token') || request.nextUrl.searchParams.get('lead') || ''
+  const leadId = verifyLeadToken(token)
+  if (!leadId) return json({ success: false, error: 'Invalid lead token' }, { status: 400 })
+  const { data } = await db().from('leads').select('id, full_name, email, company_name, phone').eq('id', leadId).maybeSingle()
+  if (!data) return json({ success: false, error: 'Lead not found' }, { status: 404 })
+  return json({ success: true, lead: { name: data.full_name || '', email: data.email, company: data.company_name || '', phone: data.phone || '' } })
 }
 
-function campaignEventForIntent(intent: z.infer<typeof landingLeadSchema>['intent']): CampaignEventType {
-  if (intent === 'application') return 'application_completed'
-  if (intent === 'application_completed') return 'application_completed'
-  if (intent === 'discovery') return 'meeting_booked'
-  if (intent === 'conference_scan') return 'badge_scanned'
-  return 'lead_magnet_requested'
-}
-
-function stageForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
-  if (intent === 'discovery') return 'meeting_booked'
+function stageForIntent(intent: string): LeadStage {
+  if (intent === 'discovery' || intent === 'meeting') return 'meeting_booked'
   if (intent === 'conference_scan') return 'replied'
-  if (intent === 'application' || intent === 'application_completed') return 'follow_up'
-  return 'researched'
-}
-
-type LandingInput = z.infer<typeof landingLeadSchema> & Record<string, unknown>
-
-function preferredCampaignStagesForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
-  if (intent === 'discovery') return ['meeting_booked', 'discovery_booked']
-  if (intent === 'conference_scan') return ['in_person_conversation', 'meeting_scheduled', 'replied']
-  if (intent === 'application' || intent === 'application_completed') return ['application_completed', 'challenge_link_clicked']
-  return ['opted_in', 'lead_magnet_requested', 'replied', 'to_send']
-}
-
-async function resolveCampaignStageForIntent(
-  supabase: ReturnType<typeof createAdminClient>,
-  campaignId: string,
-  orgId: string,
-  intent: z.infer<typeof landingLeadSchema>['intent'],
-) {
-  const preferredStages = preferredCampaignStagesForIntent(intent)
-  const { data } = await supabase
-    .from('campaign_stages')
-    .select('stage_key')
-    .eq('campaign_id', campaignId)
-    .eq('org_id', orgId)
-    .in('stage_key', preferredStages)
-
-  const available = new Set((data || []).map((stage) => stage.stage_key))
-  return preferredStages.find((stageKey) => available.has(stageKey)) || null
-}
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value) && typeof value === 'object' && !Array.isArray(value)
-}
-
-function landingRecords(input: LandingInput) {
-  const metadata = isRecord(input.metadata) ? input.metadata : {}
-  return [
-    input,
-    metadata,
-    isRecord(metadata.lead) ? metadata.lead : {},
-    isRecord(metadata.profile) ? metadata.profile : {},
-    isRecord(metadata.application) ? metadata.application : {},
-    isRecord(metadata.challenge) ? metadata.challenge : {},
-    isRecord(metadata.answers) ? metadata.answers : {},
-    isRecord(metadata.qualification) ? metadata.qualification : {},
-  ]
-}
-
-function landingString(input: LandingInput, keys: string[]) {
-  for (const record of landingRecords(input)) {
-    for (const key of keys) {
-      const value = record[key]
-      if (typeof value === 'string' && value.trim()) return value.trim()
-    }
-  }
-  return null
-}
-
-function landingStringArray(input: LandingInput, keys: string[]) {
-  for (const record of landingRecords(input)) {
-    for (const key of keys) {
-      const value = record[key]
-      if (Array.isArray(value)) {
-        const cleaned = value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim())
-        if (cleaned.length > 0) return cleaned
-      }
-    }
-  }
-  return []
-}
-
-function sourceTypeForIntent(intent: z.infer<typeof landingLeadSchema>['intent']) {
-  return intent === 'conference_scan' ? 'outreach' : 'website'
-}
-
-function shouldReplaceSourceType(sourceType: unknown) {
-  return !sourceType || sourceType === 'manual' || sourceType === 'other'
-}
-
-function buildLandingProfileFieldPatch(input: LandingInput, existingLead?: Record<string, unknown> | null) {
-  const patch: Record<string, unknown> = {}
-  const setIfPresent = (column: string, value: string | null, replace = false) => {
-    if (!value) return
-    if (replace || !existingLead || !existingLead[column]) patch[column] = value
-  }
-
-  setIfPresent('contact_title', landingString(input, ['contact_title', 'contactTitle', 'title', 'role']))
-  setIfPresent('contact_phone', landingString(input, ['contact_phone', 'contactPhone', 'phone', 'phone_number', 'phoneNumber']))
-  setIfPresent('contact_linkedin', landingString(input, ['contact_linkedin', 'contactLinkedin', 'linkedin', 'linkedin_url', 'linkedinUrl']))
-  setIfPresent('contact_twitter', landingString(input, ['contact_twitter', 'contactTwitter', 'twitter', 'twitter_url', 'twitterUrl']))
-  setIfPresent('product_name', landingString(input, ['product_name', 'productName', 'product', 'product_context', 'productContext']))
-  setIfPresent('company_website', landingString(input, ['company_website', 'companyWebsite', 'website', 'url']))
-  setIfPresent('company_description', landingString(input, ['company_description', 'companyDescription', 'company_context', 'companyContext']))
-  setIfPresent('attack_surface_notes', landingString(input, ['attack_surface_notes', 'attackSurfaceNotes', 'security_requirements', 'securityRequirements', 'pentest_requirements', 'pentestRequirements']))
-  setIfPresent('personal_details', landingString(input, ['personal_details', 'personalDetails', 'context', 'additional_context', 'additionalContext']))
-
-  const hooks = landingStringArray(input, ['smykm_hooks', 'smykmHooks', 'hooks', 'personalization_hooks', 'personalizationHooks'])
-  if (hooks.length > 0) {
-    const existingHooks = Array.isArray(existingLead?.smykm_hooks) ? existingLead.smykm_hooks.filter((hook): hook is string => typeof hook === 'string') : []
-    patch.smykm_hooks = Array.from(new Set([...existingHooks, ...hooks])).slice(0, 8)
-  }
-
-  return patch
+  return 'interested'
 }
 
 export async function POST(request: NextRequest) {
+  if (!authorized(request)) return json({ error: 'Unauthorized' }, { status: 401 })
   try {
-    const body = await request.json()
-    const validation = landingLeadSchema.safeParse(body)
-    if (!validation.success) {
-      return json({ error: 'Invalid request', details: validation.error.format() }, { status: 400 })
-    }
-
-    const input = validation.data as LandingInput
-    const supabase = createAdminClient()
+    const input = schema.parse(await request.json())
 
     let campaign: Campaign | null = null
-    if (input.campaign_id) {
-      const result = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', input.campaign_id)
-        .limit(1)
-        .maybeSingle()
-      if (result.error) throw result.error
-      campaign = result.data as Campaign | null
-    } else if (input.campaign_slug || input.utm_campaign) {
-      const result = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('slug', input.campaign_slug || input.utm_campaign)
-        .limit(1)
-        .maybeSingle()
-      if (result.error) throw result.error
-      campaign = result.data as Campaign | null
+    if (input.campaign_id || input.campaign_slug || input.utm_campaign) {
+      try {
+        campaign = await getCampaign(input.campaign_id || input.campaign_slug || input.utm_campaign!)
+      } catch {
+        campaign = null
+      }
+    }
+    if (!campaign) {
+      const { data } = await db().from('campaigns').select('*').eq('is_default_landing', true).maybeSingle()
+      campaign = (data as Campaign) || null
+    }
+
+    const existing = await findLeadByEmail(input.contact_email)
+    const names = splitName(input.contact_name)
+    const landingCustom = { intent: input.intent, ...(input.metadata || {}), submitted_at: new Date().toISOString() }
+    const profile: LeadUpdateInput = {
+      full_name: input.contact_name,
+      first_name: names.first_name,
+      last_name: names.last_name,
+      title: input.contact_title ?? undefined,
+      phone: input.contact_phone ?? undefined,
+      linkedin_url: input.contact_linkedin ?? undefined,
+      company_name: input.company_name ?? undefined,
+      company_website: input.company_website ?? undefined,
+      company_description: input.company_description ?? undefined,
+    }
+
+    let lead: Lead
+    let createdNew = false
+    if (existing) {
+      // Landing data fills gaps but never overwrites what's already on the lead.
+      const gaps = Object.fromEntries(
+        Object.entries(profile).filter(([key, value]) => value != null && !existing[key as keyof Lead]),
+      ) as LeadUpdateInput
+      const terminal = ['customer', 'lost', 'unsubscribed', 'bounced'].includes(existing.stage)
+      lead = await updateLead(existing.id, {
+        ...gaps,
+        campaign_id: campaign?.id ?? existing.campaign_id,
+        custom: { ...existing.custom, landing: landingCustom },
+        ...(terminal ? {} : { stage: stageForIntent(input.intent) }),
+      })
     } else {
-      const result = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('is_default_landing', true)
-        .eq('status', 'active')
-        .limit(2)
-
-      if (isMissingColumn(result.error, 'is_default_landing')) {
-        return json({ error: 'Default landing campaigns need migration 043 before campaign-less landing submissions can be accepted.' }, { status: 500 })
-      }
-      if (result.error) throw result.error
-      if (!result.data || result.data.length === 0) {
-        return json({ error: 'No default landing campaign is configured' }, { status: 400 })
-      }
-      if (result.data.length > 1) {
-        return json({ error: 'Multiple default landing campaigns exist. Send campaign_id from the landing page.' }, { status: 400 })
-      }
-      campaign = result.data[0] as Campaign
-    }
-
-    if (!campaign) return json({ error: 'Campaign not found' }, { status: 404 })
-
-    const resolvedCampaign = campaign as Campaign
-    const orgId = resolvedCampaign.org_id
-    const userId = resolvedCampaign.user_id
-    const normalizedEmail = input.contact_email.toLowerCase().trim()
-    const leadToken = input.lead_token || crypto.randomUUID()
-    const emailDomain = normalizedEmail.split('@')[1]?.toLowerCase() || null
-    const source = input.campaign_slug || resolvedCampaign.slug
-    const challengeProfile = normalizeLandingChallengeProfile(input as Record<string, unknown>)
-    const hasStructuredChallengeProfile = hasChallengeProfile(challengeProfile)
-    const manualNotes = shouldTreatNotesAsChallengeProfile(input.notes) ? null : input.notes || null
-    const attributionMetadata = {
-      ...input.metadata,
-      intent: input.intent,
-      campaign_id: resolvedCampaign.id,
-      campaign_slug: resolvedCampaign.slug,
-      landing_slug: input.landing_slug || null,
-      lead_token: leadToken,
-      challenge_profile: hasStructuredChallengeProfile ? challengeProfile : null,
-      utm_source: input.utm_source,
-      utm_medium: input.utm_medium,
-      utm_campaign: input.utm_campaign,
-      referrer: input.referrer,
-    }
-    let initialCampaignStageKey = await resolveCampaignStageForIntent(
-      supabase,
-      resolvedCampaign.id,
-      orgId,
-      input.intent,
-    )
-
-    await supabase.from('campaign_attribution_events').insert({
-      campaign_id: resolvedCampaign.id,
-      org_id: orgId,
-      user_id: userId,
-      event_type: input.intent === 'conference_scan' ? 'conference_scan' : 'landing_form_submission',
-      landing_slug: input.landing_slug || null,
-      lead_token: leadToken,
-      source,
-      medium: input.utm_medium || (input.intent === 'conference_scan' ? 'in_person' : 'landing'),
-      campaign_slug: resolvedCampaign.slug,
-      utm_source: input.utm_source,
-      utm_medium: input.utm_medium,
-      utm_campaign: input.utm_campaign,
-      referrer: input.referrer,
-      user_agent: request.headers.get('user-agent'),
-      metadata: attributionMetadata,
-    })
-
-    const { data: existingLead } = await supabase
-      .from('leads')
-      .select('*')
-      .eq('org_id', orgId)
-      .eq('contact_email', normalizedEmail)
-      .maybeSingle()
-
-    let lead = existingLead
-    let leadWasCreated = false
-
-    if (!lead) {
-      const companyName = input.company_name?.trim() || emailDomain || input.contact_name
-      const challengeLeadPatch = hasStructuredChallengeProfile
-        ? buildLeadProfilePatchFromChallenge(challengeProfile)
-        : {}
-      const landingProfilePatch = buildLandingProfileFieldPatch(input)
-      const leadInsertPayload = {
-        org_id: orgId,
-        user_id: userId,
-        type: 'customer',
-        company_name: companyName,
-        contact_name: input.contact_name,
-        contact_email: normalizedEmail,
-        contact_title: input.contact_title || null,
-        company_website: input.company_website || null,
-        email_domain: emailDomain,
+      lead = await createLead({
+        ...profile,
+        email: input.contact_email,
         stage: stageForIntent(input.intent),
-        source_type: sourceTypeForIntent(input.intent),
-        source,
-        lead_token: leadToken,
-        priority: input.intent === 'discovery' ? 'high' : 'medium',
-        notes: manualNotes,
-        ...landingProfilePatch,
-        ...challengeLeadPatch,
-      }
-      if (input.intent === 'discovery') leadInsertPayload.priority = 'high'
-
-      let { data: insertedLead, error: insertError } = await supabase
-        .from('leads')
-        .insert(leadInsertPayload)
-        .select()
-        .single()
-
-      if (isMissingColumn(insertError, 'source_type')) {
-        const retry = await supabase
-          .from('leads')
-          .insert(omitColumn(leadInsertPayload, 'source_type'))
-          .select()
-          .single()
-        insertedLead = retry.data
-        insertError = retry.error
-      }
-
-      if (isMissingColumn(insertError, 'lead_token')) {
-        const retry = await supabase
-          .from('leads')
-          .insert(omitColumn(omitColumn(leadInsertPayload, 'source_type'), 'lead_token'))
-          .select()
-          .single()
-        insertedLead = retry.data
-        insertError = retry.error
-      }
-
-      if (insertError) throw insertError
-      lead = insertedLead
-      leadWasCreated = true
-    } else {
-      const challengeLeadPatch = hasStructuredChallengeProfile
-        ? buildLeadProfilePatchFromChallenge(challengeProfile, existingLead)
-        : {}
-      const landingProfilePatch = buildLandingProfileFieldPatch(input, existingLead)
-      const sourceType = shouldReplaceSourceType(existingLead.source_type)
-        ? sourceTypeForIntent(input.intent)
-        : existingLead.source_type
-      let leadUpdatePayload: Record<string, unknown> = {
-        lead_token: existingLead.lead_token || leadToken,
-        source: existingLead.source || source,
-        source_type: sourceType,
-        ...landingProfilePatch,
-        ...challengeLeadPatch,
-      }
-      if (input.intent === 'discovery') leadUpdatePayload.priority = 'high'
-      if (manualNotes && !existingLead.notes) leadUpdatePayload.notes = manualNotes
-      if (hasStructuredChallengeProfile && !manualNotes && shouldTreatNotesAsChallengeProfile(existingLead.notes)) leadUpdatePayload.notes = null
-
-      let { error: updateError } = await supabase
-        .from('leads')
-        .update(leadUpdatePayload)
-        .eq('id', existingLead.id)
-        .eq('org_id', orgId)
-
-      if (isMissingColumn(updateError, 'source_type')) {
-        leadUpdatePayload = omitColumn(leadUpdatePayload, 'source_type')
-        const retry = await supabase
-          .from('leads')
-          .update(leadUpdatePayload)
-          .eq('id', existingLead.id)
-          .eq('org_id', orgId)
-        updateError = retry.error
-      }
-
-      if (isMissingColumn(updateError, 'lead_token')) {
-        leadUpdatePayload = omitColumn(leadUpdatePayload, 'lead_token')
-        const retry = await supabase
-          .from('leads')
-          .update(leadUpdatePayload)
-          .eq('id', existingLead.id)
-          .eq('org_id', orgId)
-        updateError = retry.error
-      }
-
-      if (updateError) {
-        throw updateError
-      }
+        source: input.landing_slug ? `landing:${input.landing_slug}` : 'landing',
+        campaign_id: campaign?.id ?? null,
+        notes: input.notes ?? undefined,
+        custom: { landing: landingCustom },
+      })
+      createdNew = true
     }
 
-    let enrollmentCampaign = resolvedCampaign
-    const activeEnrollment = await getActiveCampaignEnrollment(supabase, orgId, lead.id)
-    if (activeEnrollment && activeEnrollment.campaign_id !== resolvedCampaign.id) {
-      const { data: activeCampaign, error: activeCampaignError } = await supabase
-        .from('campaigns')
-        .select('*')
-        .eq('id', activeEnrollment.campaign_id)
-        .eq('org_id', orgId)
-        .single()
-      if (activeCampaignError) throw activeCampaignError
-      enrollmentCampaign = activeCampaign as Campaign
-      initialCampaignStageKey = await resolveCampaignStageForIntent(
-        supabase,
-        enrollmentCampaign.id,
-        orgId,
-        input.intent,
-      )
+    if (!lead.lead_token) {
+      const token = createLeadToken(lead.id)
+      await db().from('leads').update({ lead_token: token }).eq('id', lead.id)
+      lead.lead_token = token
     }
 
-    const enrollmentAttributionMetadata = {
-      ...attributionMetadata,
-      requested_campaign_id: resolvedCampaign.id,
-      requested_campaign_slug: resolvedCampaign.slug,
-      campaign_id: enrollmentCampaign.id,
-      campaign_slug: enrollmentCampaign.slug,
-    }
-
-    const enrollment = await enrollLeadInCampaign({
-      supabase,
-      campaign: enrollmentCampaign,
-      leadId: lead.id,
-      userId,
-      orgId,
-      stageKey: initialCampaignStageKey,
-      metadata: enrollmentAttributionMetadata,
-    })
-
-    const campaignEvent = await recordCampaignEvent({
-      supabase,
-      campaignId: enrollmentCampaign.id,
-      enrollmentId: enrollment.id,
-      leadId: lead.id,
-      orgId,
-      userId,
-      eventType: campaignEventForIntent(input.intent),
-      metadata: enrollmentAttributionMetadata,
-    })
-
-    await supabase.from('campaign_attribution_events').insert({
-      campaign_id: enrollmentCampaign.id,
+    await db().from('attribution_events').insert({
       lead_id: lead.id,
-      campaign_enrollment_id: enrollment.id,
-      org_id: orgId,
-      user_id: userId,
-      event_type: leadWasCreated ? 'lead_created' : 'lead_matched',
+      campaign_id: campaign?.id || null,
+      lead_token: lead.lead_token,
+      event_type: createdNew ? 'lead_created' : 'lead_matched',
       landing_slug: input.landing_slug || null,
-      lead_token: lead.lead_token || leadToken,
-      source,
-      medium: input.utm_medium || (input.intent === 'conference_scan' ? 'in_person' : 'landing'),
-      campaign_slug: enrollmentCampaign.slug,
-      utm_source: input.utm_source,
-      utm_medium: input.utm_medium,
-      utm_campaign: input.utm_campaign,
-      referrer: input.referrer,
+      source: input.utm_source || 'landing',
+      medium: input.utm_medium || 'landing',
+      campaign_slug: campaign?.slug || input.utm_campaign || null,
+      utm_source: input.utm_source || null,
+      utm_medium: input.utm_medium || null,
+      utm_campaign: input.utm_campaign || null,
+      referrer: input.referrer || null,
       user_agent: request.headers.get('user-agent'),
-      metadata: {
-        ...enrollmentAttributionMetadata,
-        campaign_event_id: campaignEvent.id,
-      },
+      metadata: { intent: input.intent, ...(input.metadata || {}) },
     })
 
-    return json({
-      data: {
-        lead_id: lead.id,
-        campaign_id: enrollmentCampaign.id,
-        campaign_slug: enrollmentCampaign.slug,
-        campaign_enrollment_id: enrollment.id,
-        lead_token: lead.lead_token || leadToken,
-        created: leadWasCreated,
-      },
-    }, { status: leadWasCreated ? 201 : 200 })
+    let enrollment: unknown = null
+    if (input.sequence_id) {
+      const result = await enrollLeads(input.sequence_id, { lead_ids: [lead.id], replace_existing: false })
+      enrollment = result.enrolled[0] || { skipped: result.skipped }
+    }
+
+    return json({ data: { lead_id: lead.id, lead_token: lead.lead_token, campaign_id: campaign?.id || null, created: createdNew, enrollment } }, { status: createdNew ? 201 : 200 })
   } catch (error) {
+    if (error instanceof z.ZodError) return json({ error: 'Invalid request', details: error.issues }, { status: 400 })
     console.error('POST /api/landing/leads error:', error)
-    return json(
-      { error: error instanceof Error ? error.message : 'Failed to capture landing lead' },
-      { status: 500 },
-    )
+    return json({ error: error instanceof Error ? error.message : 'Failed to capture landing lead' }, { status: 500 })
   }
 }

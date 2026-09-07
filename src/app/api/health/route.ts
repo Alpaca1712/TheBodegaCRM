@@ -5,9 +5,8 @@ export const dynamic = 'force-dynamic'
 
 export async function GET() {
   const health = getServiceHealth()
-  const response = NextResponse.json(health, {
+  return NextResponse.json(health, {
     status: health.status === 'unhealthy' ? 503 : 200,
+    headers: { 'Cache-Control': 'no-store' },
   })
-  response.headers.set('Cache-Control', 'no-store')
-  return response
 }
