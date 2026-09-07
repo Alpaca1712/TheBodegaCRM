@@ -64,8 +64,10 @@ export async function handleResendEvent(payload: WebhookEventPayload, svixId: st
   if (!email.message_id && data.message_id) patch.message_id = data.message_id
   if (!email.resend_id) patch.resend_id = data.email_id
 
+  // Resend delivers events concurrently, so only ever move status forward.
+  // Strict comparison keeps a late `email.sent` from clobbering `delivered`.
   const setStatus = (status: EmailDeliveryStatus) => {
-    if (STATUS_RANK[status] >= STATUS_RANK[email.status]) patch.status = status
+    if (STATUS_RANK[status] > STATUS_RANK[email.status]) patch.status = status
   }
 
   switch (payload.type) {
