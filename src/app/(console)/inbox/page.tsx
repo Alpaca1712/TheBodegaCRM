@@ -73,7 +73,7 @@ export default function InboxPage() {
   const unhandledInView = rows.filter((email) => !email.handled_at).length;
 
   return (
-    <div className="-m-4 flex h-[calc(100dvh-3.5rem)] flex-col md:-m-6 lg:-m-8">
+    <div className="flex h-[calc(100dvh-3rem)] flex-col md:h-screen">
       <header className="flex flex-shrink-0 flex-col gap-3 border-b border-zinc-200/80 bg-white px-4 py-3 dark:border-zinc-800 dark:bg-zinc-900 sm:flex-row sm:items-center sm:justify-between md:px-6">
         <div className="min-w-0">
           <div className="flex items-center gap-2.5">

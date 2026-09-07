@@ -88,7 +88,7 @@ export default function SequenceDetailPage({ params }: { params: Promise<{ id: s
   const enrollmentRows = enrollments.data?.data ?? [];
 
   return (
-    <div className="-m-4 flex min-h-[calc(100dvh-3.5rem)] flex-col md:-m-6 lg:-m-8">
+    <div className="flex min-h-[calc(100dvh-3rem)] flex-col md:min-h-screen">
       <header className="flex-shrink-0 border-b border-zinc-200/80 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-900 md:px-6">
         <Link
           href="/sequences"
