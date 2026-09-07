@@ -75,10 +75,14 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
       <aside className="fixed inset-y-0 left-0 z-30 hidden w-[220px] flex-col border-r border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:flex">
         <div className="flex h-14 items-center px-5">
           <Link href="/leads" className="flex items-center gap-2.5">
-            <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 shadow-sm shadow-red-600/25">
+            <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-red-700 shadow-sm shadow-red-600/25">
               <span className="text-xs font-bold text-white">B</span>
+              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-amber-400 dark:border-zinc-900" />
             </div>
-            <span className="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Bodega</span>
+            <div className="leading-tight">
+              <span className="block text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Bodega</span>
+              <span className="block text-[10px] font-medium uppercase tracking-wider text-zinc-400">CRM</span>
+            </div>
           </Link>
         </div>
         {nav}
@@ -93,7 +97,13 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
           <aside className="absolute inset-y-0 left-0 flex w-[240px] flex-col bg-white dark:bg-zinc-900">
             <div className="flex h-14 items-center justify-between px-4">
-              <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Bodega</span>
+              <div className="flex items-center gap-2.5">
+                <div className="relative flex h-7 w-7 items-center justify-center rounded-lg bg-gradient-to-br from-red-500 to-red-700">
+                  <span className="text-xs font-bold text-white">B</span>
+                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border border-white bg-amber-400" />
+                </div>
+                <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Bodega</span>
+              </div>
               <button onClick={() => setMobileOpen(false)} className="rounded-md p-1 text-zinc-500" aria-label="Close menu"><X className="h-4 w-4" /></button>
             </div>
             {nav}

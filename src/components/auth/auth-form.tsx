@@ -19,13 +19,11 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AuthForm() {
   return (
-    <Suspense fallback={<div className="mt-8 h-64 animate-pulse rounded-md bg-zinc-100" />}>
+    <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />}>
       <AuthFormInner />
     </Suspense>
   );
 }
-
-const inputClass = 'relative block w-full rounded-md border-0 py-3 px-4 text-zinc-900 dark:text-zinc-100 ring-1 ring-inset ring-zinc-300 dark:ring-zinc-700 bg-white dark:bg-zinc-800 placeholder:text-zinc-400 focus:ring-2 focus:ring-inset focus:ring-red-600 sm:text-sm sm:leading-6 transition-colors';
 
 function AuthFormInner() {
   const searchParams = useSearchParams();
@@ -56,28 +54,54 @@ function AuthFormInner() {
   };
 
   return (
-    <form className="mt-8 space-y-6" onSubmit={handleSubmit(onSubmit)}>
-      <div className="space-y-4 rounded-md shadow-sm">
+    <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
+      <div className="space-y-3.5">
         <div>
-          <label htmlFor="email" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Email address</label>
-          <Input id="email" type="email" autoComplete="email" placeholder="Email address" className={inputClass} {...register('email')} disabled={isLoading} aria-invalid={!!errors.email} />
-          {errors.email && <p className="text-sm text-red-600">{errors.email.message}</p>}
+          <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            Email address
+          </label>
+          <Input
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder="you@pigeonlabs.nyc"
+            className="h-11 border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950"
+            {...register('email')}
+            disabled={isLoading}
+            aria-invalid={!!errors.email}
+          />
+          {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email.message}</p> : null}
         </div>
         <div>
-          <label htmlFor="password" className="block text-xs font-medium text-zinc-700 dark:text-zinc-300 mb-1">Password</label>
-          <Input id="password" type="password" autoComplete="current-password" placeholder="Password" className={inputClass} {...register('password')} disabled={isLoading} aria-invalid={!!errors.password} />
-          {errors.password && <p className="text-sm text-red-600">{errors.password.message}</p>}
+          <label htmlFor="password" className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
+            Password
+          </label>
+          <Input
+            id="password"
+            type="password"
+            autoComplete="current-password"
+            placeholder="Password"
+            className="h-11 border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950"
+            {...register('password')}
+            disabled={isLoading}
+            aria-invalid={!!errors.password}
+          />
+          {errors.password ? <p className="mt-1 text-sm text-red-600">{errors.password.message}</p> : null}
         </div>
       </div>
 
-      {error && (
-        <div className="rounded-md bg-red-50 p-4 border border-red-200">
-          <p className="text-sm text-red-800">{error}</p>
+      {error ? (
+        <div className="rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900/50 dark:bg-red-950/30">
+          <p className="text-sm text-red-800 dark:text-red-300">{error}</p>
         </div>
-      )}
+      ) : null}
 
-      <Button type="submit" disabled={isLoading} className="group relative flex w-full justify-center rounded-md bg-red-600 py-3 px-4 text-sm font-semibold text-white hover:bg-red-500 disabled:opacity-50 transition-colors">
-        {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : <span>Sign in</span>}
+      <Button
+        type="submit"
+        disabled={isLoading}
+        className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-500 dark:bg-red-600 dark:text-white dark:hover:bg-red-500"
+      >
+        {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign in'}
       </Button>
     </form>
   );
