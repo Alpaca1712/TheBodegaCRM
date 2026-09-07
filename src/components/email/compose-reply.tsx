@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { Send } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,9 +14,11 @@ interface ComposeReplyProps {
   leadId: string;
   replyTo?: Email | null;
   onSent?: (email: Email) => void;
+  /** When true, drop the outer card chrome (e.g. inbox detail footer). */
+  embedded?: boolean;
 }
 
-export function ComposeReply({ leadId, replyTo, onSent }: ComposeReplyProps) {
+export function ComposeReply({ leadId, replyTo, onSent, embedded = false }: ComposeReplyProps) {
   const queryClient = useQueryClient();
   const [subject, setSubject] = useState('');
   const [body, setBody] = useState('');
@@ -42,15 +45,49 @@ export function ComposeReply({ leadId, replyTo, onSent }: ComposeReplyProps) {
   return (
     <form
       onSubmit={(event) => { event.preventDefault(); if (body.trim()) send.mutate(); }}
-      className="space-y-2 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900"
+      className={
+        embedded
+          ? 'space-y-2.5'
+          : 'space-y-2.5 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900'
+      }
     >
       <p className="text-xs text-zinc-500 dark:text-zinc-400">
-        {replyTo ? <>Replying in thread: <span className="font-medium text-zinc-700 dark:text-zinc-300">{replyTo.subject || '(no subject)'}</span></> : 'New email'}
+        {replyTo ? (
+          <>
+            Replying to{' '}
+            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+              {replyTo.subject || '(no subject)'}
+            </span>
+          </>
+        ) : (
+          'New email'
+        )}
       </p>
-      {!replyTo ? <Input placeholder="Subject" value={subject} onChange={(event) => setSubject(event.target.value)} className="h-9" /> : null}
-      <Textarea placeholder="Write your reply…" value={body} onChange={(event) => setBody(event.target.value)} rows={6} />
+      {!replyTo ? (
+        <Input
+          placeholder="Subject"
+          value={subject}
+          onChange={(event) => setSubject(event.target.value)}
+          className="h-9"
+        />
+      ) : null}
+      <Textarea
+        placeholder="Write your reply…"
+        value={body}
+        onChange={(event) => setBody(event.target.value)}
+        rows={embedded ? 4 : 6}
+        className={embedded ? 'min-h-[96px] resize-none' : undefined}
+      />
       <div className="flex justify-end">
-        <Button type="submit" size="sm" isLoading={send.isPending} disabled={!body.trim() || (!replyTo && !subject.trim())}>Send</Button>
+        <Button
+          type="submit"
+          size="sm"
+          isLoading={send.isPending}
+          disabled={!body.trim() || (!replyTo && !subject.trim())}
+        >
+          {!send.isPending ? <Send className="mr-1.5 h-3.5 w-3.5" /> : null}
+          Send
+        </Button>
       </div>
     </form>
   );

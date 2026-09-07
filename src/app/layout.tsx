@@ -17,8 +17,12 @@ const geistMono = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Bodega",
+  title: {
+    default: "Bodega",
+    template: "%s · Bodega",
+  },
   description: "Pigeon's campaign CRM for outreach, attribution, automation, and revenue.",
+  applicationName: "Bodega",
 };
 
 export default function RootLayout({
