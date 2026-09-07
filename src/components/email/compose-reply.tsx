@@ -48,14 +48,14 @@ export function ComposeReply({ leadId, replyTo, onSent, embedded = false }: Comp
       className={
         embedded
           ? 'space-y-2.5'
-          : 'space-y-2.5 rounded-lg border border-zinc-200 bg-white p-3 dark:border-zinc-800 dark:bg-zinc-900'
+          : 'space-y-2.5 rounded-xl border border-border bg-card p-3 shadow-sm shadow-zinc-950/[0.02]'
       }
     >
-      <p className="text-xs text-zinc-500 dark:text-zinc-400">
+      <p className="text-xs text-muted-foreground">
         {replyTo ? (
           <>
             Replying to{' '}
-            <span className="font-medium text-zinc-700 dark:text-zinc-300">
+            <span className="font-medium text-foreground">
               {replyTo.subject || '(no subject)'}
             </span>
           </>

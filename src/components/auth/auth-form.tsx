@@ -9,6 +9,7 @@ import { Loader2 } from 'lucide-react';
 import { signIn } from '@/lib/auth/actions';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 
 const loginSchema = z.object({
   email: z.string().email('Please enter a valid email address'),
@@ -19,7 +20,7 @@ type LoginFormData = z.infer<typeof loginSchema>;
 
 export default function AuthForm() {
   return (
-    <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-zinc-100 dark:bg-zinc-800" />}>
+    <Suspense fallback={<div className="h-48 animate-pulse rounded-xl bg-muted" />}>
       <AuthFormInner />
     </Suspense>
   );
@@ -57,36 +58,32 @@ function AuthFormInner() {
     <form className="space-y-5" onSubmit={handleSubmit(onSubmit)}>
       <div className="space-y-3.5">
         <div>
-          <label htmlFor="email" className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-            Email address
-          </label>
+          <Label htmlFor="email" className="mb-1.5">Email address</Label>
           <Input
             id="email"
             type="email"
             autoComplete="email"
             placeholder="you@pigeonlabs.nyc"
-            className="h-11 border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950"
+            className="h-11 border-border bg-background"
             {...register('email')}
             disabled={isLoading}
             aria-invalid={!!errors.email}
           />
-          {errors.email ? <p className="mt-1 text-sm text-red-600">{errors.email.message}</p> : null}
+          {errors.email ? <p className="mt-1 text-sm text-destructive">{errors.email.message}</p> : null}
         </div>
         <div>
-          <label htmlFor="password" className="mb-1.5 block text-xs font-medium text-zinc-700 dark:text-zinc-300">
-            Password
-          </label>
+          <Label htmlFor="password" className="mb-1.5">Password</Label>
           <Input
             id="password"
             type="password"
             autoComplete="current-password"
             placeholder="Password"
-            className="h-11 border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-950"
+            className="h-11 border-border bg-background"
             {...register('password')}
             disabled={isLoading}
             aria-invalid={!!errors.password}
           />
-          {errors.password ? <p className="mt-1 text-sm text-red-600">{errors.password.message}</p> : null}
+          {errors.password ? <p className="mt-1 text-sm text-destructive">{errors.password.message}</p> : null}
         </div>
       </div>
 
@@ -98,8 +95,9 @@ function AuthFormInner() {
 
       <Button
         type="submit"
+        variant="primary"
         disabled={isLoading}
-        className="h-11 w-full rounded-xl bg-red-600 text-sm font-semibold text-white hover:bg-red-500 dark:bg-red-600 dark:text-white dark:hover:bg-red-500"
+        className="h-11 w-full rounded-xl text-sm font-semibold"
       >
         {isLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Sign in'}
       </Button>

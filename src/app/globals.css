@@ -2,27 +2,34 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
+/*
+  Bodega console design tokens
+  Agency rule: one canvas, one surface, one type scale, one radius.
+*/
 :root {
-  --background: #fafafa;
-  --foreground: #0f172a;
+  --background: #f4f4f5;
+  --foreground: #18181b;
   --card: #ffffff;
-  --card-foreground: #020817;
+  --card-foreground: #18181b;
   --popover: #ffffff;
-  --popover-foreground: #020817;
+  --popover-foreground: #18181b;
   --primary: #dc2626;
   --primary-foreground: #ffffff;
-  --secondary: #f1f5f9;
-  --secondary-foreground: #0f172a;
-  --muted: #f1f5f9;
-  --muted-foreground: #64748b;
+  --secondary: #f4f4f5;
+  --secondary-foreground: #18181b;
+  --muted: #f4f4f5;
+  --muted-foreground: #71717a;
   --accent: #fef2f2;
   --accent-foreground: #991b1b;
-  --destructive: #ef4444;
+  --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  --border: #e5e7eb;
+  --border: #e4e4e7;
   --input: #ffffff;
   --ring: #dc2626;
-  --radius: 0.625rem;
+  --radius: 0.75rem;
+  --sidebar: #ffffff;
+  --sidebar-width: 232px;
+  --header-px: 1.25rem;
 }
 
 html {
@@ -32,24 +39,25 @@ html {
 .dark {
   color-scheme: dark;
   --background: #09090b;
-  --foreground: #f4f4f5;
-  --card: #111113;
-  --card-foreground: #f4f4f5;
-  --popover: #111113;
-  --popover-foreground: #f4f4f5;
+  --foreground: #fafafa;
+  --card: #18181b;
+  --card-foreground: #fafafa;
+  --popover: #18181b;
+  --popover-foreground: #fafafa;
   --primary: #f87171;
-  --primary-foreground: #0f172a;
-  --secondary: #1c1c1f;
-  --secondary-foreground: #f4f4f5;
-  --muted: #18181b;
+  --primary-foreground: #18181b;
+  --secondary: #27272a;
+  --secondary-foreground: #fafafa;
+  --muted: #27272a;
   --muted-foreground: #a1a1aa;
   --accent: #450a0a;
   --accent-foreground: #fecaca;
-  --destructive: #dc2626;
+  --destructive: #ef4444;
   --destructive-foreground: #fef2f2;
   --border: #27272a;
-  --input: #18181b;
+  --input: #27272a;
   --ring: #f87171;
+  --sidebar: #18181b;
 }
 
 @theme inline {
@@ -72,11 +80,12 @@ html {
   --color-border: var(--border);
   --color-input: var(--input);
   --color-ring: var(--ring);
+  --color-sidebar: var(--sidebar);
   --radius-sm: calc(var(--radius) - 0.25rem);
-  --radius-md: var(--radius);
-  --radius-lg: calc(var(--radius) + 0.25rem);
-  --radius-xl: calc(var(--radius) + 0.5rem);
-  --radius-2xl: calc(var(--radius) + 1rem);
+  --radius-md: calc(var(--radius) - 0.125rem);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 0.25rem);
+  --radius-2xl: calc(var(--radius) + 0.5rem);
   --font-sans: var(--font-geist-sans);
   --font-mono: var(--font-geist-mono);
 }
@@ -95,21 +104,11 @@ body {
 }
 
 ::selection {
-  background: rgb(220 38 38 / 0.2);
+  background: rgb(220 38 38 / 0.18);
 }
 
 .dark ::selection {
-  background: rgb(248 113 113 / 0.3);
-}
-
-@keyframes slide-in-right {
-  from { transform: translateX(100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
-}
-
-@keyframes slide-in-left {
-  from { transform: translateX(-100%); opacity: 0; }
-  to { transform: translateX(0); opacity: 1; }
+  background: rgb(248 113 113 / 0.28);
 }
 
 @keyframes fade-in {
@@ -118,20 +117,12 @@ body {
 }
 
 @keyframes scale-in {
-  from { opacity: 0; transform: scale(0.96); }
+  from { opacity: 0; transform: scale(0.98); }
   to { opacity: 1; transform: scale(1); }
 }
 
-@keyframes shimmer {
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-}
-
-.animate-slide-in-right { animation: slide-in-right 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-slide-in-left { animation: slide-in-left 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-fade-in { animation: fade-in 0.2s ease-out; }
-.animate-scale-in { animation: scale-in 0.2s cubic-bezier(0.16, 1, 0.3, 1); }
-.animate-shimmer { animation: shimmer 2s infinite linear; background-size: 200% 100%; }
+.animate-fade-in { animation: fade-in 0.18s ease-out; }
+.animate-scale-in { animation: scale-in 0.18s cubic-bezier(0.16, 1, 0.3, 1); }
 
 @media (prefers-reduced-motion: reduce) {
   *,

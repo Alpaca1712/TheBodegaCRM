@@ -8,6 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 import { signOut } from '@/lib/auth/actions';
 import { api } from '@/lib/api/client';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
+import { cn } from '@/lib/utils';
 
 interface ConsoleShellProps {
   children: ReactNode;
@@ -33,7 +34,6 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
     refetchInterval: 60_000,
   });
   const inboxCount = stats.data?.data.inbox.unhandled || 0;
-
   const isActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
 
   const nav = (
@@ -49,13 +49,14 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
                 href={item.href}
                 onClick={() => setMobileOpen(false)}
                 aria-current={active ? 'page' : undefined}
-                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors ${
+                className={cn(
+                  'flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-[13px] font-medium transition-colors',
                   active
-                    ? 'bg-red-50 text-red-700 dark:bg-red-950/40 dark:text-red-300'
-                    : 'text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900 dark:text-zinc-400 dark:hover:bg-zinc-800/70 dark:hover:text-zinc-200'
-                }`}
+                    ? 'bg-accent text-accent-foreground'
+                    : 'text-muted-foreground hover:bg-muted hover:text-foreground',
+                )}
               >
-                <Icon className={`h-4 w-4 flex-shrink-0 ${active ? 'text-red-600 dark:text-red-400' : 'text-zinc-400'}`} />
+                <Icon className={cn('h-4 w-4 flex-shrink-0', active ? 'text-primary' : 'text-muted-foreground')} />
                 <span>{item.label}</span>
                 {badge ? (
                   <span className="ml-auto flex h-[18px] min-w-[18px] items-center justify-center rounded-md bg-amber-100 px-1.5 text-[10px] font-semibold tabular-nums text-amber-800 dark:bg-amber-900/60 dark:text-amber-200">
@@ -71,10 +72,10 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
   );
 
   const account = (
-    <div className="space-y-2 border-t border-zinc-200/80 px-3 py-3 dark:border-zinc-800">
+    <div className="space-y-2 border-t border-border px-3 py-3">
       <div className="px-1">
-        <p className="truncate text-[12px] font-medium text-zinc-700 dark:text-zinc-300">{userEmail}</p>
-        <p className="text-[11px] text-zinc-400">Pigeon Labs</p>
+        <p className="truncate text-[12px] font-medium text-foreground">{userEmail}</p>
+        <p className="text-[11px] text-muted-foreground">Pigeon Labs</p>
       </div>
       <div className="flex items-center gap-1">
         <ThemeToggle />
@@ -88,7 +89,7 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
             }
           }}
           disabled={signingOut}
-          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 disabled:opacity-50"
+          className="flex h-9 flex-1 items-center justify-center gap-1.5 rounded-lg px-2 text-xs font-medium text-muted-foreground hover:bg-muted hover:text-foreground disabled:opacity-50"
         >
           <LogOut className="h-3.5 w-3.5" />
           {signingOut ? 'Signing out…' : 'Sign out'}
@@ -97,18 +98,20 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
     </div>
   );
 
+  const brand = (
+    <Link href="/leads" className="flex items-center gap-2.5">
+      <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 shadow-sm shadow-red-600/20">
+        <span className="text-sm font-bold text-white">B</span>
+        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-card bg-amber-400" />
+      </div>
+      <span className="text-[15px] font-semibold tracking-tight text-foreground">Bodega</span>
+    </Link>
+  );
+
   return (
-    <div className="flex min-h-screen bg-[#f4f4f5] dark:bg-zinc-950">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[232px] flex-col border-r border-zinc-200/80 bg-white dark:border-zinc-800 dark:bg-zinc-900 md:flex">
-        <div className="flex h-14 items-center px-4">
-          <Link href="/leads" className="flex items-center gap-2.5">
-            <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 shadow-sm shadow-red-600/20">
-              <span className="text-sm font-bold text-white">B</span>
-              <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-white bg-amber-400 dark:border-zinc-900" />
-            </div>
-            <span className="text-[15px] font-semibold tracking-tight text-zinc-900 dark:text-zinc-100">Bodega</span>
-          </Link>
-        </div>
+    <div className="flex min-h-screen bg-background">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-[var(--sidebar-width)] flex-col border-r border-border bg-sidebar md:flex">
+        <div className="flex h-14 items-center px-4">{brand}</div>
         {nav}
         {account}
       </aside>
@@ -116,16 +119,10 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
       {mobileOpen ? (
         <div className="fixed inset-0 z-40 md:hidden">
           <div className="absolute inset-0 bg-black/40" onClick={() => setMobileOpen(false)} />
-          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col bg-white dark:bg-zinc-900">
+          <aside className="absolute inset-y-0 left-0 flex w-[260px] flex-col bg-sidebar">
             <div className="flex h-14 items-center justify-between px-4">
-              <div className="flex items-center gap-2.5">
-                <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700">
-                  <span className="text-sm font-bold text-white">B</span>
-                  <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-white bg-amber-400" />
-                </div>
-                <span className="text-[15px] font-semibold text-zinc-900 dark:text-zinc-100">Bodega</span>
-              </div>
-              <button onClick={() => setMobileOpen(false)} className="rounded-md p-1 text-zinc-500" aria-label="Close menu">
+              {brand}
+              <button onClick={() => setMobileOpen(false)} className="rounded-md p-1 text-muted-foreground" aria-label="Close menu">
                 <X className="h-4 w-4" />
               </button>
             </div>
@@ -135,12 +132,12 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
         </div>
       ) : null}
 
-      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[232px]">
-        <header className="sticky top-0 z-20 flex h-12 items-center border-b border-zinc-200/80 bg-[#f4f4f5]/80 px-3 backdrop-blur md:hidden dark:border-zinc-800 dark:bg-zinc-950/80">
-          <button onClick={() => setMobileOpen(true)} className="rounded-md p-1.5 text-zinc-500" aria-label="Open menu">
+      <div className="flex min-h-screen min-w-0 flex-1 flex-col md:ml-[var(--sidebar-width)]">
+        <header className="sticky top-0 z-20 flex h-12 items-center border-b border-border bg-background/90 px-3 backdrop-blur md:hidden">
+          <button onClick={() => setMobileOpen(true)} className="rounded-md p-1.5 text-muted-foreground" aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="ml-2 text-sm font-semibold text-zinc-900 dark:text-zinc-100">Bodega</span>
+          <span className="ml-2 text-sm font-semibold text-foreground">Bodega</span>
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

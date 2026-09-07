@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { Check, Copy } from 'lucide-react';
 import { toast } from 'sonner';
+import { cn } from '@/lib/utils';
 
 interface CopyButtonProps {
   value?: string;
@@ -40,7 +41,12 @@ export function CopyButton({
     <button
       type="button"
       onClick={handleCopy}
-      className={`inline-flex items-center justify-center gap-1 rounded-md p-1 text-zinc-400 transition-all hover:bg-zinc-100 hover:text-zinc-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/20 dark:hover:bg-zinc-800 dark:hover:text-zinc-200 ${className}`}
+      className={cn(
+        'inline-flex items-center justify-center gap-1 rounded-md p-1 text-muted-foreground transition-all',
+        'hover:bg-muted hover:text-foreground',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/20',
+        className,
+      )}
       aria-label={`Copy ${label.toLowerCase()}`}
       title={`Copy ${label.toLowerCase()}`}
     >

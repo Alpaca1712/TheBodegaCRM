@@ -1,4 +1,5 @@
 import * as React from 'react'
+import { cn } from '@/lib/utils'
 
 interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
   className?: string
@@ -8,9 +9,7 @@ interface LabelProps extends React.LabelHTMLAttributes<HTMLLabelElement> {
 export function Label({ className, children, ...props }: LabelProps) {
   return (
     <label
-      className={
-        'block text-sm font-medium text-zinc-700 dark:text-zinc-300 mb-1 ' + (className || '')
-      }
+      className={cn('mb-1 block text-sm font-medium text-foreground', className)}
       {...props}
     >
       {children}

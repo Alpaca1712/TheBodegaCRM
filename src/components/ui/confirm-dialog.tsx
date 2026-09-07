@@ -55,16 +55,16 @@ export function ConfirmDialog({
         if (event.target === event.currentTarget && !loading) onClose()
       }}
     >
-      <div className="w-full max-w-md overflow-hidden rounded-lg border border-zinc-200 bg-white shadow-2xl dark:border-zinc-800 dark:bg-zinc-950">
+      <div className="w-full max-w-md overflow-hidden rounded-xl border border-border bg-card shadow-2xl animate-scale-in">
         <div className="flex items-start gap-4 p-5">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-red-50 text-red-600 ring-1 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-red-50 text-red-600 ring-1 ring-red-100 dark:bg-red-950/35 dark:text-red-300 dark:ring-red-900/50">
             <AlertTriangle className="h-5 w-5" />
           </div>
           <div className="min-w-0 flex-1">
-            <h2 id="confirm-dialog-title" className="text-base font-semibold text-zinc-950 dark:text-zinc-100">
+            <h2 id="confirm-dialog-title" className="text-base font-semibold text-foreground">
               {title}
             </h2>
-            <p id="confirm-dialog-description" className="mt-2 text-sm leading-6 text-zinc-600 dark:text-zinc-400">
+            <p id="confirm-dialog-description" className="mt-2 text-sm leading-6 text-muted-foreground">
               {description}
             </p>
           </div>
@@ -72,13 +72,13 @@ export function ConfirmDialog({
             type="button"
             onClick={onClose}
             disabled={loading}
-            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-zinc-400 transition hover:bg-zinc-100 hover:text-zinc-700 disabled:pointer-events-none disabled:opacity-50 dark:hover:bg-zinc-900 dark:hover:text-zinc-200"
+            className="inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted-foreground transition hover:bg-muted hover:text-foreground disabled:pointer-events-none disabled:opacity-50"
             aria-label="Close confirmation"
           >
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="border-t border-zinc-200 bg-zinc-50 px-5 py-4 dark:border-zinc-800 dark:bg-zinc-900/70">
+        <div className="border-t border-border bg-muted/60 px-5 py-4">
           <div className="flex justify-end gap-2">
             <Button type="button" variant="outline" onClick={onClose} disabled={loading}>
               {cancelLabel}
