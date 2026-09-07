@@ -100,12 +100,17 @@ export async function createSequence(input: SequenceCreateInput): Promise<Sequen
   const sequence = data as Sequence
 
   if (steps?.length) {
+    // Explicit defaults: multi-row inserts omit DB column defaults when a sibling
+    // row sets the column (PostgREST fills missing keys with null).
     const rows = steps.map((step, index) => ({
       sequence_id: sequence.id,
       ...stepRow(step),
       position: step.position ?? index + 1,
       delay_minutes: delayMinutesFrom(step),
       body: step.body,
+      thread_with_previous: step.thread_with_previous ?? true,
+      body_format: step.body_format ?? 'text',
+      active: step.active ?? true,
     }))
     const { error: stepError } = await db().from('sequence_steps').insert(rows)
     if (stepError) {
