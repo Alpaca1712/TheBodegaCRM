@@ -7,6 +7,7 @@ import { Inbox, LogOut, Mail, Menu, Send, Settings, Target, X } from 'lucide-rea
 import { useQuery } from '@tanstack/react-query';
 import { signOut } from '@/lib/auth/actions';
 import { api } from '@/lib/api/client';
+import { BodegaLogo } from '@/components/brand/bodega-logo';
 import { ThemeToggle } from '@/components/theme/theme-toggle';
 import { cn } from '@/lib/utils';
 
@@ -98,15 +99,7 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
     </div>
   );
 
-  const brand = (
-    <Link href="/leads" className="flex items-center gap-2.5">
-      <div className="relative flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-red-500 to-red-700 shadow-sm shadow-red-600/20">
-        <span className="text-sm font-bold text-white">B</span>
-        <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-card bg-amber-400" />
-      </div>
-      <span className="text-[15px] font-semibold tracking-tight text-foreground">Bodega</span>
-    </Link>
-  );
+  const brand = <BodegaLogo size="sm" href="/leads" />;
 
   return (
     <div className="flex min-h-screen bg-background">
@@ -137,7 +130,9 @@ export default function ConsoleShell({ children, userEmail }: ConsoleShellProps)
           <button onClick={() => setMobileOpen(true)} className="rounded-md p-1.5 text-muted-foreground" aria-label="Open menu">
             <Menu className="h-5 w-5" />
           </button>
-          <span className="ml-2 text-sm font-semibold text-foreground">Bodega</span>
+          <span className="ml-2">
+            <BodegaLogo size="sm" />
+          </span>
         </header>
         <main className="min-w-0 flex-1">{children}</main>
       </div>

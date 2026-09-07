@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { BodegaLogo } from '@/components/brand/bodega-logo';
 
 export default function Home() {
   return (
@@ -8,18 +9,10 @@ export default function Home() {
         className="pointer-events-none absolute inset-0 bg-[radial-gradient(ellipse_at_top,_rgba(220,38,38,0.12),_transparent_55%),radial-gradient(ellipse_at_bottom_right,_rgba(24,24,27,0.06),_transparent_45%)] dark:bg-[radial-gradient(ellipse_at_top,_rgba(248,113,113,0.12),_transparent_55%)]"
       />
       <main className="relative flex w-full max-w-lg flex-col items-center gap-8 text-center animate-fade-in">
-        <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 shadow-lg shadow-red-600/25">
-          <span className="relative text-xl font-bold text-white">
-            B
-            <span className="absolute -right-1 -top-0.5 h-2.5 w-2.5 rounded-full bg-amber-400" />
-          </span>
-        </div>
-        <div>
-          <h1 className="text-4xl font-semibold tracking-tight text-foreground sm:text-5xl">Bodega</h1>
-          <p className="mt-3 text-base leading-7 text-muted-foreground sm:text-lg">
-            Pigeon Labs&apos; API-first cold email CRM. Drive it from Claude via MCP, or open the console.
-          </p>
-        </div>
+        <BodegaLogo size="lg" asHeading />
+        <p className="text-base leading-7 text-muted-foreground sm:text-lg">
+          Pigeon Labs&apos; API-first cold email CRM. Drive it from Claude via MCP, or open the console.
+        </p>
         <div className="flex flex-col gap-3 sm:flex-row">
           <Link
             href="/login"

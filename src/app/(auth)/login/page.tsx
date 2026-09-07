@@ -1,5 +1,6 @@
 import { Metadata } from 'next';
 import AuthForm from '@/components/auth/auth-form';
+import { BodegaLogo } from '@/components/brand/bodega-logo';
 
 export const metadata: Metadata = {
   title: 'Login',
@@ -21,14 +22,10 @@ export default async function LoginPage({ searchParams }: LoginPageProps) {
       />
       <div className="relative w-full max-w-md animate-fade-in">
         <div className="mb-8 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-red-500 to-red-700 shadow-lg shadow-red-600/25">
-            <span className="relative text-lg font-bold text-white">
-              B
-              <span className="absolute -right-1 -top-0.5 h-2 w-2 rounded-full bg-amber-400" />
-            </span>
+          <div className="mb-3 flex justify-center">
+            <BodegaLogo size="md" asHeading />
           </div>
-          <h1 className="text-2xl font-semibold tracking-tight text-foreground">Bodega</h1>
-          <p className="mt-1.5 text-sm text-muted-foreground">
+          <p className="text-sm text-muted-foreground">
             Pigeon Labs console. Accounts are created in Supabase Auth.
           </p>
         </div>
