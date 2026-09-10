@@ -1,10 +1,11 @@
 import { db } from '@/lib/db'
-import type { AiSettings, LandingSettings, SenderSettings } from '@/types'
+import type { AiSettings, LandingSettings, NotificationSettings, SenderSettings } from '@/types'
 
 interface SettingsMap {
   ai: AiSettings
   sender: SenderSettings
   landing: LandingSettings
+  notifications: NotificationSettings
 }
 
 const DEFAULTS: SettingsMap = {
@@ -16,6 +17,12 @@ const DEFAULTS: SettingsMap = {
     signature: '',
   },
   landing: { base_url: process.env.LANDING_BASE_URL || 'https://www.artoo.love' },
+  notifications: {
+    email_to: null,
+    on_inbound_lead: true,
+    on_reply: true,
+    on_bounce: false,
+  },
 }
 
 export async function getSetting<K extends keyof SettingsMap>(key: K): Promise<SettingsMap[K]> {
@@ -32,6 +39,7 @@ export async function getAllSettings(): Promise<SettingsMap> {
     ai: { ...DEFAULTS.ai, ...(stored.ai || {}) },
     sender: { ...DEFAULTS.sender, ...(stored.sender || {}) },
     landing: { ...DEFAULTS.landing, ...(stored.landing || {}) },
+    notifications: { ...DEFAULTS.notifications, ...(stored.notifications || {}) },
   }
 }
 
