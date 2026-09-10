@@ -1,5 +1,7 @@
 import type { Lead } from '@/types'
 
+const FIT_QUESTION_IDS = new Set(['exposure', 'program', 'readiness', 'authority'])
+
 export type LeadQualification = {
   intent: string | null
   landingSlug: string | null
@@ -22,6 +24,7 @@ function asRecord(value: unknown): Record<string, unknown> | null {
 export function parseLeadQualification(lead: Pick<Lead, 'notes' | 'custom'>): LeadQualification | null {
   const landing = asRecord(lead.custom?.landing)
   const notes = lead.notes || ''
+  const seenQuestions = new Set<string>()
   const answerLines = notes
     .split('\n')
     .map((line) => line.trim())
@@ -29,7 +32,11 @@ export function parseLeadQualification(lead: Pick<Lead, 'notes' | 'custom'>): Le
     .flatMap((line) => {
       const match = line.match(/^([a-z_]+):\s*(.+)$/i)
       if (!match) return []
-      return [{ id: match[1], value: match[2] }]
+      const id = match[1].toLowerCase()
+      // Only the four fit questions — ignore repeated Phone:/meta lines from merged notes.
+      if (!FIT_QUESTION_IDS.has(id) || seenQuestions.has(id)) return []
+      seenQuestions.add(id)
+      return [{ id, value: match[2] }]
     })
 
   const summaryMatch = notes.match(/\[\$1 pentest application\]\s*([^\n]+)/i)
