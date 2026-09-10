@@ -47,6 +47,13 @@ function toRow(input: Partial<LeadCreateInput>, existing?: Lead | null) {
   return row
 }
 
+/** Web inbound = landing site / pigeonlabs; cold email = Claude outreach and everything else. */
+const WEB_INBOUND_OR =
+  'source.ilike."landing:%",source.ilike."pigeonlabs_%",source.eq.web_inbound,source.eq.landing,tags.cs.{web_inbound}'
+
+const COLD_EMAIL_OR =
+  'source.is.null,and(source.not.ilike."landing:%",source.not.ilike."pigeonlabs_%",source.neq.web_inbound,source.neq.landing)'
+
 export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; total: number }> {
   let builder = db().from('leads').select('*', { count: 'exact' })
 
@@ -59,6 +66,11 @@ export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; t
   if (query.stage) {
     const stages = Array.isArray(query.stage) ? query.stage : [query.stage]
     builder = builder.in('stage', stages)
+  }
+  if (query.channel === 'web_inbound') {
+    builder = builder.or(WEB_INBOUND_OR)
+  } else if (query.channel === 'cold_email') {
+    builder = builder.or(COLD_EMAIL_OR).not('tags', 'cs', '{web_inbound}')
   }
   if (query.campaign_id) builder = builder.eq('campaign_id', query.campaign_id)
   if (query.tag) builder = builder.contains('tags', [query.tag])
@@ -100,8 +112,35 @@ export async function findLeadByEmail(email: string): Promise<Lead | null> {
   return (data as Lead) || null
 }
 
+function isWebInboundInput(input: Partial<LeadCreateInput>) {
+  if (input.custom && typeof input.custom === 'object' && input.custom !== null && 'landing' in input.custom) {
+    return true
+  }
+  const source = input.source?.trim() || ''
+  return (
+    source === 'landing' ||
+    source === 'web_inbound' ||
+    source.startsWith('landing:') ||
+    source.startsWith('pigeonlabs_')
+  )
+}
+
 export async function createLead(input: LeadCreateInput): Promise<Lead> {
-  const { data, error } = await db().from('leads').insert(toRow(input)).select('*').single()
+  const inbound = isWebInboundInput(input)
+  const tags = new Set(input.tags || [])
+  if (inbound) tags.add('web_inbound')
+  else if (!input.tags?.length) tags.add('cold_email')
+
+  const withDefaults: LeadCreateInput = {
+    ...input,
+    source: input.source?.trim()
+      ? input.source.trim()
+      : inbound
+        ? 'web_inbound'
+        : 'cold_email',
+    tags: Array.from(tags),
+  }
+  const { data, error } = await db().from('leads').insert(toRow(withDefaults)).select('*').single()
   if (isUniqueViolation(error)) throw ApiError.conflict(`A lead with email ${normalizeEmail(input.email)} already exists`)
   if (error) throw error
   return data as Lead

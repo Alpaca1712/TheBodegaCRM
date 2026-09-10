@@ -17,6 +17,11 @@ const STAGE_FILTERS = [
   { value: '', label: 'All' },
   ...LEAD_STAGES.map((value) => ({ value, label: value.replace(/_/g, ' ') })),
 ];
+const CHANNEL_FILTERS = [
+  { value: '', label: 'All channels' },
+  { value: 'web_inbound', label: 'Web inbound' },
+  { value: 'cold_email', label: 'Cold email' },
+];
 
 function activityLabel(lead: Lead) {
   if (lead.last_inbound_at) return `Replied ${formatRelative(lead.last_inbound_at)}`;
@@ -24,18 +29,42 @@ function activityLabel(lead: Lead) {
   return `Added ${formatRelative(lead.created_at)}`;
 }
 
+function channelLabel(lead: Lead) {
+  const source = (lead.source || '').toLowerCase();
+  const tags = lead.tags || [];
+  if (
+    tags.includes('web_inbound') ||
+    source === 'landing' ||
+    source === 'web_inbound' ||
+    source.startsWith('landing:') ||
+    source.startsWith('pigeonlabs_')
+  ) {
+    return 'Web inbound';
+  }
+  return 'Cold email';
+}
+
+function sourceLabel(lead: Lead) {
+  if (!lead.source) return channelLabel(lead);
+  if (lead.source.startsWith('landing:')) return lead.source.replace('landing:', 'landing / ');
+  if (lead.source.startsWith('pigeonlabs_')) return lead.source.replace(/_/g, ' ');
+  return lead.source;
+}
+
 export default function LeadsPage() {
   const router = useRouter();
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
+  const [channel, setChannel] = useState('');
   const [offset, setOffset] = useState(0);
 
   const params = useMemo(() => {
     const next = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
     if (q.trim()) next.set('q', q.trim());
     if (stage) next.set('stage', stage);
+    if (channel) next.set('channel', channel);
     return next;
-  }, [q, stage, offset]);
+  }, [q, stage, channel, offset]);
 
   const leads = useQuery({
     queryKey: ['leads', params.toString()],
@@ -63,17 +92,25 @@ export default function LeadsPage() {
           </div>
         }
       >
-        <FilterChips
-          options={STAGE_FILTERS}
-          value={stage}
-          onChange={(value) => { setStage(value); setOffset(0); }}
-        />
+        <div className="space-y-2">
+          <FilterChips
+            options={CHANNEL_FILTERS}
+            value={channel}
+            onChange={(value) => { setChannel(value); setOffset(0); }}
+          />
+          <FilterChips
+            options={STAGE_FILTERS}
+            value={stage}
+            onChange={(value) => { setStage(value); setOffset(0); }}
+          />
+        </div>
       </PageHeader>
 
       <PageBody className="bg-card">
-        <ListHeader className="grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_7.5rem_6.5rem_8.5rem_1.25rem] gap-3">
+        <ListHeader className="grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_7rem_7.5rem_6.5rem_8rem_1.25rem] gap-3">
           <span>Contact</span>
           <span>Company</span>
+          <span>Channel</span>
           <span>Stage</span>
           <span>Email</span>
           <span className="text-right">Activity</span>
@@ -102,7 +139,7 @@ export default function LeadsPage() {
           <EmptyState
             icon={Users}
             title="No leads match"
-            description={q || stage ? 'Clear search or stage filters to see more.' : 'Create leads through the API, MCP, or landing webhook.'}
+            description={q || stage || channel ? 'Clear search or filters to see more.' : 'Create leads through the API, MCP, or landing webhook.'}
           />
         ) : null}
 
@@ -117,7 +154,7 @@ export default function LeadsPage() {
                 <li key={lead.id}>
                   <ListRow
                     onClick={() => router.push(`/leads/${lead.id}`)}
-                    className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1.5fr)_minmax(0,1fr)_7.5rem_6.5rem_8.5rem_1.25rem] md:gap-3"
+                    className="grid grid-cols-1 items-center gap-2 md:grid-cols-[minmax(0,1.4fr)_minmax(0,1fr)_7rem_7.5rem_6.5rem_8rem_1.25rem] md:gap-3"
                   >
                     <div className="flex min-w-0 items-center gap-3">
                       <InitialsAvatar name={name} />
@@ -128,7 +165,11 @@ export default function LeadsPage() {
                     </div>
                     <div className="min-w-0 pl-12 md:pl-0">
                       <div className="truncate text-[13px] font-medium text-foreground">{lead.company_name || '—'}</div>
-                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{lead.company_domain || lead.source || '—'}</div>
+                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{lead.company_domain || '—'}</div>
+                    </div>
+                    <div className="min-w-0 pl-12 md:pl-0">
+                      <div className="truncate text-[12px] font-medium text-foreground">{channelLabel(lead)}</div>
+                      <div className="mt-0.5 truncate text-[11px] text-muted-foreground">{sourceLabel(lead)}</div>
                     </div>
                     <div className="flex flex-wrap items-center gap-1.5 pl-12 md:pl-0">
                       <StatusBadge value={lead.stage} />

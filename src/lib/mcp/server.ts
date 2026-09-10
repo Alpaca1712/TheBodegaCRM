@@ -76,7 +76,7 @@ export function registerBodegaTools(server: McpServer) {
     (args) => listLeads(args))
   tool('get_lead', 'Fetch one lead with its live sequence enrollment (if any).', z.object({ lead_id: id }), readOnly,
     async ({ lead_id }) => ({ ...(await getLead(lead_id)), live_enrollment: await liveEnrollmentForLead(lead_id) }))
-  tool('create_lead', 'Create a lead. Email must be unique. research/custom accept arbitrary JSON for notes the agent gathers.', leadCreateSchema, mutating,
+  tool('create_lead', 'Create a lead. Email must be unique. For cold outreach omit source (defaults to cold_email) or set source like "Cold outreach — YC". research/custom accept arbitrary JSON for notes the agent gathers.', leadCreateSchema, mutating,
     (args) => createLead(args))
   tool('update_lead', 'Update lead fields (stage, notes, research, tags, contact info...).', leadUpdateSchema.extend({ lead_id: id }), mutating,
     ({ lead_id, ...patch }) => updateLead(lead_id, patch))

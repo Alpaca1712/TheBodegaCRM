@@ -34,9 +34,12 @@ export const leadCreateSchema = z.object({
 
 export const leadUpdateSchema = leadCreateSchema.partial()
 
+export const leadChannelSchema = z.enum(['web_inbound', 'cold_email'])
+
 export const leadListQuerySchema = z.object({
   q: z.string().trim().optional(),
   stage: z.union([leadStageSchema, z.array(leadStageSchema)]).optional(),
+  channel: leadChannelSchema.optional(),
   campaign_id: z.string().uuid().optional(),
   tag: z.string().optional(),
   email_status: z.string().optional(),

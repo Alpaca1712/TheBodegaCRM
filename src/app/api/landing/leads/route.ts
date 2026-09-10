@@ -114,6 +114,7 @@ export async function POST(request: NextRequest) {
       lead = await updateLead(existing.id, {
         ...gaps,
         campaign_id: campaign?.id ?? existing.campaign_id,
+        tags: Array.from(new Set([...(existing.tags || []), 'web_inbound'])),
         custom: { ...existing.custom, landing: landingCustom },
         ...(terminal ? {} : { stage: stageForIntent(input.intent) }),
       })
@@ -125,6 +126,7 @@ export async function POST(request: NextRequest) {
         source: input.landing_slug ? `landing:${input.landing_slug}` : 'landing',
         campaign_id: campaign?.id ?? null,
         notes: input.notes ?? undefined,
+        tags: ['web_inbound'],
         custom: { landing: landingCustom },
       })
       createdNew = true
