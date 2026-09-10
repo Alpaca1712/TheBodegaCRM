@@ -134,7 +134,7 @@ export interface SequenceEnrollment {
 }
 
 export type EmailDirection = 'outbound' | 'inbound'
-export type EmailSource = 'sequence' | 'api' | 'inbound'
+export type EmailSource = 'sequence' | 'api' | 'inbound' | 'inbound_flow' | 'notification'
 export type EmailDeliveryStatus =
   | 'queued' | 'sent' | 'delivered' | 'delivery_delayed' | 'bounced'
   | 'complained' | 'failed' | 'suppressed' | 'received'
@@ -243,4 +243,59 @@ export interface SenderSettings {
 
 export interface LandingSettings {
   base_url: string
+}
+
+export interface NotificationSettings {
+  email_to: string | null
+  on_inbound_lead: boolean
+  on_reply: boolean
+  on_bounce: boolean
+}
+
+export interface InboundFlowAutoReply {
+  subject: string
+  body: string
+  body_format?: BodyFormat
+  lead_magnet_id?: string | null
+}
+
+export interface InboundFlowActions {
+  stage?: LeadStage
+  tags?: string[]
+  campaign_id?: string | null
+  sequence_id?: string | null
+  auto_reply?: InboundFlowAutoReply | null
+  notify?: boolean
+}
+
+export interface InboundFlow {
+  id: string
+  key: string
+  name: string
+  description: string | null
+  active: boolean
+  is_default: boolean
+  actions: InboundFlowActions
+  created_at: string
+  updated_at: string
+}
+
+export interface InboundEvent {
+  id: string
+  flow_id: string | null
+  flow_key: string | null
+  lead_id: string | null
+  campaign_id: string | null
+  created_new_lead: boolean
+  email: string | null
+  landing_slug: string | null
+  utm_source: string | null
+  utm_medium: string | null
+  utm_campaign: string | null
+  referrer: string | null
+  user_agent: string | null
+  payload: Record<string, unknown>
+  actions_taken: { action: string; ok: boolean; detail?: string }[]
+  error: string | null
+  created_at: string
 }
