@@ -13,14 +13,14 @@ import { api, formatRelative, type Paginated } from '@/lib/api/client';
 import { LEAD_STAGES, type Lead } from '@/types';
 
 const PAGE = 50;
-const STAGE_FILTERS = [
-  { value: '', label: 'All' },
-  ...LEAD_STAGES.map((value) => ({ value, label: value.replace(/_/g, ' ') })),
-];
 const CHANNEL_FILTERS = [
-  { value: '', label: 'All channels' },
-  { value: 'web_inbound', label: 'Web inbound' },
-  { value: 'cold_email', label: 'Cold email' },
+  { value: '', label: 'All' },
+  { value: 'web_inbound', label: 'Web' },
+  { value: 'cold_email', label: 'Cold' },
+];
+const STAGE_FILTERS = [
+  { value: '', label: 'All stages' },
+  ...LEAD_STAGES.map((value) => ({ value, label: value.replace(/_/g, ' ') })),
 ];
 
 function activityLabel(lead: Lead) {
@@ -92,12 +92,13 @@ export default function LeadsPage() {
           </div>
         }
       >
-        <div className="space-y-2">
+        <div className="flex items-center gap-3 overflow-x-auto">
           <FilterChips
             options={CHANNEL_FILTERS}
             value={channel}
             onChange={(value) => { setChannel(value); setOffset(0); }}
           />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
           <FilterChips
             options={STAGE_FILTERS}
             value={stage}
