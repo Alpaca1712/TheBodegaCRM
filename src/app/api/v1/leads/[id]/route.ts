@@ -17,4 +17,5 @@ export const PATCH = route<Params>(async ({ request, params }) => {
 
 export const DELETE = route<Params>(async ({ params }) => {
   await deleteLead(params.id)
+  return { data: { deleted: params.id } }
 })

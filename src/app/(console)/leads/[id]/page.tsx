@@ -1,12 +1,15 @@
 'use client';
 
-import { use, useState } from 'react';
+import { use, useMemo, useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import {
   ArrowLeft,
   Building2,
   CheckCircle2,
+  ChevronDown,
+  ChevronRight,
   Copy,
   ExternalLink,
   Link2,
@@ -16,6 +19,7 @@ import {
   Send,
   ShieldAlert,
   Tag,
+  Trash2,
   UserRound,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -35,15 +39,18 @@ import { ThreadView } from '@/components/email/thread-view';
 import { ComposeReply } from '@/components/email/compose-reply';
 import { api, apiJson, formatRelative } from '@/lib/api/client';
 import { isEmailStatusSendable } from '@/lib/leads/email-guard';
+import { parseLeadQualification } from '@/lib/leads/qualification';
 import { LEAD_STAGES, type Email, type Lead, type Sequence, type SequenceEnrollment } from '@/types';
 
 type LeadDetail = Lead & { live_enrollment: SequenceEnrollment | null };
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const queryClient = useQueryClient();
   const [notes, setNotes] = useState<string | null>(null);
   const [sequenceId, setSequenceId] = useState('');
+  const [qualificationOpen, setQualificationOpen] = useState(true);
 
   const lead = useQuery({ queryKey: ['lead', id], queryFn: () => api<{ data: LeadDetail }>(`/leads/${id}`) });
   const thread = useQuery({ queryKey: ['lead-thread', id], queryFn: () => api<{ data: Email[] }>(`/leads/${id}/emails`) });
@@ -79,6 +86,21 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     onSuccess: () => { toast.success('Removed from sequence'); refresh(); },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Failed'),
   });
+  const remove = useMutation({
+    mutationFn: () => apiJson(`/leads/${id}`, 'DELETE'),
+    onSuccess: () => {
+      toast.success('Lead deleted');
+      queryClient.invalidateQueries({ queryKey: ['leads'] });
+      router.push('/leads');
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Delete failed'),
+  });
+
+  const record = lead.data?.data;
+  const qualification = useMemo(
+    () => (record ? parseLeadQualification(record) : null),
+    [record],
+  );
 
   if (lead.isLoading) {
     return (
@@ -89,7 +111,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       </PageFrame>
     );
   }
-  if (lead.error || !lead.data) {
+  if (lead.error || !record) {
     return (
       <PageFrame>
         <p className="px-5 py-10 text-sm text-destructive">{(lead.error as Error)?.message || 'Lead not found'}</p>
@@ -97,7 +119,6 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
     );
   }
 
-  const record = lead.data.data;
   const emails = thread.data?.data || [];
   const lastInbound = [...emails].reverse().find((email) => email.direction === 'inbound') || null;
   const lastAny = emails.length ? emails[emails.length - 1] : null;
@@ -163,7 +184,23 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
             </div>
           </div>
         }
-        actions={stageSelect}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {stageSelect}
+            <Button
+              size="sm"
+              variant="destructive"
+              isLoading={remove.isPending}
+              onClick={() => {
+                if (!window.confirm(`Delete ${displayName}? This cannot be undone.`)) return;
+                remove.mutate();
+              }}
+            >
+              {!remove.isPending ? <Trash2 className="mr-1.5 h-3.5 w-3.5" /> : null}
+              Delete
+            </Button>
+          </div>
+        }
       >
         {blocked ? (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
@@ -186,6 +223,77 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         sidebarWidth="360px"
         sidebar={
           <div className="space-y-4">
+            {qualification ? (
+              <Surface>
+                <SurfaceHeader
+                  title="Qualification"
+                  actions={
+                    <Button
+                      size="sm"
+                      variant="ghost"
+                      aria-expanded={qualificationOpen}
+                      onClick={() => setQualificationOpen((open) => !open)}
+                    >
+                      {qualificationOpen ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                      <span className="sr-only">{qualificationOpen ? 'Collapse' : 'Expand'} qualification</span>
+                    </Button>
+                  }
+                />
+                <SurfaceBody className="space-y-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    {qualification.score != null ? (
+                      <span className="rounded-md bg-muted px-2 py-1 text-xs font-semibold tabular-nums text-foreground">
+                        {qualification.score}/100
+                        {qualification.scoreLabel ? ` · ${qualification.scoreLabel}` : ''}
+                      </span>
+                    ) : null}
+                    {qualification.qualified === true ? (
+                      <span className="rounded-md bg-emerald-600 px-2 py-1 text-[11px] font-medium text-white">Qualified</span>
+                    ) : null}
+                    {qualification.qualified === false ? (
+                      <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                        {qualification.outcome || 'Not qualified'}
+                      </span>
+                    ) : null}
+                    {qualification.intent ? (
+                      <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                        {qualification.intent.replace(/_/g, ' ')}
+                      </span>
+                    ) : null}
+                  </div>
+                  {qualificationOpen ? (
+                    <div className="space-y-3 border-t border-border pt-3">
+                      {qualification.summaryLine ? (
+                        <p className="text-sm text-foreground">{qualification.summaryLine}</p>
+                      ) : null}
+                      {qualification.landingSlug ? (
+                        <p className="text-xs text-muted-foreground">Landing: {qualification.landingSlug}</p>
+                      ) : null}
+                      {qualification.submittedAt ? (
+                        <p className="text-xs text-muted-foreground">
+                          Submitted {formatRelative(qualification.submittedAt)}
+                        </p>
+                      ) : null}
+                      {qualification.answers.length ? (
+                        <dl className="space-y-2">
+                          {qualification.answers.map((answer) => (
+                            <div key={`${answer.id}-${answer.value}`}>
+                              <dt className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                                {answer.id.replace(/_/g, ' ')}
+                              </dt>
+                              <dd className="mt-0.5 text-sm text-foreground">{answer.value}</dd>
+                            </div>
+                          ))}
+                        </dl>
+                      ) : (
+                        <p className="text-xs text-muted-foreground">No fit-question answers stored yet.</p>
+                      )}
+                    </div>
+                  ) : null}
+                </SurfaceBody>
+              </Surface>
+            ) : null}
+
             <Surface>
               <SurfaceHeader title="Sequence" />
               <SurfaceBody className="space-y-3.5">
