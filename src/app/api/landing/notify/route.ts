@@ -37,7 +37,7 @@ export async function POST(request: NextRequest) {
   if (!authorized(request)) return json({ error: 'Unauthorized' }, { status: 401 })
   try {
     const input = schema.parse(await request.json())
-    const sent = await notifyOwner('inbound_lead', input.subject, input.lines)
+    const sent = await notifyOwner('inbound_lead', input.subject, input.lines, { force: true })
     return json({ success: true, sent })
   } catch (error) {
     if (error instanceof z.ZodError) {

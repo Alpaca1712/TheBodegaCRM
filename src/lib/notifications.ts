@@ -12,6 +12,8 @@ const TOGGLE: Record<Kind, 'on_inbound_lead' | 'on_reply' | 'on_bounce'> = {
   bounce: 'on_bounce',
 }
 
+const DEFAULT_NOTIFY_TO = 'daniel@pigeonlabs.ai'
+
 function leadLine(lead: Lead) {
   return [lead.full_name || lead.email, lead.title, lead.company_name].filter(Boolean).join(' · ')
 }
@@ -24,11 +26,27 @@ function consoleLink(lead: Lead) {
  * Owner notifications (new landing lead, reply, bounce). Best-effort: a failure
  * here must never break the request that triggered it.
  */
-export async function notifyOwner(kind: Kind, subject: string, lines: string[]): Promise<boolean> {
+export async function notifyOwner(
+  kind: Kind,
+  subject: string,
+  lines: string[],
+  options?: { force?: boolean },
+): Promise<boolean> {
   try {
     const settings = await getSetting('notifications')
-    const emailTo = (process.env.NOTIFY_EMAIL_TO || settings.email_to || '').trim()
-    if (!emailTo || !settings[TOGGLE[kind]] || !resendConfigured()) return false
+    const emailTo = (process.env.NOTIFY_EMAIL_TO || settings.email_to || DEFAULT_NOTIFY_TO).trim()
+    if (!emailTo) {
+      console.warn('[notify] skipped: no recipient')
+      return false
+    }
+    if (!options?.force && !settings[TOGGLE[kind]]) {
+      console.warn('[notify] skipped: toggle off', kind)
+      return false
+    }
+    if (!resendConfigured()) {
+      console.warn('[notify] skipped: RESEND_API_KEY missing')
+      return false
+    }
     const sender = await getSetting('sender')
     const text = lines.join('\n')
     const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#111;">${lines
@@ -45,8 +63,11 @@ export async function notifyOwner(kind: Kind, subject: string, lines: string[]):
       html,
       tags: [{ name: 'kind', value: `notification_${kind}` }],
     })
-    if (error) console.warn('[notify] resend error', error.message)
-    return !error
+    if (error) {
+      console.warn('[notify] resend error', error.message)
+      return false
+    }
+    return true
   } catch (error) {
     console.warn('[notify] failed', error)
     return false
