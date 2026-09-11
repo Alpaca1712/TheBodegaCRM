@@ -27,7 +27,8 @@ function consoleLink(lead: Lead) {
 export async function notifyOwner(kind: Kind, subject: string, lines: string[]): Promise<boolean> {
   try {
     const settings = await getSetting('notifications')
-    if (!settings.email_to || !settings[TOGGLE[kind]] || !resendConfigured()) return false
+    const emailTo = (process.env.NOTIFY_EMAIL_TO || settings.email_to || '').trim()
+    if (!emailTo || !settings[TOGGLE[kind]] || !resendConfigured()) return false
     const sender = await getSetting('sender')
     const text = lines.join('\n')
     const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#111;">${lines
@@ -38,7 +39,7 @@ export async function notifyOwner(kind: Kind, subject: string, lines: string[]):
       .join('')}</div>`
     const { error } = await resend().emails.send({
       from: formatAddress('Bodega', sender.from_email),
-      to: [settings.email_to],
+      to: [emailTo],
       subject,
       text,
       html,
