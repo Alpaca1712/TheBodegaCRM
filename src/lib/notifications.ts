@@ -12,7 +12,7 @@ const TOGGLE: Record<Kind, 'on_inbound_lead' | 'on_reply' | 'on_bounce'> = {
   bounce: 'on_bounce',
 }
 
-const DEFAULT_NOTIFY_TO = 'daniel@pigeonlabs.ai'
+const DEFAULT_NOTIFY_TO = 'hello@pigeonlabs.ai'
 
 function leadLine(lead: Lead) {
   return [lead.full_name || lead.email, lead.title, lead.company_name].filter(Boolean).join(' · ')
