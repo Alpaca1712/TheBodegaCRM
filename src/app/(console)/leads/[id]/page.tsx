@@ -257,7 +257,7 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                     ) : null}
                     {qualification.intent ? (
                       <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                        {qualification.intent.replace(/_/g, ' ')}
+                        {(qualification.intent === 'dollar_pentest' ? 'pentest' : qualification.intent).replace(/_/g, ' ')}
                       </span>
                     ) : null}
                   </div>
