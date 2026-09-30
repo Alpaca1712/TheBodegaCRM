@@ -1,10 +1,12 @@
 import { z } from 'zod'
 import { LEAD_STAGES } from '@/types'
+import { AFFILIATE_PIPELINE_VALUES } from './affiliate'
 
 const nullableString = z.string().trim().max(2000).nullable().optional()
 const json = z.record(z.string(), z.unknown())
 
 export const leadStageSchema = z.enum(LEAD_STAGES as [string, ...string[]])
+export const affiliatePipelineSchema = z.enum(AFFILIATE_PIPELINE_VALUES)
 
 export const leadCreateSchema = z.object({
   email: z.string().trim().email(),
@@ -40,6 +42,8 @@ export const leadListQuerySchema = z.object({
   q: z.string().trim().optional(),
   stage: z.union([leadStageSchema, z.array(leadStageSchema)]).optional(),
   channel: leadChannelSchema.optional(),
+  /** Affiliate pipeline: all affiliates, influencers only, or event-goers only. */
+  pipeline: affiliatePipelineSchema.optional(),
   campaign_id: z.string().uuid().optional(),
   tag: z.string().optional(),
   email_status: z.string().optional(),

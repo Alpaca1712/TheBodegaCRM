@@ -1,7 +1,9 @@
--- Inbound flows: data-driven automation for landing page submissions.
--- A form sends a `flow` key; Bodega matches a row here and applies its actions.
+-- Catch-up: 0003 + 0004 + 0005 for DBs that already have 0001/0002.
+-- Idempotent. Does NOT drop attribution_events (Rocoto may still write to it).
 
-create table public.inbound_flows (
+-- ─── 0003: inbound flows + events ───────────────────────────────────────────
+
+create table if not exists public.inbound_flows (
   id uuid primary key default gen_random_uuid(),
   key text not null unique,
   name text not null,
@@ -12,12 +14,21 @@ create table public.inbound_flows (
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
-create unique index inbound_flows_one_default on public.inbound_flows (is_default) where is_default;
-create trigger inbound_flows_updated_at before update on public.inbound_flows
-  for each row execute function public.set_updated_at();
 
--- Every submission that hits /api/landing/leads, with what happened to it.
-create table public.inbound_events (
+create unique index if not exists inbound_flows_one_default
+  on public.inbound_flows (is_default) where is_default;
+
+do $$
+begin
+  if exists (select 1 from pg_proc where proname = 'set_updated_at')
+     and not exists (select 1 from pg_trigger where tgname = 'inbound_flows_updated_at') then
+    create trigger inbound_flows_updated_at
+      before update on public.inbound_flows
+      for each row execute function public.set_updated_at();
+  end if;
+end $$;
+
+create table if not exists public.inbound_events (
   id uuid primary key default gen_random_uuid(),
   flow_id uuid references public.inbound_flows (id) on delete set null,
   flow_key text,
@@ -36,20 +47,19 @@ create table public.inbound_events (
   error text,
   created_at timestamptz not null default now()
 );
-create index inbound_events_lead_idx on public.inbound_events (lead_id, created_at desc);
-create index inbound_events_created_idx on public.inbound_events (created_at desc);
 
-drop table if exists public.attribution_events;
+create index if not exists inbound_events_lead_idx
+  on public.inbound_events (lead_id, created_at desc);
+create index if not exists inbound_events_created_idx
+  on public.inbound_events (created_at desc);
 
 alter table public.inbound_flows enable row level security;
 alter table public.inbound_events enable row level security;
 
--- Emails sent automatically by a flow are distinguishable from agent sends.
 alter table public.emails drop constraint if exists emails_source_check;
 alter table public.emails add constraint emails_source_check
   check (source in ('sequence', 'api', 'inbound', 'inbound_flow', 'notification'));
 
--- Placeholder playbook: replace body_markdown with the real content via the API.
 insert into public.lead_magnets (name, slug, description, body_markdown, filename_template)
 values (
   'Vertical SaaS AI Security Playbook',
@@ -74,7 +84,6 @@ insert into public.inbound_flows (key, name, description, is_default, actions) v
     true,
     '{"stage": "interested", "tags": ["website"], "notify": true}'::jsonb
   ),
--- Seed pentest (not the dead $1 / dollar_pentest offer).
   (
     'pentest',
     'Pentest',
@@ -104,9 +113,60 @@ insert into public.inbound_flows (key, name, description, is_default, actions) v
     'Newsletter signups from the blog.',
     false,
     '{"stage": "new", "tags": ["website", "newsletter"], "notify": true}'::jsonb
+  ),
+  (
+    'affiliate_influencer',
+    'Affiliate — influencer',
+    'Creators and influencers applying via /affiliates. Tag into the affiliate pipeline and notify.',
+    false,
+    '{"stage": "new", "tags": ["website", "affiliate", "affiliate_influencer"], "notify": true}'::jsonb
+  ),
+  (
+    'affiliate_event',
+    'Affiliate — event',
+    'People met at conferences / meetups via /events or badge scans. Tag into the affiliate pipeline and notify.',
+    false,
+    '{"stage": "new", "tags": ["website", "affiliate", "affiliate_event"], "notify": true}'::jsonb
   )
 on conflict (key) do nothing;
 
-insert into public.settings (key, value) values
-  ('notifications', '{"email_to": "danielchalco17@gmail.com", "on_inbound_lead": true, "on_reply": true, "on_bounce": false}'::jsonb)
-on conflict (key) do nothing;
+-- Kill any leftover $1 / dollar_pentest flow (offer is dead).
+delete from public.inbound_flows where key = 'dollar_pentest';
+
+update public.leads
+set tags = array(
+  select t from unnest(coalesce(tags, '{}'::text[])) as t
+  where t not in ('dollar-pentest', 'dollar_pentest')
+)
+where coalesce(tags, '{}'::text[]) && array['dollar-pentest', 'dollar_pentest'];
+
+-- ─── 0005: backfill affiliate tags ───────────────────────────────────────────
+
+update public.leads
+set tags = (
+  select array_agg(distinct t)
+  from unnest(
+    coalesce(tags, '{}'::text[]) || array['affiliate', 'affiliate_influencer']
+  ) as t
+)
+where
+  (
+    source = 'landing:affiliates'
+    or source ilike 'pigeonlabs_affiliates%'
+  )
+  and not (coalesce(tags, '{}'::text[]) @> array['affiliate_influencer']);
+
+update public.leads
+set tags = (
+  select array_agg(distinct t)
+  from unnest(
+    coalesce(tags, '{}'::text[]) || array['affiliate', 'affiliate_event']
+  ) as t
+)
+where
+  (
+    source = 'landing:events'
+    or source ilike 'pigeonlabs_events%'
+    or source ilike 'event:%'
+  )
+  and not (coalesce(tags, '{}'::text[]) @> array['affiliate_event']);

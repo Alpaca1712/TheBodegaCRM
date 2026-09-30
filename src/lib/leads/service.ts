@@ -1,6 +1,12 @@
 import { db, isUniqueViolation } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
 import type { Lead, LeadStage } from '@/types'
+import {
+  AFFILIATE_EVENT_TAG,
+  AFFILIATE_INFLUENCER_TAG,
+  AFFILIATE_TAG,
+  inferAffiliateTags,
+} from './affiliate'
 import type { LeadCreateInput, LeadListQuery, LeadUpdateInput } from './schemas'
 
 export function normalizeEmail(email: string) {
@@ -54,6 +60,16 @@ const WEB_INBOUND_OR =
 const COLD_EMAIL_OR =
   'source.is.null,and(source.not.ilike."landing:%",source.not.ilike."pigeonlabs_%",source.neq.web_inbound,source.neq.landing)'
 
+/** Affiliate pipeline filters — tags preferred, source fallback for pre-tag rows. */
+const AFFILIATE_OR =
+  `tags.cs.{${AFFILIATE_TAG}},source.eq.landing:affiliates,source.eq.landing:events,source.ilike."pigeonlabs_affiliates%",source.ilike."pigeonlabs_events%",source.ilike."event:%"`
+
+const AFFILIATE_INFLUENCER_OR =
+  `tags.cs.{${AFFILIATE_INFLUENCER_TAG}},source.eq.landing:affiliates,source.ilike."pigeonlabs_affiliates%"`
+
+const AFFILIATE_EVENT_OR =
+  `tags.cs.{${AFFILIATE_EVENT_TAG}},source.eq.landing:events,source.ilike."pigeonlabs_events%",source.ilike."event:%"`
+
 export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; total: number }> {
   let builder = db().from('leads').select('*', { count: 'exact' })
 
@@ -67,7 +83,13 @@ export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; t
     const stages = Array.isArray(query.stage) ? query.stage : [query.stage]
     builder = builder.in('stage', stages)
   }
-  if (query.channel === 'web_inbound') {
+  if (query.pipeline === 'affiliate') {
+    builder = builder.or(AFFILIATE_OR)
+  } else if (query.pipeline === 'affiliate_influencer') {
+    builder = builder.or(AFFILIATE_INFLUENCER_OR)
+  } else if (query.pipeline === 'affiliate_event') {
+    builder = builder.or(AFFILIATE_EVENT_OR)
+  } else if (query.channel === 'web_inbound') {
     builder = builder.or(WEB_INBOUND_OR)
   } else if (query.channel === 'cold_email') {
     builder = builder.or(COLD_EMAIL_OR).not('tags', 'cs', '{web_inbound}')
@@ -127,17 +149,24 @@ function isWebInboundInput(input: Partial<LeadCreateInput>) {
 
 export async function createLead(input: LeadCreateInput): Promise<Lead> {
   const inbound = isWebInboundInput(input)
-  const tags = new Set(input.tags || [])
+  const source = input.source?.trim()
+    ? input.source.trim()
+    : inbound
+      ? 'web_inbound'
+      : 'cold_email'
+  const tags = new Set(
+    inferAffiliateTags({
+      source,
+      tags: input.tags,
+      custom: input.custom as Record<string, unknown> | null | undefined,
+    }),
+  )
   if (inbound) tags.add('web_inbound')
-  else if (!input.tags?.length) tags.add('cold_email')
+  else if (!input.tags?.length && !tags.has(AFFILIATE_TAG)) tags.add('cold_email')
 
   const withDefaults: LeadCreateInput = {
     ...input,
-    source: input.source?.trim()
-      ? input.source.trim()
-      : inbound
-        ? 'web_inbound'
-        : 'cold_email',
+    source,
     tags: Array.from(tags),
   }
   const { data, error } = await db().from('leads').insert(toRow(withDefaults)).select('*').single()

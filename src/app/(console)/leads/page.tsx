@@ -11,6 +11,11 @@ import { Input } from '@/components/ui/input';
 import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { api, apiJson, formatRelative, type Paginated } from '@/lib/api/client';
+import {
+  AFFILIATE_PIPELINE_FILTERS,
+  affiliatePipelineLabel,
+  type AffiliatePipeline,
+} from '@/lib/leads/affiliate';
 import { parseLeadQualification } from '@/lib/leads/qualification';
 import { LEAD_STAGES, type Lead } from '@/types';
 
@@ -32,6 +37,8 @@ function activityLabel(lead: Lead) {
 }
 
 function channelLabel(lead: Lead) {
+  const affiliate = affiliatePipelineLabel(lead);
+  if (affiliate) return affiliate;
   const source = (lead.source || '').toLowerCase();
   const tags = lead.tags || [];
   if (
@@ -48,6 +55,9 @@ function channelLabel(lead: Lead) {
 
 function sourceLabel(lead: Lead) {
   if (!lead.source) return channelLabel(lead);
+  if (lead.source === 'landing:affiliates') return 'affiliates form';
+  if (lead.source === 'landing:events') return 'events form';
+  if (lead.source.startsWith('event:')) return lead.source.replace('event:', 'event / ');
   if (lead.source.startsWith('landing:')) return lead.source.replace('landing:', 'landing / ');
   if (lead.source.startsWith('pigeonlabs_')) return lead.source.replace(/_/g, ' ');
   return lead.source;
@@ -59,6 +69,7 @@ export default function LeadsPage() {
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
   const [channel, setChannel] = useState('');
+  const [pipeline, setPipeline] = useState<AffiliatePipeline | ''>('');
   const [offset, setOffset] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -66,9 +77,10 @@ export default function LeadsPage() {
     const next = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
     if (q.trim()) next.set('q', q.trim());
     if (stage) next.set('stage', stage);
-    if (channel) next.set('channel', channel);
+    if (pipeline) next.set('pipeline', pipeline);
+    else if (channel) next.set('channel', channel);
     return next;
-  }, [q, stage, channel, offset]);
+  }, [q, stage, channel, pipeline, offset]);
 
   const leads = useQuery({
     queryKey: ['leads', params.toString()],
@@ -86,6 +98,7 @@ export default function LeadsPage() {
 
   const total = leads.data?.total ?? 0;
   const rows = leads.data?.data ?? [];
+  const hasFilters = Boolean(q || stage || channel || pipeline);
 
   return (
     <PageFrame>
@@ -108,8 +121,24 @@ export default function LeadsPage() {
         <div className="flex items-center gap-3 overflow-x-auto">
           <FilterChips
             options={CHANNEL_FILTERS}
-            value={channel}
-            onChange={(value) => { setChannel(value); setOffset(0); }}
+            value={pipeline ? '__pipeline__' : channel}
+            onChange={(value) => {
+              setPipeline('');
+              setChannel(value);
+              setOffset(0);
+            }}
+          />
+          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
+          <FilterChips
+            options={AFFILIATE_PIPELINE_FILTERS.filter((option) => option.value !== '')}
+            value={pipeline}
+            onChange={(value) => {
+              setChannel('');
+              setPipeline((current) =>
+                current === value ? '' : (value as AffiliatePipeline),
+              );
+              setOffset(0);
+            }}
           />
           <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
           <FilterChips
@@ -153,7 +182,7 @@ export default function LeadsPage() {
           <EmptyState
             icon={Users}
             title="No leads match"
-            description={q || stage || channel ? 'Clear search or filters to see more.' : 'Create leads through the API, MCP, or landing webhook.'}
+            description={hasFilters ? 'Clear search or filters to see more.' : 'Create leads through the API, MCP, or landing webhook.'}
           />
         ) : null}
 

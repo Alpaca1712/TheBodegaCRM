@@ -39,7 +39,7 @@ export function parseLeadQualification(lead: Pick<Lead, 'notes' | 'custom'>): Le
       return [{ id, value: match[2] }]
     })
 
-  const summaryMatch = notes.match(/\[(?:\$1 )?pentest application\]\s*([^\n]+)/i)
+  const summaryMatch = notes.match(/\[pentest application\]\s*([^\n]+)/i)
   const scoreFromNotes = summaryMatch?.[1]?.match(/(\d+)\s*\/\s*100/)
   const outcomeFromNotes = summaryMatch?.[1]?.match(/->\s*(\w+)/)?.[1] || null
 
