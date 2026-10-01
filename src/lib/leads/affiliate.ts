@@ -1,6 +1,6 @@
 import type { Lead } from '@/types'
 
-/** Shared affiliate pipeline tags — filterable in the console and set on intake. */
+/** Shared affiliate pipeline tags - filterable in the console and set on intake. */
 export const AFFILIATE_TAG = 'affiliate' as const
 export const AFFILIATE_INFLUENCER_TAG = 'affiliate_influencer' as const
 export const AFFILIATE_EVENT_TAG = 'affiliate_event' as const

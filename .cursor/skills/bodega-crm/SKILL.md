@@ -33,11 +33,11 @@ Terminal stages that stop sequences: `interested`, `meeting_booked`, `not_intere
 
 ## Cold email workflow
 
-1. **List** — `create_lead` / `bulk_import_leads`. Optional: placeholder email → `find_lead_email` → `verify_lead_email`.
-2. **Sequence** — `create_sequence` with steps (delays, empty subject + `thread_with_previous` for replies, optional `condition_prompt` / `lead_magnet_id`).
-3. **Proof** — `preview_sequence` with a real `lead_id`.
-4. **Launch** — `update_sequence` `status=active`, then `enroll_leads`.
-5. **Inbox** — `list_inbox` → `get_lead_thread` → `send_email` (`reply_to_email_id`) → `update_lead` stage → `mark_email_handled`.
+1. **List** - `create_lead` / `bulk_import_leads`. Optional: placeholder email → `find_lead_email` → `verify_lead_email`.
+2. **Sequence** - `create_sequence` with steps (delays, empty subject + `thread_with_previous` for replies, optional `condition_prompt` / `lead_magnet_id`).
+3. **Proof** - `preview_sequence` with a real `lead_id`.
+4. **Launch** - `update_sequence` `status=active`, then `enroll_leads`.
+5. **Inbox** - `list_inbox` → `get_lead_thread` → `send_email` (`reply_to_email_id`) → `update_lead` stage → `mark_email_handled`.
 
 Cron sends every 15 minutes inside the send window. `run_sequence_now` with `force: true` ignores the window.
 
@@ -47,7 +47,7 @@ Filter with `list_leads` `pipeline`:
 
 | Track | `pipeline` | Tags | Source |
 |-------|------------|------|--------|
-| All affiliates | `affiliate` | `affiliate` (+ track) | — |
+| All affiliates | `affiliate` | `affiliate` (+ track) | - |
 | Influencers | `affiliate_influencer` | `affiliate`, `affiliate_influencer` | `landing:affiliates` or outreach |
 | Event-goers | `affiliate_event` | `affiliate`, `affiliate_event` | `event:<Name>` or `landing:events` |
 
@@ -62,7 +62,7 @@ Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for aff
 | `meeting_booked` | Call booked |
 | `customer` | Live affiliate referring |
 
-### Create — influencer
+### Create - influencer
 
 ```json
 {
@@ -80,7 +80,7 @@ Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for aff
 }
 ```
 
-### Create — event-goer
+### Create - event-goer
 
 ```json
 {

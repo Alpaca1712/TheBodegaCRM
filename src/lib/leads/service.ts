@@ -60,7 +60,7 @@ const WEB_INBOUND_OR =
 const COLD_EMAIL_OR =
   'source.is.null,and(source.not.ilike."landing:%",source.not.ilike."pigeonlabs_%",source.neq.web_inbound,source.neq.landing)'
 
-/** Affiliate pipeline filters — tags preferred, source fallback for pre-tag rows. */
+/** Affiliate pipeline filters - tags preferred, source fallback for pre-tag rows. */
 const AFFILIATE_OR =
   `tags.cs.{${AFFILIATE_TAG}},source.eq.landing:affiliates,source.eq.landing:events,source.ilike."pigeonlabs_affiliates%",source.ilike."pigeonlabs_events%",source.ilike."event:%"`
 

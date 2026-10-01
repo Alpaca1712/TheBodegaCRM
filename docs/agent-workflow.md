@@ -5,7 +5,7 @@ Bodega exposes the same operations as MCP tools (`/api/mcp`) and REST endpoints 
 ## 1. Build the list
 
 - `create_lead` / `bulk_import_leads` (`POST /leads`, `POST /leads/bulk`). Email is the unique key. Put anything you researched into `research` (a JSON object) so it can be referenced in copy as `{{research.<key>}}`.
-- For Claude cold outreach, set `source` to something like `"cold_email"` or `"Cold outreach — <list>"` (defaults to `cold_email` + tag `cold_email` when omitted). Do **not** use `landing:*` / `pigeonlabs_*` / `web_inbound` — those are reserved for website inbound.
+- For Claude cold outreach, set `source` to something like `"cold_email"` or `"Cold outreach - <list>"` (defaults to `cold_email` + tag `cold_email` when omitted). Do **not** use `landing:*` / `pigeonlabs_*` / `web_inbound` - those are reserved for website inbound.
 - **Affiliate pipeline** (console: Affiliates / Influencers / Events): influencers → tags `affiliate` + `affiliate_influencer` (`landing:affiliates`); event-goers → tags `affiliate` + `affiliate_event`, source `event:<EventName>` or `landing:events`, with `custom.affiliate = { track: "event", event_name: "…" }`.
 - If you only have a name and company: create the lead with a placeholder email, then `find_lead_email` (`POST /leads/:id/find-email`) to let Hunter fill it in.
 - `verify_lead_email` (`POST /leads/:id/verify-email`) before enrolling or sending. Bodega only sends to verified addresses (`valid`, `accept_all`, or `webmail`). `unverified` / `unknown` / `invalid` / `disposable` are blocked.
@@ -16,7 +16,7 @@ Bodega exposes the same operations as MCP tools (`/api/mcp`) and REST endpoints 
 
 ```json
 {
-  "name": "Fintech CTOs — pentest readiness",
+  "name": "Fintech CTOs - pentest readiness",
   "from_email": "daniel@mail.pigeonlabs.nyc",
   "send_window": { "days": [1,2,3,4,5], "start_hour": 8, "end_hour": 17, "timezone": "America/New_York" },
   "steps": [
@@ -61,4 +61,4 @@ Always `preview_sequence` (`GET /sequences/:id/preview?lead_id=`) for a real lea
 
 ## Template variables
 
-`{{email}} {{first_name}} {{last_name}} {{full_name}} {{title}} {{company_name}} {{company}} {{company_domain}} {{company_website}} {{company_industry}} {{company_location}} {{linkedin_url}} {{research.<key>}}` — append `|fallback` to any of them, e.g. `{{first_name|there}}`.
+`{{email}} {{first_name}} {{last_name}} {{full_name}} {{title}} {{company_name}} {{company}} {{company_domain}} {{company_website}} {{company_industry}} {{company_location}} {{linkedin_url}} {{research.<key>}}` - append `|fallback` to any of them, e.g. `{{first_name|there}}`.

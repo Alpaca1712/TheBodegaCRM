@@ -205,14 +205,14 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         {blocked ? (
           <div className="flex items-start gap-2 rounded-lg border border-red-200 bg-red-50 px-3 py-2.5 text-sm text-red-700 dark:border-red-900/50 dark:bg-red-950/30 dark:text-red-300">
             <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
-            <span>Sending is blocked — this lead unsubscribed or is marked do-not-contact.</span>
+            <span>Sending is blocked - this lead unsubscribed or is marked do-not-contact.</span>
           </div>
         ) : null}
         {unverified && !blocked ? (
           <div className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2.5 text-sm text-amber-800 dark:border-amber-900/50 dark:bg-amber-950/30 dark:text-amber-200">
             <ShieldAlert className="mt-0.5 h-4 w-4 flex-shrink-0" />
             <span>
-              Email is <span className="font-medium">{record.email_status}</span> — verify with Hunter before sending or enrolling.
+              Email is <span className="font-medium">{record.email_status}</span> - verify with Hunter before sending or enrolling.
             </span>
           </div>
         ) : null}

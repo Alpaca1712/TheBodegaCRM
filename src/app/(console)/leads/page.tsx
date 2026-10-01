@@ -209,8 +209,8 @@ export default function LeadsPage() {
                       </div>
                     </div>
                     <div className="min-w-0 pl-12 md:pl-0">
-                      <div className="truncate text-[13px] font-medium text-foreground">{lead.company_name || '—'}</div>
-                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{lead.company_domain || '—'}</div>
+                      <div className="truncate text-[13px] font-medium text-foreground">{lead.company_name || '-'}</div>
+                      <div className="mt-0.5 truncate text-[12px] text-muted-foreground">{lead.company_domain || '-'}</div>
                     </div>
                     <div className="min-w-0 pl-12 md:pl-0">
                       <div className="truncate text-[12px] font-medium text-foreground">{channelLabel(lead)}</div>

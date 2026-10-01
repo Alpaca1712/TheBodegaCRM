@@ -33,7 +33,7 @@ export function parseLeadQualification(lead: Pick<Lead, 'notes' | 'custom'>): Le
       const match = line.match(/^([a-z_]+):\s*(.+)$/i)
       if (!match) return []
       const id = match[1].toLowerCase()
-      // Only the four fit questions — ignore repeated Phone:/meta lines from merged notes.
+      // Only the four fit questions - ignore repeated Phone:/meta lines from merged notes.
       if (!FIT_QUESTION_IDS.has(id) || seenQuestions.has(id)) return []
       seenQuestions.add(id)
       return [{ id, value: match[2] }]

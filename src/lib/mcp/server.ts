@@ -43,13 +43,13 @@ const destructive = { readOnlyHint: false, destructiveHint: true, openWorldHint:
 const external = { readOnlyHint: false, destructiveHint: false, openWorldHint: true }
 
 export const SERVER_INSTRUCTIONS = `Bodega is Pigeon Labs' cold-email CRM. Typical workflow:
-1. Create or import leads (create_lead / bulk_import_leads). Use find_lead_email / verify_lead_email (Hunter.io) when the address is unknown or unverified. Outbound send and sequence enrollment require a verified status (valid, accept_all, or webmail) — unverified leads are rejected.
+1. Create or import leads (create_lead / bulk_import_leads). Use find_lead_email / verify_lead_email (Hunter.io) when the address is unknown or unverified. Outbound send and sequence enrollment require a verified status (valid, accept_all, or webmail) - unverified leads are rejected.
 2. Write the sequence: create_sequence with steps, or add_sequence_step. Bodies support {{first_name}}, {{company_name}}, {{title}}, {{first_name|there}} (fallback), and {{research.<key>}} from the lead's research JSON. Leave a follow-up's subject empty and thread_with_previous=true to send it as a reply in the same thread. condition_prompt lets you gate a step with a natural-language rule evaluated by an LLM before sending.
 3. preview_sequence for a real lead to proofread every rendered step, then activate the sequence (update_sequence status=active) and enroll_leads. The cron sends due steps every 15 minutes inside the send window.
 4. Replies arrive via Resend webhooks: check list_inbox, read get_lead_thread, answer with send_email (reply_to_email_id keeps the thread), then mark_email_handled.
 A lead can only be in one live sequence at a time. Replies, bounces, and unsubscribes stop the sequence automatically.
 
-Affiliate pipeline (same stages as everyone else): list_leads pipeline=affiliate|affiliate_influencer|affiliate_event. Influencers: tags affiliate + affiliate_influencer (web form landing:affiliates). Event-goers: tags affiliate + affiliate_event, source event:<EventName> or landing:events, custom.affiliate={track,event_name,channels}. Do not use dollar_pentest / $1 — that offer is dead.`
+Affiliate pipeline (same stages as everyone else): list_leads pipeline=affiliate|affiliate_influencer|affiliate_event. Influencers: tags affiliate + affiliate_influencer (web form landing:affiliates). Event-goers: tags affiliate + affiliate_event, source event:<EventName> or landing:events, custom.affiliate={track,event_name,channels}. Do not use dollar_pentest / $1 - that offer is dead.`
 
 export function registerBodegaTools(server: McpServer) {
   const tool = <S extends z.ZodTypeAny>(
@@ -78,7 +78,7 @@ export function registerBodegaTools(server: McpServer) {
     (args) => listLeads(args))
   tool('get_lead', 'Fetch one lead with its live sequence enrollment (if any).', z.object({ lead_id: id }), readOnly,
     async ({ lead_id }) => ({ ...(await getLead(lead_id)), live_enrollment: await liveEnrollmentForLead(lead_id) }))
-  tool('create_lead', 'Create a lead. Email must be unique. Cold outreach: omit source (defaults to cold_email) or set source like "Cold outreach — YC". Affiliate pipeline: influencers use tags ["affiliate","affiliate_influencer"] (or source landing:affiliates); event-goers use tags ["affiliate","affiliate_event"] and source "event:<EventName>" or landing:events. Put event/channel details in custom.affiliate and research.', leadCreateSchema, mutating,
+  tool('create_lead', 'Create a lead. Email must be unique. Cold outreach: omit source (defaults to cold_email) or set source like "Cold outreach - YC". Affiliate pipeline: influencers use tags ["affiliate","affiliate_influencer"] (or source landing:affiliates); event-goers use tags ["affiliate","affiliate_event"] and source "event:<EventName>" or landing:events. Put event/channel details in custom.affiliate and research.', leadCreateSchema, mutating,
     (args) => createLead(args))
   tool('update_lead', 'Update lead fields (stage, notes, research, tags, contact info...).', leadUpdateSchema.extend({ lead_id: id }), mutating,
     ({ lead_id, ...patch }) => updateLead(lead_id, patch))
