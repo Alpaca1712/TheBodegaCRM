@@ -1,0 +1,16 @@
+---
+description: Never use em dashes in copy or comments
+alwaysApply: true
+---
+
+# No em dashes
+
+Never use the em dash character (`—`, U+2014) or en dash (`–`, U+2013) in user-facing copy, titles, metadata, docs, comments, or commit messages.
+
+Use instead:
+- A comma, period, or colon
+- A spaced hyphen: ` - `
+- Or rephrase the sentence
+
+Bad: `AppSec — plus the report`
+Good: `AppSec - plus the report` or `AppSec, plus the report`
