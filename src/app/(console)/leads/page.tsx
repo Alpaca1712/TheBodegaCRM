@@ -12,10 +12,10 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { api, apiJson, formatRelative, type Paginated } from '@/lib/api/client';
 import {
-  AFFILIATE_PIPELINE_FILTERS,
-  affiliatePipelineLabel,
-  type AffiliatePipeline,
-} from '@/lib/leads/affiliate';
+  REFERRAL_PIPELINE_FILTERS,
+  referralPipelineLabel,
+  type ReferralPipeline,
+} from '@/lib/leads/referral';
 import { parseLeadQualification } from '@/lib/leads/qualification';
 import { LEAD_STAGES, type Lead } from '@/types';
 
@@ -37,7 +37,7 @@ function activityLabel(lead: Lead) {
 }
 
 function channelLabel(lead: Lead) {
-  const affiliate = affiliatePipelineLabel(lead);
+  const affiliate = referralPipelineLabel(lead);
   if (affiliate) return affiliate;
   const source = (lead.source || '').toLowerCase();
   const tags = lead.tags || [];
@@ -55,7 +55,7 @@ function channelLabel(lead: Lead) {
 
 function sourceLabel(lead: Lead) {
   if (!lead.source) return channelLabel(lead);
-  if (lead.source === 'landing:affiliates') return 'affiliates form';
+  if (lead.source === 'landing:affiliates') return 'coo crew form';
   if (lead.source === 'landing:events') return 'events form';
   if (lead.source.startsWith('event:')) return lead.source.replace('event:', 'event / ');
   if (lead.source.startsWith('landing:')) return lead.source.replace('landing:', 'landing / ');
@@ -69,7 +69,7 @@ export default function LeadsPage() {
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
   const [channel, setChannel] = useState('');
-  const [pipeline, setPipeline] = useState<AffiliatePipeline | ''>('');
+  const [pipeline, setPipeline] = useState<ReferralPipeline | ''>('');
   const [offset, setOffset] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
 
@@ -130,12 +130,12 @@ export default function LeadsPage() {
           />
           <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
           <FilterChips
-            options={AFFILIATE_PIPELINE_FILTERS.filter((option) => option.value !== '')}
+            options={REFERRAL_PIPELINE_FILTERS.filter((option) => option.value !== '')}
             value={pipeline}
             onChange={(value) => {
               setChannel('');
               setPipeline((current) =>
-                current === value ? '' : (value as AffiliatePipeline),
+                current === value ? '' : (value as ReferralPipeline),
               );
               setOffset(0);
             }}

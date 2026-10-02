@@ -2,9 +2,10 @@
 name: bodega-crm
 description: >-
   Operate Pigeon Labs' Bodega CRM via MCP/REST: cold email leads, sequences,
-  inbox, Hunter verify, and the affiliate pipeline (influencers + event-goers).
-  Use when working in TheBodegaCRM, calling Bodega MCP tools, creating/enrolling
-  leads, writing sequences, triaging replies, or managing affiliates/events.
+  inbox, Hunter verify, and the referral program (influencers + event-goers /
+  Coo Crew). Use when working in TheBodegaCRM, calling Bodega MCP tools,
+  creating/enrolling leads, writing sequences, triaging replies, or managing
+  referrals/events.
 ---
 
 # Bodega CRM
@@ -23,7 +24,7 @@ Repo docs: `docs/agent-workflow.md`. Tool catalog: [reference.md](reference.md).
 
 ## Shared stages
 
-All leads (cold, web, affiliate) use the same stage funnel:
+All leads (cold, web, referral) use the same stage funnel:
 
 `new` → `contacted` → `replied` → `interested` → `meeting_booked` → `customer`
 
@@ -41,17 +42,21 @@ Terminal stages that stop sequences: `interested`, `meeting_booked`, `not_intere
 
 Cron sends every 15 minutes inside the send window. `run_sequence_now` with `force: true` ignores the window.
 
-## Affiliate pipeline
+## Referral program (Coo Crew)
 
-Filter with `list_leads` `pipeline`:
+Public signup is **Coo Crew** (`/affiliates`). Bodega calls it the **referral program**.
+
+Tags / pipeline values:
 
 | Track | `pipeline` | Tags | Source |
 |-------|------------|------|--------|
-| All affiliates | `affiliate` | `affiliate` (+ track) | - |
-| Influencers | `affiliate_influencer` | `affiliate`, `affiliate_influencer` | `landing:affiliates` or outreach |
-| Event-goers | `affiliate_event` | `affiliate`, `affiliate_event` | `event:<Name>` or `landing:events` |
+| All referrals | `referral` | `referral` (+ track) | - |
+| Influencers | `referral_influencer` | `referral`, `referral_influencer` | `landing:affiliates` or outreach |
+| Event-goers | `referral_event` | `referral`, `referral_event` | `event:<Name>` or `landing:events` |
 
-Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for affiliates:
+Structured payload: `custom.referral = { track, event_name?, channels? }`.
+
+Web forms: `/affiliates` (Coo Crew), `/events` (event).
 
 | Stage | Meaning |
 |-------|---------|
@@ -60,7 +65,7 @@ Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for aff
 | `replied` | They replied |
 | `interested` | Wants to partner |
 | `meeting_booked` | Call booked |
-| `customer` | Live affiliate referring |
+| `customer` | Live referrer |
 
 ### Create - influencer
 
@@ -68,10 +73,10 @@ Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for aff
 {
   "email": "creator@example.com",
   "full_name": "Jane Creator",
-  "source": "affiliate_outreach",
-  "tags": ["affiliate", "affiliate_influencer"],
+  "source": "coo_crew_outreach",
+  "tags": ["referral", "referral_influencer"],
   "custom": {
-    "affiliate": {
+    "referral": {
       "track": "influencer",
       "channels": { "youtube": "@jane", "x": "@jane" }
     }
@@ -87,9 +92,9 @@ Web forms: `/affiliates` (influencer), `/events` (event). Stage meanings for aff
   "email": "person@example.com",
   "full_name": "Alex Met",
   "source": "event:TECH WEEK",
-  "tags": ["affiliate", "affiliate_event"],
+  "tags": ["referral", "referral_event"],
   "custom": {
-    "affiliate": { "track": "event", "event_name": "TECH WEEK" }
+    "referral": { "track": "event", "event_name": "TECH WEEK" }
   },
   "notes": "Met at booth. Open to referring startups.",
   "stage": "new"
@@ -105,5 +110,5 @@ Fallback: `{{first_name|there}}`.
 ## Filters cheat sheet
 
 - `channel=web_inbound` | `cold_email`
-- `pipeline=affiliate` | `affiliate_influencer` | `affiliate_event`
+- `pipeline=referral` | `referral_influencer` | `referral_event`
 - `stage`, `tag`, `q`, `campaign_id`

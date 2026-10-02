@@ -75,6 +75,6 @@ MCP: `/api/mcp` · REST: `/api/v1` · Spec: `/api/v1/openapi.json`
 
 ## Inbound flow keys (DB)
 
-Seeded for landing automation (when wired): `contact`, `pentest`, `playbook`, `blog_subscribe`, `affiliate_influencer`, `affiliate_event`.
+Seeded for landing automation (when wired): `contact`, `pentest`, `playbook`, `blog_subscribe`, `referral_influencer`, `referral_event` (Coo Crew referral program).
 
 Never seed or use `dollar_pentest`.
