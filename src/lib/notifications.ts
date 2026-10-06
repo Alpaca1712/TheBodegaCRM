@@ -55,8 +55,10 @@ export async function notifyOwner(
         return url ? `<p><a href="${url[0]}">${url[0]}</a></p>` : `<p style="margin:0 0 .4em 0;white-space:pre-wrap;">${escapeHtml(line)}</p>`
       })
       .join('')}</div>`
+    // Web lead intake stays Bodega-branded; replies/bounces use the console sender (Daniel / Pigeon Labs).
+    const fromName = kind === 'inbound_lead' ? 'Bodega' : sender.from_name || 'Daniel Chalco'
     const { error } = await resend().emails.send({
-      from: formatAddress('Bodega', sender.from_email),
+      from: formatAddress(fromName, sender.from_email),
       to: [emailTo],
       subject,
       text,
