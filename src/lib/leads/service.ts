@@ -2,7 +2,11 @@ import { db, isUniqueViolation } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
 import type { Lead, LeadStage } from '@/types'
 import {
-  REFERRAL_TAG,
+  BLOG_CHANNEL_OR,
+  PARTNERSHIPS_CHANNEL_OR,
+  inferChannelTags,
+} from './channels'
+import {
   inferReferralTags,
 } from './referral'
 import type { LeadCreateInput, LeadListQuery, LeadUpdateInput } from './schemas'
@@ -51,14 +55,7 @@ function toRow(input: Partial<LeadCreateInput>, existing?: Lead | null) {
   return row
 }
 
-/** Web inbound = landing site / pigeonlabs; cold email = Claude outreach and everything else. */
-const WEB_INBOUND_OR =
-  'source.ilike."landing:%",source.ilike."pigeonlabs_%",source.eq.web_inbound,source.eq.landing,tags.cs.{web_inbound}'
-
-const COLD_EMAIL_OR =
-  'source.is.null,and(source.not.ilike."landing:%",source.not.ilike."pigeonlabs_%",source.neq.web_inbound,source.neq.landing)'
-
-/** Referral program pipeline filters - tags preferred, source fallback for pre-tag rows. */
+/** Affiliate (Coo Crew) pipeline filters - tags preferred, source fallback for pre-tag rows. */
 const REFERRAL_OR =
   'tags.cs.{referral},tags.cs.{affiliate},source.eq.landing:affiliates,source.eq.landing:events,source.ilike."pigeonlabs_affiliates%",source.ilike."pigeonlabs_events%",source.ilike."event:%"'
 
@@ -87,10 +84,10 @@ export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; t
     builder = builder.or(REFERRAL_INFLUENCER_OR)
   } else if (query.pipeline === 'referral_event') {
     builder = builder.or(REFERRAL_EVENT_OR)
-  } else if (query.channel === 'web_inbound') {
-    builder = builder.or(WEB_INBOUND_OR)
-  } else if (query.channel === 'cold_email') {
-    builder = builder.or(COLD_EMAIL_OR).not('tags', 'cs', '{web_inbound}')
+  } else if (query.channel === 'blog') {
+    builder = builder.or(BLOG_CHANNEL_OR)
+  } else if (query.channel === 'partnerships') {
+    builder = builder.or(PARTNERSHIPS_CHANNEL_OR)
   }
   if (query.campaign_id) builder = builder.eq('campaign_id', query.campaign_id)
   if (query.tag) builder = builder.contains('tags', [query.tag])
@@ -132,7 +129,7 @@ export async function findLeadByEmail(email: string): Promise<Lead | null> {
   return (data as Lead) || null
 }
 
-function isWebInboundInput(input: Partial<LeadCreateInput>) {
+function isWebsiteInboundInput(input: Partial<LeadCreateInput>) {
   if (input.custom && typeof input.custom === 'object' && input.custom !== null && 'landing' in input.custom) {
     return true
   }
@@ -146,12 +143,12 @@ function isWebInboundInput(input: Partial<LeadCreateInput>) {
 }
 
 export async function createLead(input: LeadCreateInput): Promise<Lead> {
-  const inbound = isWebInboundInput(input)
+  const inbound = isWebsiteInboundInput(input)
   const source = input.source?.trim()
     ? input.source.trim()
     : inbound
       ? 'web_inbound'
-      : 'cold_email'
+      : null
   const tags = new Set(
     inferReferralTags({
       source,
@@ -159,12 +156,15 @@ export async function createLead(input: LeadCreateInput): Promise<Lead> {
       custom: input.custom as Record<string, unknown> | null | undefined,
     }),
   )
+  for (const tag of inferChannelTags({ source, tags: Array.from(tags) })) {
+    tags.add(tag)
+  }
+  // Keep legacy web_inbound for historical queries; Blog filter also matches it.
   if (inbound) tags.add('web_inbound')
-  else if (!input.tags?.length && !tags.has(REFERRAL_TAG)) tags.add('cold_email')
 
   const withDefaults: LeadCreateInput = {
     ...input,
-    source,
+    ...(source ? { source } : {}),
     tags: Array.from(tags),
   }
   const { data, error } = await db().from('leads').insert(toRow(withDefaults)).select('*').single()

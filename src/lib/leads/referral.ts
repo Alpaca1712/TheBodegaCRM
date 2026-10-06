@@ -20,7 +20,7 @@ export type ReferralTrack = 'influencer' | 'event'
 
 export const REFERRAL_PIPELINE_FILTERS: { value: ReferralPipeline | ''; label: string }[] = [
   { value: '', label: 'All' },
-  { value: 'referral', label: 'Referrals' },
+  { value: 'referral', label: 'Affiliates' },
   { value: 'referral_influencer', label: 'Influencers' },
   { value: 'referral_event', label: 'Events' },
 ]
@@ -77,7 +77,7 @@ export function referralPipelineLabel(
 ): string | null {
   const track = referralTrack(lead)
   if (!track) return null
-  return track === 'influencer' ? 'Referral · Influencer' : 'Referral · Event'
+  return track === 'influencer' ? 'Affiliate · Influencer' : 'Affiliate · Event'
 }
 
 export function tagsForReferralTrack(track: ReferralTrack): string[] {

@@ -49,7 +49,7 @@ export const SERVER_INSTRUCTIONS = `Bodega is Pigeon Labs' cold-email CRM. Typic
 4. Replies arrive via Resend webhooks: check list_inbox, read get_lead_thread, answer with send_email (reply_to_email_id keeps the thread), then mark_email_handled.
 A lead can only be in one live sequence at a time. Replies, bounces, and unsubscribes stop the sequence automatically.
 
-Referral program / Coo Crew (same stages as everyone else): list_leads pipeline=referral|referral_influencer|referral_event. Console labels: Referrals. Influencers: tags referral + referral_influencer (web form landing:affiliates / Coo Crew). Event-goers: tags referral + referral_event, source event:<EventName> or landing:events, custom.referral={track,event_name,channels}. Do not use dollar_pentest / $1 - that offer is dead.`
+Referral program / Coo Crew (same stages as everyone else): list_leads pipeline=referral|referral_influencer|referral_event. Console labels: Affiliates / Influencers / Events. Influencers: tags referral + referral_influencer (web form landing:affiliates / Coo Crew). Event-goers: tags referral + referral_event, source event:<EventName> or landing:events, custom.referral={track,event_name,channels}. Blog / partnerships: channel=blog|partnerships. Do not use dollar_pentest / $1 - that offer is dead. Do not use Resend for cold outbound.`
 
 export function registerBodegaTools(server: McpServer) {
   const tool = <S extends z.ZodTypeAny>(
@@ -74,11 +74,11 @@ export function registerBodegaTools(server: McpServer) {
     () => overviewStats())
 
   // ----- Leads --------------------------------------------------------------
-  tool('list_leads', 'Search and filter leads. q matches email/name/company/title. channel=web_inbound|cold_email. pipeline=referral|referral_influencer|referral_event for the referral program (Coo Crew) tracks.', leadListQuerySchema, readOnly,
+  tool('list_leads', 'Search and filter leads. q matches email/name/company/title. channel=blog|partnerships. pipeline=referral|referral_influencer|referral_event for the affiliate (Coo Crew) tracks.', leadListQuerySchema, readOnly,
     (args) => listLeads(args))
   tool('get_lead', 'Fetch one lead with its live sequence enrollment (if any).', z.object({ lead_id: id }), readOnly,
     async ({ lead_id }) => ({ ...(await getLead(lead_id)), live_enrollment: await liveEnrollmentForLead(lead_id) }))
-  tool('create_lead', 'Create a lead. Email must be unique. Cold outreach: omit source (defaults to cold_email) or set source like "Cold outreach - YC". Referral program (Coo Crew): influencers use tags ["referral","referral_influencer"] (or source landing:affiliates); event-goers use tags ["referral","referral_event"] and source "event:<EventName>" or landing:events. Put event/channel details in custom.referral and research.', leadCreateSchema, mutating,
+  tool('create_lead', 'Create a lead. Email must be unique. Website inbound: set source landing:<slug> or pigeonlabs_*. Blog: tags blog (+ blog_subscriber for newsletter). Partnerships: tags partnership or source landing:partnerships. Affiliate program (Coo Crew): influencers use tags ["referral","referral_influencer"] (or source landing:affiliates); event-goers use tags ["referral","referral_event"] and source "event:<EventName>" or landing:events. Put event/channel details in custom.referral and research. Do not run cold outbound via Resend.', leadCreateSchema, mutating,
     (args) => createLead(args))
   tool('update_lead', 'Update lead fields (stage, notes, research, tags, contact info...).', leadUpdateSchema.extend({ lead_id: id }), mutating,
     ({ lead_id, ...patch }) => updateLead(lead_id, patch))

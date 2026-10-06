@@ -1,5 +1,6 @@
 import { z } from 'zod'
 import { LEAD_STAGES } from '@/types'
+import { LEAD_CHANNEL_VALUES } from './channels'
 import { REFERRAL_PIPELINE_VALUES } from './referral'
 
 const nullableString = z.string().trim().max(2000).nullable().optional()
@@ -7,6 +8,7 @@ const json = z.record(z.string(), z.unknown())
 
 export const leadStageSchema = z.enum(LEAD_STAGES as [string, ...string[]])
 export const referralPipelineSchema = z.enum(REFERRAL_PIPELINE_VALUES)
+export const leadChannelSchema = z.enum(LEAD_CHANNEL_VALUES)
 
 export const leadCreateSchema = z.object({
   email: z.string().trim().email(),
@@ -36,13 +38,12 @@ export const leadCreateSchema = z.object({
 
 export const leadUpdateSchema = leadCreateSchema.partial()
 
-export const leadChannelSchema = z.enum(['web_inbound', 'cold_email'])
-
 export const leadListQuerySchema = z.object({
   q: z.string().trim().optional(),
   stage: z.union([leadStageSchema, z.array(leadStageSchema)]).optional(),
+  /** Inbound segments: blog subscribers / site forms, or partnership applications. */
   channel: leadChannelSchema.optional(),
-  /** Referral program pipeline: all referrals, influencers only, or event-goers only. */
+  /** Affiliate (Coo Crew) program: all affiliates, influencers only, or event-goers only. */
   pipeline: referralPipelineSchema.optional(),
   campaign_id: z.string().uuid().optional(),
   tag: z.string().optional(),

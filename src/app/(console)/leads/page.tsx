@@ -12,6 +12,11 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { api, apiJson, formatRelative, type Paginated } from '@/lib/api/client';
 import {
+  LEAD_CHANNEL_FILTERS,
+  channelLabelForLead,
+  type LeadChannel,
+} from '@/lib/leads/channels';
+import {
   REFERRAL_PIPELINE_FILTERS,
   referralPipelineLabel,
   type ReferralPipeline,
@@ -24,11 +29,6 @@ const STAGE_FILTERS = [
   { value: '', label: 'All stages' },
   ...LEAD_STAGES.map((value) => ({ value, label: value.replace(/_/g, ' ') })),
 ];
-const CHANNEL_FILTERS = [
-  { value: '', label: 'All' },
-  { value: 'web_inbound', label: 'Web' },
-  { value: 'cold_email', label: 'Cold' },
-];
 
 function activityLabel(lead: Lead) {
   if (lead.last_inbound_at) return `Replied ${formatRelative(lead.last_inbound_at)}`;
@@ -39,18 +39,7 @@ function activityLabel(lead: Lead) {
 function channelLabel(lead: Lead) {
   const affiliate = referralPipelineLabel(lead);
   if (affiliate) return affiliate;
-  const source = (lead.source || '').toLowerCase();
-  const tags = lead.tags || [];
-  if (
-    tags.includes('web_inbound') ||
-    source === 'landing' ||
-    source === 'web_inbound' ||
-    source.startsWith('landing:') ||
-    source.startsWith('pigeonlabs_')
-  ) {
-    return 'Web inbound';
-  }
-  return 'Cold email';
+  return channelLabelForLead(lead) || 'Other';
 }
 
 function sourceLabel(lead: Lead) {
@@ -68,7 +57,7 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
-  const [channel, setChannel] = useState('');
+  const [channel, setChannel] = useState<LeadChannel | ''>('');
   const [pipeline, setPipeline] = useState<ReferralPipeline | ''>('');
   const [offset, setOffset] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
@@ -120,11 +109,11 @@ export default function LeadsPage() {
       >
         <div className="flex items-center gap-3 overflow-x-auto">
           <FilterChips
-            options={CHANNEL_FILTERS}
+            options={LEAD_CHANNEL_FILTERS}
             value={pipeline ? '__pipeline__' : channel}
             onChange={(value) => {
               setPipeline('');
-              setChannel(value);
+              setChannel(value as LeadChannel | '');
               setOffset(0);
             }}
           />
