@@ -17,8 +17,8 @@ Repo docs: `docs/agent-workflow.md`. Tool catalog: [reference.md](reference.md).
 
 - **One live sequence per lead.** Replies / bounces / unsubs stop enrollment automatically.
 - **Verify before send or enroll.** Only `valid`, `accept_all`, or `webmail`.
-- **No cold outbound via Resend.** Console channels are Blog, Partnerships, Affiliates (not Web/Cold).
-- Website inbound sources use `landing:*`, `pigeonlabs_*`, or tags `blog` / `partnership` / `referral*`.
+- **No cold outbound via Resend.** Console channels are Blog, Web, Partnerships, Affiliates (not Cold).
+- Website inbound sources use `landing:*`, `pigeonlabs_*`, or tags `blog` / `web` / `partnership` / `referral*`.
 - **No `$1` / `dollar_pentest`.** That offer is dead. Use plain `pentest` if needed.
 - Put research in `research` JSON so copy can use `{{research.<key>}}`.
 
