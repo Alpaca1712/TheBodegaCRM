@@ -18,9 +18,20 @@ export const REFERRAL_PIPELINE_VALUES = [
 export type ReferralPipeline = (typeof REFERRAL_PIPELINE_VALUES)[number]
 export type ReferralTrack = 'influencer' | 'event'
 
+/** Top-level Coo Crew chip (all referral tracks). */
+export const COO_CREW_SOURCE_VALUE = 'coo_crew' as const
+
+/** Sub-track chips shown when Coo Crew is selected. */
+export const COO_CREW_TRACK_FILTERS: { value: ReferralPipeline; label: string }[] = [
+  { value: 'referral', label: 'All tracks' },
+  { value: 'referral_influencer', label: 'Influencers' },
+  { value: 'referral_event', label: 'Events' },
+]
+
+/** @deprecated Prefer COO_CREW_TRACK_FILTERS; kept for MCP/docs mentions. */
 export const REFERRAL_PIPELINE_FILTERS: { value: ReferralPipeline | ''; label: string }[] = [
   { value: '', label: 'All' },
-  { value: 'referral', label: 'Affiliates' },
+  { value: 'referral', label: 'Coo Crew' },
   { value: 'referral_influencer', label: 'Influencers' },
   { value: 'referral_event', label: 'Events' },
 ]
@@ -77,7 +88,7 @@ export function referralPipelineLabel(
 ): string | null {
   const track = referralTrack(lead)
   if (!track) return null
-  return track === 'influencer' ? 'Affiliate · Influencer' : 'Affiliate · Event'
+  return track === 'influencer' ? 'Coo Crew · Influencer' : 'Coo Crew · Event'
 }
 
 export function tagsForReferralTrack(track: ReferralTrack): string[] {

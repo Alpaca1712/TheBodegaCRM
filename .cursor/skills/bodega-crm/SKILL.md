@@ -32,16 +32,26 @@ Exits: `not_interested` | `unsubscribed` | `bounced` | `lost`
 
 Terminal stages that stop sequences: `interested`, `meeting_booked`, `not_interested`, `customer`, `lost` (plus bounce/unsub).
 
-## Lead channels (console filters)
+## Lead sources (console filters)
 
-| Filter | `channel` / `pipeline` | Tags | Typical source |
-|--------|------------------------|------|----------------|
-| Blog | `channel=blog` | `blog` (+ `blog_subscriber`) | `pigeonlabs_blog_subscription`, `landing:blog` |
-| Web | `channel=web` | `web` (+ `web_inbound`) | home / pentest / playbook landing forms |
-| Partnerships | `channel=partnerships` | `partnership` | `landing:partnerships` |
-| Affiliates | `pipeline=referral` | `referral` (+ track) | Coo Crew |
-| Influencers | `pipeline=referral_influencer` | `referral`, `referral_influencer` | `landing:affiliates` |
-| Events | `pipeline=referral_event` | `referral`, `referral_event` | `event:<Name>` or `landing:events` |
+Top-level **Source** chips (mutually exclusive):
+
+| Source | API | Who |
+|--------|-----|-----|
+| Blog | `channel=blog` | Newsletter / blog subscribers |
+| Web | `channel=web` | Home / pentest / playbook forms |
+| Partnerships | `channel=partnerships` | Corporate / agency partner applications |
+| Coo Crew | `pipeline=referral…` | Referral program (creators, event people) |
+
+**Coo Crew tracks** (only after selecting Coo Crew):
+
+| Track | `pipeline` | Tags |
+|-------|------------|------|
+| All tracks | `referral` | any `referral*` |
+| Influencers | `referral_influencer` | `referral` + `referral_influencer` |
+| Events | `referral_event` | `referral` + `referral_event` |
+
+Partnerships are **not** a Coo Crew track. Same stage funnel for everyone.
 
 ## Follow-up workflow
 

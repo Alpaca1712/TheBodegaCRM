@@ -12,12 +12,12 @@ import { StatusBadge } from '@/components/ui/status-badge';
 import { Button } from '@/components/ui/button';
 import { api, apiJson, formatRelative, type Paginated } from '@/lib/api/client';
 import {
-  LEAD_CHANNEL_FILTERS,
+  LEAD_SOURCE_FILTERS,
   channelLabelForLead,
   type LeadChannel,
 } from '@/lib/leads/channels';
 import {
-  REFERRAL_PIPELINE_FILTERS,
+  COO_CREW_TRACK_FILTERS,
   referralPipelineLabel,
   type ReferralPipeline,
 } from '@/lib/leads/referral';
@@ -29,6 +29,8 @@ const STAGE_FILTERS = [
   { value: '', label: 'All stages' },
   ...LEAD_STAGES.map((value) => ({ value, label: value.replace(/_/g, ' ') })),
 ];
+
+type SourceFilter = LeadChannel | 'coo_crew' | '';
 
 function activityLabel(lead: Lead) {
   if (lead.last_inbound_at) return `Replied ${formatRelative(lead.last_inbound_at)}`;
@@ -57,10 +59,14 @@ export default function LeadsPage() {
   const queryClient = useQueryClient();
   const [q, setQ] = useState('');
   const [stage, setStage] = useState('');
-  const [channel, setChannel] = useState<LeadChannel | ''>('');
-  const [pipeline, setPipeline] = useState<ReferralPipeline | ''>('');
+  const [source, setSource] = useState<SourceFilter>('');
+  const [cooTrack, setCooTrack] = useState<ReferralPipeline>('referral');
   const [offset, setOffset] = useState(0);
   const [expandedId, setExpandedId] = useState<string | null>(null);
+
+  const channel: LeadChannel | '' =
+    source === 'blog' || source === 'web' || source === 'partnerships' ? source : '';
+  const pipeline: ReferralPipeline | '' = source === 'coo_crew' ? cooTrack : '';
 
   const params = useMemo(() => {
     const next = new URLSearchParams({ limit: String(PAGE), offset: String(offset) });
@@ -87,7 +93,7 @@ export default function LeadsPage() {
 
   const total = leads.data?.total ?? 0;
   const rows = leads.data?.data ?? [];
-  const hasFilters = Boolean(q || stage || channel || pipeline);
+  const hasFilters = Boolean(q || stage || source);
 
   return (
     <PageFrame>
@@ -107,34 +113,47 @@ export default function LeadsPage() {
           </div>
         }
       >
-        <div className="flex items-center gap-3 overflow-x-auto">
-          <FilterChips
-            options={LEAD_CHANNEL_FILTERS}
-            value={pipeline ? '__pipeline__' : channel}
-            onChange={(value) => {
-              setPipeline('');
-              setChannel(value as LeadChannel | '');
-              setOffset(0);
-            }}
-          />
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-          <FilterChips
-            options={REFERRAL_PIPELINE_FILTERS.filter((option) => option.value !== '')}
-            value={pipeline}
-            onChange={(value) => {
-              setChannel('');
-              setPipeline((current) =>
-                current === value ? '' : (value as ReferralPipeline),
-              );
-              setOffset(0);
-            }}
-          />
-          <span className="h-5 w-px shrink-0 bg-border" aria-hidden />
-          <FilterChips
-            options={STAGE_FILTERS}
-            value={stage}
-            onChange={(value) => { setStage(value); setOffset(0); }}
-          />
+        <div className="space-y-2.5">
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Source
+            </span>
+            <FilterChips
+              options={LEAD_SOURCE_FILTERS}
+              value={source}
+              onChange={(value) => {
+                const next = value as SourceFilter;
+                setSource(next);
+                if (next === 'coo_crew') setCooTrack('referral');
+                setOffset(0);
+              }}
+            />
+          </div>
+          {source === 'coo_crew' ? (
+            <div className="flex flex-wrap items-center gap-2 pl-0 sm:pl-14">
+              <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                Track
+              </span>
+              <FilterChips
+                options={COO_CREW_TRACK_FILTERS}
+                value={cooTrack}
+                onChange={(value) => {
+                  setCooTrack(value as ReferralPipeline);
+                  setOffset(0);
+                }}
+              />
+            </div>
+          ) : null}
+          <div className="flex flex-wrap items-center gap-2">
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+              Stage
+            </span>
+            <FilterChips
+              options={STAGE_FILTERS}
+              value={stage}
+              onChange={(value) => { setStage(value); setOffset(0); }}
+            />
+          </div>
         </div>
       </PageHeader>
 

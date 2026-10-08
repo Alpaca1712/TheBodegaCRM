@@ -37,7 +37,7 @@ describe('referral pipeline helpers', () => {
         tags: ['referral', 'referral_event'],
         custom: null,
       }),
-    ).toBe('Affiliate · Event')
+    ).toBe('Coo Crew · Event')
   })
 
   it('infers tags for create_lead', () => {

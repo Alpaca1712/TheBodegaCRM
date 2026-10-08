@@ -11,11 +11,21 @@ export const PARTNERSHIP_TAG = 'partnership' as const
 /** Generic website inbound (home, pentest, playbook) - not blog / affiliate / partnership. */
 export const WEB_TAG = 'web' as const
 
+/** Inbound sources (peer level). Coo Crew is separate - see referral.ts. */
 export const LEAD_CHANNEL_FILTERS: { value: LeadChannel | ''; label: string }[] = [
   { value: '', label: 'All' },
   { value: 'blog', label: 'Blog' },
   { value: 'web', label: 'Web' },
   { value: 'partnerships', label: 'Partnerships' },
+]
+
+/** Top-level source chips including Coo Crew (referral program). */
+export const LEAD_SOURCE_FILTERS: { value: LeadChannel | 'coo_crew' | ''; label: string }[] = [
+  { value: '', label: 'All' },
+  { value: 'blog', label: 'Blog' },
+  { value: 'web', label: 'Web' },
+  { value: 'partnerships', label: 'Partnerships' },
+  { value: 'coo_crew', label: 'Coo Crew' },
 ]
 
 function sourceIsBlog(source: string): boolean {
