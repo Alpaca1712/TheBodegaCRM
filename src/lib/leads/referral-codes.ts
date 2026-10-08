@@ -1,4 +1,4 @@
-import { randomBytes } from 'crypto'
+import { randomBytes, randomUUID } from 'crypto'
 import { db } from '@/lib/db'
 import { ApiError } from '@/lib/api/errors'
 import { formatAddress, resend, resendConfigured } from '@/lib/email/resend'
@@ -301,30 +301,35 @@ export async function sendReferralCodeEmail(
   }
 
   try {
-    await db().from('emails').insert({
+    const emailId = randomUUID()
+    const sentAt = new Date().toISOString()
+    const { error: logError } = await db().from('emails').insert({
+      id: emailId,
       lead_id: lead.id,
+      thread_id: emailId,
       direction: 'outbound',
       status: 'sent',
       source: 'notification',
-      from_email: sender.from_email,
-      from_name: sender.from_name || 'Daniel Chalco',
-      to_email: lead.email,
+      from_address: sender.from_email,
+      to_addresses: [lead.email],
+      reply_to: sender.reply_to || null,
       subject,
       text_body: text,
       html_body: html,
       resend_id: data?.id || null,
-      sent_at: new Date().toISOString(),
+      sent_at: sentAt,
     })
+    if (logError) throw logError
     const program = {
       ...((lead.custom?.referral_program as ReferralProgramCustom) || {}),
       code,
-      emailed_at: new Date().toISOString(),
+      emailed_at: sentAt,
     }
     await db()
       .from('leads')
       .update({
-        last_outbound_at: new Date().toISOString(),
-        last_contacted_at: new Date().toISOString(),
+        last_outbound_at: sentAt,
+        last_contacted_at: sentAt,
         custom: { ...(lead.custom || {}), referral_program: program },
       })
       .eq('id', lead.id)
