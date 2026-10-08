@@ -237,6 +237,111 @@ export async function issueReferralCode(
   return { lead: next, code, link, emailed }
 }
 
+export function referrerSignupEmailCopy(input: {
+  firstName: string
+  link: string
+}) {
+  const subject = 'Congrats - someone used your Pigeon Labs referral link'
+  const text = [
+    `Hi ${input.firstName},`,
+    '',
+    'Congrats! Someone just signed up using your Pigeon Labs referral link.',
+    '',
+    "We'll keep an eye on it. If it turns into a closed deal, we'll let you know.",
+    '',
+    'Keep sharing your link:',
+    input.link,
+    '',
+    'Questions? Reply to this email.',
+    '',
+    '- Pigeon Labs',
+  ].join('\n')
+  const html = `<div style="font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;font-size:14px;line-height:1.6;color:#111;">
+<p>Hi ${escapeHtml(input.firstName)},</p>
+<p>Congrats! Someone just signed up using your Pigeon Labs referral link.</p>
+<p>We'll keep an eye on it. If it turns into a closed deal, we'll let you know.</p>
+<p>Keep sharing your link:<br/><a href="${escapeHtml(input.link)}">${escapeHtml(input.link)}</a></p>
+<p>Questions? Reply to this email.</p>
+<p>- Pigeon Labs</p>
+</div>`
+  return { subject, text, html }
+}
+
+/**
+ * Congrats email when a lead is attributed via ?ref=.
+ * Does not share referee identity. Soft-fails when Resend is missing.
+ */
+export async function notifyReferrerOfSignup(
+  referrer: Lead,
+  opts?: { code?: string; link?: string },
+): Promise<boolean> {
+  if (referrer.do_not_contact || referrer.unsubscribed_at || referrer.bounced_at) {
+    console.warn('[referral] skip signup notify: referrer cannot receive email')
+    return false
+  }
+  if (referrer.email_status === 'invalid' || referrer.email_status === 'disposable') {
+    console.warn('[referral] skip signup notify: referrer email not deliverable')
+    return false
+  }
+  if (!resendConfigured()) {
+    console.warn('[referral] skipped signup notify: RESEND_API_KEY missing')
+    return false
+  }
+
+  const code = opts?.code || getReferralCode(referrer)
+  if (!code) {
+    console.warn('[referral] skip signup notify: missing code')
+    return false
+  }
+  const link = opts?.link || referralLinkForCode(code)
+  const sender = await getSetting('sender')
+  const firstName = referrer.first_name || referrer.full_name?.split(/\s+/)[0] || 'there'
+  const { subject, text, html } = referrerSignupEmailCopy({ firstName, link })
+
+  const { data, error } = await resend().emails.send({
+    from: formatAddress(sender.from_name || 'Daniel Chalco', sender.from_email),
+    to: [referrer.email],
+    replyTo: sender.reply_to || undefined,
+    subject,
+    text,
+    html,
+    tags: [
+      { name: 'kind', value: 'referral_signup' },
+      { name: 'lead_id', value: referrer.id },
+    ],
+  })
+  if (error) {
+    console.warn('[referral] signup notify resend error', error.message)
+    return false
+  }
+
+  try {
+    const emailId = randomUUID()
+    const sentAt = new Date().toISOString()
+    const { error: logError } = await db().from('emails').insert({
+      id: emailId,
+      lead_id: referrer.id,
+      thread_id: emailId,
+      direction: 'outbound',
+      status: 'sent',
+      source: 'notification',
+      from_address: sender.from_email,
+      to_addresses: [referrer.email],
+      reply_to: sender.reply_to || null,
+      subject,
+      text_body: text,
+      html_body: html,
+      resend_id: data?.id || null,
+      sent_at: sentAt,
+    })
+    if (logError) throw logError
+  } catch (logError) {
+    console.warn('[referral] signup notify log failed', logError)
+  }
+
+  return true
+}
+
 /** Soft send: skips Hunter verification so unverified partners can still get their code. */
 export async function sendReferralCodeEmail(
   lead: Lead,
@@ -378,16 +483,29 @@ export async function attributeLeadToReferralCode(
     .eq('id', lead.id)
     .select('*')
     .single()
-  if (!withColumn.error && withColumn.data) return withColumn.data as Lead
 
-  const { data, error } = await db()
-    .from('leads')
-    .update({ tags, custom })
-    .eq('id', lead.id)
-    .select('*')
-    .single()
-  if (error) throw error
-  return data as Lead
+  const attributed = !withColumn.error && withColumn.data
+    ? (withColumn.data as Lead)
+    : null
+
+  if (!attributed) {
+    const { data, error } = await db()
+      .from('leads')
+      .update({ tags, custom })
+      .eq('id', lead.id)
+      .select('*')
+      .single()
+    if (error) throw error
+    void notifyReferrerOfSignup(referrer, { code }).catch((err) =>
+      console.warn('[referral] signup notify failed', err),
+    )
+    return data as Lead
+  }
+
+  void notifyReferrerOfSignup(referrer, { code }).catch((err) =>
+    console.warn('[referral] signup notify failed', err),
+  )
+  return attributed
 }
 
 function normalizeEmail(email: string) {

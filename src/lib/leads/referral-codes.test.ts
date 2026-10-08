@@ -3,6 +3,7 @@ import {
   isEligibleReferrer,
   normalizeReferralCode,
   referralLinkForCode,
+  referrerSignupEmailCopy,
 } from './referral-codes'
 
 describe('referral codes', () => {
@@ -34,5 +35,17 @@ describe('referral codes', () => {
         tags: ['web'],
       }),
     ).toBe(false)
+  })
+
+  it('builds referrer signup congrats copy without referee PII', () => {
+    const copy = referrerSignupEmailCopy({
+      firstName: 'Daniel',
+      link: 'https://pigeonlabs.ai/?ref=daniel',
+    })
+    expect(copy.subject).toMatch(/Congrats/i)
+    expect(copy.text).toContain('signed up using your Pigeon Labs referral link')
+    expect(copy.text).toContain('closed deal')
+    expect(copy.text).toContain('https://pigeonlabs.ai/?ref=daniel')
+    expect(copy.text).not.toMatch(/@gmail\.com/)
   })
 })
