@@ -28,7 +28,7 @@ export function landingBaseUrl() {
 }
 
 export function referralLinkForCode(code: string) {
-  return `${landingBaseUrl()}/?ref=${encodeURIComponent(code)}`
+  return `${landingBaseUrl()}/pentest-challenge?ref=${encodeURIComponent(code)}`
 }
 
 export function isEligibleReferrer(
@@ -373,7 +373,7 @@ export async function sendReferralCodeEmail(
     `Code: ${code}`,
     `Link: ${link}`,
     '',
-    'Share that link. When someone signs up on pigeonlabs.ai through it, we credit the referral to you.',
+    'Share that link. When someone applies for a pentest through it, we credit the referral to you.',
     '',
     'Questions? Reply to this email.',
     '',
@@ -384,7 +384,7 @@ export async function sendReferralCodeEmail(
 <p>You are set up with a Pigeon Labs referral link.</p>
 <p><strong>Code:</strong> ${escapeHtml(code)}<br/>
 <strong>Link:</strong> <a href="${escapeHtml(link)}">${escapeHtml(link)}</a></p>
-<p>Share that link. When someone signs up on pigeonlabs.ai through it, we credit the referral to you.</p>
+<p>Share that link. When someone applies for a pentest through it, we credit the referral to you.</p>
 <p>Questions? Reply to this email.</p>
 <p>- Pigeon Labs</p>
 </div>`
