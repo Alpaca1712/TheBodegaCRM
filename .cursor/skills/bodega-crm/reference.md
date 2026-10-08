@@ -19,6 +19,7 @@ MCP: `/api/mcp` · REST: `/api/v1` · Spec: `/api/v1/openapi.json`
 | `update_lead` | Patch fields / stage / tags |
 | `delete_lead` | Permanent delete |
 | `bulk_import_leads` | Upsert many (`on_conflict` skip\|update) |
+| `issue_referral_code` | Issue / email Coo Crew or partnership referral link |
 
 ### Enrichment
 | Tool | Purpose |

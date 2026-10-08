@@ -1,4 +1,5 @@
 import { parseBody, route } from '@/lib/api/route'
+import { referralSummaryForLead } from '@/lib/leads/referral-codes'
 import { leadUpdateSchema } from '@/lib/leads/schemas'
 import { deleteLead, getLead, updateLead } from '@/lib/leads/service'
 import { liveEnrollmentForLead } from '@/lib/sequences/enrollments'
@@ -7,7 +8,8 @@ type Params = { id: string }
 
 export const GET = route<Params>(async ({ params }) => {
   const [lead, enrollment] = await Promise.all([getLead(params.id), liveEnrollmentForLead(params.id)])
-  return { data: { ...lead, live_enrollment: enrollment } }
+  const referral = await referralSummaryForLead(lead)
+  return { data: { ...lead, live_enrollment: enrollment, referral } }
 })
 
 export const PATCH = route<Params>(async ({ request, params }) => {

@@ -69,6 +69,16 @@ Structured payload: `custom.referral = { track, event_name?, channels? }`.
 
 Web forms: `/affiliates` (Coo Crew), `/events` (event), `/partnerships`.
 
+### Referral links
+
+Coo Crew + **Partnerships** leads can get a shareable code:
+
+1. Console lead detail → **Referral** → Issue + email link (or MCP `issue_referral_code`).
+2. Moving stage to `customer` also auto-issues and emails the link when missing.
+3. Link shape: `https://pigeonlabs.ai/?ref=<code>` (`LANDING_BASE_URL`).
+4. Site forms persist `?ref=` and stamp `referred_by_lead_id` + tag `referred` on the new lead.
+5. Copy the link from the lead detail Referral panel anytime.
+
 | Stage | Meaning |
 |-------|---------|
 | `new` | Captured, not contacted |
@@ -76,7 +86,7 @@ Web forms: `/affiliates` (Coo Crew), `/events` (event), `/partnerships`.
 | `replied` | They replied |
 | `interested` | Wants to partner |
 | `meeting_booked` | Call booked |
-| `customer` | Live referrer |
+| `customer` | Live referrer (auto-issues referral code) |
 
 ### Create - influencer
 

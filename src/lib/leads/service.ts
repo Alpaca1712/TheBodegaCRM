@@ -189,11 +189,29 @@ export async function createLead(input: LeadCreateInput): Promise<Lead> {
 export async function updateLead(id: string, input: LeadUpdateInput): Promise<Lead> {
   const existing = await getLead(id)
   const row = toRow(input, existing)
+  // Prefer issue_referral_code / custom.referral_program until migration 0010 lands.
+  delete row.referral_code
+  delete row.referred_by_lead_id
   if (Object.keys(row).length === 0) return existing
   const { data, error } = await db().from('leads').update(row).eq('id', id).select('*').single()
   if (isUniqueViolation(error)) throw ApiError.conflict('Another lead already uses that email')
   if (error) throw error
-  return data as Lead
+  const updated = data as Lead
+
+  // Live referrers get a code + email when they hit customer (idempotent).
+  if (input.stage === 'customer' && existing.stage !== 'customer') {
+    try {
+      const { getReferralCode, issueReferralCode } = await import('./referral-codes')
+      if (!getReferralCode(updated)) {
+        const issued = await issueReferralCode(updated.id, { email: true })
+        return issued.lead
+      }
+    } catch (issueError) {
+      console.warn('[referral] auto-issue on customer failed', issueError)
+    }
+  }
+
+  return updated
 }
 
 export async function deleteLead(id: string) {

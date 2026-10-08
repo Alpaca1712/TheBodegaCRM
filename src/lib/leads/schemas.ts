@@ -33,6 +33,15 @@ export const leadCreateSchema = z.object({
   notes: z.string().max(50000).nullable().optional(),
   research: json.optional(),
   custom: json.optional(),
+  referral_code: z
+    .string()
+    .trim()
+    .min(3)
+    .max(32)
+    .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/i, 'Use letters, numbers, and hyphens only')
+    .nullable()
+    .optional(),
+  referred_by_lead_id: z.string().uuid().nullable().optional(),
   do_not_contact: z.boolean().optional(),
 })
 

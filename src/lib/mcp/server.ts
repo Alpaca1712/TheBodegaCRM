@@ -10,6 +10,13 @@ import {
 import { emailListQuerySchema, getEmail, inboxQuerySchema, leadThread, listEmails, listInbox, sendEmailSchema, sendOneOff, updateEmail } from '@/lib/email/service'
 import { emailStatusFromHunter, findEmail, verifyEmail } from '@/lib/enrichment/hunter'
 import { db } from '@/lib/db'
+import {
+  getReferralCode,
+  issueReferralCode,
+  referralLinkForCode,
+  referralSummaryForLead,
+  sendReferralCodeEmail,
+} from '@/lib/leads/referral-codes'
 import { leadBulkSchema, leadCreateSchema, leadListQuerySchema, leadUpdateSchema } from '@/lib/leads/schemas'
 import { bulkUpsertLeads, createLead, deleteLead, getLead, listLeads, splitName, updateLead } from '@/lib/leads/service'
 import { applyEnrollmentAction, enrollLeads, listEnrollments, liveEnrollmentForLead } from '@/lib/sequences/enrollments'
@@ -49,7 +56,7 @@ export const SERVER_INSTRUCTIONS = `Bodega is Pigeon Labs' cold-email CRM. Typic
 4. Replies arrive via Resend webhooks: check list_inbox, read get_lead_thread, answer with send_email (reply_to_email_id keeps the thread), then mark_email_handled.
 A lead can only be in one live sequence at a time. Replies, bounces, and unsubscribes stop the sequence automatically.
 
-Referral program / Coo Crew (same stages as everyone else): list_leads pipeline=referral|referral_influencer|referral_event. Console labels: Affiliates / Influencers / Events. Influencers: tags referral + referral_influencer (web form landing:affiliates / Coo Crew). Event-goers: tags referral + referral_event, source event:<EventName> or landing:events, custom.referral={track,event_name,channels}. Blog / partnerships: channel=blog|partnerships. Do not use dollar_pentest / $1 - that offer is dead. Do not use Resend for cold outbound.`
+Referral program / Coo Crew (same stages as everyone else): list_leads pipeline=referral|referral_influencer|referral_event. Console labels: Affiliates / Influencers / Events. Influencers: tags referral + referral_influencer (web form landing:affiliates / Coo Crew). Event-goers: tags referral + referral_event, source event:<EventName> or landing:events, custom.referral={track,event_name,channels}. Partnerships: channel=partnerships (separate from Coo Crew). Issue shareable links with issue_referral_code (emails the partner). Site signups with ?ref=CODE attribute to that referrer. Do not use dollar_pentest / $1 - that offer is dead. Do not use Resend for cold outbound.`
 
 export function registerBodegaTools(server: McpServer) {
   const tool = <S extends z.ZodTypeAny>(
@@ -76,16 +83,48 @@ export function registerBodegaTools(server: McpServer) {
   // ----- Leads --------------------------------------------------------------
   tool('list_leads', 'Search and filter leads. q matches email/name/company/title. channel=blog|web|partnerships. pipeline=referral|referral_influencer|referral_event for the affiliate (Coo Crew) tracks.', leadListQuerySchema, readOnly,
     (args) => listLeads(args))
-  tool('get_lead', 'Fetch one lead with its live sequence enrollment (if any).', z.object({ lead_id: id }), readOnly,
-    async ({ lead_id }) => ({ ...(await getLead(lead_id)), live_enrollment: await liveEnrollmentForLead(lead_id) }))
+  tool('get_lead', 'Fetch one lead with its live sequence enrollment and referral summary (code, link, referred leads).', z.object({ lead_id: id }), readOnly,
+    async ({ lead_id }) => {
+      const lead = await getLead(lead_id)
+      return {
+        ...lead,
+        live_enrollment: await liveEnrollmentForLead(lead_id),
+        referral: await referralSummaryForLead(lead),
+      }
+    })
   tool('create_lead', 'Create a lead. Email must be unique. Website inbound: set source landing:<slug> or pigeonlabs_*. Blog: tags blog (+ blog_subscriber for newsletter). Partnerships: tags partnership or source landing:partnerships. Affiliate program (Coo Crew): influencers use tags ["referral","referral_influencer"] (or source landing:affiliates); event-goers use tags ["referral","referral_event"] and source "event:<EventName>" or landing:events. Put event/channel details in custom.referral and research. Do not run cold outbound via Resend.', leadCreateSchema, mutating,
     (args) => createLead(args))
-  tool('update_lead', 'Update lead fields (stage, notes, research, tags, contact info...).', leadUpdateSchema.extend({ lead_id: id }), mutating,
+  tool('update_lead', 'Update lead fields (stage, notes, research, tags, contact info...). Setting stage=customer on an eligible referrer auto-issues a referral code and emails it.', leadUpdateSchema.extend({ lead_id: id }), mutating,
     ({ lead_id, ...patch }) => updateLead(lead_id, patch))
   tool('delete_lead', 'Permanently delete a lead and its emails/enrollments.', z.object({ lead_id: id }), destructive,
     async ({ lead_id }) => { await deleteLead(lead_id); return { deleted: lead_id } })
   tool('bulk_import_leads', 'Create or update many leads at once (max 500). on_conflict=skip keeps existing records untouched.', leadBulkSchema, mutating,
     (args) => bulkUpsertLeads(args.leads, args.on_conflict))
+  tool('issue_referral_code', 'Create (or return) a shareable referral code/link for a Coo Crew or partnership lead. email=true sends the link to them. resend_email=true re-sends an existing code.', z.object({
+    lead_id: id,
+    email: z.boolean().default(true),
+    force_new: z.boolean().default(false),
+    resend_email: z.boolean().default(false),
+  }), mutating, async ({ lead_id, email, force_new, resend_email }) => {
+    if (resend_email) {
+      const lead = await getLead(lead_id)
+      const existing = getReferralCode(lead)
+      if (!existing) {
+        const issued = await issueReferralCode(lead_id, { email: true })
+        return { ...issued, referral: await referralSummaryForLead(issued.lead) }
+      }
+      const emailed = await sendReferralCodeEmail(lead)
+      return {
+        lead,
+        code: existing,
+        link: referralLinkForCode(existing),
+        emailed,
+        referral: await referralSummaryForLead(lead),
+      }
+    }
+    const issued = await issueReferralCode(lead_id, { email, forceNew: force_new })
+    return { ...issued, referral: await referralSummaryForLead(issued.lead) }
+  })
 
   // ----- Enrichment (Hunter.io) ---------------------------------------------
   tool('find_lead_email', 'Hunter Email Finder: locate the address for a lead from name + company domain and save it (unless apply=false).',

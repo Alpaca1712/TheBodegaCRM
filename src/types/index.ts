@@ -46,6 +46,10 @@ export interface Lead {
   custom: Record<string, unknown>
   enrichment: Record<string, unknown>
   lead_token: string | null
+  /** Shareable code for Coo Crew / partnership referrers (column from migration 0010). */
+  referral_code?: string | null
+  /** Lead who referred this person via ?ref= (column from migration 0010). */
+  referred_by_lead_id?: string | null
   do_not_contact: boolean
   unsubscribed_at: string | null
   bounced_at: string | null

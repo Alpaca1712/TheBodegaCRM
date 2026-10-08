@@ -68,6 +68,20 @@ export function buildOpenApiSpec(baseUrl: string) {
         },
       },
       '/leads/{id}/verify-email': { post: { summary: 'Hunter Email Verifier for this lead', tags: ['Enrichment'], parameters: [idParam()], responses: ok('Verifier result and updated lead') } },
+      '/leads/{id}/referral-code': {
+        get: { summary: 'Referral code, link, and attributed signups for this lead', tags: ['Leads'], parameters: [idParam()], responses: ok('Referral summary') },
+        post: {
+          summary: 'Issue or email a referral code/link (Coo Crew + partnerships)',
+          tags: ['Leads'],
+          parameters: [idParam()],
+          requestBody: body(z.object({
+            email: z.boolean().optional(),
+            force_new: z.boolean().optional(),
+            resend_email: z.boolean().optional(),
+          })),
+          responses: ok('Referral summary with emailed flag'),
+        },
+      },
       '/leads/{id}/enroll': {
         post: {
           summary: 'Enroll lead in a sequence', tags: ['Sequences'], parameters: [idParam()],

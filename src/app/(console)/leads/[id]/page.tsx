@@ -42,7 +42,19 @@ import { isEmailStatusSendable } from '@/lib/leads/email-guard';
 import { parseLeadQualification } from '@/lib/leads/qualification';
 import { LEAD_STAGES, type Email, type Lead, type Sequence, type SequenceEnrollment } from '@/types';
 
-type LeadDetail = Lead & { live_enrollment: SequenceEnrollment | null };
+type ReferralSummary = {
+  eligible: boolean;
+  code: string | null;
+  link: string | null;
+  referred_count: number;
+  referrals: Array<Pick<Lead, 'id' | 'email' | 'full_name' | 'company_name' | 'stage' | 'source' | 'created_at'>>;
+  referred_by: Pick<Lead, 'id' | 'email' | 'full_name' | 'company_name' | 'referral_code'> | null;
+};
+
+type LeadDetail = Lead & {
+  live_enrollment: SequenceEnrollment | null;
+  referral?: ReferralSummary;
+};
 
 export default function LeadDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
@@ -94,6 +106,15 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
       router.push('/leads');
     },
     onError: (error) => toast.error(error instanceof Error ? error.message : 'Delete failed'),
+  });
+  const issueReferral = useMutation({
+    mutationFn: (body: { email?: boolean; resend_email?: boolean }) =>
+      apiJson<{ data: ReferralSummary & { emailed?: boolean } }>(`/leads/${id}/referral-code`, 'POST', body),
+    onSuccess: (result) => {
+      toast.success(result.data.emailed ? 'Referral link emailed' : 'Referral code ready');
+      refresh();
+    },
+    onError: (error) => toast.error(error instanceof Error ? error.message : 'Referral update failed'),
   });
 
   const record = lead.data?.data;
@@ -409,6 +430,126 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                 ) : null}
               </SurfaceBody>
             </Surface>
+
+            {record.referral && (record.referral.eligible || record.referral.code || record.referral.referred_by) ? (
+              <Surface>
+                <SurfaceHeader title="Referral" />
+                <SurfaceBody className="space-y-3.5">
+                  {record.referral.referred_by ? (
+                    <MetaRow icon={UserRound} label="Referred by">
+                      <Link
+                        href={`/leads/${record.referral.referred_by.id}`}
+                        className="hover:underline"
+                      >
+                        {record.referral.referred_by.full_name || record.referral.referred_by.email}
+                        {record.referral.referred_by.referral_code
+                          ? ` (${record.referral.referred_by.referral_code})`
+                          : ''}
+                      </Link>
+                    </MetaRow>
+                  ) : null}
+
+                  {record.referral.eligible || record.referral.code ? (
+                    <>
+                      <MetaRow icon={Tag} label="Code">
+                        {record.referral.code ? (
+                          <span className="flex flex-wrap items-center gap-2">
+                            <code className="rounded bg-muted px-1.5 py-0.5 text-xs font-semibold">
+                              {record.referral.code}
+                            </code>
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              aria-label="Copy referral code"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(record.referral!.code!);
+                                toast.success('Referral code copied');
+                              }}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground">Not issued yet</span>
+                        )}
+                      </MetaRow>
+                      {record.referral.link ? (
+                        <MetaRow icon={Link2} label="Link">
+                          <span className="flex flex-wrap items-center gap-2">
+                            <a
+                              href={record.referral.link}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="break-all text-xs hover:underline"
+                            >
+                              {record.referral.link}
+                            </a>
+                            <button
+                              type="button"
+                              className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                              aria-label="Copy referral link"
+                              onClick={async () => {
+                                await navigator.clipboard.writeText(record.referral!.link!);
+                                toast.success('Referral link copied');
+                              }}
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                            </button>
+                          </span>
+                        </MetaRow>
+                      ) : null}
+                      <div className="flex flex-wrap gap-2">
+                        {!record.referral.code ? (
+                          <Button
+                            size="sm"
+                            onClick={() => issueReferral.mutate({ email: true })}
+                            isLoading={issueReferral.isPending}
+                          >
+                            Issue + email link
+                          </Button>
+                        ) : (
+                          <>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              onClick={() => issueReferral.mutate({ resend_email: true })}
+                              isLoading={issueReferral.isPending}
+                            >
+                              <Mail className="mr-1.5 h-3.5 w-3.5" />
+                              Email link
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      {record.referral.referred_count > 0 ? (
+                        <div className="space-y-2 border-t border-border pt-3">
+                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
+                            Referred ({record.referral.referred_count})
+                          </p>
+                          <ul className="space-y-1.5">
+                            {record.referral.referrals.map((row) => (
+                              <li key={row.id}>
+                                <Link
+                                  href={`/leads/${row.id}`}
+                                  className="block text-sm hover:underline"
+                                >
+                                  {row.full_name || row.email}
+                                  <span className="ml-1 text-xs text-muted-foreground">
+                                    · {row.stage.replace(/_/g, ' ')} · {formatRelative(row.created_at)}
+                                  </span>
+                                </Link>
+                              </li>
+                            ))}
+                          </ul>
+                        </div>
+                      ) : record.referral.code ? (
+                        <p className="text-xs text-muted-foreground">No attributed signups yet.</p>
+                      ) : null}
+                    </>
+                  ) : null}
+                </SurfaceBody>
+              </Surface>
+            ) : null}
 
             {companyBits.length ? (
               <Surface>
