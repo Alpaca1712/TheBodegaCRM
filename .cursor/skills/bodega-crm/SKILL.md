@@ -87,7 +87,8 @@ Coo Crew + **Partnerships** leads can get a shareable code:
 2. Moving stage to `customer` also auto-issues and emails the link when missing.
 3. Link shape: `https://pigeonlabs.ai/?ref=<code>` (`LANDING_BASE_URL`).
 4. Site forms persist `?ref=` and stamp `referred_by_lead_id` + tag `referred` on the new lead.
-5. Copy the link from the lead detail Referral panel anytime.
+5. On first attribution, the referrer gets a congrats email (no referee PII). Closed-deal payouts are a later manual notify.
+6. Copy the link from the lead detail Referral panel anytime.
 
 | Stage | Meaning |
 |-------|---------|
