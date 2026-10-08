@@ -566,133 +566,102 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
               title="Referrals"
               count={record.referral?.referred_count ?? 0}
               actions={
-                referralProfile?.track ? (
-                  <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
-                    {referralProfile.track === 'event' ? 'Event' : 'Influencer'}
-                  </span>
-                ) : null
+                <div className="flex items-center gap-2">
+                  {referralProfile?.track ? (
+                    <span className="rounded-md bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground">
+                      {referralProfile.track === 'event' ? 'Event' : 'Influencer'}
+                    </span>
+                  ) : null}
+                  {!record.referral?.code ? (
+                    <Button
+                      size="sm"
+                      onClick={() => issueReferral.mutate({ email: true })}
+                      isLoading={issueReferral.isPending}
+                    >
+                      Issue + email link
+                    </Button>
+                  ) : (
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => issueReferral.mutate({ resend_email: true })}
+                      isLoading={issueReferral.isPending}
+                    >
+                      <Mail className="mr-1.5 h-3.5 w-3.5" />
+                      Email link
+                    </Button>
+                  )}
+                </div>
               }
             />
             <div className="min-h-0 flex-1 overflow-y-auto">
-              <div className="space-y-6 px-5 py-5">
-                <div className="grid gap-4 sm:grid-cols-[140px_minmax(0,1fr)]">
-                  <div className="rounded-xl border border-border bg-card px-4 py-5 text-center">
-                    <p className="text-4xl font-semibold tabular-nums tracking-tight text-foreground">
-                      {record.referral?.referred_count ?? 0}
-                    </p>
-                    <p className="mt-1 text-xs font-medium uppercase tracking-wider text-muted-foreground">
-                      Referred
-                    </p>
-                  </div>
-                  <div className="rounded-xl border border-border bg-card px-4 py-4">
-                    <div className="flex flex-wrap items-start justify-between gap-3">
-                      <div className="min-w-0 space-y-2">
-                        <div>
-                          <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Code</p>
-                          {record.referral?.code ? (
-                            <div className="mt-1 flex items-center gap-2">
-                              <code className="text-lg font-semibold tracking-tight">{record.referral.code}</code>
-                              <button
-                                type="button"
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                aria-label="Copy referral code"
-                                onClick={async () => {
-                                  await navigator.clipboard.writeText(record.referral!.code!);
-                                  toast.success('Referral code copied');
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
+              <div className="space-y-4 px-5 py-4">
+                <Surface>
+                  <SurfaceHeader title="Their link" />
+                  <SurfaceBody className="space-y-3.5">
+                    <MetaRow icon={Tag} label="Code">
+                      {record.referral?.code ? (
+                        <span className="inline-flex items-center gap-1.5">
+                          <code className="font-semibold tracking-tight">{record.referral.code}</code>
+                          <button
+                            type="button"
+                            className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            aria-label="Copy referral code"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(record.referral!.code!);
+                              toast.success('Referral code copied');
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground">Not issued yet</span>
+                      )}
+                    </MetaRow>
+                    <MetaRow icon={Link2} label="Link">
+                      {record.referral?.link ? (
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          <a
+                            href={record.referral.link}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="truncate hover:underline"
+                          >
+                            {record.referral.link}
+                          </a>
+                          <button
+                            type="button"
+                            className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
+                            aria-label="Copy referral link"
+                            onClick={async () => {
+                              await navigator.clipboard.writeText(record.referral!.link!);
+                              toast.success('Referral link copied');
+                            }}
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                          </button>
+                        </span>
+                      ) : null}
+                    </MetaRow>
+                    {referralProfile?.event_name ? (
+                      <MetaRow icon={Users} label="Event">{referralProfile.event_name}</MetaRow>
+                    ) : null}
+                    {referralProfile?.channels.map((channel) => (
+                      <MetaRow key={channel.id} icon={ExternalLink} label={channel.label}>
+                        <span className="inline-flex min-w-0 items-center gap-1.5">
+                          {channel.href ? (
+                            <a
+                              href={channel.href}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="truncate hover:underline"
+                            >
+                              {channel.value}
+                            </a>
                           ) : (
-                            <p className="mt-1 text-sm text-muted-foreground">Not issued yet</p>
+                            <span className="truncate">{channel.value}</span>
                           )}
-                        </div>
-                        {record.referral?.link ? (
-                          <div>
-                            <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">Link</p>
-                            <div className="mt-1 flex items-center gap-2">
-                              <a
-                                href={record.referral.link}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="truncate text-sm hover:underline"
-                              >
-                                {record.referral.link}
-                              </a>
-                              <button
-                                type="button"
-                                className="rounded p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
-                                aria-label="Copy referral link"
-                                onClick={async () => {
-                                  await navigator.clipboard.writeText(record.referral!.link!);
-                                  toast.success('Referral link copied');
-                                }}
-                              >
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                            </div>
-                          </div>
-                        ) : null}
-                      </div>
-                      <div className="flex flex-wrap gap-2">
-                        {!record.referral?.code ? (
-                          <Button
-                            size="sm"
-                            onClick={() => issueReferral.mutate({ email: true })}
-                            isLoading={issueReferral.isPending}
-                          >
-                            Issue + email link
-                          </Button>
-                        ) : (
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => issueReferral.mutate({ resend_email: true })}
-                            isLoading={issueReferral.isPending}
-                          >
-                            <Mail className="mr-1.5 h-3.5 w-3.5" />
-                            Email link
-                          </Button>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-
-                {referralProfile?.event_name ? (
-                  <p className="text-sm text-muted-foreground">
-                    Event: <span className="font-medium text-foreground">{referralProfile.event_name}</span>
-                  </p>
-                ) : null}
-
-                {referralProfile?.channels.length ? (
-                  <div>
-                    <p className="mb-2 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                      Channels
-                    </p>
-                    <ul className="grid gap-2 sm:grid-cols-2">
-                      {referralProfile.channels.map((channel) => (
-                        <li
-                          key={channel.id}
-                          className="flex items-start justify-between gap-2 rounded-lg border border-border bg-card px-3 py-2.5"
-                        >
-                          <div className="min-w-0">
-                            <p className="text-[11px] font-semibold text-muted-foreground">{channel.label}</p>
-                            {channel.href ? (
-                              <a
-                                href={channel.href}
-                                target="_blank"
-                                rel="noreferrer"
-                                className="mt-0.5 inline-flex max-w-full items-center gap-1 break-all text-sm hover:underline"
-                              >
-                                <span className="truncate">{channel.value}</span>
-                                <ExternalLink className="h-3 w-3 flex-shrink-0" />
-                              </a>
-                            ) : (
-                              <p className="mt-0.5 break-all text-sm">{channel.value}</p>
-                            )}
-                          </div>
                           <button
                             type="button"
                             className="rounded p-0.5 text-muted-foreground hover:bg-muted hover:text-foreground"
@@ -704,39 +673,39 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                           >
                             <Copy className="h-3.5 w-3.5" />
                           </button>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                ) : null}
+                        </span>
+                      </MetaRow>
+                    ))}
+                  </SurfaceBody>
+                </Surface>
 
-                <div>
-                  <p className="mb-3 text-[10px] font-semibold uppercase tracking-wider text-muted-foreground">
-                    People they referred
-                  </p>
+                <Surface>
+                  <SurfaceHeader title="People they referred" />
                   {(record.referral?.referrals.length ?? 0) > 0 ? (
-                    <ul className="divide-y divide-border rounded-xl border border-border bg-card">
+                    <ul className="divide-y divide-border">
                       {record.referral!.referrals.map((row) => (
                         <li key={row.id}>
                           <Link
                             href={`/leads/${row.id}`}
-                            className="flex items-center justify-between gap-3 px-4 py-3 transition-colors hover:bg-muted/60"
+                            className="flex items-center gap-3 px-4 py-2.5 transition-colors hover:bg-muted/50"
                           >
-                            <div className="min-w-0">
-                              <p className="truncate font-medium text-foreground">
-                                {row.full_name || row.email}
-                              </p>
+                            <InitialsAvatar name={row.full_name || row.email} size="sm" />
+                            <div className="min-w-0 flex-1">
+                              <div className="flex flex-wrap items-center gap-2">
+                                <p className="truncate text-sm font-medium text-foreground">
+                                  {row.full_name || row.email}
+                                </p>
+                                <StatusBadge value={row.stage} />
+                              </div>
                               <p className="truncate text-xs text-muted-foreground">
                                 {row.email}
-                                {row.company_name ? ` · ${row.company_name}` : ''}
+                                {row.company_name ? (
+                                  <span className="text-muted-foreground/80"> · {row.company_name}</span>
+                                ) : null}
+                                <span className="text-muted-foreground/80"> · {formatRelative(row.created_at)}</span>
                               </p>
                             </div>
-                            <div className="flex flex-shrink-0 items-center gap-2">
-                              <StatusBadge value={row.stage} />
-                              <span className="text-xs text-muted-foreground">
-                                {formatRelative(row.created_at)}
-                              </span>
-                            </div>
+                            <ChevronRight className="h-4 w-4 flex-shrink-0 text-muted-foreground" />
                           </Link>
                         </li>
                       ))}
@@ -746,31 +715,37 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
                       icon={Users}
                       title="No referrals yet"
                       description="When someone signs up with their link, they show up here."
-                      className="min-h-[180px] rounded-xl border border-dashed border-border py-12"
+                      className="min-h-[120px] py-8"
                     />
                   )}
-                </div>
+                </Surface>
 
-                <div className="border-t border-border pt-5">
-                  <div className="mb-3 flex items-center justify-between gap-2">
-                    <h2 className="text-sm font-semibold text-foreground">Conversation</h2>
-                    <span className="text-xs tabular-nums text-muted-foreground">{emails.length}</span>
-                  </div>
-                  {thread.isLoading ? (
-                    <div className="flex items-center gap-2 py-8 text-sm text-muted-foreground">
-                      <Loader2 className="h-4 w-4 animate-spin" /> Loading thread…
-                    </div>
-                  ) : emails.length === 0 ? (
-                    <EmptyState
-                      icon={Mail}
-                      title="No emails yet"
-                      description="Issue their link or send a one-off below."
-                      className="min-h-[140px] py-10"
-                    />
-                  ) : (
-                    <ThreadView emails={emails} />
-                  )}
-                </div>
+                <Surface>
+                  <SurfaceHeader
+                    title="Conversation"
+                    actions={
+                      <span className="text-xs tabular-nums text-muted-foreground">{emails.length}</span>
+                    }
+                  />
+                  <SurfaceBody className={emails.length ? 'p-0' : undefined}>
+                    {thread.isLoading ? (
+                      <div className="flex items-center gap-2 py-6 text-sm text-muted-foreground">
+                        <Loader2 className="h-4 w-4 animate-spin" /> Loading thread…
+                      </div>
+                    ) : emails.length === 0 ? (
+                      <EmptyState
+                        icon={Mail}
+                        title="No emails yet"
+                        description="Issue their link or send a one-off below."
+                        className="min-h-[100px] py-6"
+                      />
+                    ) : (
+                      <div className="px-4 py-3">
+                        <ThreadView emails={emails} />
+                      </div>
+                    )}
+                  </SurfaceBody>
+                </Surface>
               </div>
             </div>
             {!sendBlocked ? (
