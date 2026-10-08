@@ -167,10 +167,15 @@ function channelHref(value: string): string | null {
 export function parseReferralProfile(
   lead: Pick<Lead, 'custom'> & { source?: string | null; tags?: string[] | null },
 ): ReferralProfile | null {
-  if (!isReferralLead(lead)) return null
+  const normalized = {
+    source: lead.source ?? null,
+    tags: lead.tags ?? [],
+    custom: lead.custom,
+  }
+  if (!isReferralLead(normalized)) return null
   const bag = (lead.custom || {}) as Record<string, unknown>
   const block = (bag.referral ?? bag.affiliate) as Record<string, unknown> | undefined
-  const track = readReferralCustomTrack(lead.custom) || referralTrack(lead)
+  const track = readReferralCustomTrack(lead.custom) || referralTrack(normalized)
   const eventName =
     typeof block?.event_name === 'string' && block.event_name.trim()
       ? block.event_name.trim()
