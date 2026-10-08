@@ -21,33 +21,70 @@ const EXIT_STAGES: LeadStage[] = [
   'lost',
 ]
 
+export type PipelineActivity = {
+  /** True when we have sent outbound (email / sequence). */
+  contacted?: boolean
+  /** True when they replied inbound. */
+  replied?: boolean
+}
+
 function labelFor(stage: LeadStage) {
   return stage.replace(/_/g, ' ')
 }
 
+/**
+ * Stage is the current CRM position. Contacted / Replied only count as done
+ * when there is real email activity - not because a form jumped them to interested.
+ */
+function stepState(
+  step: LeadStage,
+  index: number,
+  stage: LeadStage,
+  activity: PipelineActivity,
+): 'done' | 'current' | 'upcoming' {
+  const onPipeline = PIPELINE_STAGES.includes(stage)
+  const currentIndex = onPipeline ? PIPELINE_STAGES.indexOf(stage) : -1
+  if (!onPipeline) return 'upcoming'
+  if (index === currentIndex) return 'current'
+
+  if (step === 'new') return index < currentIndex ? 'done' : 'upcoming'
+  if (step === 'contacted') return activity.contacted ? 'done' : 'upcoming'
+  if (step === 'replied') return activity.replied ? 'done' : 'upcoming'
+
+  // Later stages: done only when stage has moved past them.
+  if (index < currentIndex) return 'done'
+  return 'upcoming'
+}
+
 export function PipelineStepper({
   stage,
+  activity = {},
   onSelect,
   disabled,
   className,
 }: {
   stage: LeadStage
+  activity?: PipelineActivity
   onSelect?: (stage: LeadStage) => void
   disabled?: boolean
   className?: string
 }) {
-  const onPipeline = PIPELINE_STAGES.includes(stage)
-  const currentIndex = onPipeline ? PIPELINE_STAGES.indexOf(stage) : -1
   const isExit = EXIT_STAGES.includes(stage)
 
   return (
     <div className={cn('space-y-2', className)}>
       <ol className="flex items-start gap-0 overflow-x-auto pb-1">
         {PIPELINE_STAGES.map((step, index) => {
-          const done = onPipeline && index < currentIndex
-          const current = onPipeline && index === currentIndex
-          const upcoming = !done && !current
+          const state = stepState(step, index, stage, activity)
+          const done = state === 'done'
+          const current = state === 'current'
+          const upcoming = state === 'upcoming'
           const clickable = Boolean(onSelect) && !disabled
+          const connectorLit =
+            done ||
+            current ||
+            (step === 'contacted' && activity.contacted) ||
+            (step === 'replied' && activity.replied)
 
           return (
             <li key={step} className="flex min-w-0 flex-1 items-start">
@@ -65,7 +102,7 @@ export function PipelineStepper({
                     <span
                       className={cn(
                         'h-0.5 flex-1 rounded-full',
-                        done || current ? 'bg-foreground' : 'bg-border',
+                        connectorLit || current ? 'bg-foreground' : 'bg-border',
                       )}
                       aria-hidden
                     />

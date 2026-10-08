@@ -242,6 +242,10 @@ export default function LeadDetailPage({ params }: { params: Promise<{ id: strin
         <div className="space-y-3">
           <PipelineStepper
             stage={record.stage}
+            activity={{
+              contacted: Boolean(record.last_contacted_at || record.last_outbound_at),
+              replied: Boolean(record.last_inbound_at || record.replied_at),
+            }}
             disabled={update.isPending}
             onSelect={(next: LeadStage) => {
               if (next === record.stage) return
