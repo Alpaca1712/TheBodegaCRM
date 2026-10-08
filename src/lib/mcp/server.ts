@@ -74,7 +74,7 @@ export function registerBodegaTools(server: McpServer) {
     () => overviewStats())
 
   // ----- Leads --------------------------------------------------------------
-  tool('list_leads', 'Search and filter leads. q matches email/name/company/title. channel=blog|partnerships. pipeline=referral|referral_influencer|referral_event for the affiliate (Coo Crew) tracks.', leadListQuerySchema, readOnly,
+  tool('list_leads', 'Search and filter leads. q matches email/name/company/title. channel=blog|web|partnerships. pipeline=referral|referral_influencer|referral_event for the affiliate (Coo Crew) tracks.', leadListQuerySchema, readOnly,
     (args) => listLeads(args))
   tool('get_lead', 'Fetch one lead with its live sequence enrollment (if any).', z.object({ lead_id: id }), readOnly,
     async ({ lead_id }) => ({ ...(await getLead(lead_id)), live_enrollment: await liveEnrollmentForLead(lead_id) }))

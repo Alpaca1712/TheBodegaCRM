@@ -36,7 +36,8 @@ Terminal stages that stop sequences: `interested`, `meeting_booked`, `not_intere
 
 | Filter | `channel` / `pipeline` | Tags | Typical source |
 |--------|------------------------|------|----------------|
-| Blog | `channel=blog` | `blog` (+ `blog_subscriber`) | `pigeonlabs_blog_subscription`, home/pentest/playbook forms |
+| Blog | `channel=blog` | `blog` (+ `blog_subscriber`) | `pigeonlabs_blog_subscription`, `landing:blog` |
+| Web | `channel=web` | `web` (+ `web_inbound`) | home / pentest / playbook landing forms |
 | Partnerships | `channel=partnerships` | `partnership` | `landing:partnerships` |
 | Affiliates | `pipeline=referral` | `referral` (+ track) | Coo Crew |
 | Influencers | `pipeline=referral_influencer` | `referral`, `referral_influencer` | `landing:affiliates` |

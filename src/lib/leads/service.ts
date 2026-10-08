@@ -4,6 +4,7 @@ import type { Lead, LeadStage } from '@/types'
 import {
   BLOG_CHANNEL_OR,
   PARTNERSHIPS_CHANNEL_OR,
+  WEB_CHANNEL_OR,
   inferChannelTags,
 } from './channels'
 import {
@@ -86,6 +87,18 @@ export async function listLeads(query: LeadListQuery): Promise<{ data: Lead[]; t
     builder = builder.or(REFERRAL_EVENT_OR)
   } else if (query.channel === 'blog') {
     builder = builder.or(BLOG_CHANNEL_OR)
+  } else if (query.channel === 'web') {
+    // Exclude blog / affiliate / partnership rows that also carry web_inbound.
+    builder = builder
+      .or(WEB_CHANNEL_OR)
+      .not('tags', 'cs', '{blog_subscriber}')
+      .not('tags', 'cs', '{referral}')
+      .not('tags', 'cs', '{partnership}')
+      .not('source', 'eq', 'pigeonlabs_blog_subscription')
+      .not('source', 'eq', 'landing:blog')
+      .not('source', 'eq', 'landing:affiliates')
+      .not('source', 'eq', 'landing:events')
+      .not('source', 'eq', 'landing:partnerships')
   } else if (query.channel === 'partnerships') {
     builder = builder.or(PARTNERSHIPS_CHANNEL_OR)
   }
@@ -159,7 +172,7 @@ export async function createLead(input: LeadCreateInput): Promise<Lead> {
   for (const tag of inferChannelTags({ source, tags: Array.from(tags) })) {
     tags.add(tag)
   }
-  // Keep legacy web_inbound for historical queries; Blog filter also matches it.
+  // Keep legacy web_inbound for historical queries.
   if (inbound) tags.add('web_inbound')
 
   const withDefaults: LeadCreateInput = {
