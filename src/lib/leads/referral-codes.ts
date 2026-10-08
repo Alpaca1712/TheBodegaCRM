@@ -6,6 +6,7 @@ import { escapeHtml } from '@/lib/email/render'
 import { getSetting } from '@/lib/settings'
 import type { Lead } from '@/types'
 import { isPartnershipLead } from './channels'
+import { isCreditableReferralSource } from './referral-credit'
 import { isReferralLead } from './referral'
 import { getLead } from './service'
 
@@ -446,22 +447,44 @@ export async function sendReferralCodeEmail(
 }
 
 /**
- * Attribute a newly captured lead to a referrer by code.
- * No-ops when code is missing/invalid, self-referral, or already attributed.
+ * Attribute a newly captured customer lead to a referrer by code.
+ * No credit for existing Bodega emails, blog / Coo Crew / partnership, or self-referral.
  */
 export async function attributeLeadToReferralCode(
   leadId: string,
   rawCode: string | null | undefined,
+  options: { isNewLead?: boolean } = {},
 ): Promise<Lead | null> {
   if (!rawCode) return null
+  if (options.isNewLead === false) return null
   const code = normalizeReferralCode(rawCode)
   if (code.length < CODE_MIN) return null
 
-  const [lead, referrer] = await Promise.all([getLead(leadId), findLeadByReferralCode(code)])
+  const lead = await getLead(leadId)
+  if (!isCreditableReferralSource(lead.source)) return null
+  if (getReferredByLeadId(lead)) return lead
+
+  const email = normalizeEmail(lead.email)
+  const prior = await db()
+    .from('leads')
+    .select('id')
+    .ilike('email', email)
+    .neq('id', lead.id)
+    .limit(1)
+    .maybeSingle()
+  if (!prior.error && prior.data) return null
+
+  // Default: only brand-new rows (created in the last few minutes) get credit
+  // unless the caller explicitly passes isNewLead: true.
+  if (options.isNewLead !== true) {
+    const createdMs = lead.created_at ? new Date(lead.created_at).getTime() : 0
+    if (!createdMs || Date.now() - createdMs > 5 * 60 * 1000) return null
+  }
+
+  const referrer = await findLeadByReferralCode(code)
   if (!referrer) return null
   if (referrer.id === lead.id) return null
-  if (getReferredByLeadId(lead)) return lead
-  if (normalizeEmail(lead.email) === normalizeEmail(referrer.email)) return null
+  if (email === normalizeEmail(referrer.email)) return null
 
   const tags = Array.from(new Set([...(lead.tags || []), 'referred']))
   const custom = {
