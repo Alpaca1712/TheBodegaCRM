@@ -28,7 +28,7 @@ export function landingBaseUrl() {
 }
 
 export function referralLinkForCode(code: string) {
-  return `${landingBaseUrl()}/pentest-challenge?ref=${encodeURIComponent(code)}`
+  return `${landingBaseUrl()}/pentest?ref=${encodeURIComponent(code)}`
 }
 
 export function isEligibleReferrer(

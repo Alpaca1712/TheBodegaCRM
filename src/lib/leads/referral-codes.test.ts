@@ -13,10 +13,8 @@ describe('referral codes', () => {
     expect(normalizeReferralCode('ACME__Labs')).toBe('acme-labs')
   })
 
-  it('builds pentest challenge referral links', () => {
-    expect(referralLinkForCode('jane')).toMatch(
-      /\/pentest-challenge\?ref=jane$/,
-    )
+  it('builds pentest referral links', () => {
+    expect(referralLinkForCode('jane')).toMatch(/\/pentest\?ref=jane$/)
   })
 
   it('marks Coo Crew and partnership leads eligible', () => {
@@ -43,16 +41,17 @@ describe('referral codes', () => {
   it('builds referrer signup congrats copy without referee PII', () => {
     const copy = referrerSignupEmailCopy({
       firstName: 'Daniel',
-      link: 'https://pigeonlabs.ai/pentest-challenge?ref=daniel',
+      link: 'https://pigeonlabs.ai/pentest?ref=daniel',
     })
     expect(copy.subject).toMatch(/Congrats/i)
     expect(copy.text).toContain('signed up using your Pigeon Labs referral link')
     expect(copy.text).toContain('closed deal')
-    expect(copy.text).toContain('https://pigeonlabs.ai/pentest-challenge?ref=daniel')
+    expect(copy.text).toContain('https://pigeonlabs.ai/pentest?ref=daniel')
     expect(copy.text).not.toMatch(/@gmail\.com/)
   })
 
   it('only credits customer inbound sources', () => {
+    expect(isCreditableReferralSource('landing:pentest')).toBe(true)
     expect(isCreditableReferralSource('landing:pentest-challenge')).toBe(true)
     expect(isCreditableReferralSource('landing:home')).toBe(true)
     expect(isCreditableReferralSource('pigeonlabs_blog_subscription')).toBe(false)

@@ -85,7 +85,7 @@ Coo Crew + **Partnerships** leads can get a shareable code:
 
 1. Console lead detail → **Referral** → Issue + email link (or MCP `issue_referral_code`).
 2. Moving stage to `customer` also auto-issues and emails the link when missing.
-3. Link shape: `https://pigeonlabs.ai/pentest-challenge?ref=<code>` (`LANDING_BASE_URL`).
+3. Link shape: `https://pigeonlabs.ai/pentest?ref=<code>` (`LANDING_BASE_URL`).
 4. Site forms persist `?ref=` and stamp `referred_by_lead_id` + tag `referred` only for **new** customer inbound (home / pentest / playbook). No credit if the email already exists in Bodega.
 5. Blog, Coo Crew (affiliates/events), and partnerships never count as referrals (no credit, no congrats email).
 6. On first valid attribution, the referrer gets a congrats email (no referee PII). Closed-deal payouts are a later manual notify.
