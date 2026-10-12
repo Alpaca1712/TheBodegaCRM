@@ -8,7 +8,7 @@ export type LeadChannel = (typeof LEAD_CHANNEL_VALUES)[number]
 export const BLOG_TAG = 'blog' as const
 export const BLOG_SUBSCRIBER_TAG = 'blog_subscriber' as const
 export const PARTNERSHIP_TAG = 'partnership' as const
-/** Generic website inbound (home, pentest, playbook) - not blog / affiliate / partnership. */
+/** Generic website inbound (home, pentest, legacy playbook) - not blog / affiliate / partnership. */
 export const WEB_TAG = 'web' as const
 
 /** Inbound sources (peer level). Coo Crew is separate - see referral.ts. */
@@ -67,7 +67,7 @@ export const BLOG_CHANNEL_OR = [
   'source.ilike."pigeonlabs_blog%"',
 ].join(',')
 
-/** Supabase `.or()` for non-blog website inbound (home / pentest / playbook). */
+/** Supabase `.or()` for non-blog website inbound (home / pentest / legacy playbook). */
 export const WEB_CHANNEL_OR = [
   `tags.cs.{${WEB_TAG}}`,
   'tags.cs.{web_inbound}',
@@ -156,7 +156,7 @@ export function inferChannelTags(input: {
     return Array.from(existing)
   }
 
-  // Generic website inbound (home, pentest, playbook, etc.) → Web, not Blog.
+  // Generic website inbound (home, pentest, etc.) → Web, not Blog.
   if (sourceIsWebsiteInbound(source)) {
     existing.add(WEB_TAG)
     existing.delete(BLOG_TAG)
