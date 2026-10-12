@@ -76,6 +76,7 @@ export const WEB_CHANNEL_OR = [
   'source.eq.landing:home',
   'source.ilike."landing:pentest%"',
   'source.ilike."pigeonlabs_pentest%"',
+  'source.ilike."pigeonlabs_appsec_blueprint%"',
   'source.ilike."pigeonlabs_playbook%"',
   'source.ilike."landing:%"',
   'source.ilike."pigeonlabs_%"',
