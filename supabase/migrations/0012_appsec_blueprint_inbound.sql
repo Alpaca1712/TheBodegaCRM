@@ -1,5 +1,5 @@
 -- AppSec blueprint content funnel (landing /appsec-blueprint).
--- Email delivery of the guide is handled by the landing app via Resend.
+-- Email delivery will reuse the landing blog teaser / one-off send once the gated post exists.
 
 insert into public.inbound_flows (key, name, description, is_default, actions) values
   (
